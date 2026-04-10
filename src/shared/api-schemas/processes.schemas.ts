@@ -9,6 +9,7 @@ const ProcessLastSyncStatusSchema = z.enum(['DONE', 'FAILED', 'RUNNING', 'UNKNOW
 const ProcessStatusMicrobadgeStatusSchema = z.enum([
   'UNKNOWN',
   'IN_PROGRESS',
+  'BOOKED',
   'LOADED',
   'IN_TRANSIT',
   'ARRIVED_AT_POD',
@@ -21,6 +22,7 @@ const ProcessStatusMicrobadgeStatusSchema = z.enum([
 const ProcessStatusCountsSchema = z.object({
   UNKNOWN: z.number().int().nonnegative(),
   IN_PROGRESS: z.number().int().nonnegative(),
+  BOOKED: z.number().int().nonnegative(),
   LOADED: z.number().int().nonnegative(),
   IN_TRANSIT: z.number().int().nonnegative(),
   ARRIVED_AT_POD: z.number().int().nonnegative(),

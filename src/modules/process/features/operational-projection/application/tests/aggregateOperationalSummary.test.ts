@@ -129,7 +129,7 @@ describe('aggregateOperationalSummary', () => {
   it('returns BOOKED when observations include both pre-shipment and transit statuses', () => {
     const summaries = [
       makeSummary({
-        status: 'IN_PROGRESS',
+        status: 'BOOKED',
         observations: [{ event_time: '2026-03-01T00:00:00.000Z' }],
       }),
       makeSummary({

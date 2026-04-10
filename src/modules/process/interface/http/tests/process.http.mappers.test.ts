@@ -68,6 +68,7 @@ function createSummary(
     status_counts: {
       UNKNOWN: 0,
       IN_PROGRESS: 0,
+      BOOKED: 0,
       LOADED: 0,
       IN_TRANSIT: 1,
       ARRIVED_AT_POD: 0,
@@ -204,6 +205,7 @@ describe('process.http.mappers', () => {
         status_counts: {
           UNKNOWN: 0,
           IN_PROGRESS: 0,
+          BOOKED: 0,
           LOADED: 0,
           IN_TRANSIT: 0,
           ARRIVED_AT_POD: 0,
@@ -403,6 +405,7 @@ describe('process.http.mappers', () => {
         status_counts: {
           UNKNOWN: 2,
           IN_PROGRESS: 0,
+          BOOKED: 0,
           LOADED: 0,
           IN_TRANSIT: 0,
           ARRIVED_AT_POD: 0,

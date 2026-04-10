@@ -44,6 +44,7 @@ type ContainerSummaryStatus = ContainerHotReadProjection['status']
 const CONTAINER_SUMMARY_STATUSES: readonly ContainerSummaryStatus[] = [
   'UNKNOWN',
   'IN_PROGRESS',
+  'BOOKED',
   'LOADED',
   'IN_TRANSIT',
   'ARRIVED_AT_POD',

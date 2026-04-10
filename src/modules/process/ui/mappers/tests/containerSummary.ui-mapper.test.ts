@@ -82,6 +82,7 @@ function makeMapperCommand(containers: readonly ContainerDetailVM[]) {
     locale,
     keys,
     t: (key: string): string => {
+      if (key === keys.tracking.status.BOOKED) return 'Aguardando embarque'
       if (key === keys.shipmentView.operational.chips.etaArrived) return 'Arrived'
       if (key === keys.shipmentView.operational.chips.etaExpected) return 'ETA'
       if (key === keys.shipmentView.operational.chips.etaDelayedSuffix) return 'delayed'
@@ -115,6 +116,19 @@ describe('toContainerSummaryRowVMs', () => {
 
     expect(row.statusVariant).toBe('orange-500')
     expect(row.statusLabel).toBe(command.t(command.keys.tracking.status.DISCHARGED))
+  })
+
+  it('renders BOOKED containers with the operational waiting label', () => {
+    const container = makeContainer({
+      status: 'slate-400',
+      statusCode: 'BOOKED',
+    })
+    const command = makeMapperCommand([container])
+    const [row] = toContainerSummaryRowVMs(command)
+    if (!row) throw new Error('Expected row at index 0')
+
+    expect(row.statusVariant).toBe('slate-400')
+    expect(row.statusLabel).toBe('Aguardando embarque')
   })
 
   it('maps ETA label using eta chip semantics', () => {
