@@ -463,7 +463,7 @@
         "eventType": "Tipo",
         "eventTime": "Horário do Evento",
         "observedAt": "Observado em",
-        "voyage": "Voyage",
+        "voyage": "Viagem",
         "delta": "Mudança",
         "status": "Status",
         "confirmed": "Confirmado",
