@@ -656,7 +656,7 @@ type TerminalSegmentRenderUnit =
   | { readonly type: 'planned-transshipment'; readonly block: PlannedTransshipmentBlock }
 
 function positionVoyageLikeSegments(
-  orderedEvents: readonly TrackingTimelineItem[],
+  eventIndexById: ReadonlyMap<string, number>,
   voyageSegments: readonly ResolvedVoyageSegment[],
 ): readonly PositionedVoyageSegment[] {
   return voyageSegments
@@ -671,9 +671,9 @@ function positionVoyageLikeSegments(
         return null
       }
 
-      const firstEventIndex = orderedEvents.findIndex((event) => event.id === firstEvent.id)
-      const lastEventIndex = orderedEvents.findIndex((event) => event.id === lastEvent.id)
-      if (firstEventIndex < 0 || lastEventIndex < 0) {
+      const firstEventIndex = eventIndexById.get(firstEvent.id)
+      const lastEventIndex = eventIndexById.get(lastEvent.id)
+      if (firstEventIndex === undefined || lastEventIndex === undefined) {
         return null
       }
 
@@ -688,17 +688,14 @@ function positionVoyageLikeSegments(
 
 function findAdjacentVoyageLikeSegmentsForEvent(command: {
   readonly event: TrackingTimelineItem
-  readonly orderedEvents: readonly TrackingTimelineItem[]
+  readonly eventIndexById: ReadonlyMap<string, number>
   readonly positionedVoyageSegments: readonly PositionedVoyageSegment[]
 }): {
   readonly previous: PositionedVoyageSegment | null
   readonly next: PositionedVoyageSegment | null
 } {
-  const eventIndex = command.orderedEvents.findIndex(
-    (candidate) => candidate.id === command.event.id,
-  )
-
-  if (eventIndex < 0) {
+  const eventIndex = command.eventIndexById.get(command.event.id)
+  if (eventIndex === undefined) {
     return {
       previous: null,
       next: null,
@@ -728,7 +725,7 @@ function findAdjacentVoyageLikeSegmentsForEvent(command: {
 
 function splitTerminalSegmentIntoRenderUnits(command: {
   readonly segment: TerminalSegment
-  readonly orderedEvents: readonly TrackingTimelineItem[]
+  readonly eventIndexById: ReadonlyMap<string, number>
   readonly positionedVoyageSegments: readonly PositionedVoyageSegment[]
 }): readonly TerminalSegmentRenderUnit[] {
   const units: TerminalSegmentRenderUnit[] = []
@@ -765,7 +762,7 @@ function splitTerminalSegmentIntoRenderUnits(command: {
 
     const adjacentSegments = findAdjacentVoyageLikeSegmentsForEvent({
       event,
-      orderedEvents: command.orderedEvents,
+      eventIndexById: command.eventIndexById,
       positionedVoyageSegments: command.positionedVoyageSegments,
     })
 
@@ -1091,11 +1088,15 @@ export function buildTimelineRenderList(
   if (events.length === 0) return []
 
   const orderedEvents = sortTimelineItemsForBlockDerivation(events)
+  const eventIndexById = new Map<string, number>()
+  orderedEvents.forEach((event, index) => {
+    eventIndexById.set(event.id, index)
+  })
   const baseVoyageSegments = groupVoyageSegments(orderedEvents)
   const dominantPlannedHandoffs = resolveDominantPlannedHandoffCandidates(orderedEvents)
   const voyageSegments = enrichVoyageSegments(baseVoyageSegments, dominantPlannedHandoffs)
   const terminalSegments = groupTerminalSegments(orderedEvents, voyageSegments)
-  const positionedVoyageSegments = positionVoyageLikeSegments(orderedEvents, voyageSegments)
+  const positionedVoyageSegments = positionVoyageLikeSegments(eventIndexById, voyageSegments)
   const transshipments = detectConfirmedTransshipmentsBetweenVoyages(voyageSegments)
   const gapMarkers = computeGapMarkers(orderedEvents)
   const portRiskEntries = computePortRiskMarkers(orderedEvents, now)
@@ -1235,7 +1236,7 @@ export function buildTimelineRenderList(
     emitTerminalSegmentRenderUnits(
       splitTerminalSegmentIntoRenderUnits({
         segment: ts,
-        orderedEvents,
+        eventIndexById,
         positionedVoyageSegments,
       }),
       false,
@@ -1302,13 +1303,17 @@ export function buildTimelineRenderList(
         if (lastCurrentVoyageEvent === undefined || firstNextVoyageEvent === undefined) continue
 
         // Check if the terminal event is positioned between the two voyages
-        const termEventIdx = orderedEvents.findIndex((e) => e.id === firstTermEvent.id)
-        const lastCurrentVoyageIdx = orderedEvents.findIndex(
-          (e) => e.id === lastCurrentVoyageEvent.id,
-        )
-        const firstNextVoyageIdx = orderedEvents.findIndex((e) => e.id === firstNextVoyageEvent.id)
+        const termEventIdx = eventIndexById.get(firstTermEvent.id)
+        const lastCurrentVoyageIdx = eventIndexById.get(lastCurrentVoyageEvent.id)
+        const firstNextVoyageIdx = eventIndexById.get(firstNextVoyageEvent.id)
 
-        if (termEventIdx > lastCurrentVoyageIdx && termEventIdx < firstNextVoyageIdx) {
+        if (
+          termEventIdx !== undefined &&
+          lastCurrentVoyageIdx !== undefined &&
+          firstNextVoyageIdx !== undefined &&
+          termEventIdx > lastCurrentVoyageIdx &&
+          termEventIdx < firstNextVoyageIdx
+        ) {
           usedTerminalSegmentIds.add(ts.id)
 
           if (
@@ -1336,7 +1341,7 @@ export function buildTimelineRenderList(
           emitTerminalSegmentRenderUnits(
             splitTerminalSegmentIntoRenderUnits({
               segment: ts,
-              orderedEvents,
+              eventIndexById,
               positionedVoyageSegments,
             }),
             false,
@@ -1374,7 +1379,7 @@ export function buildTimelineRenderList(
     emitTerminalSegmentRenderUnits(
       splitTerminalSegmentIntoRenderUnits({
         segment: ts,
-        orderedEvents,
+        eventIndexById,
         positionedVoyageSegments,
       }),
       true,

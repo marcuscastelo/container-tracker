@@ -112,7 +112,7 @@ export function toHistoricalTimelineTextExportSource(command: {
   return {
     mode: 'historical',
     title: command.title,
-    containerNumber: command.containerNumber ?? 'UNKNOWN',
+    containerNumber: command.containerNumber ?? '',
     statusCode: command.sync.statusCode,
     statusLabel: command.statusLabel,
     eta:
@@ -427,7 +427,7 @@ export function serializeTimelineToText(
   const lines: string[] = []
 
   pushLine(lines, `# ${source.title}`)
-  pushLine(lines, `container: ${source.containerNumber}`)
+  pushKeyValue(lines, 'container', source.containerNumber)
   pushLine(lines, `export_mode: ${source.mode.toUpperCase()}`)
   pushLine(lines, `status: ${source.statusLabel}`)
   pushLine(lines, `status_code: ${source.statusCode}`)

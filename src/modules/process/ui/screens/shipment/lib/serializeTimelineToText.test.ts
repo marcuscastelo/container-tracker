@@ -843,4 +843,50 @@ it('uses the visible historical checkpoint and its reference_now for export', ()
   )
   expect(historicalOutput).not.toContain('LIVE VESSEL')
   expect(liveOutput).toContain('LIVE VESSEL')
+
+  const historicalWithoutContainer = serialize(
+    makeHistoricalSource({
+      containerNumber: null,
+      referenceNowIso: '2026-04-04T12:00:00.000Z',
+      sync: makeHistoricalSync({
+        statusCode: 'LOADED',
+        eta: {
+          date: '12/04/2026',
+          state: 'ACTIVE_EXPECTED',
+          tone: 'informative',
+          type: 'ARRIVAL',
+        },
+        currentContext: {
+          locationCode: 'SGSIN',
+          locationDisplay: 'SINGAPORE, SG',
+          vesselName: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+          vesselVisible: true,
+        },
+        transshipment: {
+          hasTransshipment: true,
+          count: 1,
+          ports: [
+            {
+              code: 'SGSIN',
+              display: 'Singapore',
+            },
+          ],
+        },
+        timeline: [
+          makeEvent({
+            id: 'historical-load-no-container',
+            type: 'LOAD',
+            eventTime: '2026-04-01',
+            vesselName: 'SAO PAULO EXPRESS',
+            voyage: '2613W',
+            location: 'SINGAPORE, SG',
+          }),
+        ],
+      }),
+    }),
+  )
+
+  expect(historicalWithoutContainer).not.toContain('UNKNOWN')
+  expect(historicalWithoutContainer.split('\n')[1]).toBe('export_mode: HISTORICAL')
 })

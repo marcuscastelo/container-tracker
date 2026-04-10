@@ -173,14 +173,18 @@ export function TrackingTimelinePanelContent(
     }
 
     try {
-      await copyToClipboard(
+      const copied = await copyToClipboard(
         serializeTimelineToText(props.exportSource, {
           t,
           keys,
           locale: locale(),
         }),
       )
-      toast.success(t(keys.shipmentView.actions.copyTimelineSuccess))
+      if (copied) {
+        toast.success(t(keys.shipmentView.actions.copyTimelineSuccess))
+      } else {
+        toast.error(t(keys.shipmentView.actions.copyTimelineError))
+      }
     } catch (error) {
       console.error('Failed to copy timeline text export', error)
       toast.error(t(keys.shipmentView.actions.copyTimelineError))

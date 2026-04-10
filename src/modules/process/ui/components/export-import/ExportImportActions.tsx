@@ -579,8 +579,12 @@ export function ExportImportActions(props: ExportImportActionsProps): JSX.Elemen
           includeExecutiveSummary: true,
         },
       })
-      await copyToClipboard(markdown)
-      toast.success(t(keys.exportImport.copyTrelloSuccess))
+      const copied = await copyToClipboard(markdown)
+      if (copied) {
+        toast.success(t(keys.exportImport.copyTrelloSuccess))
+      } else {
+        toast.error(t(keys.exportImport.copyTrelloError))
+      }
     } catch (error) {
       console.error('Failed to copy Trello export', error)
       toast.error(t(keys.exportImport.copyTrelloError))
