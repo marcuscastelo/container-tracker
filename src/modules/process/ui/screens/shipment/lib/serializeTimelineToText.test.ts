@@ -10,6 +10,7 @@ import {
   toHistoricalTimelineTextExportSource,
 } from '~/modules/process/ui/screens/shipment/lib/serializeTimelineToText'
 import type { TrackingTimeTravelSyncVM } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
+import type { TimelineRenderItem } from '~/modules/process/ui/timeline/timelineBlockModel'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { createTranslationApi } from '~/shared/localization/i18n'
@@ -1049,6 +1050,120 @@ it('preserves real voyage discrepancies between block header metadata and child 
     ].join('\n'),
   )
   expect(output).not.toContain('block_kind: TIMELINE_MARKERS')
+})
+
+it('keeps the current voyage badge aligned when standalone markers appear between voyages', () => {
+  const source: TimelineTextExportSource = {
+    mode: 'current',
+    title: t(keys.shipmentView.timeline.title),
+    containerNumber: 'GLDU2928252',
+    statusCode: 'IN_TRANSIT',
+    statusLabel: t(trackingStatusToLabelKey(keys, 'IN_TRANSIT')),
+    eta: null,
+    currentContext: {
+      locationDisplay: 'SINGAPORE, SG',
+      vesselName: 'GSL VIOLETTA',
+      voyage: '2613W',
+      vesselVisible: true,
+    },
+    transshipment: {
+      hasTransshipment: false,
+      count: 0,
+      ports: [],
+    },
+    referenceNowIso: null,
+    renderList: [
+      {
+        type: 'voyage-block',
+        block: {
+          blockType: 'voyage',
+          vessel: 'MSC ARICA',
+          voyage: 'OB610R',
+          origin: 'KARACHI, PK',
+          destination: 'COLOMBO, LK',
+          events: [
+            makeEvent({
+              id: 'voyage-1-load',
+              type: 'LOAD',
+              eventTime: '2026-04-05',
+              vesselName: 'MSC ARICA',
+              voyage: 'OB610R',
+              location: 'KARACHI, PK',
+            }),
+            makeEvent({
+              id: 'voyage-1-discharge',
+              type: 'DISCHARGE',
+              eventTime: '2026-04-06',
+              vesselName: 'MSC ARICA',
+              voyage: 'OB610R',
+              location: 'COLOMBO, LK',
+            }),
+          ],
+        },
+      },
+      {
+        type: 'block-end',
+      },
+      {
+        type: 'gap-marker',
+        marker: {
+          blockType: 'gap-marker',
+          kind: 'generic',
+          durationDays: 2,
+          fromEventType: 'DISCHARGE',
+          toEventType: 'LOAD',
+        },
+      },
+      {
+        type: 'port-risk-marker',
+        marker: {
+          blockType: 'port-risk-marker',
+          durationDays: 3,
+          ongoing: false,
+          severity: 'warning',
+        },
+      },
+      {
+        type: 'voyage-block',
+        block: {
+          blockType: 'voyage',
+          vessel: 'GSL VIOLETTA',
+          voyage: '2613W',
+          origin: 'SINGAPORE, SG',
+          destination: 'SANTOS, BR',
+          events: [
+            makeEvent({
+              id: 'voyage-2-load',
+              type: 'LOAD',
+              eventTime: '2026-04-08',
+              vesselName: 'GSL VIOLETTA',
+              voyage: '2613W',
+              location: 'SINGAPORE, SG',
+            }),
+            makeEvent({
+              id: 'voyage-2-departure',
+              type: 'DEPARTURE',
+              eventTime: '2026-04-09',
+              vesselName: 'GSL VIOLETTA',
+              voyage: '2613W',
+              location: 'SINGAPORE, SG',
+            }),
+          ],
+        },
+      },
+      {
+        type: 'block-end',
+      },
+    ] satisfies readonly TimelineRenderItem[],
+  }
+
+  const output = serialize(source)
+
+  expect(output).toContain('block_title_display: GSL VIOLETTA\nblock_badges: Atual')
+  expect(output).not.toContain('block_title_display: MSC ARICA\nblock_badges: Atual')
+  expect(output).toContain('block_kind: TIMELINE_MARKERS')
+  expect(output).toContain('label: Intervalo: 2 dias sem novos eventos')
+  expect(output).toContain('label: No porto por 3 dias')
 })
 
 it('uses a readable timeline markers fallback only when markers are truly standalone', () => {

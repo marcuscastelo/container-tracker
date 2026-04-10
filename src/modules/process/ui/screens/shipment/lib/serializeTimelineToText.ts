@@ -404,6 +404,56 @@ function serializeStandaloneItems(
   return index
 }
 
+function buildRenderIndexToCurrentVoyageGroupIndex(
+  renderList: readonly TimelineRenderItem[],
+): ReadonlyMap<number, number> {
+  const groupIndexByRenderIndex = new Map<number, number>()
+  let groupIndex = 0
+  let index = 0
+
+  while (index < renderList.length) {
+    const item = renderList[index]
+    if (item === undefined) {
+      break
+    }
+
+    if (item.type === 'block-end') {
+      index += 1
+      continue
+    }
+
+    groupIndexByRenderIndex.set(index, groupIndex)
+
+    if (item.type === 'voyage-block' || item.type === 'terminal-block') {
+      groupIndex += 1
+      index += 1
+      while (index < renderList.length) {
+        const child = renderList[index]
+        if (
+          child === undefined ||
+          child.type === 'block-end' ||
+          child.type === 'voyage-block' ||
+          child.type === 'terminal-block' ||
+          child.type === 'transshipment-block' ||
+          child.type === 'planned-transshipment-block'
+        ) {
+          break
+        }
+        index += 1
+      }
+      if (renderList[index]?.type === 'block-end') {
+        index += 1
+      }
+      continue
+    }
+
+    groupIndex += 1
+    index += 1
+  }
+
+  return groupIndexByRenderIndex
+}
+
 function serializeVoyageBlock(
   lines: string[],
   block: VoyageBlock,
@@ -524,7 +574,7 @@ export function serializeTimelineToText(
   }
 
   const currentVoyageIndex = resolveCurrentVoyageIndex(toCurrentVoyageGroups(source.renderList))
-  let groupIndex = 0
+  const groupIndexByRenderIndex = buildRenderIndexToCurrentVoyageGroupIndex(source.renderList)
   let index = 0
   while (index < source.renderList.length) {
     const item = source.renderList[index]
@@ -535,35 +585,30 @@ export function serializeTimelineToText(
     switch (item.type) {
       case 'voyage-block':
         serializeVoyageBlock(lines, item.block, dependencies, {
-          isCurrent: groupIndex === currentVoyageIndex,
+          isCurrent: groupIndexByRenderIndex.get(index) === currentVoyageIndex,
         })
         index = serializeBlockChildren(lines, source.renderList, index + 1, dependencies)
-        groupIndex += 1
         pushLine(lines, '')
         continue
       case 'terminal-block':
         serializeTerminalBlock(lines, item.block, dependencies)
         index = serializeBlockChildren(lines, source.renderList, index + 1, dependencies)
-        groupIndex += 1
         pushLine(lines, '')
         continue
       case 'transshipment-block':
         serializeTransshipmentBlock(lines, item.block, dependencies)
         index = serializeInlineMarkerChildren(lines, source.renderList, index + 1, dependencies)
-        groupIndex += 1
         pushLine(lines, '')
         continue
       case 'planned-transshipment-block':
         serializePlannedTransshipmentBlock(lines, item.block, dependencies)
         index = serializeInlineMarkerChildren(lines, source.renderList, index + 1, dependencies)
-        groupIndex += 1
         pushLine(lines, '')
         continue
       case 'event':
       case 'gap-marker':
       case 'port-risk-marker':
         index = serializeStandaloneItems(lines, source.renderList, index, dependencies)
-        groupIndex += 1
         pushLine(lines, '')
         continue
       case 'block-end':
