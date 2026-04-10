@@ -1,57 +1,57 @@
 {
-  "generatedAt": "2026-04-10T17:22:15.993Z",
+  "generatedAt": "2026-04-10T18:10:48.071Z",
   "scopePath": "docs/plans/coverage-scope.json",
   "coverageFile": "coverage/vitest/coverage-final.json",
   "summary": {
-    "scopedFileCount": 517,
+    "scopedFileCount": 518,
     "unclassifiedFileCount": 0,
     "baselineStatus": "present"
   },
   "global": {
-    "fileCount": 517,
+    "fileCount": 518,
     "lines": {
-      "covered": 24347,
-      "total": 44404,
-      "pct": 54.83
+      "covered": 24343,
+      "total": 44499,
+      "pct": 54.7
     },
     "branches": {
-      "covered": 6011,
-      "total": 7599,
-      "pct": 79.1
+      "covered": 6010,
+      "total": 7601,
+      "pct": 79.07
     },
     "functions": {
       "covered": 1644,
-      "total": 1925,
-      "pct": 85.4
+      "total": 1926,
+      "pct": 85.36
     },
     "statements": {
-      "covered": 24347,
-      "total": 44404,
-      "pct": 54.83
+      "covered": 24343,
+      "total": 44499,
+      "pct": 54.7
     }
   },
   "modules": {
     "process": {
-      "fileCount": 212,
+      "fileCount": 213,
       "lines": {
-        "covered": 6781,
-        "total": 19663,
-        "pct": 34.49
+        "covered": 6777,
+        "total": 19758,
+        "pct": 34.3
       },
       "branches": {
-        "covered": 2070,
-        "total": 2515,
-        "pct": 82.31
+        "covered": 2068,
+        "total": 2516,
+        "pct": 82.19
       },
       "functions": {
         "covered": 562,
-        "total": 684,
-        "pct": 82.16
+        "total": 685,
+        "pct": 82.04
       },
       "statements": {
-        "covered": 6781,
-        "total": 19663,
-        "pct": 34.49
+        "covered": 6777,
+        "total": 19758,
+        "pct": 34.3
       }
     },
     "container": {
@@ -85,8 +85,8 @@
         "pct": 78.15
       },
       "branches": {
-        "covered": 2749,
-        "total": 3520,
+        "covered": 2750,
+        "total": 3521,
         "pct": 78.1
       },
       "functions": {
@@ -179,9 +179,9 @@
         "pct": 83.72
       },
       "branches": {
-        "covered": 2147,
-        "total": 2641,
-        "pct": 81.29
+        "covered": 2148,
+        "total": 2642,
+        "pct": 81.3
       },
       "functions": {
         "covered": 500,
@@ -241,26 +241,26 @@
       }
     },
     "ui": {
-      "fileCount": 217,
+      "fileCount": 218,
       "lines": {
-        "covered": 5639,
-        "total": 19766,
-        "pct": 28.53
+        "covered": 5635,
+        "total": 19861,
+        "pct": 28.37
       },
       "branches": {
-        "covered": 1816,
-        "total": 2181,
-        "pct": 83.26
+        "covered": 1814,
+        "total": 2182,
+        "pct": 83.13
       },
       "functions": {
         "covered": 520,
-        "total": 654,
-        "pct": 79.51
+        "total": 655,
+        "pct": 79.39
       },
       "statements": {
-        "covered": 5639,
-        "total": 19766,
-        "pct": 28.53
+        "covered": 5635,
+        "total": 19861,
+        "pct": 28.37
       }
     },
     "unclassified": {

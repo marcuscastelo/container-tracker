@@ -1,8 +1,12 @@
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   buildCoveragePolicyReport,
   createBaselineSnapshot,
   renderCoveragePolicyMarkdown,
+  runCoveragePolicyReportCli,
 } from '../coverage-policy-report.mjs'
 
 const CWD = '/repo'
@@ -250,5 +254,34 @@ describe('buildCoveragePolicyReport', () => {
     expect(markdown).toContain('`src/shared/misc/unknown.ts`')
     expect(markdown).toContain('unclassified')
     expect(markdown).toContain('docs/plans/coverage-tracking-critical-matrix.md')
+  })
+
+  it('fails with an actionable error when the coverage file is missing', () => {
+    const tempDir = mkdtempSync(path.join(tmpdir(), 'coverage-policy-report-'))
+    const scopePath = path.join(tempDir, 'coverage-scope.json')
+    const baselineJsonPath = path.join(tempDir, 'coverage-baseline.json')
+    const baselineMdPath = path.join(tempDir, 'coverage-baseline.md')
+    const coverageFile = path.join(tempDir, 'coverage-final.json')
+
+    writeFileSync(scopePath, JSON.stringify(scope), 'utf8')
+
+    expect(() =>
+      runCoveragePolicyReportCli(
+        [
+          '--scope',
+          scopePath,
+          '--coverage-file',
+          coverageFile,
+          '--baseline-json',
+          baselineJsonPath,
+          '--baseline-md',
+          baselineMdPath,
+          '--quiet',
+        ],
+        {},
+      ),
+    ).toThrow(
+      `Coverage file not found at ${coverageFile}. Run "pnpm run test:coverage" before "pnpm run coverage:report".`,
+    )
   })
 })

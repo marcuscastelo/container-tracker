@@ -153,6 +153,21 @@ function readJsonFile(filePath) {
   return JSON.parse(readFileSync(filePath, 'utf8'))
 }
 
+function readCoverageJsonFile(filePath) {
+  try {
+    return readJsonFile(filePath)
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      throw new Error(
+        `Coverage file not found at ${filePath}. Run "pnpm run test:coverage" before "pnpm run coverage:report".`,
+        { cause: error },
+      )
+    }
+
+    throw error
+  }
+}
+
 function ensureParentDir(filePath) {
   mkdirSync(path.dirname(filePath), { recursive: true })
 }
@@ -752,7 +767,7 @@ export function runCoveragePolicyReportCli(argv = process.argv.slice(2), env = p
   const baselineMdPath = path.resolve(cwd, args.baselineMd)
 
   const scope = readJsonFile(scopePath)
-  const coverageMap = readJsonFile(coverageFile)
+  const coverageMap = readCoverageJsonFile(coverageFile)
   let baseline = null
 
   try {

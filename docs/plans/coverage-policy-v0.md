@@ -143,6 +143,11 @@ The matrix records:
 - `pnpm run coverage:report`
 - `pnpm run coverage:baseline`
 
+Operational note:
+
+- `pnpm run coverage:report` expects `coverage/vitest/coverage-final.json` to
+  exist, so run `pnpm run test:coverage` first when working locally.
+
 ## Related Artifacts
 
 - `docs/plans/coverage-scope.json`
