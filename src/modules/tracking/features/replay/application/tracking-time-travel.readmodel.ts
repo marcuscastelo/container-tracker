@@ -27,15 +27,32 @@ function normalizeTimelineForDiff(timeline: TrackingTimeTravelCheckpoint['timeli
       derivedState: item.derivedState,
       vesselName: item.vesselName ?? null,
       voyage: item.voyage ?? null,
+      seriesConflict:
+        item.seriesConflict === undefined || item.seriesConflict === null
+          ? null
+          : {
+              kind: item.seriesConflict.kind,
+              fields: [...item.seriesConflict.fields],
+            },
       seriesHistory: item.seriesHistory
         ? {
             hasActualConflict: item.seriesHistory.hasActualConflict,
+            conflict:
+              item.seriesHistory.conflict === undefined || item.seriesHistory.conflict === null
+                ? null
+                : {
+                    kind: item.seriesHistory.conflict.kind,
+                    fields: [...item.seriesHistory.conflict.fields],
+                  },
             classified: item.seriesHistory.classified.map((historyItem) => ({
               id: historyItem.id,
               type: historyItem.type,
               event_time: historyItem.event_time,
               event_time_type: historyItem.event_time_type,
               seriesLabel: historyItem.seriesLabel,
+              vesselName: historyItem.vesselName ?? null,
+              voyage: historyItem.voyage ?? null,
+              changeKind: historyItem.changeKind ?? null,
             })),
           }
         : null,

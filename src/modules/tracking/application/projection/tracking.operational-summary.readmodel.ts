@@ -2,13 +2,14 @@ import { applyVoyageExpectedSubstitution } from '~/modules/tracking/application/
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import { isTrackingTemporalValueExpired } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import {
+  buildCanonicalSeriesGroups,
+  type CanonicalSeriesGroup,
+} from '~/modules/tracking/features/series/domain/reconcile/canonicalSeries'
+import {
   type ClassifiedObservation,
   classifySeries,
 } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
-import {
-  buildSeriesKey,
-  compareObservationsChronologically,
-} from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import { toTemporalValueDto } from '~/shared/time/dto'
 import type { Instant } from '~/shared/time/instant'
@@ -118,27 +119,17 @@ function derivePrimarySeriesObservations(
   observations: readonly TrackingObservationForOperationalSummary[],
   now: Instant,
 ): readonly TrackingObservationForOperationalSummary[] {
-  const groups = new Map<string, TrackingObservationForOperationalSummary[]>()
-
-  for (const observation of observations) {
-    const key = buildSeriesKey(observation)
-    const series = groups.get(key)
-    if (series) {
-      series.push(observation)
-    } else {
-      groups.set(key, [observation])
-    }
-  }
-
   const candidates: Array<{
     readonly primary: TrackingObservationForOperationalSummary
     readonly classified: readonly ClassifiedObservation<TrackingObservationForOperationalSummary>[]
     readonly hasActualConflict: boolean
   }> = []
 
-  for (const series of groups.values()) {
-    series.sort(compareObservationsChronologically)
-    const classification = classifySeries(series, now)
+  const canonicalSeriesGroups: readonly CanonicalSeriesGroup<TrackingObservationForOperationalSummary>[] =
+    buildCanonicalSeriesGroups(observations, now)
+
+  for (const canonicalSeries of canonicalSeriesGroups) {
+    const classification = classifySeries(canonicalSeries.observations, now)
     if (classification.primary) {
       candidates.push({
         primary: classification.primary,
@@ -150,7 +141,7 @@ function derivePrimarySeriesObservations(
 
     // For operational ETA visibility we keep expired EXPECTED as fallback
     // when a series has no ACTUAL (safe-first still picks latest EXPECTED).
-    const latestExpected = [...series]
+    const latestExpected = [...canonicalSeries.observations]
       .reverse()
       .find((observation) => observation.event_time_type === 'EXPECTED')
 

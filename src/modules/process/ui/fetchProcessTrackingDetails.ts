@@ -45,6 +45,14 @@ function toSeriesHistory(
 ): TrackingSeriesHistory {
   return {
     hasActualConflict: seriesHistory.has_actual_conflict,
+    ...(seriesHistory.conflict === null || seriesHistory.conflict === undefined
+      ? {}
+      : {
+          conflict: {
+            kind: seriesHistory.conflict.kind,
+            fields: [...seriesHistory.conflict.fields],
+          },
+        }),
     classified: seriesHistory.classified.map((item) => ({
       id: item.id,
       type: item.type,
@@ -52,6 +60,9 @@ function toSeriesHistory(
       event_time_type: item.event_time_type,
       created_at: item.created_at,
       seriesLabel: item.series_label,
+      ...(item.vessel_name === undefined ? {} : { vesselName: item.vessel_name }),
+      ...(item.voyage === undefined ? {} : { voyage: item.voyage }),
+      ...(item.change_kind === undefined ? {} : { changeKind: item.change_kind }),
     })),
   }
 }

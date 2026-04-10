@@ -533,7 +533,7 @@ describe('trackingValidation.projection', () => {
     expect(summary.activeIssues[0]).not.toHaveProperty('debugEvidence')
   })
 
-  it('does not surface missing critical milestone when repeated maritime ACTUAL belongs to a new leg', () => {
+  it('surfaces conflicting maritime ACTUALs for a new leg without raising missing milestone', () => {
     const observations = makeLegAwareSplitObservations()
 
     const summary = deriveTrackingValidationSummaryFromState({
@@ -556,13 +556,21 @@ describe('trackingValidation.projection', () => {
       now: Instant.fromIso('2026-04-08T10:00:00.000Z'),
     })
 
-    expect(summary).toEqual({
-      hasIssues: false,
-      findingCount: 0,
-      highestSeverity: null,
-      topIssue: null,
-      activeIssues: [],
-    })
+    expect(summary.activeIssues).toEqual([
+      {
+        code: 'CONFLICTING_CRITICAL_ACTUALS',
+        severity: 'CRITICAL',
+        reasonKey: 'tracking.validation.conflictingCriticalActuals',
+        affectedArea: 'series',
+        affectedLocation: 'LKCMB',
+        affectedBlockLabelKey: null,
+      },
+    ])
+    expect(
+      summary.activeIssues.some(
+        (issue) => issue.code === 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+      ),
+    ).toBe(false)
   })
 
   it('flags duplicated canonical voyage segments when the same rendered leg appears twice', () => {

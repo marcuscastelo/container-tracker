@@ -117,7 +117,19 @@ function toReplaySeriesResponseDto(series: TrackingReplaySeries) {
       event_time_type: item.eventTimeType,
       created_at: item.createdAt,
       series_label: item.seriesLabel,
+      vessel_name: item.vesselName ?? null,
+      voyage: item.voyage ?? null,
+      change_kind: item.changeKind ?? null,
     })),
+  }
+}
+
+function toTrackingSeriesConflictResponseDto(
+  conflict: NonNullable<TrackingTimelineItem['seriesConflict']>,
+) {
+  return {
+    kind: conflict.kind,
+    fields: [...conflict.fields],
   }
 }
 
@@ -133,6 +145,8 @@ function toReplayTimelineItemResponseDto(item: TrackingTimelineItem) {
     derived_state: item.derivedState,
     vessel_name: item.vesselName ?? null,
     voyage: item.voyage ?? null,
+    series_conflict:
+      item.seriesConflict == null ? null : toTrackingSeriesConflictResponseDto(item.seriesConflict),
     has_series_history: item.hasSeriesHistory,
     series_history: item.seriesHistory
       ? toTrackingSeriesHistoryResponseDto(item.seriesHistory)
@@ -341,6 +355,10 @@ export function toTrackingSeriesHistoryResponseDto(
 ) {
   return {
     has_actual_conflict: seriesHistory.hasActualConflict,
+    conflict:
+      seriesHistory.conflict === undefined || seriesHistory.conflict === null
+        ? null
+        : toTrackingSeriesConflictResponseDto(seriesHistory.conflict),
     classified: seriesHistory.classified.map((historyItem) => ({
       id: historyItem.id,
       type: historyItem.type,
@@ -348,6 +366,9 @@ export function toTrackingSeriesHistoryResponseDto(
       event_time_type: historyItem.event_time_type,
       created_at: historyItem.created_at,
       series_label: historyItem.seriesLabel,
+      vessel_name: historyItem.vesselName ?? null,
+      voyage: historyItem.voyage ?? null,
+      change_kind: historyItem.changeKind ?? null,
     })),
   }
 }

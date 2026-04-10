@@ -105,6 +105,39 @@ describe('conflictingCriticalActualsDetector', () => {
     })
   })
 
+  it('emits one CRITICAL finding when sibling discharge ACTUAL series differ only by voyage', () => {
+    const findings = conflictingCriticalActualsDetector.detect(
+      makeContext([
+        makeObservation({
+          id: 'discharge-old',
+          event_time: temporalValueFromCanonical('2026-03-28'),
+          created_at: '2026-04-02T19:12:43.853916Z',
+          location_code: 'LKCMB',
+          location_display: 'COLOMBO, LK',
+          vessel_name: 'MSC ARICA',
+          voyage: 'IV610A',
+        }),
+        makeObservation({
+          id: 'discharge-new',
+          event_time: temporalValueFromCanonical('2026-03-28'),
+          created_at: '2026-04-04T16:53:10.273469Z',
+          location_code: 'LKCMB',
+          location_display: 'COLOMBO, LK',
+          vessel_name: 'MSC ARICA',
+          voyage: 'OB610R',
+        }),
+      ]),
+    )
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.debugEvidence).toMatchObject({
+      primaryObservationId: 'discharge-new',
+      seriesType: 'DISCHARGE',
+      locationCode: 'LKCMB',
+      conflictingActualCount: 1,
+    })
+  })
+
   it('does not emit finding when the ACTUAL conflict is outside the critical milestone allowlist', () => {
     const findings = conflictingCriticalActualsDetector.detect(
       makeContext([

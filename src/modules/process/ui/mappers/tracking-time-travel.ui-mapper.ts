@@ -32,6 +32,14 @@ function toTimelineItem(
       ? undefined
       : {
           hasActualConflict: item.series_history.has_actual_conflict,
+          ...(item.series_history.conflict === null || item.series_history.conflict === undefined
+            ? {}
+            : {
+                conflict: {
+                  kind: item.series_history.conflict.kind,
+                  fields: [...item.series_history.conflict.fields],
+                },
+              }),
           classified: item.series_history.classified.map((seriesItem) => ({
             id: seriesItem.id,
             type: seriesItem.type,
@@ -39,6 +47,9 @@ function toTimelineItem(
             event_time_type: seriesItem.event_time_type,
             created_at: seriesItem.created_at,
             seriesLabel: seriesItem.series_label,
+            ...(seriesItem.vessel_name === undefined ? {} : { vesselName: seriesItem.vessel_name }),
+            ...(seriesItem.voyage === undefined ? {} : { voyage: seriesItem.voyage }),
+            ...(seriesItem.change_kind === undefined ? {} : { changeKind: seriesItem.change_kind }),
           })),
         }
 
@@ -54,6 +65,14 @@ function toTimelineItem(
     ...(item.location === null || item.location === undefined ? {} : { location: item.location }),
     ...(item.vessel_name === undefined ? {} : { vesselName: item.vessel_name }),
     ...(item.voyage === undefined ? {} : { voyage: item.voyage }),
+    ...(item.series_conflict === null || item.series_conflict === undefined
+      ? {}
+      : {
+          seriesConflict: {
+            kind: item.series_conflict.kind,
+            fields: [...item.series_conflict.fields],
+          },
+        }),
     ...(seriesHistory === undefined ? {} : { seriesHistory }),
   }
 }
@@ -258,6 +277,9 @@ function toDebugStateVm(
         eventTimeType: item.event_time_type,
         createdAt: item.created_at,
         seriesLabel: item.series_label,
+        vesselName: item.vessel_name ?? null,
+        voyage: item.voyage ?? null,
+        changeKind: item.change_kind ?? null,
       })),
     })),
     timeline: state.timeline.map(toTimelineItem),

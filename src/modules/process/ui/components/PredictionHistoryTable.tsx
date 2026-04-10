@@ -28,6 +28,11 @@ const PREDICTION_DELTA_COMPARE_OPTIONS = {
   strategy: 'start-of-day',
 } as const
 
+type PredictionHistoryChangeDisplay = {
+  readonly text: string
+  readonly tone: 'neutral' | 'success' | 'danger' | 'warning'
+}
+
 function calculateDelta(
   current: TemporalValueDto,
   previous: TemporalValueDto | null,
@@ -46,11 +51,68 @@ function calculateDelta(
   return Math.round(diffMs / (1000 * 60 * 60 * 24))
 }
 
+export function formatPredictionHistoryVoyageLabel(observation: TrackingSeriesHistoryItem): string {
+  const vesselName = observation.vesselName?.trim() ?? ''
+  const voyage = observation.voyage?.trim() ?? ''
+
+  if (vesselName.length > 0 && voyage.length > 0) {
+    return `${vesselName} / ${voyage}`
+  }
+
+  if (vesselName.length > 0) return vesselName
+  if (voyage.length > 0) return voyage
+  return '—'
+}
+
+export function resolvePredictionHistoryChangeDisplay(command: {
+  readonly observation: TrackingSeriesHistoryItem
+  readonly deltaDays: number | null
+  readonly translateVoyageCorrection: () => string
+  readonly translateDays: () => string
+}): PredictionHistoryChangeDisplay {
+  if (command.observation.changeKind === 'VOYAGE_CORRECTED_AFTER_CONFIRMATION') {
+    return {
+      text: command.translateVoyageCorrection(),
+      tone: 'warning',
+    }
+  }
+
+  if (command.deltaDays !== null && command.deltaDays !== 0) {
+    return {
+      text: `${command.deltaDays > 0 ? '+' : ''}${command.deltaDays} ${command.translateDays()}`,
+      tone: command.deltaDays > 0 ? 'danger' : 'success',
+    }
+  }
+
+  return {
+    text: '—',
+    tone: 'neutral',
+  }
+}
+
 function PredictionHistoryRow(props: RowProps): JSX.Element {
   const { t, keys } = useTranslation()
   const isActual = () => props.observation.event_time_type === 'ACTUAL'
-  const hasDelta = () => props.deltaDays !== null && props.deltaDays !== 0
-  const deltaPrefix = () => (props.deltaDays !== null && props.deltaDays > 0 ? '+' : '')
+  const changeDisplay = () =>
+    resolvePredictionHistoryChangeDisplay({
+      observation: props.observation,
+      deltaDays: props.deltaDays,
+      translateVoyageCorrection: () =>
+        t(keys.shipmentView.timeline.predictionHistory.voyageCorrectedAfterConfirmation),
+      translateDays: () => t(keys.shipmentView.timeline.predictionHistory.days),
+    })
+  const changeClass = () => {
+    switch (changeDisplay().tone) {
+      case 'warning':
+        return 'text-tone-warning-fg'
+      case 'danger':
+        return 'text-tone-danger-fg'
+      case 'success':
+        return 'text-tone-success-fg'
+      default:
+        return 'text-text-muted'
+    }
+  }
 
   return (
     <tr class="hover:bg-surface-muted">
@@ -77,15 +139,12 @@ function PredictionHistoryRow(props: RowProps): JSX.Element {
         {formatDateForLocale(props.observation.created_at, props.locale)}
       </td>
       <td class="whitespace-nowrap px-4 py-3 text-sm-ui text-text-muted">
-        <Show when={hasDelta()} fallback="—">
-          <span
-            class={clsx(
-              'inline-flex items-center',
-              (props.deltaDays ?? 0) > 0 ? 'text-tone-danger-fg' : 'text-tone-success-fg',
-            )}
-          >
-            {deltaPrefix()}
-            {props.deltaDays} {t(keys.shipmentView.timeline.predictionHistory.days)}
+        {formatPredictionHistoryVoyageLabel(props.observation)}
+      </td>
+      <td class="whitespace-nowrap px-4 py-3 text-sm-ui text-text-muted">
+        <Show when={changeDisplay().text !== '—'} fallback="—">
+          <span class={clsx('inline-flex items-center', changeClass())}>
+            {changeDisplay().text}
           </span>
         </Show>
       </td>
@@ -141,6 +200,12 @@ export function PredictionHistoryTable(props: Props): JSX.Element {
               class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-text-muted"
             >
               {t(keys.shipmentView.timeline.predictionHistory.observedAt)}
+            </th>
+            <th
+              scope="col"
+              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-text-muted"
+            >
+              {t(keys.shipmentView.timeline.predictionHistory.voyage)}
             </th>
             <th
               scope="col"

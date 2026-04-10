@@ -34,6 +34,19 @@ export type SeriesLabel =
   | 'CONFIRMED' // ACTUAL selected as confirmation (primary)
   | 'CONFLICTING_ACTUAL' // Additional ACTUAL events beyond primary
 
+export type TrackingSeriesConflictKind =
+  | 'MULTIPLE_ACTUALS'
+  | 'VOYAGE_MISMATCH_AFTER_ACTUAL_CONFIRMATION'
+
+export type TrackingSeriesConflictField = 'voyage'
+
+export type TrackingSeriesConflict = {
+  readonly kind: TrackingSeriesConflictKind
+  readonly fields: readonly TrackingSeriesConflictField[]
+}
+
+export type TrackingSeriesHistoryChangeKind = 'VOYAGE_CORRECTED_AFTER_CONFIRMATION'
+
 /**
  * Minimal shape required for series classification.
  */
@@ -41,6 +54,7 @@ export type ObservationLike = {
   readonly event_time: TemporalValue | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   readonly created_at: string
+  readonly voyage?: string | null
 }
 
 /**
@@ -48,6 +62,7 @@ export type ObservationLike = {
  */
 export type ClassifiedObservation<T extends ObservationLike = ObservationLike> = T & {
   readonly seriesLabel: SeriesLabel
+  readonly changeKind: TrackingSeriesHistoryChangeKind | null
 }
 
 /**
@@ -62,6 +77,40 @@ type SeriesClassification<T extends ObservationLike = ObservationLike> = {
   readonly hasActualConflict: boolean
   /** Number of conflicting ACTUAL entries (if any) */
   readonly conflictingActualCount: number
+  /** Structured conflict metadata when the series is conflicted */
+  readonly conflict: TrackingSeriesConflict | null
+}
+
+function normalizeVoyage(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toUpperCase() ?? ''
+  return normalized.length > 0 ? normalized : null
+}
+
+function resolveConflict(
+  actuals: readonly ObservationLike[],
+  hasActualConflict: boolean,
+): TrackingSeriesConflict | null {
+  if (!hasActualConflict) return null
+
+  const voyages = new Set<string>()
+  for (const actual of actuals) {
+    const voyage = normalizeVoyage(actual.voyage)
+    if (voyage !== null) {
+      voyages.add(voyage)
+    }
+  }
+
+  if (voyages.size >= 2) {
+    return {
+      kind: 'VOYAGE_MISMATCH_AFTER_ACTUAL_CONFIRMATION',
+      fields: ['voyage'],
+    }
+  }
+
+  return {
+    kind: 'MULTIPLE_ACTUALS',
+    fields: [],
+  }
 }
 
 /**
@@ -87,6 +136,7 @@ export function classifySeries<T extends ObservationLike>(
       classified: [],
       hasActualConflict: false,
       conflictingActualCount: 0,
+      conflict: null,
     }
   }
 
@@ -97,6 +147,7 @@ export function classifySeries<T extends ObservationLike>(
   // Detect conflict: multiple ACTUAL entries
   const hasActualConflict = actuals.length >= 2
   const conflictingActualCount = hasActualConflict ? actuals.length - 1 : 0
+  const conflict = resolveConflict(actuals, hasActualConflict)
 
   // Safe-first primary selection
   let primaryActual: T | null = null
@@ -112,6 +163,7 @@ export function classifySeries<T extends ObservationLike>(
   }
 
   const lastActualTime = primaryActual?.event_time ?? null
+  const primaryActualVoyage = normalizeVoyage(primaryActual?.voyage)
 
   // Classify all observations
   const classified: ClassifiedObservation<T>[] = series.map((obs) => {
@@ -119,10 +171,27 @@ export function classifySeries<T extends ObservationLike>(
     if (obs.event_time_type === 'ACTUAL') {
       if (obs === primaryActual) {
         // Primary ACTUAL is both CONFIRMED and ACTIVE
-        return { ...obs, seriesLabel: 'CONFIRMED' as const }
+        return {
+          ...obs,
+          seriesLabel: 'CONFIRMED' as const,
+          changeKind: null,
+        }
       }
       // Non-primary ACTUAL is conflicting
-      return { ...obs, seriesLabel: 'CONFLICTING_ACTUAL' as const }
+      const conflictingVoyage = normalizeVoyage(obs.voyage)
+      const changeKind =
+        conflict?.kind === 'VOYAGE_MISMATCH_AFTER_ACTUAL_CONFIRMATION' &&
+        primaryActualVoyage !== null &&
+        conflictingVoyage !== null &&
+        conflictingVoyage !== primaryActualVoyage
+          ? 'VOYAGE_CORRECTED_AFTER_CONFIRMATION'
+          : null
+
+      return {
+        ...obs,
+        seriesLabel: 'CONFLICTING_ACTUAL' as const,
+        changeKind,
+      }
     }
 
     // EXPECTED classification
@@ -132,7 +201,11 @@ export function classifySeries<T extends ObservationLike>(
       obs.event_time !== null &&
       compareTrackingTemporalValues(obs.event_time, lastActualTime) >= 0
     ) {
-      return { ...obs, seriesLabel: 'REDUNDANT_AFTER_ACTUAL' as const }
+      return {
+        ...obs,
+        seriesLabel: 'REDUNDANT_AFTER_ACTUAL' as const,
+        changeKind: null,
+      }
     }
 
     const isExpired = isTrackingTemporalValueExpired(obs.event_time, now)
@@ -143,7 +216,11 @@ export function classifySeries<T extends ObservationLike>(
       obs.event_time !== null &&
       compareTrackingTemporalValues(obs.event_time, lastActualTime) < 0
     ) {
-      return { ...obs, seriesLabel: 'SUPERSEDED_EXPECTED' as const }
+      return {
+        ...obs,
+        seriesLabel: 'SUPERSEDED_EXPECTED' as const,
+        changeKind: null,
+      }
     }
 
     // Among remaining EXPECTED (no ACTUAL yet, or future EXPECTED after ACTUAL):
@@ -169,21 +246,29 @@ export function classifySeries<T extends ObservationLike>(
       activeExpecteds.length > 0 ? activeExpecteds[activeExpecteds.length - 1] : null
 
     if (obs === latestActiveExpected) {
-      return { ...obs, seriesLabel: 'ACTIVE' as const }
+      return { ...obs, seriesLabel: 'ACTIVE' as const, changeKind: null }
     }
 
     // If there is an active EXPECTED, older ones are SUPERSEDED (not EXPIRED)
     if (latestActiveExpected !== null) {
-      return { ...obs, seriesLabel: 'SUPERSEDED_EXPECTED' as const }
+      return {
+        ...obs,
+        seriesLabel: 'SUPERSEDED_EXPECTED' as const,
+        changeKind: null,
+      }
     }
 
     // Expired EXPECTED (no ACTUAL to supersede it, and no active EXPECTED)
     if (isExpired) {
-      return { ...obs, seriesLabel: 'EXPIRED' as const }
+      return { ...obs, seriesLabel: 'EXPIRED' as const, changeKind: null }
     }
 
     // Older EXPECTED superseded by newer EXPECTED
-    return { ...obs, seriesLabel: 'SUPERSEDED_EXPECTED' as const }
+    return {
+      ...obs,
+      seriesLabel: 'SUPERSEDED_EXPECTED' as const,
+      changeKind: null,
+    }
   })
 
   // Determine primary for main timeline
@@ -209,5 +294,6 @@ export function classifySeries<T extends ObservationLike>(
     classified,
     hasActualConflict,
     conflictingActualCount,
+    conflict,
   }
 }

@@ -237,6 +237,35 @@ describe('Event Series Classification', () => {
       const result = classifySeries(series, now)
       expect(result.primary).toBe(series[1]) // ACTUAL with event_time
     })
+
+    it('marks voyage mismatch after confirmation and labels the older ACTUAL as corrected', () => {
+      const series = [
+        makeObs({
+          event_time: '2026-03-28',
+          event_time_type: 'ACTUAL',
+          created_at: '2026-04-02T19:12:43.853916Z',
+          voyage: 'IV610A',
+        }),
+        makeObs({
+          event_time: '2026-03-28',
+          event_time_type: 'ACTUAL',
+          created_at: '2026-04-04T16:53:10.273469Z',
+          voyage: 'OB610R',
+        }),
+      ]
+
+      const result = classifySeries(series, now)
+
+      expect(result.primary).toBe(series[1])
+      expect(result.conflict).toEqual({
+        kind: 'VOYAGE_MISMATCH_AFTER_ACTUAL_CONFIRMATION',
+        fields: ['voyage'],
+      })
+      expect(result.classified.map((observation) => observation.changeKind)).toEqual([
+        'VOYAGE_CORRECTED_AFTER_CONFIRMATION',
+        null,
+      ])
+    })
   })
 
   describe('Mixed EXPECTED and multiple ACTUAL', () => {

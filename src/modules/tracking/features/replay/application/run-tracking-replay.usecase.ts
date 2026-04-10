@@ -73,6 +73,9 @@ function buildReplaySeries(
           eventTimeType: seriesItem.event_time_type,
           createdAt: seriesItem.created_at,
           seriesLabel: seriesItem.seriesLabel,
+          ...(seriesItem.vesselName === undefined ? {} : { vesselName: seriesItem.vesselName }),
+          ...(seriesItem.voyage === undefined ? {} : { voyage: seriesItem.voyage }),
+          ...(seriesItem.changeKind === undefined ? {} : { changeKind: seriesItem.changeKind }),
         })),
       },
     ]

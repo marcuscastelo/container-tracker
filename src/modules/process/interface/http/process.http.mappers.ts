@@ -387,6 +387,13 @@ function toShipmentAlertIncidentResponse(incident: ShipmentAlertIncidentReadMode
 function toSeriesHistoryResponse(seriesHistory: TrackingSeriesHistory) {
   return {
     has_actual_conflict: seriesHistory.hasActualConflict,
+    conflict:
+      seriesHistory.conflict === undefined || seriesHistory.conflict === null
+        ? null
+        : {
+            kind: seriesHistory.conflict.kind,
+            fields: [...seriesHistory.conflict.fields],
+          },
     classified: seriesHistory.classified.map((item) => ({
       id: item.id,
       type: item.type,
@@ -394,6 +401,9 @@ function toSeriesHistoryResponse(seriesHistory: TrackingSeriesHistory) {
       event_time_type: item.event_time_type,
       created_at: item.created_at,
       series_label: item.seriesLabel,
+      vessel_name: item.vesselName ?? null,
+      voyage: item.voyage ?? null,
+      change_kind: item.changeKind ?? null,
     })),
   }
 }
@@ -410,6 +420,13 @@ function toTimelineItemResponse(item: TrackingTimelineItem) {
     derived_state: item.derivedState,
     vessel_name: item.vesselName ?? null,
     voyage: item.voyage ?? null,
+    series_conflict:
+      item.seriesConflict === undefined || item.seriesConflict === null
+        ? null
+        : {
+            kind: item.seriesConflict.kind,
+            fields: [...item.seriesConflict.fields],
+          },
     has_series_history: item.hasSeriesHistory ?? false,
     series_history: item.seriesHistory ? toSeriesHistoryResponse(item.seriesHistory) : null,
   }
