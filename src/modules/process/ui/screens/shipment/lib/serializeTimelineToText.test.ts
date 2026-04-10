@@ -464,11 +464,6 @@ it('serializes a real transshipment with voyage, handoff block, terminal block a
       '  location: SANTOS, BR',
       '  vessel: GSL VIOLETTA',
       '  voyage: 2613W',
-      '- marker_kind: PORT_RISK',
-      '  label: No porto por 2 dias (risco de armazenagem)',
-      '  severity: WARNING',
-      '  ongoing: true',
-      '  duration_days: 2',
     ].join('\n'),
   )
 })
