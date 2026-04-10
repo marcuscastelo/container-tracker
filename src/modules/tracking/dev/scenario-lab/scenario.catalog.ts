@@ -589,6 +589,65 @@ const MSC_EMPTY_TO_SHIPPER = mscEvent({
   detail: ['EMPTY'],
 })
 
+const MSC_LEG_AWARE_KARACHI_LOAD = mscEvent({
+  description: 'Export Loaded on Vessel',
+  eventTime: atPast(18, 10),
+  locationCode: 'PKKHI',
+  locationDisplay: 'KARACHI, PK',
+  vesselName: 'MSC ARICA',
+  voyage: 'OB610R',
+})
+
+const MSC_LEG_AWARE_COLOMBO_DISCHARGE = mscEvent({
+  description: 'Full Transshipment Discharged',
+  eventTime: atPast(27, 10),
+  locationCode: 'LKCMB',
+  locationDisplay: 'COLOMBO, LK',
+  vesselName: 'MSC ARICA',
+  voyage: 'IV610A',
+})
+
+const MSC_LEG_AWARE_COLOMBO_DISCHARGE_DUPLICATE = mscEvent({
+  description: 'Full Transshipment Discharged',
+  eventTime: atPast(27, 10),
+  locationCode: 'LKCMB',
+  locationDisplay: 'COLOMBO, LK',
+  vesselName: 'MSC ARICA',
+  voyage: 'OB610R',
+})
+
+const MSC_LEG_AWARE_COLOMBO_POSITIONED_IN = mscEvent({
+  description: 'Full Transshipment Positioned In',
+  eventTime: atPast(28, 8),
+  locationCode: 'LKCMB',
+  locationDisplay: 'COLOMBO, LK',
+})
+
+const MSC_LEG_AWARE_COLOMBO_POSITIONED_OUT = mscEvent({
+  description: 'Full Transshipment Positioned Out',
+  eventTime: atPast(28, 18),
+  locationCode: 'LKCMB',
+  locationDisplay: 'COLOMBO, LK',
+})
+
+const MSC_LEG_AWARE_COLOMBO_LOAD = mscEvent({
+  description: 'Full Transshipment Loaded',
+  eventTime: atPast(30, 10),
+  locationCode: 'LKCMB',
+  locationDisplay: 'COLOMBO, LK',
+  vesselName: 'GSL VIOLETTA',
+  voyage: 'ZF609R',
+})
+
+const MSC_LEG_AWARE_SINGAPORE_DISCHARGE = mscEvent({
+  description: 'Import Discharged from Vessel',
+  eventTime: atPast(37, 10),
+  locationCode: 'SGSIN',
+  locationDisplay: 'SINGAPORE, SG',
+  vesselName: 'GSL VIOLETTA',
+  voyage: 'ZF609R',
+})
+
 const CMACGM_EMPTY_TO_SHIPPER = cmaMove({
   statusDescription: 'Empty to shipper',
   eventTime: atPast(0, 7),
@@ -1823,6 +1882,41 @@ function buildPathologyScenarios(): readonly TrackingScenario[] {
           newEvents: [],
         },
       ]),
+    }),
+    createScenario({
+      id: 'msc.leg_aware_missing_milestone',
+      title: 'Pathology · Split Maritime Legs (MSC)',
+      description:
+        'Valid MSC transshipment across Colombo must not trigger missing critical milestone.',
+      category: 'data_pathologies',
+      stage: 6,
+      tags: ['pathology', 'msc', 'transshipment', 'leg-aware'],
+      containers: singleContainer('msc'),
+      steps: [
+        {
+          id: 'step-1',
+          title: 'Two ACTUAL maritime legs around Colombo',
+          description: 'Reload at Colombo opens a new maritime leg before Singapore discharge.',
+          snapshots: [
+            mscSnapshot({
+              containerKey: 'c1',
+              fetchedAt: addMinutes(MSC_LEG_AWARE_SINGAPORE_DISCHARGE.eventTime, 45),
+              currentDate: toMscDate(addMinutes(MSC_LEG_AWARE_SINGAPORE_DISCHARGE.eventTime, 45)),
+              events: [
+                MSC_LEG_AWARE_KARACHI_LOAD,
+                MSC_LEG_AWARE_COLOMBO_DISCHARGE,
+                MSC_LEG_AWARE_COLOMBO_DISCHARGE_DUPLICATE,
+                MSC_LEG_AWARE_COLOMBO_POSITIONED_IN,
+                MSC_LEG_AWARE_COLOMBO_POSITIONED_OUT,
+                MSC_LEG_AWARE_COLOMBO_LOAD,
+                MSC_LEG_AWARE_SINGAPORE_DISCHARGE,
+              ],
+              podEtaDate: toMscDate(atFuture(20, 8)),
+              podLocation: buildLocationName(LOC_POD.city, LOC_POD.countryCode),
+            }),
+          ],
+        },
+      ],
     }),
     createScenario({
       id: 'carrier_time_travel',

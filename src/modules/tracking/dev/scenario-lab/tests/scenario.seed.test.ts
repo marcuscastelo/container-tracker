@@ -67,6 +67,48 @@ describe('scenario seeder', () => {
     ).rejects.toThrow('Scenario not found')
   })
 
+  it('loads the MSC leg-aware validation regression scenario through the normal seeder contract', async () => {
+    const createProcess = vi.fn(
+      async (command: {
+        record: { reference: string | null }
+        containers: readonly { container_number: string; carrier_code: string | null }[]
+      }) => {
+        return {
+          process: {
+            id: 'process-lab-msc-1',
+            reference: command.record.reference,
+          },
+          containers: command.containers.map((container, index) => ({
+            id: `container-msc-${index + 1}`,
+            containerNumber: container.container_number,
+          })),
+        }
+      },
+    )
+
+    const saveAndProcess = vi.fn(async () => {})
+
+    const seeder = createScenarioSeeder({
+      createProcess,
+      findProcessByIdWithContainers: async () => ({
+        process: null,
+        containers: [],
+      }),
+      saveAndProcess,
+    })
+
+    const result = await seeder.loadScenario({
+      scenarioId: 'msc.leg_aware_missing_milestone',
+      step: 1,
+    })
+
+    expect(createProcess).toHaveBeenCalledTimes(1)
+    expect(saveAndProcess).toHaveBeenCalledTimes(1)
+    expect(result.processId).toBe('process-lab-msc-1')
+    expect(result.totalSnapshotsApplied).toBe(1)
+    expect(result.containerNumbers).toHaveLength(1)
+  })
+
   it('reuses an existing process and preserves container identity for later steps', async () => {
     const createProcess = vi.fn(async () => {
       throw new Error('createProcess should not run during reuse')

@@ -159,6 +159,88 @@ function deriveValidationSummaryForObservations(
   })
 }
 
+function makeLegAwareSplitObservations(): readonly Observation[] {
+  return [
+    makeObservation({
+      id: 'karachi-load-arica',
+      type: 'LOAD',
+      created_at: '2026-03-19T10:30:00.000Z',
+      event_time: temporalValueFromCanonical('2026-03-19T10:00:00.000Z'),
+      location_code: 'PKKHI',
+      location_display: 'Karachi',
+      vessel_name: 'MSC ARICA',
+      voyage: 'OB610R',
+      carrier_label: 'Export Loaded on Vessel',
+    }),
+    makeObservation({
+      id: 'colombo-discharge-arica',
+      type: 'DISCHARGE',
+      created_at: '2026-03-28T10:30:00.000Z',
+      event_time: temporalValueFromCanonical('2026-03-28T10:00:00.000Z'),
+      location_code: 'LKCMB',
+      location_display: 'Colombo',
+      vessel_name: 'MSC ARICA',
+      voyage: 'IV610A',
+      carrier_label: 'Full Transshipment Discharged',
+    }),
+    makeObservation({
+      id: 'colombo-discharge-arica-duplicate',
+      type: 'DISCHARGE',
+      created_at: '2026-03-28T11:30:00.000Z',
+      event_time: temporalValueFromCanonical('2026-03-28T10:00:00.000Z'),
+      location_code: 'LKCMB',
+      location_display: 'Colombo',
+      vessel_name: 'MSC ARICA',
+      voyage: 'OB610R',
+      carrier_label: 'Full Transshipment Discharged',
+    }),
+    makeObservation({
+      id: 'colombo-positioned-in',
+      type: 'TRANSSHIPMENT_POSITIONED_IN',
+      created_at: '2026-03-29T08:30:00.000Z',
+      event_time: temporalValueFromCanonical('2026-03-29T08:00:00.000Z'),
+      location_code: 'LKCMB',
+      location_display: 'Colombo',
+      vessel_name: null,
+      voyage: null,
+      carrier_label: 'Full Transshipment Positioned In',
+    }),
+    makeObservation({
+      id: 'colombo-positioned-out',
+      type: 'TRANSSHIPMENT_POSITIONED_OUT',
+      created_at: '2026-03-29T18:30:00.000Z',
+      event_time: temporalValueFromCanonical('2026-03-29T18:00:00.000Z'),
+      location_code: 'LKCMB',
+      location_display: 'Colombo',
+      vessel_name: null,
+      voyage: null,
+      carrier_label: 'Full Transshipment Positioned Out',
+    }),
+    makeObservation({
+      id: 'colombo-load-violetta',
+      type: 'LOAD',
+      created_at: '2026-03-31T10:30:00.000Z',
+      event_time: temporalValueFromCanonical('2026-03-31T10:00:00.000Z'),
+      location_code: 'LKCMB',
+      location_display: 'Colombo',
+      vessel_name: 'GSL VIOLETTA',
+      voyage: 'ZF609R',
+      carrier_label: 'Full Transshipment Loaded',
+    }),
+    makeObservation({
+      id: 'singapore-discharge-violetta',
+      type: 'DISCHARGE',
+      created_at: '2026-04-07T10:30:00.000Z',
+      event_time: temporalValueFromCanonical('2026-04-07T10:00:00.000Z'),
+      location_code: 'SGSIN',
+      location_display: 'Singapore',
+      vessel_name: 'GSL VIOLETTA',
+      voyage: 'ZF609R',
+      carrier_label: 'Import Discharged from Vessel',
+    }),
+  ]
+}
+
 describe('trackingValidation.projection', () => {
   it('exposes ordered active issues with public explanation metadata only', () => {
     const observations = [
@@ -449,6 +531,38 @@ describe('trackingValidation.projection', () => {
       },
     ])
     expect(summary.activeIssues[0]).not.toHaveProperty('debugEvidence')
+  })
+
+  it('does not surface missing critical milestone when repeated maritime ACTUAL belongs to a new leg', () => {
+    const observations = makeLegAwareSplitObservations()
+
+    const summary = deriveTrackingValidationSummaryFromState({
+      containerId: 'container-1',
+      containerNumber: 'GLDU2928252',
+      observations,
+      timeline: {
+        container_id: 'container-1',
+        container_number: 'GLDU2928252',
+        observations,
+        derived_at: '2026-04-08T10:00:00.000Z',
+        holes: [],
+      },
+      status: 'DISCHARGED',
+      transshipment: {
+        hasTransshipment: true,
+        transshipmentCount: 1,
+        ports: ['LKCMB'],
+      },
+      now: Instant.fromIso('2026-04-08T10:00:00.000Z'),
+    })
+
+    expect(summary).toEqual({
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+      topIssue: null,
+      activeIssues: [],
+    })
   })
 
   it('flags duplicated canonical voyage segments when the same rendered leg appears twice', () => {
