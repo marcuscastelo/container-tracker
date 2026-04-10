@@ -26,19 +26,59 @@ const scope = {
     shared: ['src/shared/'],
   },
   layers: {
-    domain: { segments: ['/domain/'], prefixes: [] },
-    application: { segments: ['/application/'], prefixes: [] },
+    domain: {
+      segments: ['/domain/'],
+      prefixes: [],
+      files: [
+        'src/shared/time/calendar-date.ts',
+        'src/shared/time/compare-temporal.ts',
+        'src/shared/time/instant.ts',
+        'src/shared/time/local-date-time.ts',
+        'src/shared/time/temporal-value.ts',
+      ],
+    },
+    application: {
+      segments: ['/application/'],
+      prefixes: [],
+      files: [
+        'src/shared/errors/container-process.errors.ts',
+        'src/shared/time/clock.ts',
+        'src/shared/utils/findDuplicateStrings.ts',
+        'src/shared/utils/normalizeContainerNumber.ts',
+        'src/shared/utils/typeGuards.ts',
+      ],
+    },
     infrastructure: {
       segments: ['/infrastructure/'],
       prefixes: ['src/shared/config/', 'src/shared/observability/', 'src/shared/supabase/'],
+      files: ['src/shared/utils/normalizeTimestamptz.ts', 'src/shared/utils/parseDate.ts'],
     },
     'interface/http': {
       segments: ['/interface/http/'],
       prefixes: ['src/shared/api/', 'src/shared/api-schemas/'],
+      files: [
+        'src/capabilities/sync/presenter/sync-response.presenter.ts',
+        'src/shared/errors/httpErrors.ts',
+        'src/shared/time/dto.ts',
+        'src/shared/time/guards.ts',
+        'src/shared/time/parsing.ts',
+        'src/shared/utils/formatParseError.ts',
+        'src/shared/utils/parseWithStack.ts',
+        'src/shared/utils/safeParseOrDefault.ts',
+      ],
     },
     ui: {
       segments: ['/ui/'],
-      prefixes: ['src/shared/ui/'],
+      prefixes: ['src/shared/localization/', 'src/shared/solid/', 'src/shared/ui/'],
+      files: [
+        'src/shared/time/browser-locale.ts',
+        'src/shared/time/browser-timezone.ts',
+        'src/shared/time/temporal-formatters.ts',
+        'src/shared/utils/carrier.ts',
+        'src/shared/utils/carrierDisplay.ts',
+        'src/shared/utils/clipboard.ts',
+        'src/shared/utils/formatDate.ts',
+      ],
     },
   },
   trackingCritical: {
@@ -104,6 +144,11 @@ describe('buildCoveragePolicyReport', () => {
         b: { 0: [0, 0] },
         f: { 0: 0 },
       }),
+      unknownShared: makeCoverageEntry(`${CWD}/src/shared/misc/unknown.ts`, {
+        s: { 0: 0, 1: 0 },
+        b: { 0: [0, 0] },
+        f: { 0: 0 },
+      }),
       excludedTrackingDev: makeCoverageEntry(
         `${CWD}/src/modules/tracking/dev/scenario-lab/scenario.seed.ts`,
       ),
@@ -119,18 +164,19 @@ describe('buildCoveragePolicyReport', () => {
       baselinePath: 'docs/plans/coverage-baseline.json',
     })
 
-    expect(report.summary.scopedFileCount).toBe(4)
+    expect(report.summary.scopedFileCount).toBe(5)
     expect(report.modules.process.fileCount).toBe(1)
     expect(report.modules.tracking.fileCount).toBe(1)
-    expect(report.modules.shared.fileCount).toBe(2)
+    expect(report.modules.shared.fileCount).toBe(3)
     expect(report.layers.domain.fileCount).toBe(2)
     expect(report.layers['interface/http'].fileCount).toBe(1)
+    expect(report.layers.infrastructure.fileCount).toBe(1)
     expect(report.layers.unclassified.fileCount).toBe(1)
     expect(report.trackingCritical.status.fileCount).toBe(1)
-    expect(report.unclassified.files).toEqual(['src/shared/utils/normalizeTimestamptz.ts'])
-    expect(report.global.branches.total).toBe(8)
+    expect(report.unclassified.files).toEqual(['src/shared/misc/unknown.ts'])
+    expect(report.global.branches.total).toBe(10)
     expect(report.global.branches.covered).toBe(5)
-    expect(report.global.branches.pct).toBe(62.5)
+    expect(report.global.branches.pct).toBe(50)
   })
 
   it('computes deltas against an existing baseline snapshot', () => {
@@ -186,7 +232,7 @@ describe('buildCoveragePolicyReport', () => {
     const report = buildCoveragePolicyReport({
       cwd: CWD,
       coverageMap: {
-        sharedUtils: makeCoverageEntry(`${CWD}/src/shared/utils/normalizeTimestamptz.ts`, {
+        unknownShared: makeCoverageEntry(`${CWD}/src/shared/misc/unknown.ts`, {
           s: { 0: 0, 1: 0 },
           b: { 0: [0, 0] },
           f: { 0: 0 },
@@ -201,7 +247,8 @@ describe('buildCoveragePolicyReport', () => {
     const markdown = renderCoveragePolicyMarkdown(report)
 
     expect(markdown).toContain('## Unclassified')
-    expect(markdown).toContain('`src/shared/utils/normalizeTimestamptz.ts`')
+    expect(markdown).toContain('`src/shared/misc/unknown.ts`')
     expect(markdown).toContain('unclassified')
+    expect(markdown).toContain('docs/plans/coverage-tracking-critical-matrix.md')
   })
 })

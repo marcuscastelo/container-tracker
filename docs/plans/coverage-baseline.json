@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-04-10T17:04:05.360Z",
+  "generatedAt": "2026-04-10T17:22:15.993Z",
   "scopePath": "docs/plans/coverage-scope.json",
   "coverageFile": "coverage/vitest/coverage-final.json",
   "summary": {
     "scopedFileCount": 517,
-    "unclassifiedFileCount": 31,
+    "unclassifiedFileCount": 0,
     "baselineStatus": "present"
   },
   "global": {
@@ -85,8 +85,8 @@
         "pct": 78.15
       },
       "branches": {
-        "covered": 2750,
-        "total": 3521,
+        "covered": 2749,
+        "total": 3520,
         "pct": 78.1
       },
       "functions": {
@@ -131,9 +131,9 @@
         "pct": 56.01
       },
       "branches": {
-        "covered": 527,
-        "total": 671,
-        "pct": 78.54
+        "covered": 528,
+        "total": 672,
+        "pct": 78.57
       },
       "functions": {
         "covered": 211,
@@ -149,141 +149,141 @@
   },
   "layers": {
     "domain": {
-      "fileCount": 54,
+      "fileCount": 59,
       "lines": {
-        "covered": 2059,
-        "total": 2176,
-        "pct": 94.62
+        "covered": 2410,
+        "total": 2575,
+        "pct": 93.59
       },
       "branches": {
-        "covered": 694,
-        "total": 778,
-        "pct": 89.2
+        "covered": 780,
+        "total": 883,
+        "pct": 88.34
       },
       "functions": {
-        "covered": 143,
-        "total": 145,
-        "pct": 98.62
+        "covered": 190,
+        "total": 197,
+        "pct": 96.45
       },
       "statements": {
-        "covered": 2059,
-        "total": 2176,
-        "pct": 94.62
+        "covered": 2410,
+        "total": 2575,
+        "pct": 93.59
       }
     },
     "application": {
-      "fileCount": 114,
+      "fileCount": 119,
       "lines": {
-        "covered": 7894,
-        "total": 9401,
-        "pct": 83.97
+        "covered": 7915,
+        "total": 9454,
+        "pct": 83.72
       },
       "branches": {
-        "covered": 2145,
-        "total": 2638,
-        "pct": 81.31
+        "covered": 2147,
+        "total": 2641,
+        "pct": 81.29
       },
       "functions": {
-        "covered": 496,
-        "total": 535,
-        "pct": 92.71
+        "covered": 500,
+        "total": 542,
+        "pct": 92.25
       },
       "statements": {
-        "covered": 7894,
-        "total": 9401,
-        "pct": 83.97
+        "covered": 7915,
+        "total": 9454,
+        "pct": 83.72
       }
     },
     "infrastructure": {
-      "fileCount": 58,
+      "fileCount": 60,
       "lines": {
-        "covered": 4090,
-        "total": 6591,
-        "pct": 62.05
+        "covered": 4114,
+        "total": 6622,
+        "pct": 62.13
       },
       "branches": {
-        "covered": 706,
-        "total": 1119,
-        "pct": 63.09
+        "covered": 717,
+        "total": 1133,
+        "pct": 63.28
       },
       "functions": {
-        "covered": 232,
-        "total": 282,
-        "pct": 82.27
+        "covered": 236,
+        "total": 287,
+        "pct": 82.23
       },
       "statements": {
-        "covered": 4090,
-        "total": 6591,
-        "pct": 62.05
+        "covered": 4114,
+        "total": 6622,
+        "pct": 62.13
       }
     },
     "interface/http": {
-      "fileCount": 54,
+      "fileCount": 62,
       "lines": {
-        "covered": 4034,
-        "total": 5668,
-        "pct": 71.17
+        "covered": 4269,
+        "total": 5987,
+        "pct": 71.3
       },
       "branches": {
-        "covered": 456,
-        "total": 648,
-        "pct": 70.37
+        "covered": 551,
+        "total": 761,
+        "pct": 72.4
       },
       "functions": {
-        "covered": 170,
-        "total": 215,
-        "pct": 79.07
+        "covered": 198,
+        "total": 245,
+        "pct": 80.82
       },
       "statements": {
-        "covered": 4034,
-        "total": 5668,
-        "pct": 71.17
+        "covered": 4269,
+        "total": 5987,
+        "pct": 71.3
       }
     },
     "ui": {
-      "fileCount": 206,
+      "fileCount": 217,
       "lines": {
-        "covered": 5343,
-        "total": 19450,
-        "pct": 27.47
+        "covered": 5639,
+        "total": 19766,
+        "pct": 28.53
       },
       "branches": {
-        "covered": 1714,
-        "total": 2061,
-        "pct": 83.16
+        "covered": 1816,
+        "total": 2181,
+        "pct": 83.26
       },
       "functions": {
-        "covered": 489,
-        "total": 622,
-        "pct": 78.62
+        "covered": 520,
+        "total": 654,
+        "pct": 79.51
       },
       "statements": {
-        "covered": 5343,
-        "total": 19450,
-        "pct": 27.47
+        "covered": 5639,
+        "total": 19766,
+        "pct": 28.53
       }
     },
     "unclassified": {
-      "fileCount": 31,
+      "fileCount": 0,
       "lines": {
-        "covered": 927,
-        "total": 1118,
-        "pct": 82.92
+        "covered": 0,
+        "total": 0,
+        "pct": null
       },
       "branches": {
-        "covered": 296,
-        "total": 355,
-        "pct": 83.38
+        "covered": 0,
+        "total": 0,
+        "pct": null
       },
       "functions": {
-        "covered": 114,
-        "total": 126,
-        "pct": 90.48
+        "covered": 0,
+        "total": 0,
+        "pct": null
       },
       "statements": {
-        "covered": 927,
-        "total": 1118,
-        "pct": 82.92
+        "covered": 0,
+        "total": 0,
+        "pct": null
       }
     }
   },
@@ -405,60 +405,28 @@
     }
   },
   "unclassified": {
-    "files": [
-      "src/capabilities/sync/presenter/sync-response.presenter.ts",
-      "src/shared/errors/container-process.errors.ts",
-      "src/shared/errors/httpErrors.ts",
-      "src/shared/localization/defaultLocale.ts",
-      "src/shared/localization/i18n.ts",
-      "src/shared/localization/translationTypes.ts",
-      "src/shared/solid/resourceSnapshot.ts",
-      "src/shared/time/browser-locale.ts",
-      "src/shared/time/browser-timezone.ts",
-      "src/shared/time/calendar-date.ts",
-      "src/shared/time/clock.ts",
-      "src/shared/time/compare-temporal.ts",
-      "src/shared/time/dto.ts",
-      "src/shared/time/guards.ts",
-      "src/shared/time/instant.ts",
-      "src/shared/time/local-date-time.ts",
-      "src/shared/time/parsing.ts",
-      "src/shared/time/temporal-formatters.ts",
-      "src/shared/time/temporal-value.ts",
-      "src/shared/utils/carrier.ts",
-      "src/shared/utils/carrierDisplay.ts",
-      "src/shared/utils/clipboard.ts",
-      "src/shared/utils/findDuplicateStrings.ts",
-      "src/shared/utils/formatDate.ts",
-      "src/shared/utils/formatParseError.ts",
-      "src/shared/utils/normalizeContainerNumber.ts",
-      "src/shared/utils/normalizeTimestamptz.ts",
-      "src/shared/utils/parseDate.ts",
-      "src/shared/utils/parseWithStack.ts",
-      "src/shared/utils/safeParseOrDefault.ts",
-      "src/shared/utils/typeGuards.ts"
-    ],
+    "files": [],
     "metrics": {
-      "fileCount": 31,
+      "fileCount": 0,
       "lines": {
-        "covered": 927,
-        "total": 1118,
-        "pct": 82.92
+        "covered": 0,
+        "total": 0,
+        "pct": null
       },
       "branches": {
-        "covered": 296,
-        "total": 355,
-        "pct": 83.38
+        "covered": 0,
+        "total": 0,
+        "pct": null
       },
       "functions": {
-        "covered": 114,
-        "total": 126,
-        "pct": 90.48
+        "covered": 0,
+        "total": 0,
+        "pct": null
       },
       "statements": {
-        "covered": 927,
-        "total": 1118,
-        "pct": 82.92
+        "covered": 0,
+        "total": 0,
+        "pct": null
       }
     }
   }

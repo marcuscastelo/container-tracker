@@ -19,23 +19,57 @@
   "layers": {
     "domain": {
       "segments": ["/domain/"],
-      "prefixes": []
+      "prefixes": [],
+      "files": [
+        "src/shared/time/calendar-date.ts",
+        "src/shared/time/compare-temporal.ts",
+        "src/shared/time/instant.ts",
+        "src/shared/time/local-date-time.ts",
+        "src/shared/time/temporal-value.ts"
+      ]
     },
     "application": {
       "segments": ["/application/"],
-      "prefixes": []
+      "prefixes": [],
+      "files": [
+        "src/shared/errors/container-process.errors.ts",
+        "src/shared/time/clock.ts",
+        "src/shared/utils/findDuplicateStrings.ts",
+        "src/shared/utils/normalizeContainerNumber.ts",
+        "src/shared/utils/typeGuards.ts"
+      ]
     },
     "infrastructure": {
       "segments": ["/infrastructure/"],
-      "prefixes": ["src/shared/config/", "src/shared/observability/", "src/shared/supabase/"]
+      "prefixes": ["src/shared/config/", "src/shared/observability/", "src/shared/supabase/"],
+      "files": ["src/shared/utils/normalizeTimestamptz.ts", "src/shared/utils/parseDate.ts"]
     },
     "interface/http": {
       "segments": ["/interface/http/"],
-      "prefixes": ["src/shared/api/", "src/shared/api-schemas/"]
+      "prefixes": ["src/shared/api/", "src/shared/api-schemas/"],
+      "files": [
+        "src/capabilities/sync/presenter/sync-response.presenter.ts",
+        "src/shared/errors/httpErrors.ts",
+        "src/shared/time/dto.ts",
+        "src/shared/time/guards.ts",
+        "src/shared/time/parsing.ts",
+        "src/shared/utils/formatParseError.ts",
+        "src/shared/utils/parseWithStack.ts",
+        "src/shared/utils/safeParseOrDefault.ts"
+      ]
     },
     "ui": {
       "segments": ["/ui/"],
-      "prefixes": ["src/shared/ui/"]
+      "prefixes": ["src/shared/localization/", "src/shared/solid/", "src/shared/ui/"],
+      "files": [
+        "src/shared/time/browser-locale.ts",
+        "src/shared/time/browser-timezone.ts",
+        "src/shared/time/temporal-formatters.ts",
+        "src/shared/utils/carrier.ts",
+        "src/shared/utils/carrierDisplay.ts",
+        "src/shared/utils/clipboard.ts",
+        "src/shared/utils/formatDate.ts"
+      ]
     }
   },
   "trackingCritical": {
