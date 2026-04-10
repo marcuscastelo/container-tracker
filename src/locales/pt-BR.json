@@ -382,7 +382,10 @@
       "lastUpdate": "Última atualização",
       "noContainer": "Selecione um container para visualizar o status.",
       "unknown": "—",
-      "vesselNotApplicable": "Já descarregado"
+      "vesselNotApplicable": "Já descarregado",
+      "actions": {
+        "openMenu": "Abrir ações do container"
+      }
     },
     "containerSummary": {
       "moreContainers": "+{{count}} containers neste processo",
