@@ -766,7 +766,7 @@
   "tracking": {
     "status": {
       "UNKNOWN": "Desconhecido",
-      "BOOKED": "Reservado",
+      "BOOKED": "Pré-embarque",
       "AWAITING_DATA": "Aguardando dados",
       "NOT_SYNCED": "Não sincronizado",
       "IN_PROGRESS": "Em Andamento",

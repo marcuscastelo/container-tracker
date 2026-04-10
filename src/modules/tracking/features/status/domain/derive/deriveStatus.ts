@@ -13,7 +13,7 @@ import type { Timeline } from '~/modules/tracking/features/timeline/domain/model
  * Maps observation types to the status they imply.
  */
 const OBSERVATION_TO_STATUS: Partial<Record<ObservationType, ContainerStatus>> = {
-  GATE_IN: 'IN_PROGRESS',
+  GATE_IN: 'BOOKED',
   GATE_OUT: 'IN_PROGRESS',
   LOAD: 'LOADED',
   DEPARTURE: 'IN_TRANSIT',
@@ -25,6 +25,13 @@ const OBSERVATION_TO_STATUS: Partial<Record<ObservationType, ContainerStatus>> =
   CUSTOMS_RELEASE: 'DISCHARGED',
 }
 
+const BOOKING_ROUTE_MILESTONE_TYPES: readonly ObservationType[] = [
+  'LOAD',
+  'DEPARTURE',
+  'ARRIVAL',
+  'DISCHARGE',
+]
+
 /**
  * Derive the current status of a container from its timeline.
  *
@@ -32,8 +39,9 @@ const OBSERVATION_TO_STATUS: Partial<Record<ObservationType, ContainerStatus>> =
  * The algorithm finds the highest-dominance status implied by any
  * **ACTUAL** observation in the timeline.
  *
- * CRITICAL RULE: Only ACTUAL observations can advance status.
- * EXPECTED observations are informational only and do NOT affect status.
+ * CRITICAL RULE: Strong lifecycle progression is driven by ACTUAL observations.
+ * EXPECTED observations do NOT advance vessel/transit/post-arrival states, but they
+ * may corroborate BOOKED when paired with ACTUAL pre-shipment handling facts.
  *
  * Pseudocode from master doc:
  *   if delivered (ACTUAL) → DELIVERED
@@ -41,6 +49,7 @@ const OBSERVATION_TO_STATUS: Partial<Record<ObservationType, ContainerStatus>> =
  *   else if arrived_at_final (ACTUAL) → ARRIVED_AT_POD
  *   else if any_departure (ACTUAL) → IN_TRANSIT
  *   else if any_load (ACTUAL) → LOADED
+ *   else if pre-shipment evidence without confirmed embarkation → BOOKED
  *   else → IN_PROGRESS
  *
  * @param timeline - Derived timeline for the container
@@ -144,6 +153,15 @@ export function deriveStatus(timeline: Timeline): ContainerStatus {
     return true
   }
 
+  const hasRelevantRouteExpectation = () =>
+    timeline.observations.some((observation) => {
+      if (observation.event_time_type !== 'EXPECTED') return false
+      return BOOKING_ROUTE_MILESTONE_TYPES.includes(observation.type)
+    })
+
+  const hasActualGateOutWithRelevantFutureChain = () =>
+    hasActualOfType('GATE_OUT') && hasRelevantRouteExpectation()
+
   // Follow the explicit dominance order requested by the product rules.
   // EMPTY_RETURN should take precedence over DELIVERY when present
   if (hasActualOfType('EMPTY_RETURN')) return 'EMPTY_RETURNED'
@@ -173,7 +191,8 @@ export function deriveStatus(timeline: Timeline): ContainerStatus {
   if (hasActualArrivalAtFinal()) return 'ARRIVED_AT_POD'
   if (hasActualOfType('DEPARTURE')) return 'IN_TRANSIT'
   if (hasActualOfType('LOAD')) return 'LOADED'
-  if (hasActualOfType('GATE_IN')) return 'IN_PROGRESS'
+  if (hasActualOfType('GATE_IN')) return 'BOOKED'
+  if (hasActualGateOutWithRelevantFutureChain()) return 'BOOKED'
 
   // If there are any observations but none that advance status, report IN_PROGRESS
   if (timeline.observations.length > 0) return 'IN_PROGRESS'
