@@ -372,3 +372,28 @@ wt_open_vscode() {
   wt_info "Could not open VS Code automatically. Open manually: code -n \"$worktree_path\""
   return 0
 }
+
+wt_initialize_worktree() {
+  local worktree_path="$1"
+  local force_seed="${2:-0}"
+  local force_overwrite="0"
+
+  if ! command -v pnpm >/dev/null 2>&1; then
+    wt_error "pnpm command not found in PATH."
+    return 1
+  fi
+
+  if [ "$force_seed" -eq 1 ]; then
+    force_overwrite="1"
+  fi
+
+  wt_info "Running pnpm initialize-worktree in $worktree_path"
+
+  if ! (
+    cd "$worktree_path" &&
+    INITIALIZE_WORKTREE_FORCE_OVERWRITE="$force_overwrite" pnpm initialize-worktree
+  ); then
+    wt_error "pnpm initialize-worktree failed in worktree: $worktree_path"
+    return 1
+  fi
+}

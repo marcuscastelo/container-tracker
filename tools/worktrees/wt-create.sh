@@ -13,8 +13,8 @@ Usage:
   wt-create.sh <BRANCH_NAME> [options]
 
 Description:
-  Creates a git worktree for a new or existing branch, seeds allowed files,
-  copies .env, runs pnpm install, and initializes the Ralph submodule.
+  Creates a git worktree for a new or existing branch, runs the canonical
+  worktree initialization, and initializes the Ralph submodule.
 
 Arguments:
   <BRANCH_NAME>   Full branch name to create/use (examples: feat/foo, fix/bar)
@@ -63,27 +63,6 @@ wt_resolve_slug_from_branch() {
   fi
 
   printf '%s\n' "$slug"
-}
-
-wt_copy_root_env_to_worktree() {
-  local repo_root="$1"
-  local worktree_path="$2"
-  local force_seed="$3"
-  local source_env="$repo_root/.env"
-  local target_env="$worktree_path/.env"
-
-  if [ ! -f "$source_env" ]; then
-    wt_info "No root .env found at $source_env. Skipping .env copy."
-    return 0
-  fi
-
-  if [ -f "$target_env" ] && [ "$force_seed" -ne 1 ]; then
-    wt_info ".env already exists in worktree. Skipping copy."
-    return 0
-  fi
-
-  cp "$source_env" "$target_env"
-  wt_info "Copied .env to worktree."
 }
 
 wt_create_or_attach_worktree() {
@@ -211,15 +190,7 @@ fi
 wt_info "Created git worktree: $worktree_path"
 wt_info "Checked out branch: $branch_name"
 
-if ! wt_seed_from_allowlist "$worktree_path" "$force_seed"; then
-  exit 1
-fi
-
-if ! wt_copy_root_env_to_worktree "$repo_root" "$worktree_path" "$force_seed"; then
-  exit 1
-fi
-
-if ! wt_run_pnpm_install "$worktree_path"; then
+if ! wt_initialize_worktree "$worktree_path" "$force_seed"; then
   exit 1
 fi
 

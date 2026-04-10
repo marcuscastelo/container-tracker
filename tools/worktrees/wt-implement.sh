@@ -114,11 +114,7 @@ if ! wt_copy_prd_to_worktree "$prd_path" "$worktree_path"; then
   exit 1
 fi
 
-if ! wt_seed_from_allowlist "$worktree_path" "$force_seed"; then
-  exit 1
-fi
-
-if ! wt_run_pnpm_install "$worktree_path"; then
+if ! wt_initialize_worktree "$worktree_path" "$force_seed"; then
   exit 1
 fi
 
