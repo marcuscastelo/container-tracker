@@ -262,7 +262,7 @@ describe('tracking controllers', () => {
     expect(unacknowledge).toHaveBeenCalledWith('alert-3')
   })
 
-  it('series-history drilldown returns lazy timeline history for a primary item', async () => {
+  it('prediction-history drilldown returns aggregated versions for a primary item', async () => {
     const containerId = 'container-series'
     const observations: readonly Observation[] = [
       {
@@ -321,16 +321,54 @@ describe('tracking controllers', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body.has_actual_conflict).toBe(false)
-    expect(body.classified).toHaveLength(2)
-    expect(body.classified.map((item: { id: string }) => item.id)).toEqual([
-      'obs-expected-1',
-      'obs-expected-2',
-    ])
+    expect(body).toEqual({
+      header: {
+        tone: 'neutral',
+        summary_kind: 'HISTORY_UPDATED',
+        current_version_id: 'obs-expected-2',
+        previous_version_id: null,
+        original_version_id: 'obs-expected-1',
+        reason_kind: 'ESTIMATE_CHANGED',
+      },
+      versions: [
+        {
+          id: 'obs-expected-2',
+          is_current: true,
+          type: 'ARRIVAL',
+          event_time: { kind: 'instant', value: '2026-03-12T10:00:00.000Z' },
+          event_time_type: 'EXPECTED',
+          vessel_name: null,
+          voyage: null,
+          version_state: 'ESTIMATE_CHANGED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: 'ESTIMATE_CHANGED',
+          observed_at_count: 1,
+          observed_at_list: ['2026-03-02T10:00:00.000Z'],
+          first_observed_at: '2026-03-02T10:00:00.000Z',
+          last_observed_at: '2026-03-02T10:00:00.000Z',
+        },
+        {
+          id: 'obs-expected-1',
+          is_current: false,
+          type: 'ARRIVAL',
+          event_time: { kind: 'instant', value: '2026-03-10T10:00:00.000Z' },
+          event_time_type: 'EXPECTED',
+          vessel_name: null,
+          voyage: null,
+          version_state: 'INITIAL',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: null,
+          observed_at_count: 1,
+          observed_at_list: ['2026-03-01T10:00:00.000Z'],
+          first_observed_at: '2026-03-01T10:00:00.000Z',
+          last_observed_at: '2026-03-01T10:00:00.000Z',
+        },
+      ],
+    })
     expect(findAllObservationsByContainerId).toHaveBeenCalledWith(containerId)
   })
 
-  it('series-history drilldown includes cross-series suppressed expected entries on the promoted item', async () => {
+  it('prediction-history drilldown includes cross-series substitutions on the promoted item', async () => {
     const containerId = 'container-voyage-substitution'
     const observations: readonly Observation[] = [
       {
@@ -409,18 +447,53 @@ describe('tracking controllers', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(
-      body.classified.map((item: { id: string; series_label: string }) => ({
-        id: item.id,
-        series_label: item.series_label,
-      })),
-    ).toEqual([
-      { id: 'final-specific-new', series_label: 'ACTIVE' },
-      { id: 'final-generic-old', series_label: 'SUPERSEDED_EXPECTED' },
-    ])
+    expect(body).toEqual({
+      header: {
+        tone: 'neutral',
+        summary_kind: 'HISTORY_UPDATED',
+        current_version_id: 'final-specific-new',
+        previous_version_id: null,
+        original_version_id: 'final-generic-old',
+        reason_kind: 'PREVIOUS_VERSION_SUBSTITUTED',
+      },
+      versions: [
+        {
+          id: 'final-specific-new',
+          is_current: true,
+          type: 'ARRIVAL',
+          event_time: { kind: 'date', value: '2026-05-15', timezone: null },
+          event_time_type: 'EXPECTED',
+          vessel_name: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+          version_state: 'ESTIMATE_CHANGED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: 'PREVIOUS_VERSION_SUBSTITUTED',
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-05T00:00:00.000Z'],
+          first_observed_at: '2026-04-05T00:00:00.000Z',
+          last_observed_at: '2026-04-05T00:00:00.000Z',
+        },
+        {
+          id: 'final-generic-old',
+          is_current: false,
+          type: 'ARRIVAL',
+          event_time: { kind: 'date', value: '2026-05-20', timezone: null },
+          event_time_type: 'EXPECTED',
+          vessel_name: null,
+          voyage: null,
+          version_state: 'SUBSTITUTED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: null,
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-01T00:00:00.000Z'],
+          first_observed_at: '2026-04-01T00:00:00.000Z',
+          last_observed_at: '2026-04-01T00:00:00.000Z',
+        },
+      ],
+    })
   })
 
-  it('series-history drilldown exposes voyage conflict metadata for merged discharge ACTUAL siblings', async () => {
+  it('prediction-history drilldown exposes voyage conflict metadata for merged discharge ACTUAL siblings', async () => {
     const containerId = 'container-discharge-voyage-conflict'
     const observations: readonly Observation[] = [
       {
@@ -479,34 +552,50 @@ describe('tracking controllers', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body.conflict).toEqual({
-      kind: 'VOYAGE_MISMATCH_AFTER_ACTUAL_CONFIRMATION',
-      fields: ['voyage'],
+    expect(body).toEqual({
+      header: {
+        tone: 'danger',
+        summary_kind: 'CONFLICT_DETECTED',
+        current_version_id: 'discharge-new',
+        previous_version_id: 'discharge-old',
+        original_version_id: null,
+        reason_kind: 'VOYAGE_CHANGED_AFTER_CONFIRMATION',
+      },
+      versions: [
+        {
+          id: 'discharge-new',
+          is_current: true,
+          type: 'DISCHARGE',
+          event_time: { kind: 'date', value: '2026-03-28', timezone: null },
+          event_time_type: 'ACTUAL',
+          vessel_name: 'MSC ARICA',
+          voyage: 'OB610R',
+          version_state: 'CONFIRMED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: 'VOYAGE_CHANGED_AFTER_CONFIRMATION',
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-04T16:53:10.273469Z'],
+          first_observed_at: '2026-04-04T16:53:10.273469Z',
+          last_observed_at: '2026-04-04T16:53:10.273469Z',
+        },
+        {
+          id: 'discharge-old',
+          is_current: false,
+          type: 'DISCHARGE',
+          event_time: { kind: 'date', value: '2026-03-28', timezone: null },
+          event_time_type: 'ACTUAL',
+          vessel_name: 'MSC ARICA',
+          voyage: 'IV610A',
+          version_state: 'CONFIRMED_BEFORE',
+          explanatory_text_kind: 'REPORTED_AS_ACTUAL_AND_CORRECTED_LATER',
+          transition_kind_from_previous_version: null,
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-02T19:12:43.853916Z'],
+          first_observed_at: '2026-04-02T19:12:43.853916Z',
+          last_observed_at: '2026-04-02T19:12:43.853916Z',
+        },
+      ],
     })
-    expect(body.classified).toEqual([
-      {
-        id: 'discharge-old',
-        type: 'DISCHARGE',
-        event_time: { kind: 'date', value: '2026-03-28', timezone: null },
-        event_time_type: 'ACTUAL',
-        created_at: '2026-04-02T19:12:43.853916Z',
-        series_label: 'CONFLICTING_ACTUAL',
-        vessel_name: 'MSC ARICA',
-        voyage: 'IV610A',
-        change_kind: 'VOYAGE_CORRECTED_AFTER_CONFIRMATION',
-      },
-      {
-        id: 'discharge-new',
-        type: 'DISCHARGE',
-        event_time: { kind: 'date', value: '2026-03-28', timezone: null },
-        event_time_type: 'ACTUAL',
-        created_at: '2026-04-04T16:53:10.273469Z',
-        series_label: 'CONFIRMED',
-        vessel_name: 'MSC ARICA',
-        voyage: 'OB610R',
-        change_kind: null,
-      },
-    ])
   })
 
   it('observation-inspector drilldown returns a single observation payload', async () => {

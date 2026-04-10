@@ -6,6 +6,7 @@ import {
   fetchObservationInspector,
   fetchTimelineSeriesHistory,
 } from '~/modules/process/ui/fetchProcessTrackingDetails'
+import { toPredictionHistoryModalVM } from '~/modules/process/ui/mappers/predictionHistory.ui-mapper'
 import {
   type NonMappedIndicatorVariant,
   resolveTimelineEventLabelPresentation,
@@ -40,7 +41,7 @@ type DateLabelProps = {
   readonly toTooltip: (iso?: TemporalValueDto | null) => string | undefined
 }
 
-type TimelineSeriesHistoryState = NonNullable<TrackingTimelineItem['seriesHistory']> | null
+type PredictionHistorySourceState = Awaited<ReturnType<typeof fetchTimelineSeriesHistory>> | null
 
 function toOptionalTimelineNodeLayoutProps(params: {
   readonly nonMappedBadgeLabel: string | undefined
@@ -118,23 +119,24 @@ function usePredictionHistoryController(command: {
   readonly loadErrorMessage: () => string
 }) {
   const [showPredictionHistory, setShowPredictionHistory] = createSignal(false)
-  const [seriesHistory, setSeriesHistory] = createSignal<TimelineSeriesHistoryState>(null)
+  const [predictionHistorySource, setPredictionHistorySource] =
+    createSignal<PredictionHistorySourceState>(null)
   const [seriesHistoryLoading, setSeriesHistoryLoading] = createSignal(false)
   const [seriesHistoryErrorMessage, setSeriesHistoryErrorMessage] = createSignal<string | null>(
     null,
   )
 
   createEffect(() => {
-    const event = command.event()
+    command.event().id
     setShowPredictionHistory(false)
-    setSeriesHistory(event.seriesHistory ?? null)
+    setPredictionHistorySource(null)
     setSeriesHistoryLoading(false)
     setSeriesHistoryErrorMessage(null)
   })
 
   const hasPredictionHistory = createMemo(() => {
     const event = command.event()
-    return Boolean(event.hasSeriesHistory) || Boolean(seriesHistory())
+    return event.hasSeriesHistory === true
   })
 
   const openPredictionHistory = async (): Promise<void> => {
@@ -142,12 +144,15 @@ function usePredictionHistoryController(command: {
     setSeriesHistoryErrorMessage(null)
 
     const event = command.event()
-    if (seriesHistory() !== null || event.hasSeriesHistory !== true) return
+    if (predictionHistorySource() !== null || event.hasSeriesHistory !== true) return
 
     setSeriesHistoryLoading(true)
     try {
-      const loadedSeriesHistory = await fetchTimelineSeriesHistory(command.containerId(), event.id)
-      setSeriesHistory(loadedSeriesHistory)
+      const loadedPredictionHistory = await fetchTimelineSeriesHistory(
+        command.containerId(),
+        event.id,
+      )
+      setPredictionHistorySource(loadedPredictionHistory)
     } catch (error) {
       console.error(`Failed to load series history for timeline item ${event.id}:`, error)
       setSeriesHistoryErrorMessage(command.loadErrorMessage())
@@ -161,7 +166,7 @@ function usePredictionHistoryController(command: {
     openPredictionHistory,
     closePredictionHistory: () => setShowPredictionHistory(false),
     showPredictionHistory,
-    seriesHistory,
+    predictionHistorySource,
     seriesHistoryLoading,
     seriesHistoryErrorMessage,
   }
@@ -283,21 +288,15 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
 
   const labelPresentation = createMemo(() => {
     const indicatorVariant = props.nonMappedIndicatorVariant ?? 'badge'
-    const presentation = resolveTimelineEventLabelPresentation(
-      props.event,
-      t,
-      keys,
-      indicatorVariant,
-    )
-    let currentLabel = presentation.label
+    return resolveTimelineEventLabelPresentation(props.event, t, keys, indicatorVariant)
+  })
+  const timelineLabel = createMemo(() => {
+    let currentLabel = labelPresentation().label
     if (props.event.vesselName) {
       currentLabel += ` — ${props.event.vesselName}`
       if (props.event.voyage) currentLabel += ` (${props.event.voyage})`
     }
-    return {
-      ...presentation,
-      label: currentLabel,
-    }
+    return currentLabel
   })
   const nonMappedBadgeLabel = createMemo(() =>
     labelPresentation().showNonMappedIndicator
@@ -321,6 +320,18 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
     if (!Icon) return null
     return <Icon class="h-4 w-4 shrink-0" aria-hidden="true" />
   })
+  const predictionHistoryModalVm = createMemo(() => {
+    const source = predictionHistory.predictionHistorySource()
+    if (source === null) return null
+
+    return toPredictionHistoryModalVM({
+      source,
+      activityLabel: labelPresentation().label,
+      locale: locale(),
+      t,
+      keys,
+    })
+  })
 
   return (
     <>
@@ -332,7 +343,7 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
         dotClass={styles().dot}
         lineClass={styles().line}
         textClass={styles().text}
-        label={labelPresentation().label}
+        label={timelineLabel()}
         eventIcon={eventIcon()}
         etaChipLabel={null}
         showPredictionHistoryButton={predictionHistory.hasPredictionHistory()}
@@ -377,7 +388,7 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
       />
 
       <PredictionHistoryModal
-        seriesHistory={predictionHistory.seriesHistory()}
+        predictionHistory={predictionHistoryModalVm()}
         activityLabel={labelPresentation().label}
         isOpen={predictionHistory.showPredictionHistory()}
         loading={predictionHistory.seriesHistoryLoading()}

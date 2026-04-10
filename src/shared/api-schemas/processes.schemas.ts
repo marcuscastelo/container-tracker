@@ -363,6 +363,65 @@ export const TrackingTimelineSeriesHistoryResponseSchema = z.object({
   classified: z.array(TrackingTimelineSeriesItemResponseSchema),
 })
 
+const PredictionHistoryHeaderToneResponseSchema = z.enum(['danger', 'warning', 'neutral'])
+
+const PredictionHistoryHeaderSummaryKindResponseSchema = z.enum([
+  'SINGLE_VERSION',
+  'HISTORY_UPDATED',
+  'CONFLICT_DETECTED',
+])
+
+const PredictionHistoryVersionStateResponseSchema = z.enum([
+  'CONFIRMED',
+  'CONFIRMED_BEFORE',
+  'SUBSTITUTED',
+  'ESTIMATE_CHANGED',
+  'INITIAL',
+])
+
+const PredictionHistoryExplanatoryTextKindResponseSchema = z.enum([
+  'REPORTED_AS_ACTUAL_AND_CORRECTED_LATER',
+])
+
+const PredictionHistoryTransitionKindResponseSchema = z.enum([
+  'EVENT_CONFIRMED',
+  'ESTIMATE_CHANGED',
+  'PREVIOUS_VERSION_SUBSTITUTED',
+  'VOYAGE_CHANGED_AFTER_CONFIRMATION',
+])
+
+const PredictionHistoryVersionResponseSchema = z.object({
+  id: z.string(),
+  is_current: z.boolean(),
+  type: z.string(),
+  event_time: TemporalValueDtoSchema.nullable(),
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  vessel_name: z.string().nullable(),
+  voyage: z.string().nullable(),
+  version_state: PredictionHistoryVersionStateResponseSchema,
+  explanatory_text_kind: PredictionHistoryExplanatoryTextKindResponseSchema.nullable(),
+  transition_kind_from_previous_version: PredictionHistoryTransitionKindResponseSchema.nullable(),
+  observed_at_count: z.number().int().positive(),
+  observed_at_list: z.array(z.string()),
+  first_observed_at: z.string(),
+  last_observed_at: z.string(),
+})
+
+export const TrackingPredictionHistoryResponseSchema = z.object({
+  header: z.object({
+    tone: PredictionHistoryHeaderToneResponseSchema,
+    summary_kind: PredictionHistoryHeaderSummaryKindResponseSchema,
+    current_version_id: z.string(),
+    previous_version_id: z.string().nullable(),
+    original_version_id: z.string().nullable(),
+    reason_kind: PredictionHistoryTransitionKindResponseSchema.nullable(),
+  }),
+  versions: z.array(PredictionHistoryVersionResponseSchema),
+})
+export type TrackingPredictionHistoryResponse = z.infer<
+  typeof TrackingPredictionHistoryResponseSchema
+>
+
 const TrackingTimelineItemResponseSchema = z.object({
   id: z.string(),
   observation_id: z.string().nullable(),

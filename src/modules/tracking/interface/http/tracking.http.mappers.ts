@@ -15,12 +15,14 @@ import type {
   TrackingTimeTravelDiff,
   TrackingTimeTravelResult,
 } from '~/modules/tracking/features/replay/application/tracking.replay.types'
+import type { TrackingPredictionHistoryReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.prediction-history.readmodel'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import type {
   AlertResponseDto,
   SnapshotResponseDto,
+  TimelinePredictionHistoryResponseDto,
   TrackingReplayDebugResponseDto,
   TrackingTimeTravelCheckpointResponseDto,
   TrackingTimeTravelDiffResponseDto,
@@ -369,6 +371,37 @@ export function toTrackingSeriesHistoryResponseDto(
       vessel_name: historyItem.vesselName ?? null,
       voyage: historyItem.voyage ?? null,
       change_kind: historyItem.changeKind ?? null,
+    })),
+  }
+}
+
+export function toTimelinePredictionHistoryResponseDto(
+  predictionHistory: TrackingPredictionHistoryReadModel,
+): TimelinePredictionHistoryResponseDto {
+  return {
+    header: {
+      tone: predictionHistory.header.tone,
+      summary_kind: predictionHistory.header.summary_kind,
+      current_version_id: predictionHistory.header.current_version_id,
+      previous_version_id: predictionHistory.header.previous_version_id,
+      original_version_id: predictionHistory.header.original_version_id,
+      reason_kind: predictionHistory.header.reason_kind,
+    },
+    versions: predictionHistory.versions.map((version) => ({
+      id: version.id,
+      is_current: version.is_current,
+      type: version.type,
+      event_time: version.event_time,
+      event_time_type: version.event_time_type,
+      vessel_name: version.vessel_name,
+      voyage: version.voyage,
+      version_state: version.version_state,
+      explanatory_text_kind: version.explanatory_text_kind,
+      transition_kind_from_previous_version: version.transition_kind_from_previous_version,
+      observed_at_count: version.observed_at_count,
+      observed_at_list: [...version.observed_at_list],
+      first_observed_at: version.first_observed_at,
+      last_observed_at: version.last_observed_at,
     })),
   }
 }
