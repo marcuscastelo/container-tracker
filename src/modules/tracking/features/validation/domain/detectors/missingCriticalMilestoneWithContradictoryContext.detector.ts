@@ -135,15 +135,47 @@ function sharesObservedLocation(
   left: Pick<Observation, 'location_code' | 'location_display'>,
   right: Pick<Observation, 'location_code' | 'location_display'>,
 ): boolean {
-  if (left.location_code !== null && right.location_code !== null) {
-    return left.location_code === right.location_code
+  const leftLocationCode = normalizeLocationCode(left.location_code)
+  const rightLocationCode = normalizeLocationCode(right.location_code)
+
+  if (leftLocationCode !== null && rightLocationCode !== null) {
+    return leftLocationCode === rightLocationCode
   }
 
-  if (left.location_display !== null && right.location_display !== null) {
-    return left.location_display === right.location_display
+  const leftLocationDisplay = normalizeLocationDisplay(left.location_display)
+  const rightLocationDisplay = normalizeLocationDisplay(right.location_display)
+
+  if (leftLocationDisplay !== null && rightLocationDisplay !== null) {
+    return leftLocationDisplay === rightLocationDisplay
   }
 
-  return false
+  return true
+}
+
+function normalizeLocationCode(locationCode: string | null): string | null {
+  if (locationCode === null) {
+    return null
+  }
+
+  const normalizedLocationCode = locationCode.trim().toUpperCase()
+  return normalizedLocationCode.length > 0 ? normalizedLocationCode : null
+}
+
+function normalizeLocationDisplay(locationDisplay: string | null): string | null {
+  if (locationDisplay === null) {
+    return null
+  }
+
+  const normalizedLocationDisplay = locationDisplay
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(',')[0]
+    ?.trim()
+    .toUpperCase()
+
+  return normalizedLocationDisplay && normalizedLocationDisplay.length > 0
+    ? normalizedLocationDisplay
+    : null
 }
 
 function hasRepeatedDownstreamMilestone(signal: ContradictionSignal): boolean {

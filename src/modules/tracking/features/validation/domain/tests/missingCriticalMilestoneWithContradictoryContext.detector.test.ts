@@ -220,6 +220,37 @@ describe('missingCriticalMilestoneWithContradictoryContextDetector', () => {
     expect(findings).toEqual([])
   })
 
+  it('does not emit when location codes are absent but location_display normalizes to the same port', () => {
+    const findings = detectFindings([
+      makeObservation({
+        id: 'load-1',
+        type: 'LOAD',
+        location_code: null,
+        location_display: 'Colombo',
+        created_at: '2026-04-01T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: null,
+        location_display: 'Colombo, LK',
+        created_at: '2026-04-10T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-2',
+        type: 'DISCHARGE',
+        location_code: null,
+        location_display: '  COLOMBO  ',
+        created_at: '2026-04-12T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-12T10:00:00.000Z'),
+      }),
+    ])
+
+    expect(findings).toEqual([])
+  })
+
   it('does not emit for a plain LOAD -> DISCHARGE gap', () => {
     const findings = detectFindings([
       makeObservation({
