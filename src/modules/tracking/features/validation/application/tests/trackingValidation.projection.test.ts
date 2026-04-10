@@ -566,9 +566,11 @@ describe('trackingValidation.projection', () => {
         affectedBlockLabelKey: null,
       },
     ])
-    expect(summary.activeIssues.some((issue) => issue.code === 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT')).toBe(
-      false,
-    )
+    expect(
+      summary.activeIssues.some(
+        (issue) => issue.code === 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+      ),
+    ).toBe(false)
   })
 
   it('flags duplicated canonical voyage segments when the same rendered leg appears twice', () => {
