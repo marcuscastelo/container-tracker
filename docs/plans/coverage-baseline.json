@@ -1,0 +1,465 @@
+{
+  "generatedAt": "2026-04-10T17:04:05.360Z",
+  "scopePath": "docs/plans/coverage-scope.json",
+  "coverageFile": "coverage/vitest/coverage-final.json",
+  "summary": {
+    "scopedFileCount": 517,
+    "unclassifiedFileCount": 31,
+    "baselineStatus": "present"
+  },
+  "global": {
+    "fileCount": 517,
+    "lines": {
+      "covered": 24347,
+      "total": 44404,
+      "pct": 54.83
+    },
+    "branches": {
+      "covered": 6011,
+      "total": 7599,
+      "pct": 79.1
+    },
+    "functions": {
+      "covered": 1644,
+      "total": 1925,
+      "pct": 85.4
+    },
+    "statements": {
+      "covered": 24347,
+      "total": 44404,
+      "pct": 54.83
+    }
+  },
+  "modules": {
+    "process": {
+      "fileCount": 212,
+      "lines": {
+        "covered": 6781,
+        "total": 19663,
+        "pct": 34.49
+      },
+      "branches": {
+        "covered": 2070,
+        "total": 2515,
+        "pct": 82.31
+      },
+      "functions": {
+        "covered": 562,
+        "total": 684,
+        "pct": 82.16
+      },
+      "statements": {
+        "covered": 6781,
+        "total": 19663,
+        "pct": 34.49
+      }
+    },
+    "container": {
+      "fileCount": 28,
+      "lines": {
+        "covered": 251,
+        "total": 561,
+        "pct": 44.74
+      },
+      "branches": {
+        "covered": 67,
+        "total": 76,
+        "pct": 88.16
+      },
+      "functions": {
+        "covered": 36,
+        "total": 40,
+        "pct": 90
+      },
+      "statements": {
+        "covered": 251,
+        "total": 561,
+        "pct": 44.74
+      }
+    },
+    "tracking": {
+      "fileCount": 143,
+      "lines": {
+        "covered": 11783,
+        "total": 15078,
+        "pct": 78.15
+      },
+      "branches": {
+        "covered": 2750,
+        "total": 3521,
+        "pct": 78.1
+      },
+      "functions": {
+        "covered": 641,
+        "total": 706,
+        "pct": 90.79
+      },
+      "statements": {
+        "covered": 11783,
+        "total": 15078,
+        "pct": 78.15
+      }
+    },
+    "capabilities": {
+      "fileCount": 57,
+      "lines": {
+        "covered": 2984,
+        "total": 4553,
+        "pct": 65.54
+      },
+      "branches": {
+        "covered": 597,
+        "total": 816,
+        "pct": 73.16
+      },
+      "functions": {
+        "covered": 194,
+        "total": 227,
+        "pct": 85.46
+      },
+      "statements": {
+        "covered": 2984,
+        "total": 4553,
+        "pct": 65.54
+      }
+    },
+    "shared": {
+      "fileCount": 77,
+      "lines": {
+        "covered": 2548,
+        "total": 4549,
+        "pct": 56.01
+      },
+      "branches": {
+        "covered": 527,
+        "total": 671,
+        "pct": 78.54
+      },
+      "functions": {
+        "covered": 211,
+        "total": 268,
+        "pct": 78.73
+      },
+      "statements": {
+        "covered": 2548,
+        "total": 4549,
+        "pct": 56.01
+      }
+    }
+  },
+  "layers": {
+    "domain": {
+      "fileCount": 54,
+      "lines": {
+        "covered": 2059,
+        "total": 2176,
+        "pct": 94.62
+      },
+      "branches": {
+        "covered": 694,
+        "total": 778,
+        "pct": 89.2
+      },
+      "functions": {
+        "covered": 143,
+        "total": 145,
+        "pct": 98.62
+      },
+      "statements": {
+        "covered": 2059,
+        "total": 2176,
+        "pct": 94.62
+      }
+    },
+    "application": {
+      "fileCount": 114,
+      "lines": {
+        "covered": 7894,
+        "total": 9401,
+        "pct": 83.97
+      },
+      "branches": {
+        "covered": 2145,
+        "total": 2638,
+        "pct": 81.31
+      },
+      "functions": {
+        "covered": 496,
+        "total": 535,
+        "pct": 92.71
+      },
+      "statements": {
+        "covered": 7894,
+        "total": 9401,
+        "pct": 83.97
+      }
+    },
+    "infrastructure": {
+      "fileCount": 58,
+      "lines": {
+        "covered": 4090,
+        "total": 6591,
+        "pct": 62.05
+      },
+      "branches": {
+        "covered": 706,
+        "total": 1119,
+        "pct": 63.09
+      },
+      "functions": {
+        "covered": 232,
+        "total": 282,
+        "pct": 82.27
+      },
+      "statements": {
+        "covered": 4090,
+        "total": 6591,
+        "pct": 62.05
+      }
+    },
+    "interface/http": {
+      "fileCount": 54,
+      "lines": {
+        "covered": 4034,
+        "total": 5668,
+        "pct": 71.17
+      },
+      "branches": {
+        "covered": 456,
+        "total": 648,
+        "pct": 70.37
+      },
+      "functions": {
+        "covered": 170,
+        "total": 215,
+        "pct": 79.07
+      },
+      "statements": {
+        "covered": 4034,
+        "total": 5668,
+        "pct": 71.17
+      }
+    },
+    "ui": {
+      "fileCount": 206,
+      "lines": {
+        "covered": 5343,
+        "total": 19450,
+        "pct": 27.47
+      },
+      "branches": {
+        "covered": 1714,
+        "total": 2061,
+        "pct": 83.16
+      },
+      "functions": {
+        "covered": 489,
+        "total": 622,
+        "pct": 78.62
+      },
+      "statements": {
+        "covered": 5343,
+        "total": 19450,
+        "pct": 27.47
+      }
+    },
+    "unclassified": {
+      "fileCount": 31,
+      "lines": {
+        "covered": 927,
+        "total": 1118,
+        "pct": 82.92
+      },
+      "branches": {
+        "covered": 296,
+        "total": 355,
+        "pct": 83.38
+      },
+      "functions": {
+        "covered": 114,
+        "total": 126,
+        "pct": 90.48
+      },
+      "statements": {
+        "covered": 927,
+        "total": 1118,
+        "pct": 82.92
+      }
+    }
+  },
+  "trackingCritical": {
+    "observation": {
+      "fileCount": 6,
+      "lines": {
+        "covered": 86,
+        "total": 90,
+        "pct": 95.56
+      },
+      "branches": {
+        "covered": 22,
+        "total": 23,
+        "pct": 95.65
+      },
+      "functions": {
+        "covered": 7,
+        "total": 7,
+        "pct": 100
+      },
+      "statements": {
+        "covered": 86,
+        "total": 90,
+        "pct": 95.56
+      }
+    },
+    "series": {
+      "fileCount": 3,
+      "lines": {
+        "covered": 299,
+        "total": 313,
+        "pct": 95.53
+      },
+      "branches": {
+        "covered": 160,
+        "total": 177,
+        "pct": 90.4
+      },
+      "functions": {
+        "covered": 11,
+        "total": 11,
+        "pct": 100
+      },
+      "statements": {
+        "covered": 299,
+        "total": 313,
+        "pct": 95.53
+      }
+    },
+    "timeline": {
+      "fileCount": 4,
+      "lines": {
+        "covered": 1182,
+        "total": 1251,
+        "pct": 94.48
+      },
+      "branches": {
+        "covered": 446,
+        "total": 526,
+        "pct": 84.79
+      },
+      "functions": {
+        "covered": 58,
+        "total": 58,
+        "pct": 100
+      },
+      "statements": {
+        "covered": 1182,
+        "total": 1251,
+        "pct": 94.48
+      }
+    },
+    "status": {
+      "fileCount": 4,
+      "lines": {
+        "covered": 219,
+        "total": 219,
+        "pct": 100
+      },
+      "branches": {
+        "covered": 125,
+        "total": 126,
+        "pct": 99.21
+      },
+      "functions": {
+        "covered": 11,
+        "total": 11,
+        "pct": 100
+      },
+      "statements": {
+        "covered": 219,
+        "total": 219,
+        "pct": 100
+      }
+    },
+    "alerts": {
+      "fileCount": 11,
+      "lines": {
+        "covered": 420,
+        "total": 463,
+        "pct": 90.71
+      },
+      "branches": {
+        "covered": 112,
+        "total": 136,
+        "pct": 82.35
+      },
+      "functions": {
+        "covered": 29,
+        "total": 30,
+        "pct": 96.67
+      },
+      "statements": {
+        "covered": 420,
+        "total": 463,
+        "pct": 90.71
+      }
+    }
+  },
+  "unclassified": {
+    "files": [
+      "src/capabilities/sync/presenter/sync-response.presenter.ts",
+      "src/shared/errors/container-process.errors.ts",
+      "src/shared/errors/httpErrors.ts",
+      "src/shared/localization/defaultLocale.ts",
+      "src/shared/localization/i18n.ts",
+      "src/shared/localization/translationTypes.ts",
+      "src/shared/solid/resourceSnapshot.ts",
+      "src/shared/time/browser-locale.ts",
+      "src/shared/time/browser-timezone.ts",
+      "src/shared/time/calendar-date.ts",
+      "src/shared/time/clock.ts",
+      "src/shared/time/compare-temporal.ts",
+      "src/shared/time/dto.ts",
+      "src/shared/time/guards.ts",
+      "src/shared/time/instant.ts",
+      "src/shared/time/local-date-time.ts",
+      "src/shared/time/parsing.ts",
+      "src/shared/time/temporal-formatters.ts",
+      "src/shared/time/temporal-value.ts",
+      "src/shared/utils/carrier.ts",
+      "src/shared/utils/carrierDisplay.ts",
+      "src/shared/utils/clipboard.ts",
+      "src/shared/utils/findDuplicateStrings.ts",
+      "src/shared/utils/formatDate.ts",
+      "src/shared/utils/formatParseError.ts",
+      "src/shared/utils/normalizeContainerNumber.ts",
+      "src/shared/utils/normalizeTimestamptz.ts",
+      "src/shared/utils/parseDate.ts",
+      "src/shared/utils/parseWithStack.ts",
+      "src/shared/utils/safeParseOrDefault.ts",
+      "src/shared/utils/typeGuards.ts"
+    ],
+    "metrics": {
+      "fileCount": 31,
+      "lines": {
+        "covered": 927,
+        "total": 1118,
+        "pct": 82.92
+      },
+      "branches": {
+        "covered": 296,
+        "total": 355,
+        "pct": 83.38
+      },
+      "functions": {
+        "covered": 114,
+        "total": 126,
+        "pct": 90.48
+      },
+      "statements": {
+        "covered": 927,
+        "total": 1118,
+        "pct": 82.92
+      }
+    }
+  }
+}

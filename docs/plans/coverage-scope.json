@@ -1,0 +1,48 @@
+{
+  "coverage": {
+    "include": [
+      "src/modules/process/**/*.{ts,tsx,js,mjs}",
+      "src/modules/container/**/*.{ts,tsx,js,mjs}",
+      "src/modules/tracking/**/*.{ts,tsx,js,mjs}",
+      "src/capabilities/**/*.{ts,tsx,js,mjs}",
+      "src/shared/**/*.{ts,tsx,js,mjs}"
+    ],
+    "exclude": ["**/tests/**", "**/*.test.*", "**/fixtures/**", "src/modules/tracking/dev/**"]
+  },
+  "modules": {
+    "process": ["src/modules/process/"],
+    "container": ["src/modules/container/"],
+    "tracking": ["src/modules/tracking/"],
+    "capabilities": ["src/capabilities/"],
+    "shared": ["src/shared/"]
+  },
+  "layers": {
+    "domain": {
+      "segments": ["/domain/"],
+      "prefixes": []
+    },
+    "application": {
+      "segments": ["/application/"],
+      "prefixes": []
+    },
+    "infrastructure": {
+      "segments": ["/infrastructure/"],
+      "prefixes": ["src/shared/config/", "src/shared/observability/", "src/shared/supabase/"]
+    },
+    "interface/http": {
+      "segments": ["/interface/http/"],
+      "prefixes": ["src/shared/api/", "src/shared/api-schemas/"]
+    },
+    "ui": {
+      "segments": ["/ui/"],
+      "prefixes": ["src/shared/ui/"]
+    }
+  },
+  "trackingCritical": {
+    "observation": ["src/modules/tracking/features/observation/"],
+    "series": ["src/modules/tracking/features/series/"],
+    "timeline": ["src/modules/tracking/features/timeline/"],
+    "status": ["src/modules/tracking/features/status/"],
+    "alerts": ["src/modules/tracking/features/alerts/"]
+  }
+}
