@@ -382,7 +382,10 @@
       "lastUpdate": "Última atualização",
       "noContainer": "Selecione um container para visualizar o status.",
       "unknown": "—",
-      "vesselNotApplicable": "Já descarregado"
+      "vesselNotApplicable": "Já descarregado",
+      "actions": {
+        "openMenu": "Abrir ações do container"
+      }
     },
     "containerSummary": {
       "moreContainers": "+{{count}} containers neste processo",
@@ -462,23 +465,39 @@
       },
       "predictionHistory": {
         "title": "Histórico de Previsões",
-        "eventType": "Tipo",
-        "eventTime": "Horário do Evento",
-        "observedAt": "Observado em",
-        "voyage": "Viagem",
-        "delta": "Mudança",
-        "status": "Status",
-        "confirmed": "Confirmado",
-        "expired": "Expirado",
-        "active": "Ativo",
-        "redundant": "Redundante",
-        "superseded": "Substituído",
-        "conflicting": "Conflitante",
-        "voyageCorrectedAfterConfirmation": "Viagem corrigida após confirmação",
-        "days": "dias",
         "close": "Fechar",
-        "conflictWarning": "Múltiplos eventos reais conflitantes detectados",
-        "conflictHelper": "Por segurança, exibimos o mais recente. Verifique o histórico abaixo."
+        "unavailable": "—",
+        "currentVersionMarker": "Versão atual",
+        "header": {
+          "conflictDetected": "Conflito detectado",
+          "historyUpdated": "Histórico atualizado",
+          "singleVersion": "Histórico registrado",
+          "currentLine": "Atual: {{value}}",
+          "beforeLine": "Antes: {{value}}",
+          "originalLine": "Original: {{value}}",
+          "reasonLine": "Motivo: {{value}}"
+        },
+        "versionStates": {
+          "confirmed": "Confirmado",
+          "confirmedBefore": "Confirmado antes",
+          "substituted": "Substituído",
+          "estimateChanged": "Estimativa alterada",
+          "initial": "Primeira versão"
+        },
+        "explanatoryText": {
+          "actualCorrectedLater": "Informado como real pelo armador e corrigido depois"
+        },
+        "transitions": {
+          "eventConfirmed": "confirmação do evento",
+          "estimateChanged": "estimativa alterada",
+          "previousVersionSubstituted": "versão anterior substituída",
+          "voyageChangedAfterConfirmation": "troca de viagem após confirmação"
+        },
+        "tooltip": {
+          "buttonLabel": "Ver observações desta versão",
+          "observedAt": "Observado em {{date}}",
+          "observedRange": "Observado de {{start}} até {{end}}"
+        }
       }
     },
     "alerts": {

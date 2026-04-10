@@ -192,6 +192,76 @@ export const TimelineSeriesHistoryResponseDtoSchema = z.object({
   classified: z.array(DetailTimelineSeriesItemResponseDtoSchema),
 })
 
+const PredictionHistoryHeaderToneResponseDtoSchema = z.enum(['danger', 'warning', 'neutral'])
+
+const PredictionHistoryHeaderSummaryKindResponseDtoSchema = z.enum([
+  'SINGLE_VERSION',
+  'HISTORY_UPDATED',
+  'CONFLICT_DETECTED',
+])
+
+const PredictionHistoryVersionStateResponseDtoSchema = z.enum([
+  'CONFIRMED',
+  'CONFIRMED_BEFORE',
+  'SUBSTITUTED',
+  'ESTIMATE_CHANGED',
+  'INITIAL',
+])
+
+const PredictionHistoryExplanatoryTextKindResponseDtoSchema = z.enum([
+  'REPORTED_AS_ACTUAL_AND_CORRECTED_LATER',
+])
+
+const PredictionHistoryTransitionKindResponseDtoSchema = z.enum([
+  'EVENT_CONFIRMED',
+  'ESTIMATE_CHANGED',
+  'PREVIOUS_VERSION_SUBSTITUTED',
+  'VOYAGE_CHANGED_AFTER_CONFIRMATION',
+])
+
+const PredictionHistoryVersionResponseDtoSchema = z
+  .object({
+    id: z.string(),
+    is_current: z.boolean(),
+    type: z.string(),
+    event_time: TemporalValueDtoSchema.nullable(),
+    event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+    vessel_name: z.string().nullable(),
+    voyage: z.string().nullable(),
+    version_state: PredictionHistoryVersionStateResponseDtoSchema,
+    explanatory_text_kind: PredictionHistoryExplanatoryTextKindResponseDtoSchema.nullable(),
+    transition_kind_from_previous_version:
+      PredictionHistoryTransitionKindResponseDtoSchema.nullable(),
+    observed_at_count: z.number().int().positive(),
+    observed_at_list: z.array(z.string()).min(1),
+    first_observed_at: z.string(),
+    last_observed_at: z.string(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.observed_at_list.length !== value.observed_at_count) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['observed_at_list'],
+        message: 'observed_at_list must match observed_at_count',
+      })
+    }
+  })
+
+export const TimelinePredictionHistoryResponseDtoSchema = z.object({
+  header: z.object({
+    tone: PredictionHistoryHeaderToneResponseDtoSchema,
+    summary_kind: PredictionHistoryHeaderSummaryKindResponseDtoSchema,
+    current_version_id: z.string(),
+    previous_version_id: z.string().nullable(),
+    original_version_id: z.string().nullable(),
+    reason_kind: PredictionHistoryTransitionKindResponseDtoSchema.nullable(),
+  }),
+  versions: z.array(PredictionHistoryVersionResponseDtoSchema),
+})
+export type TimelinePredictionHistoryResponseDto = z.infer<
+  typeof TimelinePredictionHistoryResponseDtoSchema
+>
+
 export const ObservationInspectorResponseDtoSchema = z.object({
   id: z.string(),
   fingerprint: z.string(),

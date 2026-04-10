@@ -12,7 +12,10 @@ import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import { normalizeSnapshot } from '~/modules/tracking/features/observation/application/orchestration/normalizeSnapshot'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
-import type { TrackingSeriesHistory } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import {
+  buildTrackingPredictionHistoryReadModel,
+  type TrackingPredictionHistoryReadModel,
+} from '~/modules/tracking/features/timeline/application/projection/tracking.prediction-history.readmodel'
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { Instant } from '~/shared/time/instant'
 
@@ -152,14 +155,14 @@ async function loadAllAlertsByContainerId(
   return results.flat()
 }
 
-export async function findTimelineItemSeriesHistory(
+export async function findTimelineItemPredictionHistory(
   deps: TrackingUseCasesDeps,
   command: {
     readonly containerId: string
     readonly timelineItemId: string
     readonly now: Instant
   },
-): Promise<TrackingSeriesHistory | null> {
+): Promise<TrackingPredictionHistoryReadModel | null> {
   const observations = await deps.observationRepository.findAllByContainerId(command.containerId)
   const timeline = deriveTimelineWithSeriesReadModel(
     toTrackingObservationProjections(suppressSupersededObservationsForProjection(observations)),
@@ -167,7 +170,7 @@ export async function findTimelineItemSeriesHistory(
     { includeSeriesHistory: true },
   )
   const item = timeline.find((timelineItem) => timelineItem.id === command.timelineItemId)
-  return item?.seriesHistory ?? null
+  return item?.seriesHistory ? buildTrackingPredictionHistoryReadModel(item.seriesHistory) : null
 }
 
 export async function findObservationInspectorProjection(
