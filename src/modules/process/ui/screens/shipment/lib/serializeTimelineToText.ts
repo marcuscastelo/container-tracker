@@ -212,18 +212,23 @@ function toRoute(block: VoyageBlock, dependencies: TimelineTextExportDependencie
 }
 
 function toHandoffSummary(
-  fromVessel: string | null,
-  toVessel: string | null,
+  block: TransshipmentBlock,
   dependencies: TimelineTextExportDependencies,
 ): string | null {
-  if (fromVessel === null && toVessel === null) {
-    return null
+  if (block.handoffDisplayMode === 'FULL') {
+    return dependencies.t(dependencies.keys.shipmentView.timeline.blocks.vesselChangeDetail, {
+      from: block.previousVesselName ?? '?',
+      to: block.nextVesselName ?? '?',
+    })
   }
 
-  return dependencies.t(dependencies.keys.shipmentView.timeline.blocks.vesselChangeDetail, {
-    from: fromVessel ?? '?',
-    to: toVessel ?? '?',
-  })
+  if (block.handoffDisplayMode === 'NEXT_ONLY' && block.nextVesselName !== null) {
+    return dependencies.t(dependencies.keys.shipmentView.timeline.blocks.vesselChangeNextOnly, {
+      to: block.nextVesselName,
+    })
+  }
+
+  return null
 }
 
 function toIntermediatePorts(source: TimelineTextExportSource): string | null {
@@ -343,24 +348,36 @@ function serializeTransshipmentBlock(
   block: TransshipmentBlock,
   dependencies: TimelineTextExportDependencies,
 ): void {
-  pushLine(
-    lines,
-    `## Bloco: ${dependencies.t(dependencies.keys.shipmentView.timeline.blocks.transshipment)}`,
+  const isPlanned = block.mode === 'planned'
+  const title = dependencies.t(
+    isPlanned
+      ? dependencies.keys.shipmentView.timeline.blocks.plannedTransshipment
+      : dependencies.keys.shipmentView.timeline.blocks.transshipment,
   )
-  pushLine(lines, 'block_kind: TRANSSHIPMENT')
-  pushLine(
-    lines,
-    `block_title: ${dependencies.t(dependencies.keys.shipmentView.timeline.blocks.transshipment)}`,
-  )
+  const representativeEvent = block.events[block.events.length - 1] ?? null
+
+  pushLine(lines, `## Bloco: ${title}`)
+  pushLine(lines, `block_kind: ${isPlanned ? 'PLANNED_TRANSSHIPMENT' : 'TRANSSHIPMENT'}`)
+  pushLine(lines, `block_title: ${title}`)
+  pushLine(lines, `transshipment_mode: ${block.mode.toUpperCase()}`)
   pushKeyValue(lines, 'location', block.port)
-  pushKeyValue(
-    lines,
-    'handoff_summary',
-    toHandoffSummary(block.fromVessel, block.toVessel, dependencies),
-  )
+  pushKeyValue(lines, 'handoff_summary', toHandoffSummary(block, dependencies))
   pushKeyValue(lines, 'reason', block.reason)
-  pushKeyValue(lines, 'from_vessel', block.fromVessel)
-  pushKeyValue(lines, 'to_vessel', block.toVessel)
+  if (isPlanned && representativeEvent !== null) {
+    pushLine(lines, `canonical_type: ${representativeEvent.type}`)
+    pushLine(lines, `event_time_type: ${representativeEvent.eventTimeType}`)
+    pushKeyValue(
+      lines,
+      'date',
+      representativeEvent.eventTime === null
+        ? null
+        : formatDateForLocale(representativeEvent.eventTime, dependencies.locale),
+    )
+  }
+  pushKeyValue(lines, 'from_vessel', block.previousVesselName)
+  pushKeyValue(lines, 'from_voyage', block.previousVoyage)
+  pushKeyValue(lines, 'to_vessel', block.nextVesselName)
+  pushKeyValue(lines, 'to_voyage', block.nextVoyage)
 }
 
 function serializePlannedTransshipmentBlock(
@@ -381,7 +398,12 @@ function serializePlannedTransshipmentBlock(
   pushKeyValue(
     lines,
     'handoff_summary',
-    toHandoffSummary(block.fromVessel, block.toVessel, dependencies),
+    block.fromVessel === null && block.toVessel === null
+      ? null
+      : dependencies.t(dependencies.keys.shipmentView.timeline.blocks.vesselChangeDetail, {
+          from: block.fromVessel ?? '?',
+          to: block.toVessel ?? '?',
+        }),
   )
   pushLine(lines, `canonical_type: ${block.event.type}`)
   pushLine(lines, `event_time_type: ${block.event.eventTimeType}`)

@@ -117,6 +117,7 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
         id: alert.id,
         type: alert.type,
         category: alert.category,
+        detected_at: alert.detected_at,
         source_observation_fingerprints: alert.source_observation_fingerprints,
         alert_fingerprint: alert.alert_fingerprint,
         active: resolveAlertLifecycleState(alert) === 'ACTIVE',

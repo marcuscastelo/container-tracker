@@ -452,8 +452,8 @@ function TimelineBlockList(props: {
   const renderGroupContent = (group: BlockGroup, isCurrent: boolean): JSX.Element | null => {
     switch (group.kind) {
       case 'voyage': {
-        const containerId = props.containerId
-        if (containerId === null) return null
+        if (props.containerId === null) return null
+        const containerId: string = props.containerId
         return (
           <BlockCard variant="voyage" isCurrent={isCurrent}>
             <VoyageBlockHeader block={group.block} isCurrent={isCurrent} />
@@ -471,8 +471,8 @@ function TimelineBlockList(props: {
         )
       }
       case 'terminal': {
-        const containerId = props.containerId
-        if (containerId === null) return null
+        if (props.containerId === null) return null
+        const containerId: string = props.containerId
         return (
           <BlockCard variant="terminal">
             <TerminalBlockHeader block={group.block} />
@@ -490,7 +490,14 @@ function TimelineBlockList(props: {
         )
       }
       case 'transshipment':
-        return <TransshipmentBlockCard block={group.block} />
+        return (
+          <TransshipmentBlockCard
+            block={group.block}
+            containerId={props.containerId}
+            carrier={props.carrier}
+            containerNumber={props.containerNumber}
+          />
+        )
       case 'planned-transshipment':
         return <PlannedTransshipmentBlockCard block={group.block} />
       case 'standalone':

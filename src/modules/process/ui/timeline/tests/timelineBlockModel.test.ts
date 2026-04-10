@@ -110,6 +110,105 @@ function makeMscSameDayTransshipmentFixture(
   ]
 }
 
+function makeChainedPlannedFutureFixture(): readonly TrackingTimelineItem[] {
+  return [
+    makeEvent({
+      id: 'leg-a-departure',
+      type: 'DEPARTURE',
+      eventTime: temporalDtoFromCanonical('2026-04-07'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      vesselName: 'MSC MIRAYA V',
+      voyage: 'OB612R',
+      location: 'Karachi',
+    }),
+    makeEvent({
+      id: 'leg-a-arrival',
+      type: 'ARRIVAL',
+      eventTime: temporalDtoFromCanonical('2026-04-11'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      vesselName: 'MSC MIRAYA V',
+      voyage: 'OB612R',
+      location: 'Colombo',
+    }),
+    makeEvent({
+      id: 'planned-colombo',
+      type: 'TRANSSHIPMENT_INTENDED',
+      eventTime: temporalDtoFromCanonical('2026-04-13'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Colombo',
+    }),
+    makeEvent({
+      id: 'planned-singapore-arrival',
+      type: 'ARRIVAL',
+      eventTime: temporalDtoFromCanonical('2026-04-18'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Singapore',
+    }),
+    makeEvent({
+      id: 'planned-singapore',
+      type: 'TRANSSHIPMENT_INTENDED',
+      eventTime: temporalDtoFromCanonical('2026-04-23'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Singapore',
+      vesselName: 'ONE MAGDALENA',
+      voyage: '2616W',
+    }),
+    makeEvent({
+      id: 'planned-colombo-return',
+      type: 'TRANSSHIPMENT_INTENDED',
+      eventTime: temporalDtoFromCanonical('2026-04-28'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Colombo',
+      vesselName: 'MSC RENEE XIII',
+      voyage: 'QB609E',
+    }),
+    makeEvent({
+      id: 'planned-singapore-return-arrival',
+      type: 'ARRIVAL',
+      eventTime: temporalDtoFromCanonical('2026-05-01'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Singapore',
+      vesselName: 'MSC RENEE XIII',
+      voyage: 'QB609E',
+    }),
+    makeEvent({
+      id: 'planned-final-singapore',
+      type: 'TRANSSHIPMENT_INTENDED',
+      eventTime: temporalDtoFromCanonical('2026-05-03'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Singapore',
+      vesselName: 'ONE MAGDALENA',
+      voyage: '2616W',
+    }),
+    makeEvent({
+      id: 'planned-santos-arrival',
+      type: 'ARRIVAL',
+      eventTime: temporalDtoFromCanonical('2026-05-17'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Santos',
+    }),
+    makeEvent({
+      id: 'planned-santos-arrival-final',
+      type: 'ARRIVAL',
+      eventTime: temporalDtoFromCanonical('2026-05-27'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Santos',
+      vesselName: 'ONE MAGDALENA',
+      voyage: '2616W',
+    }),
+  ]
+}
+
 function renderListSignature(
   renderList: ReturnType<typeof buildTimelineRenderList>,
 ): readonly string[] {
@@ -120,7 +219,7 @@ function renderListSignature(
       case 'terminal-block':
         return `terminal-block:${item.block.kind}:${item.block.events.map((event) => event.type).join(',')}`
       case 'transshipment-block':
-        return `transshipment-block:${item.block.fromVessel ?? ''}:${item.block.toVessel ?? ''}:${item.block.port ?? ''}`
+        return `transshipment-block:${item.block.mode}:${item.block.handoffDisplayMode}:${item.block.previousVesselName ?? ''}:${item.block.nextVesselName ?? ''}:${item.block.port ?? ''}`
       case 'planned-transshipment-block':
         return `planned-transshipment-block:${item.block.port ?? ''}:${item.block.fromVessel ?? ''}:${item.block.toVessel ?? ''}:${item.block.toVoyage ?? ''}:${item.block.event.eventTimeType}`
       case 'event':
@@ -134,6 +233,27 @@ function renderListSignature(
       default:
         return 'unreachable'
     }
+  })
+}
+
+function describeMainTimelineBlocks(
+  renderList: ReturnType<typeof buildTimelineRenderList>,
+): readonly string[] {
+  return renderList.flatMap((item) => {
+    if (item.type === 'voyage-block') {
+      return [
+        `voyage:${item.block.vessel ?? ''}:${item.block.origin ?? ''}:${item.block.destination ?? ''}`,
+      ]
+    }
+    if (item.type === 'transshipment-block') {
+      return [
+        `transshipment:${item.block.mode}:${item.block.handoffDisplayMode}:${item.block.port ?? ''}:${item.block.previousVesselName ?? ''}:${item.block.nextVesselName ?? ''}`,
+      ]
+    }
+    if (item.type === 'terminal-block') {
+      return [`terminal:${item.block.kind}:${item.block.location ?? ''}`]
+    }
+    return []
   })
 }
 
@@ -249,8 +369,9 @@ describe('buildTimelineRenderList voyage grouping', () => {
     if (transshipmentBlock.type === 'transshipment-block') {
       expect(transshipmentBlock.block.port).toBe('B')
       expect(transshipmentBlock.block.reason).toBe('Vessel and voyage change')
-      expect(transshipmentBlock.block.fromVessel).toBe('V1')
-      expect(transshipmentBlock.block.toVessel).toBe('V2')
+      expect(transshipmentBlock.block.handoffDisplayMode).toBe('FULL')
+      expect(transshipmentBlock.block.previousVesselName).toBe('V1')
+      expect(transshipmentBlock.block.nextVesselName).toBe('V2')
     }
   })
 
@@ -489,7 +610,11 @@ describe('buildTimelineRenderList terminal grouping', () => {
       instantFromIsoText('2026-03-21T00:00:00.000Z'),
     )
 
-    const plannedIndex = renderList.findIndex((item) => item.type === 'planned-transshipment-block')
+    const plannedIndex = renderList.findIndex(
+      (item) =>
+        item.type === 'planned-transshipment-block' ||
+        (item.type === 'transshipment-block' && item.block.mode === 'planned'),
+    )
     const nextVoyageIndex = renderList.findIndex(
       (item) =>
         item.type === 'voyage-block' &&
@@ -499,6 +624,102 @@ describe('buildTimelineRenderList terminal grouping', () => {
 
     expect(plannedIndex).toBeGreaterThan(-1)
     expect(nextVoyageIndex).toBeGreaterThan(plannedIndex)
+  })
+})
+
+describe('buildTimelineRenderList planned transshipment rendering', () => {
+  it('renders planned continuation banners before the future voyage and hides intended rows inside it', () => {
+    const renderList = buildTimelineRenderList(
+      [
+        makeEvent({
+          id: 'leg-a-load',
+          type: 'LOAD',
+          eventTime: temporalDtoFromCanonical('2026-03-01T10:00:00Z'),
+          vesselName: 'MSC MIRAYA V',
+          voyage: 'OB612R',
+          location: 'Karachi',
+        }),
+        makeEvent({
+          id: 'leg-a-discharge',
+          type: 'DISCHARGE',
+          eventTime: temporalDtoFromCanonical('2026-03-11T10:00:00Z'),
+          location: 'Singapore',
+        }),
+        makeEvent({
+          id: 'planned-intended',
+          type: 'TRANSSHIPMENT_INTENDED',
+          eventTime: temporalDtoFromCanonical('2026-03-12'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          location: 'Singapore',
+          vesselName: 'SAO PAULO EXPRESS',
+          voyage: 'SPX001',
+        }),
+        makeEvent({
+          id: 'planned-arrival',
+          type: 'ARRIVAL',
+          eventTime: temporalDtoFromCanonical('2026-04-10'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          location: 'Santos',
+        }),
+        makeEvent({
+          id: 'planned-discharge',
+          type: 'DISCHARGE',
+          eventTime: temporalDtoFromCanonical('2026-04-12'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          location: 'Santos',
+        }),
+      ],
+      instantFromIsoText('2026-03-20T00:00:00.000Z'),
+    )
+
+    expect(renderListSignature(renderList)).toEqual([
+      'voyage-block:MSC MIRAYA V:OB612R:Karachi:Singapore',
+      'event:leg-a-load:LOAD:mid',
+      'gap-marker:transit:LOAD:DISCHARGE:10',
+      'event:leg-a-discharge:DISCHARGE:mid',
+      'block-end',
+      'transshipment-block:planned:FULL:MSC MIRAYA V:SAO PAULO EXPRESS:Singapore',
+      'voyage-block:SAO PAULO EXPRESS:SPX001:Singapore:Santos',
+      'event:planned-arrival:ARRIVAL:mid',
+      'port-risk-marker:warning:2:closed',
+      'event:planned-discharge:DISCHARGE:last',
+      'block-end',
+    ])
+  })
+
+  it('collapses chained future markers into the dominant planned handoff per port', () => {
+    const events = [...makeChainedPlannedFutureFixture()]
+
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-04-08T00:00:00.000Z'),
+    )
+
+    const plannedTransshipmentBlocks = renderList.filter(
+      (item) => item.type === 'transshipment-block' && item.block.mode === 'planned',
+    )
+    const transshipmentTerminalBlocks = renderList.filter(
+      (item) => item.type === 'terminal-block' && item.block.kind === 'transshipment-terminal',
+    )
+
+    expect(plannedTransshipmentBlocks).toHaveLength(2)
+    expect(transshipmentTerminalBlocks).toHaveLength(0)
+
+    const plannedPorts = plannedTransshipmentBlocks.map((item) =>
+      item.type === 'transshipment-block' ? item.block.port : null,
+    )
+
+    expect(plannedPorts).toEqual(['Colombo', 'Singapore'])
+    expect(describeMainTimelineBlocks(renderList)).toEqual([
+      'voyage:MSC MIRAYA V:Karachi:Colombo',
+      'transshipment:planned:FULL:Colombo:MSC MIRAYA V:MSC RENEE XIII',
+      'voyage:MSC RENEE XIII:Colombo:Singapore',
+      'transshipment:planned:FULL:Singapore:MSC RENEE XIII:ONE MAGDALENA',
+      'voyage:ONE MAGDALENA:Singapore:Santos',
+    ])
   })
 })
 
