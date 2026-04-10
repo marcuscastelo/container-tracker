@@ -200,6 +200,7 @@ function ShipmentSidebarRegion(props: ShipmentSidebarRegionProps): JSX.Element {
             <ShipmentCurrentStatus
               selectedContainer={props.selectedContainer}
               syncNow={props.syncNow}
+              onOpenTimeTravel={props.trackingTimeTravel.open}
             />
           </section>
         }
@@ -227,7 +228,6 @@ function ShipmentSidebarRegion(props: ShipmentSidebarRegionProps): JSX.Element {
 }
 
 export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
-  const { t, keys } = useTranslation()
   const isHistoricalMode = () => props.trackingTimeTravel.isActive()
   const trackingValidationDisplay = createMemo(() =>
     resolveShipmentTrackingValidationDisplay({
@@ -266,21 +266,8 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
         />
       </Show>
 
-      <div class="sticky top-4 z-30">
-        <Show
-          when={isHistoricalMode()}
-          fallback={
-            <div class="flex justify-end">
-              <button
-                type="button"
-                class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground"
-                onClick={() => props.trackingTimeTravel.open()}
-              >
-                {t(keys.shipmentView.timeTravel.open)}
-              </button>
-            </div>
-          }
-        >
+      <Show when={isHistoricalMode()}>
+        <div class="sticky top-4 z-30">
           <TrackingTimeTravelBar
             isLoading={props.trackingTimeTravel.isLoading()}
             errorMessage={props.trackingTimeTravel.errorMessage()}
@@ -293,8 +280,8 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
             onPrevious={props.trackingTimeTravel.selectPrevious}
             onNext={props.trackingTimeTravel.selectNext}
           />
-        </Show>
-      </div>
+        </div>
+      </Show>
 
       <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div class="space-y-4">

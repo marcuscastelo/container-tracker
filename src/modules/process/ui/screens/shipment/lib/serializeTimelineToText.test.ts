@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import {
   trackingStatusToLabelKey,
   trackingStatusToVariant,
@@ -40,8 +40,18 @@ type SyncOverrides = {
 
 const translationApi = createTranslationApi({ devMode: false })
 const { t, keys, locale } = translationApi
+const FIXED_NOW = new Date('2026-04-04T12:00:00.000Z')
 
 let eventCounter = 0
+
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(FIXED_NOW)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 function defaultCurrentContext(): ContainerDetailVM['currentContext'] {
   return {
