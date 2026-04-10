@@ -7,7 +7,7 @@ type ShipmentCurrentStatusActionMenuProps = {
 }
 
 const TRIGGER_CLASS =
-  'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors hover:border-border-strong hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
+  'inline-flex h-8 w-8 list-none cursor-pointer select-none items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors hover:border-border-strong hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
 
 const ITEM_CLASS =
   'flex w-full items-center gap-2 px-3 py-2 text-left text-xs-ui font-medium text-foreground transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
