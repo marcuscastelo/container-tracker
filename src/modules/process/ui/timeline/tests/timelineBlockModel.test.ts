@@ -682,6 +682,7 @@ describe('buildTimelineRenderList planned transshipment rendering', () => {
       'event:leg-a-discharge:DISCHARGE:mid',
       'block-end',
       'transshipment-block:planned:FULL:MSC MIRAYA V:SAO PAULO EXPRESS:Singapore',
+      'gap-marker:generic:TRANSSHIPMENT_INTENDED:ARRIVAL:29',
       'voyage-block:SAO PAULO EXPRESS:SPX001:Singapore:Santos',
       'event:planned-arrival:ARRIVAL:mid',
       'port-risk-marker:warning:2:closed',

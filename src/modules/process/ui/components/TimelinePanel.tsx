@@ -521,8 +521,6 @@ function TimelineBlockList(props: {
             return <GapMarkerRow marker={group.item.marker} />
           case 'port-risk-marker':
             return <PortRiskMarkerRow marker={group.item.marker} />
-          case 'planned-transshipment-block':
-            return <PlannedTransshipmentBlockCard block={group.item.block} />
           default:
             return null
         }

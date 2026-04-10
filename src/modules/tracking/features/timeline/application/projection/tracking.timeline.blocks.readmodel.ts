@@ -1163,6 +1163,24 @@ export function buildTimelineRenderList(
   const lastOverallEvent = orderedEvents[orderedEvents.length - 1] ?? null
 
   // Helper: emit events for a block with gap/port-risk markers interleaved
+  function emitMarkersForEvent(event: TrackingTimelineItem): void {
+    const portRisk = portRiskByEventId.get(event.id)
+    if (portRisk) {
+      result.push({ type: 'port-risk-marker', marker: portRisk })
+    }
+
+    const gap = gapsByFromEvent.get(event.id)
+    if (gap) {
+      result.push({ type: 'gap-marker', marker: gap })
+    }
+  }
+
+  function emitMarkersForEvents(events: readonly TrackingTimelineItem[]): void {
+    for (const event of events) {
+      emitMarkersForEvent(event)
+    }
+  }
+
   function emitEventsWithMarkers(
     blockEvents: readonly TrackingTimelineItem[],
     isLastBlock: boolean,
@@ -1175,18 +1193,7 @@ export function buildTimelineRenderList(
         isLastBlock && lastOverallEvent !== null && event.id === lastOverallEvent.id
 
       result.push({ type: 'event', event, isLast: isLastEvent })
-
-      // Port risk marker after this event
-      const portRisk = portRiskByEventId.get(event.id)
-      if (portRisk) {
-        result.push({ type: 'port-risk-marker', marker: portRisk })
-      }
-
-      // Gap marker after this event
-      const gap = gapsByFromEvent.get(event.id)
-      if (gap) {
-        result.push({ type: 'gap-marker', marker: gap })
-      }
+      emitMarkersForEvent(event)
     }
   }
 
@@ -1208,6 +1215,7 @@ export function buildTimelineRenderList(
           type: 'planned-transshipment-block',
           block: unit.block,
         })
+        emitMarkersForEvent(unit.block.event)
         continue
       }
 
@@ -1255,6 +1263,7 @@ export function buildTimelineRenderList(
 
       if (plannedContinuationBlock !== null) {
         result.push({ type: 'transshipment-block', block: plannedContinuationBlock })
+        emitMarkersForEvents(plannedContinuationBlock.events)
       }
 
       // It's a voyage block
@@ -1310,14 +1319,17 @@ export function buildTimelineRenderList(
           }
 
           if (tsBlock === undefined && isPlannedTransshipmentTerminal(ts)) {
+            const plannedTransshipmentBlock = toPlannedTransshipmentBlock({
+              segment: ts,
+              previousSegment: segment,
+              nextSegment: nextVoyageEntry.segment,
+            })
+
             result.push({
               type: 'transshipment-block',
-              block: toPlannedTransshipmentBlock({
-                segment: ts,
-                previousSegment: segment,
-                nextSegment: nextVoyageEntry.segment,
-              }),
+              block: plannedTransshipmentBlock,
             })
+            emitMarkersForEvents(plannedTransshipmentBlock.events)
             continue
           }
 
