@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import type { TrackingObservationProjection } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import { buildTimelineRenderList } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.blocks.readmodel'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
-import { instantFromIsoText, temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
+import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import {
+  instantFromIsoText,
+  temporalDtoFromCanonical,
+  temporalValueFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 function makeEvent(
   overrides: Partial<TrackingTimelineItem> & Pick<TrackingTimelineItem, 'id' | 'type'>,
@@ -11,10 +17,41 @@ function makeEvent(
   return {
     id,
     type,
-    eventTime: eventTime ?? temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
+    eventTime:
+      eventTime === undefined ? temporalDtoFromCanonical('2026-03-01T00:00:00Z') : eventTime,
     eventTimeType: eventTimeType ?? 'ACTUAL',
     derivedState: derivedState ?? 'ACTUAL',
     ...rest,
+  }
+}
+
+type ObservationOverrides = Omit<Partial<TrackingObservationProjection>, 'event_time'> &
+  Pick<TrackingObservationProjection, 'id' | 'type'> & {
+    readonly event_time?: string | TrackingObservationProjection['event_time']
+  }
+
+function resolveObservationEventTime(
+  value: ObservationOverrides['event_time'],
+): TrackingObservationProjection['event_time'] {
+  if (typeof value === 'string') return temporalValueFromCanonical(value)
+  if (value === undefined) return null
+  return value
+}
+
+function makeObservation(overrides: ObservationOverrides): TrackingObservationProjection {
+  const { id, type, event_time } = overrides
+
+  return {
+    id,
+    type,
+    carrier_label: overrides.carrier_label ?? null,
+    event_time: resolveObservationEventTime(event_time),
+    event_time_type: overrides.event_time_type ?? 'ACTUAL',
+    location_code: overrides.location_code ?? null,
+    location_display: overrides.location_display ?? null,
+    vessel_name: overrides.vessel_name ?? null,
+    voyage: overrides.voyage ?? null,
+    created_at: overrides.created_at ?? '2026-04-11T17:16:13.887Z',
   }
 }
 
@@ -24,6 +61,42 @@ function requireDefined<T>(value: T | undefined): T {
   }
 
   return value
+}
+
+function assertSaoPauloFutureLeg(renderList: ReturnType<typeof buildTimelineRenderList>): void {
+  const postCarriageBlocks = renderList.filter(
+    (item) => item.type === 'terminal-block' && item.block.kind === 'post-carriage',
+  )
+  const plannedTransshipment = renderList.find(
+    (item) => item.type === 'transshipment-block' && item.block.mode === 'planned',
+  )
+  const futureLeg = renderList
+    .filter((item) => item.type === 'voyage-block')
+    .find(
+      (item) =>
+        item.type === 'voyage-block' &&
+        item.block.vessel === 'SAO PAULO EXPRESS' &&
+        item.block.voyage === '2613W',
+    )
+
+  expect(postCarriageBlocks).toHaveLength(0)
+  expect(plannedTransshipment).toBeDefined()
+  expect(futureLeg).toBeDefined()
+
+  if (plannedTransshipment?.type === 'transshipment-block') {
+    expect(plannedTransshipment.block.port).toBe('SINGAPORE, SG')
+    expect(plannedTransshipment.block.handoffDisplayMode).toBe('FULL')
+    expect(plannedTransshipment.block.previousVesselName).toBe('GSL VIOLETTA')
+    expect(plannedTransshipment.block.previousVoyage).toBe('ZF609R')
+    expect(plannedTransshipment.block.nextVesselName).toBe('SAO PAULO EXPRESS')
+    expect(plannedTransshipment.block.nextVoyage).toBe('2613W')
+  }
+
+  if (futureLeg?.type === 'voyage-block') {
+    expect(futureLeg.block.origin).toBe('SINGAPORE, SG')
+    expect(futureLeg.block.destination).toBe('SANTOS, BR')
+    expect(futureLeg.block.events.map((event) => event.id)).toContain('santos-arrival-expected')
+  }
 }
 
 function makeChainedPlannedFutureEvents(): readonly TrackingTimelineItem[] {
@@ -260,6 +333,193 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
         'DISCHARGE',
       ])
     }
+  })
+
+  it('keeps GLDU2928252 Santos arrival expected inside the future maritime leg', () => {
+    const renderList = buildTimelineRenderList(
+      [
+        makeEvent({
+          id: 'gsl-violetta-load',
+          type: 'LOAD',
+          eventTime: temporalDtoFromCanonical('2026-03-31'),
+          vesselName: 'GSL VIOLETTA',
+          voyage: 'ZF609R',
+          location: 'COLOMBO, LK',
+        }),
+        makeEvent({
+          id: 'gsl-violetta-discharge',
+          type: 'DISCHARGE',
+          eventTime: temporalDtoFromCanonical('2026-04-07'),
+          vesselName: 'GSL VIOLETTA',
+          voyage: 'ZF609R',
+          location: 'SINGAPORE, SG',
+        }),
+        makeEvent({
+          id: 'sao-paulo-transshipment-intended',
+          type: 'TRANSSHIPMENT_INTENDED',
+          eventTime: temporalDtoFromCanonical('2026-04-11'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+          location: 'SINGAPORE, SG',
+        }),
+        makeEvent({
+          id: 'santos-arrival-expected',
+          type: 'ARRIVAL',
+          eventTime: temporalDtoFromCanonical('2026-05-06'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+          location: 'SANTOS, BR',
+        }),
+      ],
+      instantFromIsoText('2026-04-11T00:00:00.000Z'),
+    )
+
+    const voyageBlocks = renderList.filter((item) => item.type === 'voyage-block')
+    const postCarriageBlocks = renderList.filter(
+      (item) => item.type === 'terminal-block' && item.block.kind === 'post-carriage',
+    )
+    const plannedTransshipment = renderList.find(
+      (item) => item.type === 'transshipment-block' && item.block.mode === 'planned',
+    )
+
+    expect(voyageBlocks).toHaveLength(2)
+    expect(postCarriageBlocks).toHaveLength(0)
+    expect(plannedTransshipment).toBeDefined()
+
+    const previousLeg = requireDefined(voyageBlocks[0])
+    if (previousLeg.type === 'voyage-block') {
+      expect(previousLeg.block.vessel).toBe('GSL VIOLETTA')
+      expect(previousLeg.block.voyage).toBe('ZF609R')
+      expect(previousLeg.block.origin).toBe('COLOMBO, LK')
+      expect(previousLeg.block.destination).toBe('SINGAPORE, SG')
+      expect(previousLeg.block.events.map((event) => event.id)).toEqual([
+        'gsl-violetta-load',
+        'gsl-violetta-discharge',
+      ])
+    }
+
+    if (plannedTransshipment?.type === 'transshipment-block') {
+      expect(plannedTransshipment.block.port).toBe('SINGAPORE, SG')
+      expect(plannedTransshipment.block.handoffDisplayMode).toBe('FULL')
+      expect(plannedTransshipment.block.previousVesselName).toBe('GSL VIOLETTA')
+      expect(plannedTransshipment.block.previousVoyage).toBe('ZF609R')
+      expect(plannedTransshipment.block.nextVesselName).toBe('SAO PAULO EXPRESS')
+      expect(plannedTransshipment.block.nextVoyage).toBe('2613W')
+    }
+
+    const futureLeg = requireDefined(voyageBlocks[1])
+    if (futureLeg.type === 'voyage-block') {
+      expect(futureLeg.block.vessel).toBe('SAO PAULO EXPRESS')
+      expect(futureLeg.block.voyage).toBe('2613W')
+      expect(futureLeg.block.origin).toBe('SINGAPORE, SG')
+      expect(futureLeg.block.destination).toBe('SANTOS, BR')
+      expect(futureLeg.block.events.map((event) => event.id)).toEqual(['santos-arrival-expected'])
+    }
+  })
+
+  it('keeps GLDU2928252 planned leg when expected event times are missing', () => {
+    const renderList = buildTimelineRenderList(
+      [
+        makeEvent({
+          id: 'gsl-violetta-load',
+          type: 'LOAD',
+          eventTime: temporalDtoFromCanonical('2026-03-31'),
+          vesselName: 'GSL VIOLETTA',
+          voyage: 'ZF609R',
+          location: 'COLOMBO, LK',
+        }),
+        makeEvent({
+          id: 'gsl-violetta-discharge',
+          type: 'DISCHARGE',
+          eventTime: temporalDtoFromCanonical('2026-04-07'),
+          vesselName: 'GSL VIOLETTA',
+          voyage: 'ZF609R',
+          location: 'SINGAPORE, SG',
+        }),
+        makeEvent({
+          id: 'santos-arrival-expected',
+          type: 'ARRIVAL',
+          eventTime: null,
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+          location: 'SANTOS, BR',
+        }),
+        makeEvent({
+          id: 'sao-paulo-transshipment-intended',
+          type: 'TRANSSHIPMENT_INTENDED',
+          eventTime: null,
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+          location: 'SINGAPORE, SG',
+        }),
+      ],
+      instantFromIsoText('2026-04-11T17:16:13.887Z'),
+    )
+
+    assertSaoPauloFutureLeg(renderList)
+  })
+
+  it('keeps GLDU2928252 planned leg when the intended transshipment date has expired', () => {
+    const timeline = deriveTimelineWithSeriesReadModel(
+      [
+        makeObservation({
+          id: 'gsl-violetta-load',
+          type: 'LOAD',
+          event_time: '2026-03-31',
+          event_time_type: 'ACTUAL',
+          location_code: 'LKCMB',
+          location_display: 'COLOMBO, LK',
+          vessel_name: 'GSL VIOLETTA',
+          voyage: 'ZF609R',
+        }),
+        makeObservation({
+          id: 'gsl-violetta-discharge',
+          type: 'DISCHARGE',
+          event_time: '2026-04-07',
+          event_time_type: 'ACTUAL',
+          location_code: 'SGSIN',
+          location_display: 'SINGAPORE, SG',
+          vessel_name: 'GSL VIOLETTA',
+          voyage: 'ZF609R',
+        }),
+        makeObservation({
+          id: 'sao-paulo-transshipment-intended',
+          type: 'TRANSSHIPMENT_INTENDED',
+          event_time: '2026-04-11',
+          event_time_type: 'EXPECTED',
+          location_code: 'SGSIN',
+          location_display: 'SINGAPORE, SG',
+          vessel_name: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+        }),
+        makeObservation({
+          id: 'santos-arrival-expected',
+          type: 'ARRIVAL',
+          event_time: '2026-05-06',
+          event_time_type: 'EXPECTED',
+          location_code: 'BRSSZ',
+          location_display: 'SANTOS, BR',
+          vessel_name: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+        }),
+      ],
+      instantFromIsoText('2026-04-12T00:30:00.000Z'),
+    )
+
+    const renderList = buildTimelineRenderList(
+      timeline,
+      instantFromIsoText('2026-04-12T00:30:00.000Z'),
+    )
+
+    assertSaoPauloFutureLeg(renderList)
   })
 
   it('returns to the explicit-leg path when a stronger next load exists', () => {

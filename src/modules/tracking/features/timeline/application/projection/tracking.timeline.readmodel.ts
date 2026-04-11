@@ -1,5 +1,6 @@
 import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
 import { applyVoyageExpectedSubstitution } from '~/modules/tracking/application/projection/voyageExpectedSubstitution.readmodel'
+import { normalizeVesselName } from '~/modules/tracking/domain/identity/normalizeVesselName'
 import { trackingTemporalValueToDto } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import type { TrackingObservationProjection } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import {
@@ -150,6 +151,128 @@ function sortClassifiedTimelineHistory(
   return [...classified].sort(compareObservationsChronologically)
 }
 
+function normalizeLocationAnchor(
+  observation: Pick<TrackingObservationProjection, 'location_code' | 'location_display'>,
+): string | null {
+  const locationCode = observation.location_code?.trim().toUpperCase() ?? ''
+  if (locationCode.length >= 5) return locationCode.slice(0, 5)
+  if (locationCode.length > 0) return locationCode
+
+  const locationDisplay = observation.location_display?.trim().toUpperCase() ?? ''
+  return locationDisplay.length > 0 ? locationDisplay : null
+}
+
+function normalizeVoyageIdentity(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toUpperCase() ?? ''
+  return normalized.length > 0 ? normalized : null
+}
+
+function hasVoyageIdentity(observation: TrackingObservationProjection): boolean {
+  return (
+    normalizeVesselName(observation.vessel_name) !== null ||
+    normalizeVoyageIdentity(observation.voyage) !== null
+  )
+}
+
+function sharesVoyageIdentity(
+  left: TrackingObservationProjection,
+  right: TrackingObservationProjection,
+): boolean {
+  const leftVessel = normalizeVesselName(left.vessel_name)
+  const rightVessel = normalizeVesselName(right.vessel_name)
+  const leftVoyage = normalizeVoyageIdentity(left.voyage)
+  const rightVoyage = normalizeVoyageIdentity(right.voyage)
+
+  const vesselMatches = leftVessel !== null && rightVessel !== null && leftVessel === rightVessel
+  const voyageMatches = leftVoyage !== null && rightVoyage !== null && leftVoyage === rightVoyage
+  const vesselCompatible = leftVessel === null || rightVessel === null || leftVessel === rightVessel
+  const voyageCompatible = leftVoyage === null || rightVoyage === null || leftVoyage === rightVoyage
+
+  return (vesselMatches || voyageMatches) && vesselCompatible && voyageCompatible
+}
+
+function hasActualMaritimeHandoffAtLocation(
+  locationAnchor: string,
+  observations: readonly TrackingObservationProjection[],
+): boolean {
+  return observations.some((observation) => {
+    if (observation.event_time_type !== 'ACTUAL') return false
+    if (observation.type !== 'ARRIVAL' && observation.type !== 'DISCHARGE') return false
+    return normalizeLocationAnchor(observation) === locationAnchor
+  })
+}
+
+function isFutureDestinationForPlannedSupport(
+  support: TrackingObservationProjection,
+  destination: TrackingObservationProjection,
+): boolean {
+  if (destination.event_time_type !== 'EXPECTED') return false
+  if (destination.type !== 'ARRIVAL' && destination.type !== 'DISCHARGE') return false
+  if (!sharesVoyageIdentity(support, destination)) return false
+
+  const supportLocation = normalizeLocationAnchor(support)
+  const destinationLocation = normalizeLocationAnchor(destination)
+  if (
+    supportLocation === null ||
+    destinationLocation === null ||
+    supportLocation === destinationLocation
+  ) {
+    return false
+  }
+
+  return compareObservationsChronologically(support, destination) < 0
+}
+
+function supportsFuturePlannedMaritimeLeg(
+  support: TrackingObservationProjection,
+  visibleCandidates: readonly TimelineSeriesCandidate[],
+  observations: readonly TrackingObservationProjection[],
+): boolean {
+  if (support.type !== 'TRANSSHIPMENT_INTENDED') return false
+  if (support.event_time_type !== 'EXPECTED') return false
+  if (!hasVoyageIdentity(support)) return false
+
+  const supportLocation = normalizeLocationAnchor(support)
+  if (supportLocation === null) return false
+  if (!hasActualMaritimeHandoffAtLocation(supportLocation, observations)) return false
+
+  return visibleCandidates.some((candidate) =>
+    isFutureDestinationForPlannedSupport(support, candidate.primary),
+  )
+}
+
+function selectExpiredPlannedSupport(
+  classified: readonly ClassifiedObservation<TrackingObservationProjection>[],
+): TrackingObservationProjection | null {
+  const supports = sortClassifiedTimelineHistory(
+    classified.filter(
+      (observation) =>
+        observation.seriesLabel === 'EXPIRED' &&
+        observation.type === 'TRANSSHIPMENT_INTENDED' &&
+        observation.event_time_type === 'EXPECTED' &&
+        hasVoyageIdentity(observation),
+    ),
+  )
+
+  return supports[supports.length - 1] ?? null
+}
+
+function addCoherentExpiredPlannedSupports(
+  visibleCandidates: readonly TimelineSeriesCandidate[],
+  expiredSupportCandidates: readonly TimelineSeriesCandidate[],
+  observations: readonly TrackingObservationProjection[],
+): readonly TimelineSeriesCandidate[] {
+  if (expiredSupportCandidates.length === 0) return visibleCandidates
+
+  const coherentSupports = expiredSupportCandidates.filter((candidate) =>
+    supportsFuturePlannedMaritimeLeg(candidate.primary, visibleCandidates, observations),
+  )
+
+  return coherentSupports.length === 0
+    ? visibleCandidates
+    : [...visibleCandidates, ...coherentSupports]
+}
+
 /**
  * Derive timeline with event series grouping from observations.
  *
@@ -174,6 +297,7 @@ export function deriveTimelineWithSeriesReadModel(
     seriesHistory?: TrackingSeriesHistory
   }> = []
   const seriesCandidates: TimelineSeriesCandidate[] = []
+  const expiredPlannedSupportCandidates: TimelineSeriesCandidate[] = []
 
   const canonicalSeriesGroups: readonly CanonicalSeriesGroup<TrackingObservationProjection>[] =
     buildCanonicalSeriesGroups(observations, now)
@@ -188,11 +312,28 @@ export function deriveTimelineWithSeriesReadModel(
         hasActualConflict: classification.hasActualConflict,
         conflict: classification.conflict,
       })
+      continue
+    }
+
+    const expiredPlannedSupport = selectExpiredPlannedSupport(classification.classified)
+    if (expiredPlannedSupport !== null) {
+      expiredPlannedSupportCandidates.push({
+        primary: expiredPlannedSupport,
+        classified: classification.classified,
+        hasActualConflict: classification.hasActualConflict,
+        conflict: classification.conflict,
+      })
     }
   }
 
   const shouldIncludeSeriesHistory = options?.includeSeriesHistory ?? true
-  const substitution = applyVoyageExpectedSubstitution(seriesCandidates)
+  const substitution = applyVoyageExpectedSubstitution(
+    addCoherentExpiredPlannedSupports(
+      seriesCandidates,
+      expiredPlannedSupportCandidates,
+      observations,
+    ),
+  )
 
   for (const candidate of substitution.visibleCandidates) {
     const mergedSuppressedHistory =
