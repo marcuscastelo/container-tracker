@@ -117,26 +117,22 @@ export function compareSeriesObservationsByObservedAt(
   left: ObservationLike,
   right: ObservationLike,
 ): number {
-  const observedAtCompare = left.created_at.localeCompare(right.created_at)
-  if (observedAtCompare !== 0) return observedAtCompare
-
-  const eventTimeCompare = compareTrackingTemporalValues(left.event_time, right.event_time)
-  if (eventTimeCompare !== 0) return eventTimeCompare
-
-  if (left.event_time_type === 'ACTUAL' && right.event_time_type === 'EXPECTED') return -1
-  if (left.event_time_type === 'EXPECTED' && right.event_time_type === 'ACTUAL') return 1
-
-  return 0
+  return left.created_at.localeCompare(right.created_at)
 }
 
 export function pickLatestObservedExpected<T extends ObservationLike>(
   series: readonly T[],
 ): T | null {
-  const sortedExpecteds = series
-    .filter((observation) => observation.event_time_type === 'EXPECTED')
-    .sort(compareSeriesObservationsByObservedAt)
+  let latest: T | null = null
 
-  return sortedExpecteds[sortedExpecteds.length - 1] ?? null
+  for (const observation of series) {
+    if (observation.event_time_type !== 'EXPECTED') continue
+    if (latest === null || compareSeriesObservationsByObservedAt(observation, latest) >= 0) {
+      latest = observation
+    }
+  }
+
+  return latest
 }
 
 /**

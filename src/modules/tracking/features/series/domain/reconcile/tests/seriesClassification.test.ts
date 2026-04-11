@@ -162,6 +162,30 @@ describe('Event Series Classification', () => {
       expect(labels.get('eta-08')).toBe('SUPERSEDED_EXPECTED')
       expect(labels.get('eta-12')).toBe('SUPERSEDED_EXPECTED')
     })
+
+    it('breaks EXPECTED created_at ties by input order, not predicted event date', () => {
+      const referenceNow = instantFromIsoText('2026-04-11T00:00:00.000Z')
+      const tiedCreatedAt = '2026-04-10T17:37:48.410Z'
+      const series = [
+        makeEtaRevision({
+          id: 'eta-12-same-ms',
+          eventTime: '2026-05-12',
+          createdAt: tiedCreatedAt,
+        }),
+        makeEtaRevision({
+          id: 'eta-05-same-ms',
+          eventTime: '2026-05-05',
+          createdAt: tiedCreatedAt,
+        }),
+      ]
+
+      const result = classifySeries(series, referenceNow)
+      const labels = labelsById(result.classified)
+
+      expect(result.primary?.id).toBe('eta-05-same-ms')
+      expect(labels.get('eta-05-same-ms')).toBe('ACTIVE')
+      expect(labels.get('eta-12-same-ms')).toBe('SUPERSEDED_EXPECTED')
+    })
   })
 
   describe('EXPECTED then ACTUAL (Rule E1 & E2)', () => {
