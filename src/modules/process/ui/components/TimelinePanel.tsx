@@ -27,7 +27,6 @@ import {
   buildTimelineRenderList,
   type TimelineRenderItem,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
-import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -39,7 +38,6 @@ type Props = {
   selectedContainer: ContainerDetailVM | null
   carrier?: string | null
   nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  alerts?: readonly AlertDisplayVM[]
 }
 
 type TrackingTimelinePanelContainerContext = Pick<
@@ -55,29 +53,6 @@ type TrackingTimelinePanelContentProps = {
   readonly exportSource: TimelineTextExportSource | null
   readonly carrier?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly alerts?: readonly AlertDisplayVM[]
-}
-
-/** Maps alert types to related observation type prefixes for visual linking */
-function alertTypeToEventTypes(alertType: AlertDisplayVM['type']): readonly string[] {
-  switch (alertType) {
-    case 'transshipment':
-      return ['DEPARTURE', 'ARRIVAL', 'LOAD', 'DISCHARGE']
-    case 'customs':
-      return ['CUSTOMS_HOLD', 'CUSTOMS_RELEASE']
-    default:
-      return []
-  }
-}
-
-function buildHighlightedEventTypes(alerts: readonly AlertDisplayVM[]): ReadonlySet<string> {
-  const types = new Set<string>()
-  for (const alert of alerts) {
-    for (const eventType of alertTypeToEventTypes(alert.type)) {
-      types.add(eventType)
-    }
-  }
-  return types
 }
 
 function derivePortsRoute(container: TrackingTimelinePanelContainerContext | null): string | null {
@@ -109,12 +84,10 @@ function toOptionalTrackingTimelinePanelContentProps(params: {
   readonly containerId: string | null
   readonly carrier: string | null | undefined
   readonly nonMappedIndicatorVariant: NonMappedIndicatorVariant | undefined
-  readonly alerts: readonly AlertDisplayVM[] | undefined
 }): {
   readonly containerId: string | null
   readonly carrier?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly alerts?: readonly AlertDisplayVM[]
 } {
   return {
     containerId: params.containerId,
@@ -122,7 +95,6 @@ function toOptionalTrackingTimelinePanelContentProps(params: {
     ...(params.nonMappedIndicatorVariant === undefined
       ? {}
       : { nonMappedIndicatorVariant: params.nonMappedIndicatorVariant }),
-    ...(params.alerts === undefined ? {} : { alerts: params.alerts }),
   }
 }
 
@@ -131,13 +103,11 @@ function toOptionalTimelineNodeProps(params: {
   readonly carrier: string | null | undefined
   readonly containerNumber: string | null | undefined
   readonly nonMappedIndicatorVariant: NonMappedIndicatorVariant | undefined
-  readonly highlighted: boolean | undefined
 }): {
   readonly containerId: string
   readonly carrier?: string | null
   readonly containerNumber?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly highlighted?: boolean
 } {
   return {
     containerId: params.containerId,
@@ -146,7 +116,6 @@ function toOptionalTimelineNodeProps(params: {
     ...(params.nonMappedIndicatorVariant === undefined
       ? {}
       : { nonMappedIndicatorVariant: params.nonMappedIndicatorVariant }),
-    ...(params.highlighted === undefined ? {} : { highlighted: params.highlighted }),
   }
 }
 
@@ -155,7 +124,6 @@ export function TrackingTimelinePanelContent(
 ): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const timeline = () => props.timeline
-  const highlightedTypes = () => buildHighlightedEventTypes(props.alerts ?? [])
   const currentVessel = createMemo(() =>
     props.container?.currentContext.vesselVisible === false
       ? null
@@ -229,7 +197,6 @@ export function TrackingTimelinePanelContent(
         >
           <TimelineBlockList
             renderList={renderList()}
-            highlightedTypes={highlightedTypes()}
             containerId={props.containerId}
             {...toOptionalTimelineBlockListProps({
               carrier: props.carrier,
@@ -313,7 +280,6 @@ export function TimelinePanel(props: Props): JSX.Element {
         containerId: props.selectedContainer?.id ?? null,
         carrier: props.carrier,
         nonMappedIndicatorVariant: props.nonMappedIndicatorVariant,
-        alerts: props.alerts,
       })}
     />
   )
@@ -396,7 +362,6 @@ function BlockChildren(props: {
   readonly carrier?: string | null
   readonly containerNumber?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly highlightedTypes: ReadonlySet<string>
 }): JSX.Element {
   let eventIdx = 0
 
@@ -421,7 +386,6 @@ function BlockChildren(props: {
                       carrier: props.carrier,
                       containerNumber: props.containerNumber,
                       nonMappedIndicatorVariant: props.nonMappedIndicatorVariant,
-                      highlighted: props.highlightedTypes.has(child.event.type),
                     })}
                   />
                 </>
@@ -446,7 +410,6 @@ function TimelineBlockList(props: {
   readonly carrier?: string | null
   readonly containerNumber?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly highlightedTypes: ReadonlySet<string>
 }): JSX.Element {
   const groups = createMemo(() => groupRenderItems(props.renderList))
   const currentVoyageIdx = createMemo(() =>
@@ -464,7 +427,6 @@ function TimelineBlockList(props: {
             <BlockChildren
               children={group.children}
               containerId={containerId}
-              highlightedTypes={props.highlightedTypes}
               {...toOptionalTimelineBlockListProps({
                 carrier: props.carrier,
                 containerNumber: props.containerNumber,
@@ -483,7 +445,6 @@ function TimelineBlockList(props: {
             <BlockChildren
               children={group.children}
               containerId={containerId}
-              highlightedTypes={props.highlightedTypes}
               {...toOptionalTimelineBlockListProps({
                 carrier: props.carrier,
                 containerNumber: props.containerNumber,
@@ -517,7 +478,6 @@ function TimelineBlockList(props: {
                   carrier: props.carrier,
                   containerNumber: props.containerNumber,
                   nonMappedIndicatorVariant: props.nonMappedIndicatorVariant,
-                  highlighted: props.highlightedTypes.has(group.item.event.type),
                 })}
               />
             )

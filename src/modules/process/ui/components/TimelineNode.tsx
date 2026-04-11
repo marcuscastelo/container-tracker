@@ -29,7 +29,7 @@ type TimelineNodeProps = {
   readonly containerNumber?: string | null
   readonly observation?: ContainerObservationVM
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly highlighted?: boolean
+  readonly hasValidationWarning?: boolean
 }
 
 type DateLabelProps = {
@@ -248,6 +248,9 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
 
   const isExpected = () => props.event.eventTimeType === 'EXPECTED'
   const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
+  const hasSeriesConflict = createMemo(() => props.event.seriesConflict != null)
+  // Validation emphasis must come from canonical backend/read-model anchors, never UI inference.
+  const hasValidationWarning = createMemo(() => props.hasValidationWarning === true)
 
   const status = createMemo<EventStatus>(() => {
     if (!isExpected()) return 'completed'
@@ -341,7 +344,8 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
         isLast={props.isLast}
         isExpected={isExpected()}
         isExpiredExpected={isExpiredExpected()}
-        highlighted={props.highlighted ?? false}
+        hasSeriesConflict={hasSeriesConflict()}
+        hasValidationWarning={hasValidationWarning()}
         dotClass={styles().dot}
         lineClass={styles().line}
         textClass={styles().text}
@@ -358,6 +362,8 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
           void observationInspector.openObservationInspector()
         }}
         observationLabel={t(keys.shipmentView.timeline.viewObservation)}
+        conflictBadgeLabel={t(keys.shipmentView.timeline.conflictBadge)}
+        conflictTooltip={t(keys.shipmentView.timeline.conflictTooltip)}
         expiredExpectedLabel={t(keys.shipmentView.timeline.expiredExpected)}
         expiredExpectedTooltip={t(keys.shipmentView.timeline.expiredExpectedTooltip)}
         expectedLabel={t(keys.shipmentView.timeline.expected)}

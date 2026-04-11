@@ -396,6 +396,8 @@
       "vessel": "Navio",
       "expected": "Previsto",
       "actual": "Real",
+      "conflictBadge": "Conflito",
+      "conflictTooltip": "Série com conflito de dados",
       "predictedTooltip": "Este é um evento previsto, ainda não confirmado",
       "expiredExpected": "Expirado",
       "expiredExpectedTooltip": "Este evento previsto não foi confirmado e o tempo planejado já passou",
