@@ -202,6 +202,72 @@ describe('findContainersHotReadProjection', () => {
     expect(result.activeAlertIncidents.summary.affectedContainerCount).toBe(1)
   })
 
+  it('aligns timeline primary and operational ETA to the latest observed expected revision', async () => {
+    const observations = [
+      makeObservation('c1', 'FCIU2000205', {
+        id: 'eta-08',
+        fingerprint: 'fp-eta-08',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-05-08'),
+        event_time_type: 'EXPECTED',
+        vessel_name: 'MSC BIANCA SILVIA',
+        voyage: 'UX614R',
+        created_at: '2026-04-04T16:08:30.906851Z',
+      }),
+      makeObservation('c1', 'FCIU2000205', {
+        id: 'eta-12',
+        fingerprint: 'fp-eta-12',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-05-12'),
+        event_time_type: 'EXPECTED',
+        vessel_name: 'MSC BIANCA SILVIA',
+        voyage: 'UX614R',
+        created_at: '2026-04-08T20:05:19.293794Z',
+      }),
+      makeObservation('c1', 'FCIU2000205', {
+        id: 'eta-03',
+        fingerprint: 'fp-eta-03',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-05-03'),
+        event_time_type: 'EXPECTED',
+        vessel_name: 'MSC BIANCA SILVIA',
+        voyage: 'UX614R',
+        created_at: '2026-04-10T10:36:02.943421Z',
+      }),
+      makeObservation('c1', 'FCIU2000205', {
+        id: 'eta-05',
+        fingerprint: 'fp-eta-05',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-05-05'),
+        event_time_type: 'EXPECTED',
+        vessel_name: 'MSC BIANCA SILVIA',
+        voyage: 'UX614R',
+        created_at: '2026-04-10T17:37:48.410353Z',
+      }),
+    ]
+    const { deps } = createDeps({ observations })
+
+    const result = await findContainersHotReadProjection(deps, {
+      containers: [{ containerId: 'c1', containerNumber: 'FCIU2000205', podLocationCode: 'BRSSZ' }],
+      now: instantFromIsoText('2026-04-11T00:00:00.000Z'),
+    })
+    const container = result.containers[0]
+
+    expect(container?.timeline).toHaveLength(1)
+    expect(container?.timeline[0]?.id).toBe('eta-05')
+    expect(container?.timeline[0]?.eventTime).toEqual({
+      kind: 'date',
+      value: '2026-05-05',
+      timezone: null,
+    })
+    expect(container?.operational.eta?.eventTime).toEqual({
+      kind: 'date',
+      value: '2026-05-05',
+      timezone: null,
+    })
+    expect(container?.operational.eta?.state).toBe('ACTIVE_EXPECTED')
+  })
+
   it('marks the container when conflicting critical ACTUALs exist in the same series', async () => {
     const conflictingObservations = [
       makeObservation('c1', 'MSCU1111111', {

@@ -27,7 +27,7 @@ import type { TemporalValue } from '~/shared/time/temporal-value'
  * of each entry in the prediction history.
  */
 export type SeriesLabel =
-  | 'ACTIVE' // Current primary forecast (latest valid EXPECTED) OR chosen primary ACTUAL
+  | 'ACTIVE' // Current primary forecast (latest observed EXPECTED while valid) OR chosen primary ACTUAL
   | 'EXPIRED' // EXPECTED in the past with no ACTUAL after it
   | 'REDUNDANT_AFTER_ACTUAL' // EXPECTED whose event_time >= lastActualTime (invalid)
   | 'SUPERSEDED_EXPECTED' // Older EXPECTED replaced by a newer EXPECTED
@@ -113,13 +113,35 @@ function resolveConflict(
   }
 }
 
+export function compareSeriesObservationsByObservedAt(
+  left: ObservationLike,
+  right: ObservationLike,
+): number {
+  return left.created_at.localeCompare(right.created_at)
+}
+
+export function pickLatestObservedExpected<T extends ObservationLike>(
+  series: readonly T[],
+): T | null {
+  let latest: T | null = null
+
+  for (const observation of series) {
+    if (observation.event_time_type !== 'EXPECTED') continue
+    if (latest === null || compareSeriesObservationsByObservedAt(observation, latest) >= 0) {
+      latest = observation
+    }
+  }
+
+  return latest
+}
+
 /**
  * Classify a series of observations with derived labels.
  *
  * This function implements the safe-first classification rules:
  * 1. Detects EXPECTED entries after ACTUAL (redundant/invalid)
  * 2. Detects multiple ACTUAL entries (conflict)
- * 3. Selects safe-first primary (latest ACTUAL, or latest valid EXPECTED)
+ * 3. Selects safe-first primary (latest ACTUAL, or latest observed EXPECTED while valid)
  * 4. Assigns appropriate labels to all observations
  *
  * @param series - Array of observations in the same series (same semantic milestone)
@@ -142,7 +164,6 @@ export function classifySeries<T extends ObservationLike>(
 
   // Separate ACTUAL and EXPECTED observations
   const actuals = series.filter((o) => o.event_time_type === 'ACTUAL')
-  const expecteds = series.filter((o) => o.event_time_type === 'EXPECTED')
 
   // Detect conflict: multiple ACTUAL entries
   const hasActualConflict = actuals.length >= 2
@@ -164,6 +185,7 @@ export function classifySeries<T extends ObservationLike>(
 
   const lastActualTime = primaryActual?.event_time ?? null
   const primaryActualVoyage = normalizeVoyage(primaryActual?.voyage)
+  const latestObservedExpected = pickLatestObservedExpected(series)
 
   // Classify all observations
   const classified: ClassifiedObservation<T>[] = series.map((obs) => {
@@ -210,7 +232,7 @@ export function classifySeries<T extends ObservationLike>(
 
     const isExpired = isTrackingTemporalValueExpired(obs.event_time, now)
 
-    // Rule E2: EXPECTED before ACTUAL (but not the latest EXPECTED)
+    // Rule E2: EXPECTED before ACTUAL is superseded by confirmation.
     if (
       lastActualTime !== null &&
       obs.event_time !== null &&
@@ -223,47 +245,16 @@ export function classifySeries<T extends ObservationLike>(
       }
     }
 
-    // Among remaining EXPECTED (no ACTUAL yet, or future EXPECTED after ACTUAL):
-    // Determine if this is the active forecast
-    const activeExpecteds = expecteds.filter((exp) => {
-      // Exclude redundant EXPECTED (after ACTUAL)
-      if (
-        lastActualTime !== null &&
-        exp.event_time !== null &&
-        compareTrackingTemporalValues(exp.event_time, lastActualTime) >= 0
-      ) {
-        return false
-      }
-      // Exclude expired
-      if (isTrackingTemporalValueExpired(exp.event_time, now)) {
-        return false
-      }
-      return true
-    })
-
-    // Latest active EXPECTED is ACTIVE
-    const latestActiveExpected =
-      activeExpecteds.length > 0 ? activeExpecteds[activeExpecteds.length - 1] : null
-
-    if (obs === latestActiveExpected) {
-      return { ...obs, seriesLabel: 'ACTIVE' as const, changeKind: null }
-    }
-
-    // If there is an active EXPECTED, older ones are SUPERSEDED (not EXPIRED)
-    if (latestActiveExpected !== null) {
+    // Without ACTUAL, carrier revision recency wins over predicted event date.
+    if (lastActualTime === null && obs === latestObservedExpected) {
       return {
         ...obs,
-        seriesLabel: 'SUPERSEDED_EXPECTED' as const,
+        seriesLabel: isExpired ? ('EXPIRED' as const) : ('ACTIVE' as const),
         changeKind: null,
       }
     }
 
-    // Expired EXPECTED (no ACTUAL to supersede it, and no active EXPECTED)
-    if (isExpired) {
-      return { ...obs, seriesLabel: 'EXPIRED' as const, changeKind: null }
-    }
-
-    // Older EXPECTED superseded by newer EXPECTED
+    // Older EXPECTED revisions are superseded by the newest observed revision.
     return {
       ...obs,
       seriesLabel: 'SUPERSEDED_EXPECTED' as const,
@@ -277,15 +268,12 @@ export function classifySeries<T extends ObservationLike>(
     // Rule: If any ACTUAL exists, primary = primaryActual (latest)
     primary = primaryActual
   } else {
-    // Rule: Use latest valid (non-expired, non-redundant) EXPECTED
-    const validExpecteds = classified.filter(
-      (c) =>
-        c.event_time_type === 'EXPECTED' &&
-        c.seriesLabel !== 'EXPIRED' &&
-        c.seriesLabel !== 'REDUNDANT_AFTER_ACTUAL',
-    )
-    if (validExpecteds.length > 0) {
-      primary = validExpecteds[validExpecteds.length - 1] ?? null
+    // Rule: Use latest observed EXPECTED only while it is still active.
+    if (
+      latestObservedExpected !== null &&
+      !isTrackingTemporalValueExpired(latestObservedExpected.event_time, now)
+    ) {
+      primary = latestObservedExpected
     }
   }
 

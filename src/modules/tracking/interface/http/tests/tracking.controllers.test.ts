@@ -112,6 +112,39 @@ function createControllers(options?: {
   }
 }
 
+type TrackingObservationTestOverrides = Omit<Partial<Observation>, 'event_time'> & {
+  readonly id: string
+  readonly fingerprint: string
+  readonly event_time: string
+}
+
+function makeTrackingObservation(
+  containerId: string,
+  overrides: TrackingObservationTestOverrides,
+): Observation {
+  const { event_time, ...rest } = overrides
+
+  return {
+    container_id: containerId,
+    container_number: 'FCIU2000205',
+    type: 'ARRIVAL',
+    event_time: temporalValueFromCanonical(event_time),
+    event_time_type: 'EXPECTED',
+    location_code: 'BRSSZ',
+    location_display: 'SANTOS, BR',
+    vessel_name: 'MSC BIANCA SILVIA',
+    voyage: 'UX614R',
+    is_empty: null,
+    confidence: 'medium',
+    provider: 'msc',
+    created_from_snapshot_id: 'snapshot-1',
+    carrier_label: 'Estimated Time of Arrival',
+    created_at: '2026-04-01T00:00:00.000Z',
+    retroactive: false,
+    ...rest,
+  }
+}
+
 describe('tracking controllers', () => {
   it('list alerts returns enriched display DTO with container and semantic message contract', async () => {
     const containerId = 'container-1'
@@ -366,6 +399,63 @@ describe('tracking controllers', () => {
       ],
     })
     expect(findAllObservationsByContainerId).toHaveBeenCalledWith(containerId)
+  })
+
+  it('prediction-history drilldown marks latest observed ETA revision current when date moves earlier', async () => {
+    const containerId = 'container-eta-revision-regression'
+    const observations: readonly Observation[] = [
+      makeTrackingObservation(containerId, {
+        id: 'eta-08',
+        fingerprint: 'fp-eta-08',
+        event_time: '2026-05-08',
+        created_at: '2026-04-04T16:08:30.906851Z',
+      }),
+      makeTrackingObservation(containerId, {
+        id: 'eta-12',
+        fingerprint: 'fp-eta-12',
+        event_time: '2026-05-12',
+        created_at: '2026-04-08T20:05:19.293794Z',
+      }),
+      makeTrackingObservation(containerId, {
+        id: 'eta-03',
+        fingerprint: 'fp-eta-03',
+        event_time: '2026-05-03',
+        created_at: '2026-04-10T10:36:02.943421Z',
+      }),
+      makeTrackingObservation(containerId, {
+        id: 'eta-05',
+        fingerprint: 'fp-eta-05',
+        event_time: '2026-05-05',
+        created_at: '2026-04-10T17:37:48.410353Z',
+      }),
+    ]
+
+    const { controllers } = createControllers({
+      observationsByContainerId: new Map([[containerId, observations]]),
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/timeline-items/eta-05/history?now=2026-04-11T00:00:00.000Z`,
+    )
+    const response = await controllers.detail.getTimelineItemSeriesHistory({
+      params: { containerId, timelineItemId: 'eta-05' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.header.current_version_id).toBe('eta-05')
+    expect(
+      body.versions.map((version: { readonly id: string; readonly is_current: boolean }) => ({
+        id: version.id,
+        isCurrent: version.is_current,
+      })),
+    ).toEqual([
+      { id: 'eta-05', isCurrent: true },
+      { id: 'eta-03', isCurrent: false },
+      { id: 'eta-12', isCurrent: false },
+      { id: 'eta-08', isCurrent: false },
+    ])
   })
 
   it('prediction-history drilldown includes cross-series substitutions on the promoted item', async () => {

@@ -8,6 +8,7 @@ import {
 import {
   type ClassifiedObservation,
   classifySeries,
+  pickLatestObservedExpected,
 } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
 import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { TemporalValueDto } from '~/shared/time/dto'
@@ -139,11 +140,9 @@ function derivePrimarySeriesObservations(
       continue
     }
 
-    // For operational ETA visibility we keep expired EXPECTED as fallback
-    // when a series has no ACTUAL (safe-first still picks latest EXPECTED).
-    const latestExpected = [...canonicalSeries.observations]
-      .reverse()
-      .find((observation) => observation.event_time_type === 'EXPECTED')
+    // For operational ETA visibility we keep the latest observed EXPECTED as fallback
+    // when the newest revision is expired and therefore omitted from the main timeline.
+    const latestExpected = pickLatestObservedExpected(canonicalSeries.observations)
 
     if (latestExpected) {
       candidates.push({
