@@ -16,7 +16,7 @@ import { toTemporalValueDto } from '~/shared/time/dto'
 import type { Instant } from '~/shared/time/instant'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
-type TrackingOperationalEtaState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
+export type TrackingOperationalEtaState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
 export type TrackingLifecycleBucket = 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
 const ROUTE_TYPES = ['LOAD', 'DISCHARGE', 'ARRIVAL', 'DEPARTURE'] as const
 const TERMINAL_MILESTONE_TYPES = ['ARRIVAL', 'DISCHARGE', 'DELIVERY'] as const

@@ -1,6 +1,5 @@
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
-import type { SearchResultItemVm } from '~/capabilities/search/ui/search.vm'
 
 export function SearchIcon(): JSX.Element {
   return (
@@ -21,9 +20,7 @@ export function SearchIcon(): JSX.Element {
   )
 }
 
-export function MatchSourceIcon(props: {
-  readonly source: SearchResultItemVm['matchSource']
-}): JSX.Element {
+export function MatchSourceIcon(props: { readonly source: string }): JSX.Element {
   const className = 'h-4 w-4 shrink-0'
 
   return (
