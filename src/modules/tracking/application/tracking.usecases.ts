@@ -1,4 +1,5 @@
 import type { PipelineResult } from '~/modules/tracking/application/orchestration/pipeline'
+import type { TrackingGlobalSearchProjection } from '~/modules/tracking/application/projection/tracking.global-search.readmodel'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
 import {
@@ -34,6 +35,7 @@ import {
   type ListActiveAlertsByContainerIdResult,
   listActiveAlertsByContainerId,
 } from '~/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase'
+import { listTrackingGlobalSearchProjections } from '~/modules/tracking/application/usecases/list-tracking-global-search-projections.usecase'
 import { saveAndProcess } from '~/modules/tracking/application/usecases/save-and-process.usecase'
 import { searchTrackingByDerivedStatusText } from '~/modules/tracking/application/usecases/search-tracking-by-derived-status-text.usecase'
 import { searchTrackingByVesselName } from '~/modules/tracking/application/usecases/search-tracking-by-vessel-name.usecase'
@@ -229,6 +231,12 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       limit: number,
     ): Promise<readonly TrackingSearchProjection[]> {
       return searchTrackingByDerivedStatusText(deps, { query, limit, now: systemClock.now() })
+    },
+
+    async listGlobalSearchProjections(command?: {
+      readonly now?: Instant
+    }): Promise<readonly TrackingGlobalSearchProjection[]> {
+      return listTrackingGlobalSearchProjections(deps, command)
     },
 
     /**
