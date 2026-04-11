@@ -16,11 +16,11 @@ import {
   PlannedTransshipmentBlockCard,
   TransshipmentBlockCard,
 } from '~/modules/process/ui/timeline/TimelineBlocks'
-import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type {
   PlannedTransshipmentBlock,
   TransshipmentBlock,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 function makeTimelineItem(overrides: {

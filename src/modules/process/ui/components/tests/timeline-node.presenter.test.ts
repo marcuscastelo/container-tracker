@@ -5,7 +5,6 @@ describe('timeline-node.presenter', () => {
   it('keeps neutral nodes without emphasis', () => {
     const display = toTimelineNodeAttentionDisplay({
       hasSeriesConflict: false,
-      hasValidationWarning: false,
     })
 
     expect(display).toEqual({
@@ -19,7 +18,6 @@ describe('timeline-node.presenter', () => {
   it('returns warning emphasis for series conflicts', () => {
     const display = toTimelineNodeAttentionDisplay({
       hasSeriesConflict: true,
-      hasValidationWarning: false,
     })
 
     expect(display.rowClass).toContain('ring-tone-warning-border/70')
@@ -27,23 +25,9 @@ describe('timeline-node.presenter', () => {
     expect(display.showConflictBadge).toBe(true)
   })
 
-  it('keeps validation-only seam inert until backend anchor exists', () => {
-    const display = toTimelineNodeAttentionDisplay({
-      hasSeriesConflict: false,
-      hasValidationWarning: true,
-    })
-
-    expect(display).toEqual({
-      rowClass: '',
-      dotAccentClass: '',
-      showConflictBadge: false,
-    })
-  })
-
-  it('prioritizes series conflict over future validation emphasis', () => {
+  it('keeps series conflict as the only attention state', () => {
     const display = toTimelineNodeAttentionDisplay({
       hasSeriesConflict: true,
-      hasValidationWarning: true,
     })
 
     expect(display.rowClass).toContain('ring-tone-warning-border/70')

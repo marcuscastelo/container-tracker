@@ -8,7 +8,6 @@ type Props = {
   readonly isExpected: boolean
   readonly isExpiredExpected: boolean
   readonly hasSeriesConflict: boolean
-  readonly hasValidationWarning?: boolean
 
   readonly dotClass: string
   readonly lineClass: string
@@ -46,7 +45,6 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
   const attentionDisplay = createMemo(() =>
     toTimelineNodeAttentionDisplay({
       hasSeriesConflict: props.hasSeriesConflict,
-      hasValidationWarning: props.hasValidationWarning === true,
     }),
   )
 
@@ -92,7 +90,6 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                 <span
                   class="inline-flex items-center gap-1 rounded border border-tone-warning-border bg-tone-warning-bg/70 px-1 py-px text-micro font-medium leading-none text-tone-warning-fg"
                   title={props.conflictTooltip}
-                  aria-label={props.conflictTooltip}
                 >
                   <TriangleAlert class="h-3 w-3 shrink-0" aria-hidden="true" />
                   {props.conflictBadgeLabel}

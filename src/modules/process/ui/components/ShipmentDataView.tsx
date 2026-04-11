@@ -228,6 +228,8 @@ function ShipmentSidebarRegion(props: ShipmentSidebarRegionProps): JSX.Element {
 
 export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
   const isHistoricalMode = () => props.trackingTimeTravel.isActive()
+  const shouldShowCurrentAlertsSection = () =>
+    !isHistoricalMode() && props.alertIncidents.active.length > 0
   const trackingValidationDisplay = createMemo(() =>
     resolveShipmentTrackingValidationDisplay({
       shipment: props.data,
@@ -254,7 +256,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
         onOpenEdit={props.onOpenEdit}
       />
 
-      <Show when={!isHistoricalMode()}>
+      <Show when={shouldShowCurrentAlertsSection()}>
         <ShipmentCurrentAlertsSection
           data={props.data}
           alertIncidents={props.alertIncidents}
@@ -293,11 +295,11 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
             />
           </section>
 
-        <ShipmentTimelineRegion
-          data={props.data}
-          selectedContainer={props.selectedContainer}
-          trackingTimeTravel={props.trackingTimeTravel}
-        />
+          <ShipmentTimelineRegion
+            data={props.data}
+            selectedContainer={props.selectedContainer}
+            trackingTimeTravel={props.trackingTimeTravel}
+          />
         </div>
 
         <ShipmentSidebarRegion

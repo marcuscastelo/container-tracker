@@ -887,7 +887,7 @@
     "copied": "Copiado"
   },
   "search": {
-    "placeholder": "Busca geral...",
+    "placeholder": "Buscar processos, filtros e ETA...",
     "loading": "Buscando...",
     "error": "Falha na busca. Tente novamente.",
     "noResults": "Nenhum resultado encontrado",
@@ -895,15 +895,25 @@
     "notAvailable": "—",
     "close": "Fechar busca",
     "clear": "Limpar busca",
+    "multiple": "Múltiplos",
     "fields": {
       "processId": "ID do processo",
       "importerName": "Importador",
+      "exporterName": "Exportador",
       "containers": "Containers",
       "carrier": "Armador",
       "vesselName": "Navio",
       "bl": "BL",
       "derivedStatus": "Status",
-      "eta": "ETA"
+      "eta": "ETA",
+      "currentLocation": "Localização atual",
+      "currentVessel": "Navio atual",
+      "currentVoyage": "Viagem atual",
+      "route": "Rota",
+      "origin": "Origem",
+      "destination": "Destino",
+      "terminal": "Terminal",
+      "depot": "Depositário"
     },
     "matchSource": {
       "container": "Match em container",
@@ -918,6 +928,84 @@
       "navigate": "Navegar",
       "select": "Selecionar",
       "close": "Fechar"
+    },
+    "a11y": {
+      "suggestionsList": "Sugestões de busca",
+      "resultsList": "Resultados da busca"
+    },
+    "suggestionKinds": {
+      "field": "campo",
+      "value": "valor",
+      "example": "exemplo"
+    },
+    "badges": {
+      "validationRequired": "Validação necessária"
+    },
+    "empty": {
+      "title": "Nenhum processo encontrado",
+      "description": "Tente combinar texto livre com filtros como status, ETA, terminal ou armador.",
+      "discovery": "Use filtros como status:, eta:, terminal: ou digite um identificador operacional."
+    },
+    "examples": {
+      "container": "Exemplo por container",
+      "multifilter": "Exemplo com múltiplos filtros",
+      "eta": "Exemplo por ETA"
+    },
+    "filters": {
+      "fields": {
+        "process": "Processo",
+        "process_id": "ID do processo",
+        "container": "Container",
+        "bl": "BL",
+        "importer": "Importador",
+        "exporter": "Exportador",
+        "carrier": "Armador",
+        "vessel": "Navio",
+        "voyage": "Viagem",
+        "status": "Status",
+        "origin": "Origem",
+        "origin_country": "País de origem",
+        "destination": "Destino",
+        "destination_country": "País de destino",
+        "terminal": "Terminal",
+        "depot": "Depositário",
+        "route": "Rota",
+        "eta": "ETA",
+        "eta_before": "ETA antes de",
+        "eta_after": "ETA depois de",
+        "eta_month": "ETA no mês",
+        "eta_state": "Estado do ETA",
+        "eta_type": "Tipo de ETA",
+        "current_location": "Localização atual",
+        "current_vessel": "Navio atual",
+        "current_voyage": "Viagem atual",
+        "validation": "Validação",
+        "alert_category": "Categoria de alerta",
+        "event_date": "Data do evento"
+      },
+      "values": {
+        "eta_state": {
+          "ACTUAL": "ETA atual",
+          "ACTIVE_EXPECTED": "ETA ativo",
+          "EXPIRED_EXPECTED": "ETA expirado"
+        },
+        "eta_type": {
+          "ARRIVAL": "Chegada",
+          "DISCHARGE": "Descarga",
+          "DELIVERY": "Entrega"
+        },
+        "validation": {
+          "required": "Validação necessária",
+          "clean": "Sem validação pendente"
+        },
+        "alert_category": {
+          "eta": "Alerta de ETA",
+          "movement": "Alerta de movimentação",
+          "customs": "Alerta aduaneiro",
+          "status": "Alerta de status",
+          "data": "Alerta de dados"
+        }
+      }
     }
   }
 }

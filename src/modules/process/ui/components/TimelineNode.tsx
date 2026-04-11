@@ -29,7 +29,6 @@ type TimelineNodeProps = {
   readonly containerNumber?: string | null
   readonly observation?: ContainerObservationVM
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly hasValidationWarning?: boolean
 }
 
 type DateLabelProps = {
@@ -249,8 +248,6 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
   const isExpected = () => props.event.eventTimeType === 'EXPECTED'
   const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
   const hasSeriesConflict = createMemo(() => props.event.seriesConflict != null)
-  // Validation emphasis must come from canonical backend/read-model anchors, never UI inference.
-  const hasValidationWarning = createMemo(() => props.hasValidationWarning === true)
 
   const status = createMemo<EventStatus>(() => {
     if (!isExpected()) return 'completed'
@@ -345,7 +342,6 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
         isExpected={isExpected()}
         isExpiredExpected={isExpiredExpected()}
         hasSeriesConflict={hasSeriesConflict()}
-        hasValidationWarning={hasValidationWarning()}
         dotClass={styles().dot}
         lineClass={styles().line}
         textClass={styles().text}
