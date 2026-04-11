@@ -165,6 +165,74 @@ function eventTieBreakPriority(type: string): number {
   return EVENT_TIE_BREAK_PRIORITY.get(type) ?? DEFAULT_EVENT_TIE_BREAK_PRIORITY
 }
 
+function normalizeVoyageIdentity(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toUpperCase() ?? ''
+  return normalized.length > 0 ? normalized : null
+}
+
+function sharesPlannedContinuationIdentity(
+  anchor: TrackingTimelineItem,
+  destination: TrackingTimelineItem,
+): boolean {
+  const anchorVessel = normalizeVesselName(anchor.vesselName)
+  const destinationVessel = normalizeVesselName(destination.vesselName)
+  const anchorVoyage = normalizeVoyageIdentity(anchor.voyage)
+  const destinationVoyage = normalizeVoyageIdentity(destination.voyage)
+
+  const vesselMatches =
+    anchorVessel !== null && destinationVessel !== null && anchorVessel === destinationVessel
+  const voyageMatches =
+    anchorVoyage !== null && destinationVoyage !== null && anchorVoyage === destinationVoyage
+  const vesselCompatible =
+    anchorVessel === null || destinationVessel === null || anchorVessel === destinationVessel
+  const voyageCompatible =
+    anchorVoyage === null || destinationVoyage === null || anchorVoyage === destinationVoyage
+
+  return (vesselMatches || voyageMatches) && vesselCompatible && voyageCompatible
+}
+
+function isPlannedContinuationDestination(event: TrackingTimelineItem): boolean {
+  return (
+    event.eventTimeType === 'EXPECTED' && (event.type === 'ARRIVAL' || event.type === 'DISCHARGE')
+  )
+}
+
+function shouldOrderPlannedAnchorBeforeDestination(
+  anchor: TrackingTimelineItem,
+  destination: TrackingTimelineItem,
+): boolean {
+  if (anchor.type !== 'TRANSSHIPMENT_INTENDED' || anchor.eventTimeType !== 'EXPECTED') {
+    return false
+  }
+
+  if (!isPlannedContinuationDestination(destination)) {
+    return false
+  }
+
+  const origin = anchor.location ?? null
+  const destinationLocation = destination.location ?? null
+  if (origin === null || destinationLocation === null || origin === destinationLocation) {
+    return false
+  }
+
+  return sharesPlannedContinuationIdentity(anchor, destination)
+}
+
+function comparePlannedContinuationTie(
+  left: TrackingTimelineItem,
+  right: TrackingTimelineItem,
+): number {
+  if (shouldOrderPlannedAnchorBeforeDestination(left, right)) {
+    return -1
+  }
+
+  if (shouldOrderPlannedAnchorBeforeDestination(right, left)) {
+    return 1
+  }
+
+  return 0
+}
+
 function compareTimelineItemsForBlockDerivation(
   left: TrackingTimelineItem,
   right: TrackingTimelineItem,
@@ -182,6 +250,9 @@ function compareTimelineItemsForBlockDerivation(
 
   if (left.eventTimeType === 'ACTUAL' && right.eventTimeType === 'EXPECTED') return -1
   if (left.eventTimeType === 'EXPECTED' && right.eventTimeType === 'ACTUAL') return 1
+
+  const plannedContinuationCompare = comparePlannedContinuationTie(left, right)
+  if (plannedContinuationCompare !== 0) return plannedContinuationCompare
 
   const priorityCompare = eventTieBreakPriority(left.type) - eventTieBreakPriority(right.type)
   if (priorityCompare !== 0) return priorityCompare
