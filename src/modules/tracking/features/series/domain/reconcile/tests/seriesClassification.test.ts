@@ -15,6 +15,7 @@ import {
 type ObservationLikeOverrides = Omit<Partial<ObservationLike>, 'event_time'> & {
   readonly event_time?: string | ObservationLike['event_time']
 }
+type ObservationWithId = ObservationLike & { readonly id: string }
 
 const DEFAULT_EVENT_TIME = temporalValueFromCanonical('2026-01-15T00:00:00.000Z')
 
@@ -32,6 +33,25 @@ function makeObs(overrides: ObservationLikeOverrides = {}): ObservationLike {
 // Helper to extract labels for assertions
 function extractLabels(classified: readonly ClassifiedObservation[]): SeriesLabel[] {
   return classified.map((c) => c.seriesLabel)
+}
+
+function makeEtaRevision(args: {
+  readonly id: string
+  readonly eventTime: string
+  readonly createdAt: string
+}): ObservationWithId {
+  return {
+    id: args.id,
+    event_time: resolveTemporalValue(args.eventTime, DEFAULT_EVENT_TIME),
+    event_time_type: 'EXPECTED',
+    created_at: args.createdAt,
+  }
+}
+
+function labelsById(
+  classified: readonly ClassifiedObservation<ObservationWithId>[],
+): ReadonlyMap<string, SeriesLabel> {
+  return new Map(classified.map((observation) => [observation.id, observation.seriesLabel]))
 }
 
 describe('Event Series Classification', () => {
@@ -88,14 +108,14 @@ describe('Event Series Classification', () => {
       expect(result.hasActualConflict).toBe(false)
     })
 
-    it('should label past EXPECTED as EXPIRED when no newer EXPECTED exists', () => {
+    it('should label latest observed past EXPECTED as EXPIRED when no active revision exists', () => {
       const series = [
         makeObs({ event_time: '2025-12-01T00:00:00.000Z' }),
         makeObs({ event_time: '2025-12-10T00:00:00.000Z' }),
       ]
       const result = classifySeries(series, now)
       expect(result.primary).toBeNull()
-      expect(extractLabels(result.classified)).toEqual(['EXPIRED', 'EXPIRED'])
+      expect(extractLabels(result.classified)).toEqual(['SUPERSEDED_EXPECTED', 'EXPIRED'])
     })
 
     it('should label past EXPECTED as SUPERSEDED when newer active EXPECTED exists', () => {
@@ -106,6 +126,41 @@ describe('Event Series Classification', () => {
       const result = classifySeries(series, now)
       expect(result.primary?.event_time).toBe(series[1]?.event_time)
       expect(extractLabels(result.classified)).toEqual(['SUPERSEDED_EXPECTED', 'ACTIVE'])
+    })
+
+    it('selects latest observed EXPECTED as active when ETA date moves earlier', () => {
+      const referenceNow = instantFromIsoText('2026-04-11T00:00:00.000Z')
+      const series = [
+        makeEtaRevision({
+          id: 'eta-03',
+          eventTime: '2026-05-03',
+          createdAt: '2026-04-10T10:36:02.943421Z',
+        }),
+        makeEtaRevision({
+          id: 'eta-05',
+          eventTime: '2026-05-05',
+          createdAt: '2026-04-10T17:37:48.410353Z',
+        }),
+        makeEtaRevision({
+          id: 'eta-08',
+          eventTime: '2026-05-08',
+          createdAt: '2026-04-04T16:08:30.906851Z',
+        }),
+        makeEtaRevision({
+          id: 'eta-12',
+          eventTime: '2026-05-12',
+          createdAt: '2026-04-08T20:05:19.293794Z',
+        }),
+      ]
+
+      const result = classifySeries(series, referenceNow)
+      const labels = labelsById(result.classified)
+
+      expect(result.primary?.id).toBe('eta-05')
+      expect(labels.get('eta-05')).toBe('ACTIVE')
+      expect(labels.get('eta-03')).toBe('SUPERSEDED_EXPECTED')
+      expect(labels.get('eta-08')).toBe('SUPERSEDED_EXPECTED')
+      expect(labels.get('eta-12')).toBe('SUPERSEDED_EXPECTED')
     })
   })
 
@@ -375,11 +430,18 @@ describe('Event Series Classification', () => {
 
     it('should not mark EXPECTED with null as expired', () => {
       const series = [
-        makeObs({ event_time: null, event_time_type: 'EXPECTED' }),
-        makeObs({ event_time: '2026-03-01T00:00:00.000Z', event_time_type: 'EXPECTED' }),
+        makeObs({
+          event_time: null,
+          event_time_type: 'EXPECTED',
+          created_at: '2026-01-01T00:00:00.000Z',
+        }),
+        makeObs({
+          event_time: '2026-03-01T00:00:00.000Z',
+          event_time_type: 'EXPECTED',
+          created_at: '2026-01-02T00:00:00.000Z',
+        }),
       ]
       const result = classifySeries(series, now)
-      // Latest EXPECTED with actual time is ACTIVE
       expect(result.primary?.event_time).toBe(series[1]?.event_time)
       expect(extractLabels(result.classified)).toEqual(['SUPERSEDED_EXPECTED', 'ACTIVE'])
     })
@@ -411,6 +473,35 @@ describe('Event Series Classification', () => {
       ]
       const result = classifySeries(series, now)
       expect(result.primary).toBe(series[0]) // ACTUAL has precedence
+    })
+
+    it('keeps ACTUAL primary over newer observed EXPECTED revisions', () => {
+      const referenceNow = instantFromIsoText('2026-04-11T00:00:00.000Z')
+      const series = [
+        makeEtaRevision({
+          id: 'eta-05',
+          eventTime: '2026-05-05',
+          createdAt: '2026-04-10T17:37:48.410353Z',
+        }),
+        makeEtaRevision({
+          id: 'eta-12',
+          eventTime: '2026-05-12',
+          createdAt: '2026-04-08T20:05:19.293794Z',
+        }),
+        {
+          id: 'arrival-actual',
+          event_time: resolveTemporalValue('2026-05-06', DEFAULT_EVENT_TIME),
+          event_time_type: 'ACTUAL' as const,
+          created_at: '2026-05-06T10:00:00.000Z',
+        },
+      ]
+
+      const result = classifySeries(series, referenceNow)
+      const labels = labelsById(result.classified)
+
+      expect(result.primary?.id).toBe('arrival-actual')
+      expect(labels.get('arrival-actual')).toBe('CONFIRMED')
+      expect(Array.from(labels.values())).not.toContain('ACTIVE')
     })
   })
 })

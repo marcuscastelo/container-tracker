@@ -183,6 +183,80 @@ describe('buildTrackingPredictionHistoryReadModel', () => {
     ])
   })
 
+  it('marks the latest observed ETA revision as current when the date moves earlier', () => {
+    const predictionHistory = requirePredictionHistory(
+      [
+        makeObservation({
+          id: 'eta-08',
+          event_time: '2026-05-08',
+          vessel_name: 'MSC BIANCA SILVIA',
+          voyage: 'UX614R',
+          created_at: '2026-04-04T16:08:30.906851Z',
+        }),
+        makeObservation({
+          id: 'eta-12',
+          event_time: '2026-05-12',
+          vessel_name: 'MSC BIANCA SILVIA',
+          voyage: 'UX614R',
+          created_at: '2026-04-08T20:05:19.293794Z',
+        }),
+        makeObservation({
+          id: 'eta-03',
+          event_time: '2026-05-03',
+          vessel_name: 'MSC BIANCA SILVIA',
+          voyage: 'UX614R',
+          created_at: '2026-04-10T10:36:02.943421Z',
+        }),
+        makeObservation({
+          id: 'eta-05',
+          event_time: '2026-05-05',
+          vessel_name: 'MSC BIANCA SILVIA',
+          voyage: 'UX614R',
+          created_at: '2026-04-10T17:37:48.410353Z',
+        }),
+      ],
+      'eta-05',
+      '2026-04-11T00:00:00.000Z',
+    )
+
+    expect(predictionHistory.header).toEqual({
+      tone: 'neutral',
+      summary_kind: 'HISTORY_UPDATED',
+      current_version_id: 'eta-05',
+      previous_version_id: null,
+      original_version_id: 'eta-08',
+      reason_kind: 'ESTIMATE_CHANGED',
+    })
+    expect(
+      predictionHistory.versions.map((version) => ({
+        id: version.id,
+        isCurrent: version.is_current,
+        state: version.version_state,
+      })),
+    ).toEqual([
+      {
+        id: 'eta-05',
+        isCurrent: true,
+        state: 'ESTIMATE_CHANGED',
+      },
+      {
+        id: 'eta-03',
+        isCurrent: false,
+        state: 'ESTIMATE_CHANGED',
+      },
+      {
+        id: 'eta-12',
+        isCurrent: false,
+        state: 'ESTIMATE_CHANGED',
+      },
+      {
+        id: 'eta-08',
+        isCurrent: false,
+        state: 'INITIAL',
+      },
+    ])
+  })
+
   it('marks actual voyage conflicts as conflicted and emits a conflict banner', () => {
     const predictionHistory = requirePredictionHistory(
       [
@@ -338,14 +412,14 @@ describe('buildTrackingPredictionHistoryReadModel', () => {
           created_at: '2026-04-03T00:00:00.000Z',
         }),
       ],
-      'eta-12-middle',
+      'eta-10-return',
       '2026-04-05T00:00:00.000Z',
     )
 
     expect(predictionHistory.header).toEqual({
       tone: 'neutral',
       summary_kind: 'HISTORY_UPDATED',
-      current_version_id: 'eta-12-middle',
+      current_version_id: 'eta-10-return',
       previous_version_id: null,
       original_version_id: 'eta-10-original',
       reason_kind: 'ESTIMATE_CHANGED',
@@ -358,11 +432,11 @@ describe('buildTrackingPredictionHistoryReadModel', () => {
       })),
     ).toEqual([
       {
-        id: 'eta-12-middle',
+        id: 'eta-10-return',
         state: 'ESTIMATE_CHANGED',
       },
       {
-        id: 'eta-10-return',
+        id: 'eta-12-middle',
         state: 'ESTIMATE_CHANGED',
       },
       {
