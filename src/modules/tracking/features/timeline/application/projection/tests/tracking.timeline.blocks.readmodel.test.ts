@@ -485,7 +485,7 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
           type: 'DISCHARGE',
           event_time: '2026-04-07',
           event_time_type: 'ACTUAL',
-          location_code: 'SGSIN',
+          location_code: null,
           location_display: 'SINGAPORE, SG',
           vessel_name: 'GSL VIOLETTA',
           voyage: 'ZF609R',

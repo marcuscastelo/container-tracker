@@ -151,15 +151,40 @@ function sortClassifiedTimelineHistory(
   return [...classified].sort(compareObservationsChronologically)
 }
 
-function normalizeLocationAnchor(
-  observation: Pick<TrackingObservationProjection, 'location_code' | 'location_display'>,
-): string | null {
-  const locationCode = observation.location_code?.trim().toUpperCase() ?? ''
-  if (locationCode.length >= 5) return locationCode.slice(0, 5)
-  if (locationCode.length > 0) return locationCode
+function normalizeLocationCodeAnchor(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toUpperCase() ?? ''
+  if (normalized.length >= 5) return normalized.slice(0, 5)
+  return normalized.length > 0 ? normalized : null
+}
 
-  const locationDisplay = observation.location_display?.trim().toUpperCase() ?? ''
-  return locationDisplay.length > 0 ? locationDisplay : null
+function normalizeLocationDisplayAnchor(value: string | null | undefined): string | null {
+  const normalized = value?.trim().replace(/\s+/gu, ' ').toUpperCase() ?? ''
+  return normalized.length > 0 ? normalized : null
+}
+
+function appendUniqueLocationAnchor(anchors: string[], anchor: string | null): void {
+  if (anchor === null || anchors.includes(anchor)) return
+  anchors.push(anchor)
+}
+
+function locationAnchors(
+  observation: Pick<TrackingObservationProjection, 'location_code' | 'location_display'>,
+): readonly string[] {
+  const anchors: string[] = []
+  appendUniqueLocationAnchor(anchors, normalizeLocationCodeAnchor(observation.location_code))
+  appendUniqueLocationAnchor(anchors, normalizeLocationDisplayAnchor(observation.location_display))
+  return anchors
+}
+
+function sharesLocationAnchor(
+  left: Pick<TrackingObservationProjection, 'location_code' | 'location_display'>,
+  right: Pick<TrackingObservationProjection, 'location_code' | 'location_display'>,
+): boolean {
+  const leftAnchors = locationAnchors(left)
+  if (leftAnchors.length === 0) return false
+
+  const rightAnchors = locationAnchors(right)
+  return leftAnchors.some((anchor) => rightAnchors.includes(anchor))
 }
 
 function normalizeVoyageIdentity(value: string | null | undefined): string | null {
@@ -192,13 +217,13 @@ function sharesVoyageIdentity(
 }
 
 function hasActualMaritimeHandoffAtLocation(
-  locationAnchor: string,
+  support: TrackingObservationProjection,
   observations: readonly TrackingObservationProjection[],
 ): boolean {
   return observations.some((observation) => {
     if (observation.event_time_type !== 'ACTUAL') return false
     if (observation.type !== 'ARRIVAL' && observation.type !== 'DISCHARGE') return false
-    return normalizeLocationAnchor(observation) === locationAnchor
+    return sharesLocationAnchor(support, observation)
   })
 }
 
@@ -210,15 +235,11 @@ function isFutureDestinationForPlannedSupport(
   if (destination.type !== 'ARRIVAL' && destination.type !== 'DISCHARGE') return false
   if (!sharesVoyageIdentity(support, destination)) return false
 
-  const supportLocation = normalizeLocationAnchor(support)
-  const destinationLocation = normalizeLocationAnchor(destination)
-  if (
-    supportLocation === null ||
-    destinationLocation === null ||
-    supportLocation === destinationLocation
-  ) {
+  if (locationAnchors(support).length === 0 || locationAnchors(destination).length === 0) {
     return false
   }
+
+  if (sharesLocationAnchor(support, destination)) return false
 
   return compareObservationsChronologically(support, destination) < 0
 }
@@ -232,9 +253,8 @@ function supportsFuturePlannedMaritimeLeg(
   if (support.event_time_type !== 'EXPECTED') return false
   if (!hasVoyageIdentity(support)) return false
 
-  const supportLocation = normalizeLocationAnchor(support)
-  if (supportLocation === null) return false
-  if (!hasActualMaritimeHandoffAtLocation(supportLocation, observations)) return false
+  if (locationAnchors(support).length === 0) return false
+  if (!hasActualMaritimeHandoffAtLocation(support, observations)) return false
 
   return visibleCandidates.some((candidate) =>
     isFutureDestinationForPlannedSupport(support, candidate.primary),
