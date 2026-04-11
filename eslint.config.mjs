@@ -339,6 +339,7 @@ export default [
     ignores: [
       '.output/**',
       '.vinxi/**',
+      'coverage/**',
       'tools/ralph-loop/**',
       '.ralph-loop/**',
       'packaging/arch/src/agent-app/**',
