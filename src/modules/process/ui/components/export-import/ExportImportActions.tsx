@@ -1,79 +1,18 @@
 import { Copy, Download, Upload } from 'lucide-solid'
-import { createMemo, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js'
-import toast from 'solid-toast'
+import { createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js'
+import type { ReportFormat } from '~/modules/process/ui/api/export-import.api'
 import {
-  executeSymmetricImportBundle,
-  type ReportFormat,
-  requestOperationalReportExport,
-  requestOperationalReportExportText,
-  requestPortableExport,
-  validateSymmetricImportBundle,
-} from '~/modules/process/ui/api/export-import.api'
+  type ExportType,
+  type ImportValidationState,
+  type PortableFormat,
+  useExportImportActionsController,
+} from '~/modules/process/ui/components/export-import/useExportImportActionsController'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
-import { copyToClipboard } from '~/shared/utils/clipboard'
 
 type ExportImportActionsProps = {
   readonly processId: string | null
   readonly showImport: boolean
-}
-
-type ExportType = 'portable' | 'report'
-
-type PortableFormat = 'json' | 'zip'
-
-type ImportValidationState = {
-  readonly canImport: boolean
-  readonly schemaVersion: string | null
-  readonly processCount: number
-  readonly containerCount: number
-  readonly documentCount: number
-  readonly databaseEmpty: boolean
-  readonly errors: readonly string[]
-  readonly warnings: readonly string[]
-}
-
-const HEADER_MENU_BUTTON_CLASS =
-  'inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] cursor-pointer list-none items-center justify-center gap-1.5 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-2.5 text-sm-ui font-medium text-text-muted transition-colors select-none hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
-
-const HEADER_MENU_ITEM_CLASS =
-  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm-ui font-medium text-foreground transition-colors hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none'
-
-function readBundleFromFile(file: File): Promise<unknown> {
-  return file.text().then((text) => JSON.parse(text))
-}
-
-function resolveScope(processId: string | null) {
-  if (!processId) {
-    return {
-      scope: 'all_processes' as const,
-      processId: null,
-    }
-  }
-
-  return {
-    scope: 'single_process' as const,
-    processId,
-  }
-}
-
-function parseExportType(value: string): ExportType {
-  if (value === 'report') return 'report'
-  return 'portable'
-}
-
-function parseReportFormat(value: string): ReportFormat {
-  if (value === 'csv') return 'csv'
-  if (value === 'xlsx') return 'xlsx'
-  if (value === 'markdown') return 'markdown'
-  if (value === 'pdf') return 'pdf'
-  if (value === 'trello') return 'trello'
-  return 'json'
-}
-
-function parsePortableFormat(value: string): PortableFormat {
-  if (value === 'zip') return 'zip'
-  return 'json'
 }
 
 type ExportImportMenuProps = {
@@ -83,6 +22,12 @@ type ExportImportMenuProps = {
   readonly onOpenImport: () => void
   readonly onCopyTrello: () => void
 }
+
+const HEADER_MENU_BUTTON_CLASS =
+  'inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] cursor-pointer list-none items-center justify-center gap-1.5 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-2.5 text-sm-ui font-medium text-text-muted transition-colors select-none hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
+
+const HEADER_MENU_ITEM_CLASS =
+  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm-ui font-medium text-foreground transition-colors hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none'
 
 function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
   const { t, keys } = useTranslation()
@@ -508,204 +453,53 @@ function ImportDialog(props: ImportDialogProps): JSX.Element {
 }
 
 export function ExportImportActions(props: ExportImportActionsProps): JSX.Element {
-  const { t, keys } = useTranslation()
-
-  const [isExportDialogOpen, setIsExportDialogOpen] = createSignal(false)
-  const [isImportDialogOpen, setIsImportDialogOpen] = createSignal(false)
-  const [exportType, setExportType] = createSignal<ExportType>('portable')
-  const [portableFormat, setPortableFormat] = createSignal<PortableFormat>('json')
-  const [reportFormat, setReportFormat] = createSignal<ReportFormat>('json')
-  const [includeContainers, setIncludeContainers] = createSignal(true)
-  const [includeAlerts, setIncludeAlerts] = createSignal(true)
-  const [includeTimelineSummary, setIncludeTimelineSummary] = createSignal(true)
-  const [includeExecutiveSummary, setIncludeExecutiveSummary] = createSignal(true)
-  const [exportError, setExportError] = createSignal<string | null>(null)
-  const [isExporting, setIsExporting] = createSignal(false)
-
-  const [selectedBundle, setSelectedBundle] = createSignal<unknown | null>(null)
-  const [validation, setValidation] = createSignal<ImportValidationState | null>(null)
-  const [isValidating, setIsValidating] = createSignal(false)
-  const [isImporting, setIsImporting] = createSignal(false)
-  const [importError, setImportError] = createSignal<string | null>(null)
-  const [importSuccess, setImportSuccess] = createSignal<string | null>(null)
-
-  const scope = createMemo(() => resolveScope(props.processId))
-  const canExecuteImport = createMemo(() => {
-    const currentValidation = validation()
-    if (currentValidation === null) return false
-    return currentValidation.canImport && currentValidation.databaseEmpty
-  })
-
-  const handleExportSubmit = async () => {
-    setExportError(null)
-    setIsExporting(true)
-
-    try {
-      if (exportType() === 'portable') {
-        await requestPortableExport({ scope: scope(), format: portableFormat() })
-      } else {
-        const isTrelloFormat = reportFormat() === 'trello'
-        await requestOperationalReportExport({
-          scope: scope(),
-          format: reportFormat(),
-          options: {
-            includeContainers: isTrelloFormat ? true : includeContainers(),
-            includeAlerts: isTrelloFormat ? true : includeAlerts(),
-            includeTimelineSummary: isTrelloFormat ? true : includeTimelineSummary(),
-            includeExecutiveSummary: isTrelloFormat ? true : includeExecutiveSummary(),
-          },
-        })
-      }
-
-      setIsExportDialogOpen(false)
-    } catch (error) {
-      setExportError(error instanceof Error ? error.message : 'Export failed')
-    } finally {
-      setIsExporting(false)
-    }
-  }
-
-  const handleCopyTrello = async () => {
-    if (props.processId === null) return
-
-    try {
-      const markdown = await requestOperationalReportExportText({
-        scope: scope(),
-        format: 'trello',
-        options: {
-          includeContainers: true,
-          includeAlerts: true,
-          includeTimelineSummary: true,
-          includeExecutiveSummary: true,
-        },
-      })
-      const copied = await copyToClipboard(markdown)
-      if (copied) {
-        toast.success(t(keys.exportImport.copyTrelloSuccess))
-      } else {
-        toast.error(t(keys.exportImport.copyTrelloError))
-      }
-    } catch (error) {
-      console.error('Failed to copy Trello export', error)
-      toast.error(t(keys.exportImport.copyTrelloError))
-    }
-  }
-
-  const handleBundleFileChange = async (event: Event) => {
-    const target = event.currentTarget
-    if (!(target instanceof HTMLInputElement)) return
-
-    const file = target.files?.[0]
-    if (!file) {
-      setSelectedBundle(null)
-      setValidation(null)
-      return
-    }
-
-    try {
-      const bundle = await readBundleFromFile(file)
-      setSelectedBundle(bundle)
-      setValidation(null)
-      setImportError(null)
-      setImportSuccess(null)
-    } catch {
-      setSelectedBundle(null)
-      setValidation(null)
-      setImportError(t(keys.exportImport.importDialog.invalidBundleJson))
-    }
-  }
-
-  const runDryRun = async () => {
-    const bundle = selectedBundle()
-    if (!bundle) return
-
-    setIsValidating(true)
-    setImportError(null)
-    setImportSuccess(null)
-
-    try {
-      const result = await validateSymmetricImportBundle({ bundle })
-      setValidation(result)
-    } catch (error) {
-      setImportError(error instanceof Error ? error.message : 'Import validation failed')
-      setValidation(null)
-    } finally {
-      setIsValidating(false)
-    }
-  }
-
-  const executeImport = async () => {
-    const bundle = selectedBundle()
-    const dryRun = validation()
-    if (!bundle || !dryRun || !dryRun.canImport || !dryRun.databaseEmpty) return
-
-    setIsImporting(true)
-    setImportError(null)
-    setImportSuccess(null)
-
-    try {
-      const result = await executeSymmetricImportBundle({ bundle })
-      setImportSuccess(
-        t(keys.exportImport.importDialog.importSuccess, {
-          processes: result.importedProcesses,
-          containers: result.importedContainers,
-        }),
-      )
-    } catch (error) {
-      setImportError(error instanceof Error ? error.message : 'Import execution failed')
-    } finally {
-      setIsImporting(false)
-    }
-  }
-
-  const IMPORT_DISABLED = true // TODO: enable button when import functionality is tested with stage database
-  // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/239
+  const controller = useExportImportActionsController(props)
 
   return (
     <>
       <ExportImportMenu
-        showImport={props.showImport && !IMPORT_DISABLED}
-        showCopyTrello={props.processId !== null}
-        onOpenExport={() => setIsExportDialogOpen(true)}
-        onOpenImport={() => setIsImportDialogOpen(true)}
-        onCopyTrello={() => void handleCopyTrello()}
+        showImport={controller.showImport()}
+        showCopyTrello={controller.showCopyTrello()}
+        onOpenExport={controller.openExportDialog}
+        onOpenImport={controller.openImportDialog}
+        onCopyTrello={controller.copyTrello}
       />
 
       <ExportDialog
-        open={isExportDialogOpen()}
-        onClose={() => setIsExportDialogOpen(false)}
-        exportType={exportType()}
-        onExportTypeChange={(value) => setExportType(parseExportType(value))}
-        portableFormat={portableFormat()}
-        onPortableFormatChange={(value) => setPortableFormat(parsePortableFormat(value))}
-        reportFormat={reportFormat()}
-        onReportFormatChange={(value) => setReportFormat(parseReportFormat(value))}
-        includeContainers={includeContainers()}
-        onIncludeContainersChange={setIncludeContainers}
-        includeAlerts={includeAlerts()}
-        onIncludeAlertsChange={setIncludeAlerts}
-        includeTimelineSummary={includeTimelineSummary()}
-        onIncludeTimelineSummaryChange={setIncludeTimelineSummary}
-        includeExecutiveSummary={includeExecutiveSummary()}
-        onIncludeExecutiveSummaryChange={setIncludeExecutiveSummary}
-        exportError={exportError()}
-        isExporting={isExporting()}
-        onSubmit={() => void handleExportSubmit()}
+        open={controller.isExportDialogOpen()}
+        onClose={controller.closeExportDialog}
+        exportType={controller.exportType()}
+        onExportTypeChange={controller.setExportTypeFromInput}
+        portableFormat={controller.portableFormat()}
+        onPortableFormatChange={controller.setPortableFormatFromInput}
+        reportFormat={controller.reportFormat()}
+        onReportFormatChange={controller.setReportFormatFromInput}
+        includeContainers={controller.includeContainers()}
+        onIncludeContainersChange={controller.setIncludeContainers}
+        includeAlerts={controller.includeAlerts()}
+        onIncludeAlertsChange={controller.setIncludeAlerts}
+        includeTimelineSummary={controller.includeTimelineSummary()}
+        onIncludeTimelineSummaryChange={controller.setIncludeTimelineSummary}
+        includeExecutiveSummary={controller.includeExecutiveSummary()}
+        onIncludeExecutiveSummaryChange={controller.setIncludeExecutiveSummary}
+        exportError={controller.exportError()}
+        isExporting={controller.isExporting()}
+        onSubmit={controller.submitExport}
       />
 
       <ImportDialog
-        open={isImportDialogOpen()}
-        onClose={() => setIsImportDialogOpen(false)}
-        onFileChange={handleBundleFileChange}
-        onDryRun={() => void runDryRun()}
-        onExecuteImport={() => void executeImport()}
-        isValidating={isValidating()}
-        isImporting={isImporting()}
-        canRunDryRun={selectedBundle() !== null}
-        canExecuteImport={canExecuteImport()}
-        validation={validation()}
-        importError={importError()}
-        importSuccess={importSuccess()}
+        open={controller.isImportDialogOpen()}
+        onClose={controller.closeImportDialog}
+        onFileChange={controller.handleBundleFileChange}
+        onDryRun={controller.runDryRun}
+        onExecuteImport={controller.executeImport}
+        isValidating={controller.isValidating()}
+        isImporting={controller.isImporting()}
+        canRunDryRun={controller.canRunDryRun()}
+        canExecuteImport={controller.canExecuteImport()}
+        validation={controller.validation()}
+        importError={controller.importError()}
+        importSuccess={controller.importSuccess()}
       />
     </>
   )

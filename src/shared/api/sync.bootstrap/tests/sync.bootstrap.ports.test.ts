@@ -6,25 +6,28 @@ type ProcessSyncCandidateRow = {
 }
 
 type QueryOperation = {
-  readonly method: 'select' | 'is' | 'or' | 'in'
+  readonly method: 'select' | 'is' | 'or' | 'in' | 'eq' | 'rpc'
   readonly args: readonly unknown[]
 }
 
 type MockQuery = {
-  readonly rows: readonly ProcessSyncCandidateRow[]
+  readonly rows: readonly unknown[]
   select: (columns: string) => MockQuery
   is: (column: string, value: null) => MockQuery
   or: (filter: string) => MockQuery
+  eq: (column: string, value: string) => MockQuery
   in: (column: string, values: readonly string[]) => MockQuery
 }
 
 const supabaseMock = vi.hoisted(() => {
   const state: {
-    rows: readonly ProcessSyncCandidateRow[]
+    rows: readonly unknown[]
+    rpcRows: readonly unknown[]
     operations: QueryOperation[]
     tables: string[]
   } = {
     rows: [],
+    rpcRows: [],
     operations: [],
     tables: [],
   }
@@ -55,6 +58,13 @@ const supabaseMock = vi.hoisted(() => {
         })
         return query
       },
+      eq(column, value) {
+        state.operations.push({
+          method: 'eq',
+          args: [column, value],
+        })
+        return query
+      },
       in(column, values) {
         state.operations.push({
           method: 'in',
@@ -70,6 +80,17 @@ const supabaseMock = vi.hoisted(() => {
   return {
     reset(rows: readonly ProcessSyncCandidateRow[]) {
       state.rows = rows
+      state.rpcRows = []
+      state.operations = []
+      state.tables = []
+    },
+    setRows(rows: readonly unknown[]) {
+      state.rows = rows
+      state.operations = []
+      state.tables = []
+    },
+    setRpcRows(rows: readonly unknown[]) {
+      state.rpcRows = rows
       state.operations = []
       state.tables = []
     },
@@ -78,13 +99,21 @@ const supabaseMock = vi.hoisted(() => {
       state.tables.push(table)
       return createQuery()
     }),
-    unwrap: vi.fn((result: { readonly rows: readonly ProcessSyncCandidateRow[] }) => result.rows),
+    rpc: vi.fn((name: string, params: Readonly<Record<string, unknown>>) => {
+      state.operations.push({
+        method: 'rpc',
+        args: [name, params],
+      })
+      return { rows: state.rpcRows }
+    }),
+    unwrap: vi.fn((result: { readonly rows: readonly unknown[] }) => result.rows),
   }
 })
 
 vi.mock('~/shared/supabase/supabase.server', () => ({
   supabaseServer: {
     from: supabaseMock.from,
+    rpc: supabaseMock.rpc,
   },
 }))
 
@@ -92,7 +121,12 @@ vi.mock('~/shared/supabase/unwrapSupabaseResult', () => ({
   unwrapSupabaseResultOrThrow: supabaseMock.unwrap,
 }))
 
-import { createSyncStatusReadPort } from '~/shared/api/sync.bootstrap/sync.bootstrap.ports'
+import {
+  createRefreshProcessDeps,
+  createSyncQueuePort,
+  createSyncStatusReadPort,
+  createSyncTargetReadPort,
+} from '~/shared/api/sync.bootstrap/sync.bootstrap.ports'
 
 describe('createSyncStatusReadPort', () => {
   beforeEach(() => {
@@ -184,5 +218,177 @@ describe('createSyncStatusReadPort', () => {
 
     expect(candidates).toEqual([])
     expect(supabaseMock.from).not.toHaveBeenCalled()
+  })
+
+  it('normalizes container sync-request lookup and preserves requested status order', async () => {
+    supabaseMock.setRows([
+      {
+        id: '11111111-1111-4111-8111-111111111111',
+        status: 'DONE',
+        last_error: null,
+        updated_at: '2026-04-10T10:00:00.000Z',
+        ref_value: 'MSCU1234567',
+      },
+    ])
+    const queuePort = createSyncQueuePort({
+      defaultTenantId: 'tenant-1',
+    })
+
+    const result = await queuePort.getSyncRequestStatuses({
+      syncRequestIds: [
+        '11111111-1111-4111-8111-111111111111',
+        '22222222-2222-4222-8222-222222222222',
+        '11111111-1111-4111-8111-111111111111',
+      ],
+    })
+
+    expect(result).toEqual({
+      allTerminal: true,
+      requests: [
+        {
+          syncRequestId: '11111111-1111-4111-8111-111111111111',
+          status: 'DONE',
+          lastError: null,
+          updatedAt: '2026-04-10T10:00:00.000Z',
+          refValue: 'MSCU1234567',
+        },
+        {
+          syncRequestId: '22222222-2222-4222-8222-222222222222',
+          status: 'NOT_FOUND',
+          lastError: 'sync_request_not_found',
+          updatedAt: null,
+          refValue: null,
+        },
+        {
+          syncRequestId: '11111111-1111-4111-8111-111111111111',
+          status: 'DONE',
+          lastError: null,
+          updatedAt: '2026-04-10T10:00:00.000Z',
+          refValue: 'MSCU1234567',
+        },
+      ],
+    })
+    expect(supabaseMock.state.operations).toContainEqual({
+      method: 'in',
+      args: [
+        'id',
+        ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'],
+      ],
+    })
+  })
+
+  it('enqueues normalized container sync requests through the queue port', async () => {
+    supabaseMock.setRpcRows([
+      {
+        id: '11111111-1111-4111-8111-111111111111',
+        status: 'PENDING',
+        is_new: true,
+      },
+    ])
+    const queuePort = createSyncQueuePort({
+      defaultTenantId: 'tenant-1',
+    })
+
+    const result = await queuePort.enqueueContainerSyncRequest({
+      tenantId: 'tenant-2',
+      provider: 'msc',
+      containerNumber: ' mscu1234567 ',
+      mode: 'backfill',
+    })
+
+    expect(result).toEqual({
+      id: '11111111-1111-4111-8111-111111111111',
+      status: 'PENDING',
+      isNew: true,
+    })
+    expect(supabaseMock.state.operations).toContainEqual({
+      method: 'rpc',
+      args: [
+        'enqueue_sync_request',
+        {
+          p_tenant_id: 'tenant-2',
+          p_provider: 'msc',
+          p_ref_type: 'container',
+          p_ref_value: 'MSCU1234567',
+          p_priority: -1,
+        },
+      ],
+    })
+  })
+})
+
+describe('createSyncTargetReadPort', () => {
+  it('maps container application results into sync target records without exposing entities', async () => {
+    const port = createSyncTargetReadPort({
+      processUseCases: {
+        findProcessById: vi.fn(),
+      },
+      containerUseCases: {
+        listByProcessId: vi.fn(),
+        listByProcessIds: vi.fn(async () => ({
+          containersByProcessId: new Map([
+            [
+              'process-1',
+              [
+                {
+                  processId: 'process-1',
+                  containerNumber: 'MSCU1234567',
+                  carrierCode: 'MSC',
+                },
+              ],
+            ],
+          ]),
+        })),
+        findByNumbers: vi.fn(),
+      },
+    })
+
+    const result = await port.listContainersByProcessIds({
+      processIds: ['process-1'],
+    })
+
+    expect(result.containersByProcessId.get('process-1')).toEqual([
+      {
+        processId: 'process-1',
+        containerNumber: 'MSCU1234567',
+        carrierCode: 'MSC',
+      },
+    ])
+  })
+})
+
+describe('createRefreshProcessDeps', () => {
+  it('injects tenant and manual mode while delegating provider/container facts to queue port', async () => {
+    const queuePort = {
+      enqueueContainerSyncRequest: vi.fn(async () => ({
+        id: '11111111-1111-4111-8111-111111111111',
+        status: 'PENDING' as const,
+        isNew: true,
+      })),
+      getSyncRequestStatuses: vi.fn(),
+    }
+    const deps = createRefreshProcessDeps({
+      targetReadPort: {
+        fetchProcessById: vi.fn(),
+        listActiveProcessIds: vi.fn(),
+        listContainersByProcessId: vi.fn(),
+        listContainersByProcessIds: vi.fn(),
+        findContainersByNumber: vi.fn(),
+      },
+      queuePort,
+      defaultTenantId: 'tenant-1',
+    })
+
+    await deps.enqueueContainerSyncRequest({
+      provider: 'msc',
+      containerNumber: 'MSCU1234567',
+    })
+
+    expect(queuePort.enqueueContainerSyncRequest).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      mode: 'manual',
+      provider: 'msc',
+      containerNumber: 'MSCU1234567',
+    })
   })
 })

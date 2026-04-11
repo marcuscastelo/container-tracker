@@ -34,7 +34,7 @@ export function EmptyState(props: Props): JSX.Element {
             {(onAction) => (
               <button
                 type="button"
-                onClick={onAction()}
+                onClick={() => onAction()}
                 class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm-ui font-medium text-primary-foreground transition-colors hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-ring/40"
               >
                 {actionLabel()}
