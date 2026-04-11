@@ -59,7 +59,6 @@ export function TrackingTimeTravelTimelinePanel(
           containerId={null}
           timeline={selectedSync().timeline}
           exportSource={exportSource()}
-          alerts={selectedSync().alerts}
           {...(props.carrier === undefined ? {} : { carrier: props.carrier })}
         />
       )}

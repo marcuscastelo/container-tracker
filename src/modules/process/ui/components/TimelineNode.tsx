@@ -29,7 +29,6 @@ type TimelineNodeProps = {
   readonly containerNumber?: string | null
   readonly observation?: ContainerObservationVM
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly highlighted?: boolean
 }
 
 type DateLabelProps = {
@@ -248,6 +247,7 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
 
   const isExpected = () => props.event.eventTimeType === 'EXPECTED'
   const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
+  const hasSeriesConflict = createMemo(() => props.event.seriesConflict != null)
 
   const status = createMemo<EventStatus>(() => {
     if (!isExpected()) return 'completed'
@@ -341,7 +341,7 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
         isLast={props.isLast}
         isExpected={isExpected()}
         isExpiredExpected={isExpiredExpected()}
-        highlighted={props.highlighted ?? false}
+        hasSeriesConflict={hasSeriesConflict()}
         dotClass={styles().dot}
         lineClass={styles().line}
         textClass={styles().text}
@@ -358,6 +358,8 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
           void observationInspector.openObservationInspector()
         }}
         observationLabel={t(keys.shipmentView.timeline.viewObservation)}
+        conflictBadgeLabel={t(keys.shipmentView.timeline.conflictBadge)}
+        conflictTooltip={t(keys.shipmentView.timeline.conflictTooltip)}
         expiredExpectedLabel={t(keys.shipmentView.timeline.expiredExpected)}
         expiredExpectedTooltip={t(keys.shipmentView.timeline.expiredExpectedTooltip)}
         expectedLabel={t(keys.shipmentView.timeline.expected)}

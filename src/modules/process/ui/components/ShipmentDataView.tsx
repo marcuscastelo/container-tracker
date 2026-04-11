@@ -81,7 +81,7 @@ function ShipmentCurrentAlertsSection(props: ShipmentCurrentAlertsSectionProps):
 
 type ShipmentTimelineRegionProps = Pick<
   ShipmentDataViewProps,
-  'data' | 'activeAlerts' | 'selectedContainer' | 'trackingTimeTravel'
+  'data' | 'selectedContainer' | 'trackingTimeTravel'
 >
 
 type TrackingContainmentNoticeProps = {
@@ -153,7 +153,6 @@ function ShipmentTimelineRegion(props: ShipmentTimelineRegionProps): JSX.Element
               fallback={
                 <TimelinePanel
                   selectedContainer={props.selectedContainer}
-                  alerts={props.activeAlerts}
                   {...(props.data.carrier === undefined ? {} : { carrier: props.data.carrier })}
                 />
               }
@@ -229,6 +228,8 @@ function ShipmentSidebarRegion(props: ShipmentSidebarRegionProps): JSX.Element {
 
 export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
   const isHistoricalMode = () => props.trackingTimeTravel.isActive()
+  const shouldShowCurrentAlertsSection = () =>
+    !isHistoricalMode() && props.alertIncidents.active.length > 0
   const trackingValidationDisplay = createMemo(() =>
     resolveShipmentTrackingValidationDisplay({
       shipment: props.data,
@@ -255,7 +256,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
         onOpenEdit={props.onOpenEdit}
       />
 
-      <Show when={!isHistoricalMode()}>
+      <Show when={shouldShowCurrentAlertsSection()}>
         <ShipmentCurrentAlertsSection
           data={props.data}
           alertIncidents={props.alertIncidents}
@@ -296,7 +297,6 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
 
           <ShipmentTimelineRegion
             data={props.data}
-            activeAlerts={props.activeAlerts}
             selectedContainer={props.selectedContainer}
             trackingTimeTravel={props.trackingTimeTravel}
           />

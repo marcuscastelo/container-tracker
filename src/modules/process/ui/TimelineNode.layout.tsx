@@ -1,12 +1,13 @@
 import clsx from 'clsx'
-import { EyeIcon } from 'lucide-solid'
+import { EyeIcon, TriangleAlert } from 'lucide-solid'
 import { createMemo, type JSX, Show } from 'solid-js'
+import { toTimelineNodeAttentionDisplay } from '~/modules/process/ui/components/timeline-node.presenter'
 
 type Props = {
   readonly isLast: boolean
   readonly isExpected: boolean
   readonly isExpiredExpected: boolean
-  readonly highlighted: boolean
+  readonly hasSeriesConflict: boolean
 
   readonly dotClass: string
   readonly lineClass: string
@@ -24,6 +25,8 @@ type Props = {
   readonly onOpenObservation?: () => void
   readonly observationLabel?: string
 
+  readonly conflictBadgeLabel: string
+  readonly conflictTooltip: string
   readonly expiredExpectedLabel: string
   readonly expiredExpectedTooltip: string
   readonly expectedLabel?: string
@@ -39,6 +42,11 @@ type Props = {
 
 export function TimelineNodeLayout(props: Props): JSX.Element {
   const isFuture = createMemo(() => props.isExpected && !props.isExpiredExpected)
+  const attentionDisplay = createMemo(() =>
+    toTimelineNodeAttentionDisplay({
+      hasSeriesConflict: props.hasSeriesConflict,
+    }),
+  )
 
   const showInlineEta = createMemo(() => props.etaChipLabel && !isFuture())
   const showEtaBelow = createMemo(() => props.etaChipLabel && isFuture())
@@ -46,10 +54,9 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
   return (
     <div
-      class={clsx('flex items-stretch gap-3 rounded-md px-1 py-1', {
+      class={clsx('flex items-stretch gap-3 rounded-md px-1 py-1', attentionDisplay().rowClass, {
         'opacity-70': isFuture(),
         'opacity-45': props.isExpiredExpected,
-        'bg-tone-warning-bg/60': props.highlighted && !props.isExpected,
       })}
     >
       <div class="flex w-10 shrink-0 flex-col items-center">
@@ -57,6 +64,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
           class={clsx(
             'flex h-10 w-10 items-center justify-center rounded-full border shadow-[0_1px_2px_rgba(0,0,0,0.05)]',
             props.dotClass,
+            attentionDisplay().dotAccentClass,
           )}
         >
           <Show
@@ -77,6 +85,16 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-1.5">
               <p class={`text-sm-ui leading-tight ${props.textClass}`}>{props.label}</p>
+
+              <Show when={attentionDisplay().showConflictBadge}>
+                <span
+                  class="inline-flex items-center gap-1 rounded border border-tone-warning-border bg-tone-warning-bg/70 px-1 py-px text-micro font-medium leading-none text-tone-warning-fg"
+                  title={props.conflictTooltip}
+                >
+                  <TriangleAlert class="h-3 w-3 shrink-0" aria-hidden="true" />
+                  {props.conflictBadgeLabel}
+                </span>
+              </Show>
 
               <Show when={showInlineEta() && props.etaChipLabel}>
                 {(etaChipLabel) => <EtaChip label={etaChipLabel()} />}
