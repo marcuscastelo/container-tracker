@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { configDefaults, defineConfig } from 'vitest/config'
+import solid from 'vite-plugin-solid'
 
 const coverageScopePath = path.resolve(__dirname, 'docs/plans/coverage-scope.json')
 const coverageScope = JSON.parse(fs.readFileSync(coverageScopePath, 'utf8'))
@@ -8,6 +9,7 @@ const coverageScope = JSON.parse(fs.readFileSync(coverageScopePath, 'utf8'))
 // biome-ignore lint/style/noDefaultExport: Needed for Vitest config
 export default defineConfig({
   plugins: [
+    solid({ ssr: true }),
     {
       name: 'alias-tilde-fallback',
       async resolveId(source) {
