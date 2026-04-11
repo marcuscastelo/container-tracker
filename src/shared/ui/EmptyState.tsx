@@ -30,11 +30,11 @@ export function EmptyState(props: Props): JSX.Element {
       <p class="mb-6 max-w-sm text-md-ui text-text-muted">{props.description}</p>
       <Show when={props.actionLabel}>
         {(actionLabel) => (
-          <Show when={props.onAction}>
+          <Show when={props.onAction} keyed>
             {(onAction) => (
               <button
                 type="button"
-                onClick={onAction()}
+                onClick={() => onAction()}
                 class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm-ui font-medium text-primary-foreground transition-colors hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-ring/40"
               >
                 {actionLabel()}
