@@ -2,6 +2,7 @@ import type { JSX } from 'solid-js'
 import { createEffect, For, onCleanup } from 'solid-js'
 import type { GlobalSearchResultItemVM } from '~/capabilities/search/ui/screens/global-search/types/global-search.vm'
 import { GlobalSearchResultRow } from '~/capabilities/search/ui/screens/global-search/views/GlobalSearchResultRow'
+import { GLOBAL_SEARCH_RESULTS_LIST_ID } from '~/capabilities/search/ui/screens/global-search/views/globalSearch.a11y'
 import { createViewportPrefetchController } from '~/shared/ui/navigation/app-navigation'
 
 type VisibleSearchResultRect = {
@@ -27,6 +28,7 @@ type GlobalSearchResultsViewProps = {
   readonly onSelect: (item: GlobalSearchResultItemVM) => void
   readonly onHover: (index: number) => void
   readonly onVisiblePrefetch: (processIds: readonly string[]) => void
+  readonly listLabel: string
 }
 
 export function collectVisibleSearchResultProcessIds(
@@ -84,10 +86,13 @@ export function GlobalSearchResultsView(props: GlobalSearchResultsViewProps): JS
 
   return (
     <div
+      id={GLOBAL_SEARCH_RESULTS_LIST_ID}
       ref={(element) => {
         containerRef = element
       }}
       class="max-h-[32rem] overflow-y-auto"
+      role="listbox"
+      aria-label={props.listLabel}
     >
       <For each={props.items}>
         {(item, index) => (

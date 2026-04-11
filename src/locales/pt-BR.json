@@ -927,6 +927,15 @@
       "select": "Selecionar",
       "close": "Fechar"
     },
+    "a11y": {
+      "suggestionsList": "Sugestões de busca",
+      "resultsList": "Resultados da busca"
+    },
+    "suggestionKinds": {
+      "field": "campo",
+      "value": "valor",
+      "example": "exemplo"
+    },
     "badges": {
       "validationRequired": "Validação necessária"
     },

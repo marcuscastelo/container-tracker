@@ -13,6 +13,9 @@ type GlobalSearchComposerViewProps = {
   readonly onRemoveChip: (index: number) => void
   readonly onClear: () => void
   readonly setInputRef: (element: HTMLInputElement) => void
+  readonly expanded: boolean
+  readonly listboxId: string | undefined
+  readonly activeDescendantId: string | undefined
 }
 
 export function GlobalSearchComposerView(props: GlobalSearchComposerViewProps): JSX.Element {
@@ -46,6 +49,12 @@ export function GlobalSearchComposerView(props: GlobalSearchComposerViewProps): 
         class="min-w-[12rem] flex-1 bg-transparent text-sm-ui text-control-popover-foreground placeholder:text-control-placeholder outline-none"
         autocomplete="off"
         spellcheck={false}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={props.expanded}
+        aria-haspopup="listbox"
+        aria-controls={props.listboxId}
+        aria-activedescendant={props.activeDescendantId}
       />
 
       <button

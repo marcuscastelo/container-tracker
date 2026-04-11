@@ -13,6 +13,7 @@ import type {
   GlobalSearchSuggestion,
   GlobalSearchSuggestionsResponse,
   ParsedGlobalSearchFilter,
+  ParsedGlobalSearchQuery,
   SupportedGlobalSearchFilterKey,
 } from '~/capabilities/search/application/global-search.types'
 import {
@@ -140,6 +141,12 @@ function toEmptyState() {
       'terminal:Movecta',
     ],
   } as const
+}
+
+function hasEffectiveSearchCriteria(query: ParsedGlobalSearchQuery): boolean {
+  if (query.freeTextTerms.length > 0) return true
+
+  return query.filters.some((filter) => filter.supported && filter.key !== 'event_date')
 }
 
 function parseDayMonth(value: string): Readonly<{
@@ -829,6 +836,19 @@ async function loadDocuments(
   })
 }
 
+function requiresDocumentBackedSuggestions(fieldKey: SupportedGlobalSearchFilterKey): boolean {
+  if (
+    fieldKey === 'eta' ||
+    fieldKey === 'eta_before' ||
+    fieldKey === 'eta_after' ||
+    fieldKey === 'eta_month'
+  ) {
+    return false
+  }
+
+  return listEnumOptionsForField(fieldKey).length === 0
+}
+
 function buildFieldSuggestions(input: string): readonly GlobalSearchSuggestion[] {
   const normalizedInput = normalizeText(input) ?? ''
 
@@ -975,6 +995,14 @@ export function createSearchUseCase(deps: CreateSearchUseCaseDeps): SearchUseCas
       filters: command.filters ?? [],
     })
 
+    if (!hasEffectiveSearchCriteria(parsedQuery)) {
+      return {
+        query: parsedQuery,
+        results: [],
+        emptyState: toEmptyState(),
+      }
+    }
+
     const documents = await loadDocuments(deps)
     const rankedResults = documents
       .map((document) => {
@@ -1014,7 +1042,6 @@ export function createSearchSuggestionsUseCase(
       query: command.query,
       filters: command.filters ?? [],
     })
-    const documents = await loadDocuments(deps)
     const draft = command.query.trim()
 
     if (draft.length === 0) {
@@ -1034,6 +1061,10 @@ export function createSearchSuggestionsUseCase(
       const resolvedField = getSupportedFieldFromDraft(rawField)
 
       if (resolvedField !== null) {
+        const documents = requiresDocumentBackedSuggestions(resolvedField)
+          ? await loadDocuments(deps)
+          : []
+
         return {
           query: parsedQuery,
           suggestions: buildValueSuggestions({

@@ -1,6 +1,7 @@
 import type { JSX } from 'solid-js'
 import { For, Show } from 'solid-js'
 import type { GlobalSearchResultItemVM } from '~/capabilities/search/ui/screens/global-search/types/global-search.vm'
+import { getGlobalSearchResultOptionId } from '~/capabilities/search/ui/screens/global-search/views/globalSearch.a11y'
 
 type GlobalSearchResultRowProps = {
   readonly item: GlobalSearchResultItemVM
@@ -13,6 +14,7 @@ type GlobalSearchResultRowProps = {
 export function GlobalSearchResultRow(props: GlobalSearchResultRowProps): JSX.Element {
   return (
     <button
+      id={getGlobalSearchResultOptionId(props.index)}
       type="button"
       data-search-index={props.index}
       data-search-process-id={props.item.processId}
@@ -23,6 +25,9 @@ export function GlobalSearchResultRow(props: GlobalSearchResultRowProps): JSX.El
           ? 'bg-control-selected-bg text-control-selected-foreground'
           : 'bg-control-popover text-control-popover-foreground hover:bg-control-bg-hover'
       }`}
+      role="option"
+      tabindex={-1}
+      aria-selected={props.active}
     >
       <div class="flex flex-col gap-1">
         <div class="flex items-start justify-between gap-3">

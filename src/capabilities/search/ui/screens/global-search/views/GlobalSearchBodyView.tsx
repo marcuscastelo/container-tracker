@@ -21,6 +21,7 @@ type GlobalSearchBodyViewProps = {
   readonly onSelect: (item: GlobalSearchResultItemVM) => void
   readonly onHover: (index: number) => void
   readonly onVisiblePrefetch: (processIds: readonly string[]) => void
+  readonly listLabel: string
 }
 
 function GlobalSearchMessageState(props: {
@@ -88,6 +89,7 @@ export function GlobalSearchBodyView(props: GlobalSearchBodyViewProps): JSX.Elem
           onSelect={props.onSelect}
           onHover={props.onHover}
           onVisiblePrefetch={props.onVisiblePrefetch}
+          listLabel={props.listLabel}
         />
       </Show>
     </div>

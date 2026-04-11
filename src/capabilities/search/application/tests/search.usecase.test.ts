@@ -96,6 +96,34 @@ function createDeps(command?: {
 }
 
 describe('createSearchUseCase', () => {
+  it('returns empty state without loading documents when search input is empty', async () => {
+    const {
+      deps,
+      listProcessesWithOperationalSummary,
+      listGlobalSearchProjections,
+      listActiveAlertReadModel,
+    } = createDeps({
+      processes: [
+        createProcessRecord({
+          processId: 'process-idle',
+          reference: 'CA000-26',
+          containerNumbers: ['MSKU0000000'],
+        }),
+      ],
+    })
+    const search = createSearchUseCase(deps)
+
+    const response = await search({
+      query: '   ',
+      filters: [],
+    })
+
+    expect(response.results).toEqual([])
+    expect(listProcessesWithOperationalSummary).not.toHaveBeenCalled()
+    expect(listGlobalSearchProjections).not.toHaveBeenCalled()
+    expect(listActiveAlertReadModel).not.toHaveBeenCalled()
+  })
+
   it('matches free text and structured filters with AND semantics', async () => {
     const { deps } = createDeps({
       processes: [
@@ -306,5 +334,57 @@ describe('createSearchUseCase', () => {
         }),
       ]),
     )
+  })
+
+  it('skips document loading for empty draft, field suggestions, and enum value suggestions', async () => {
+    const {
+      deps,
+      listProcessesWithOperationalSummary,
+      listGlobalSearchProjections,
+      listActiveAlertReadModel,
+    } = createDeps()
+    const suggest = createSearchSuggestionsUseCase(deps)
+
+    await suggest({ query: '   ' })
+    await suggest({ query: 'sta' })
+    await suggest({ query: 'status:deli' })
+
+    expect(listProcessesWithOperationalSummary).not.toHaveBeenCalled()
+    expect(listGlobalSearchProjections).not.toHaveBeenCalled()
+    expect(listActiveAlertReadModel).not.toHaveBeenCalled()
+  })
+
+  it('loads documents only for document-backed value suggestions', async () => {
+    const {
+      deps,
+      listProcessesWithOperationalSummary,
+      listGlobalSearchProjections,
+      listActiveAlertReadModel,
+    } = createDeps({
+      processes: [
+        createProcessRecord({
+          processId: 'process-suggestions',
+          reference: 'CA060-26',
+          importerName: 'Flush Logistics',
+          containerNumbers: ['MSKU1234567'],
+        }),
+      ],
+    })
+    const suggest = createSearchSuggestionsUseCase(deps)
+
+    const response = await suggest({ query: 'importer:flu' })
+
+    expect(response.suggestions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'value',
+          fieldKey: 'importer',
+          value: 'Flush Logistics',
+        }),
+      ]),
+    )
+    expect(listProcessesWithOperationalSummary).toHaveBeenCalledTimes(1)
+    expect(listGlobalSearchProjections).toHaveBeenCalledTimes(1)
+    expect(listActiveAlertReadModel).toHaveBeenCalledTimes(1)
   })
 })

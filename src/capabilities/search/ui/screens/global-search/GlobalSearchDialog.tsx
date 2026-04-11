@@ -6,6 +6,10 @@ import { useGlobalSearchController } from '~/capabilities/search/ui/screens/glob
 import { GlobalSearchBodyView } from '~/capabilities/search/ui/screens/global-search/views/GlobalSearchBodyView'
 import { GlobalSearchComposerView } from '~/capabilities/search/ui/screens/global-search/views/GlobalSearchComposerView'
 import { GlobalSearchSuggestionsView } from '~/capabilities/search/ui/screens/global-search/views/GlobalSearchSuggestionsView'
+import {
+  resolveGlobalSearchActiveDescendantId,
+  resolveGlobalSearchActiveListId,
+} from '~/capabilities/search/ui/screens/global-search/views/globalSearch.a11y'
 import { useTranslation } from '~/shared/localization/i18n'
 
 function readNavigatorPlatform(): string | undefined {
@@ -36,6 +40,16 @@ export function GlobalSearchDialog(): JSX.Element {
   const translation = useTranslation()
   const controller = useGlobalSearchController()
   const [shortcutLabel, setShortcutLabel] = createSignal('Ctrl K')
+
+  const activeA11yState = () => ({
+    showSuggestions: controller.showSuggestions(),
+    showResults: controller.uiState() === 'ready' && controller.results().length > 0,
+    activeSuggestionIndex: controller.activeSuggestionIndex(),
+    activeResultIndex: controller.activeResultIndex(),
+  })
+
+  const activeListId = () => resolveGlobalSearchActiveListId(activeA11yState())
+  const activeDescendantId = () => resolveGlobalSearchActiveDescendantId(activeA11yState())
 
   onMount(() => {
     setShortcutLabel(detectShortcutLabel())
@@ -78,6 +92,9 @@ export function GlobalSearchDialog(): JSX.Element {
               onRemoveChip={controller.removeChip}
               onClear={controller.clearComposer}
               setInputRef={controller.setInputRef}
+              expanded={activeListId() !== undefined}
+              listboxId={activeListId()}
+              activeDescendantId={activeDescendantId()}
             />
 
             <Show when={controller.showSuggestions()}>
@@ -86,6 +103,7 @@ export function GlobalSearchDialog(): JSX.Element {
                 activeIndex={controller.activeSuggestionIndex()}
                 onSelect={controller.acceptSuggestion}
                 onHover={controller.setActiveSuggestionIndex}
+                listLabel={translation.t(translation.keys.search.a11y.suggestionsList)}
               />
             </Show>
 
@@ -117,6 +135,7 @@ export function GlobalSearchDialog(): JSX.Element {
                 }
               }}
               onVisiblePrefetch={controller.prefetchVisibleResults}
+              listLabel={translation.t(translation.keys.search.a11y.resultsList)}
             />
 
             <SearchOverlayFooter
