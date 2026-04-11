@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
 import { createComponent, renderToString } from 'solid-js/web'
+import { describe, expect, it, vi } from 'vitest'
 import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataView'
 import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
 import type { AlertIncidentsVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
@@ -47,6 +47,8 @@ vi.mock('~/modules/process/ui/screens/shipment/components/TrackingTimeTravelStat
 }))
 
 vi.mock('@solidjs/router', () => ({
+  // Ignored during testing, as the component under test doesn't rely on actual routing behavior for the scenarios being tested.
+  // eslint-disable-next-line solid/reactivity
   A: (props: { readonly children?: unknown }) => props.children ?? null,
   useLocation: () => ({
     pathname: '/',

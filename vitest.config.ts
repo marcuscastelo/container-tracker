@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { configDefaults, defineConfig } from 'vitest/config'
 import solid from 'vite-plugin-solid'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 const coverageScopePath = path.resolve(__dirname, 'docs/plans/coverage-scope.json')
 const coverageScope = JSON.parse(fs.readFileSync(coverageScopePath, 'utf8'))
