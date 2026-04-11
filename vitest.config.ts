@@ -9,7 +9,12 @@ const coverageScope = JSON.parse(fs.readFileSync(coverageScopePath, 'utf8'))
 // biome-ignore lint/style/noDefaultExport: Needed for Vitest config
 export default defineConfig({
   plugins: [
-    solid({ ssr: true }),
+    solid({
+      ssr: true,
+      solid: {
+        generate: 'ssr',
+      },
+    }),
     {
       name: 'alias-tilde-fallback',
       async resolveId(source) {

@@ -81,7 +81,7 @@ function ShipmentCurrentAlertsSection(props: ShipmentCurrentAlertsSectionProps):
 
 type ShipmentTimelineRegionProps = Pick<
   ShipmentDataViewProps,
-  'data' | 'activeAlerts' | 'selectedContainer' | 'trackingTimeTravel'
+  'data' | 'selectedContainer' | 'trackingTimeTravel'
 >
 
 type TrackingContainmentNoticeProps = {
@@ -153,7 +153,6 @@ function ShipmentTimelineRegion(props: ShipmentTimelineRegionProps): JSX.Element
               fallback={
                 <TimelinePanel
                   selectedContainer={props.selectedContainer}
-                  alerts={props.activeAlerts}
                   {...(props.data.carrier === undefined ? {} : { carrier: props.data.carrier })}
                 />
               }
@@ -298,7 +297,6 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
 
           <ShipmentTimelineRegion
             data={props.data}
-            activeAlerts={props.activeAlerts}
             selectedContainer={props.selectedContainer}
             trackingTimeTravel={props.trackingTimeTravel}
           />
