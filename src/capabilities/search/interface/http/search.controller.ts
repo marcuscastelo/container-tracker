@@ -1,11 +1,16 @@
+import type {
+  GlobalSearchResponse,
+  GlobalSearchSuggestionsResponse,
+} from '~/capabilities/search/application/global-search.types'
 import type { SearchFacade } from '~/capabilities/search/application/search.facade'
 import type {
   SearchCommand,
-  SearchResultItem,
+  SearchSuggestionsCommand,
 } from '~/capabilities/search/application/search.usecase'
 
 export type SearchController = {
-  search(command: SearchCommand): Promise<readonly SearchResultItem[]>
+  search(command: SearchCommand): Promise<GlobalSearchResponse>
+  suggest(command: SearchSuggestionsCommand): Promise<GlobalSearchSuggestionsResponse>
 }
 
 type CreateSearchControllerDeps = {
@@ -16,8 +21,11 @@ export function createSearchController(deps: CreateSearchControllerDeps): Search
   const { searchFacade } = deps
 
   return {
-    search(command: SearchCommand): Promise<readonly SearchResultItem[]> {
+    search(command: SearchCommand): Promise<GlobalSearchResponse> {
       return searchFacade.search(command)
+    },
+    suggest(command: SearchSuggestionsCommand): Promise<GlobalSearchSuggestionsResponse> {
+      return searchFacade.suggest(command)
     },
   }
 }
