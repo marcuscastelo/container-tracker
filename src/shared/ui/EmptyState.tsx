@@ -30,7 +30,7 @@ export function EmptyState(props: Props): JSX.Element {
       <p class="mb-6 max-w-sm text-md-ui text-text-muted">{props.description}</p>
       <Show when={props.actionLabel}>
         {(actionLabel) => (
-          <Show when={props.onAction}>
+          <Show when={props.onAction} keyed>
             {(onAction) => (
               <button
                 type="button"
