@@ -33,7 +33,7 @@ function buildDefaultAlertIncidents(): ShipmentDetailVM['alertIncidents'] {
         category: 'movement',
         type: 'TRANSSHIPMENT',
         severity: 'warning',
-        messageKey: 'alerts.transshipmentDetected',
+        messageKey: 'incidents.fact.transshipmentDetected',
         messageParams: {
           port: 'KRPUS',
           fromVessel: 'MSC IRIS',
@@ -126,7 +126,7 @@ describe('useShipmentScreenResource', () => {
           type: 'transshipment',
           severity: 'warning',
           containerNumber: 'MSCU1234567',
-          messageKey: 'alerts.transshipmentDetected',
+          messageKey: 'incidents.fact.transshipmentDetected',
           messageParams: {
             port: 'KRPUS',
             fromVessel: 'MSC IRIS',
@@ -191,7 +191,7 @@ describe('useShipmentScreenResource', () => {
             category: 'movement',
             type: 'TRANSSHIPMENT',
             severity: 'warning',
-            messageKey: 'alerts.transshipmentDetected',
+            messageKey: 'incidents.fact.transshipmentDetected',
             messageParams: {
               port: 'KRPUS',
               fromVessel: 'MSC IRIS',

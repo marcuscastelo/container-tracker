@@ -10,7 +10,6 @@ import {
   toProcessStatusCode,
 } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import { toProcessStatusMicrobadgeVM } from '~/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper'
-import { toAlertDisplayVMs } from '~/modules/process/ui/mappers/trackingAlert.ui-mapper'
 import {
   toTrackingStatusCode,
   trackingStatusToVariant,
@@ -21,7 +20,6 @@ import type {
   ProcessTrackingValidationVM,
   TrackingValidationIssueVM,
 } from '~/modules/process/ui/viewmodels/tracking-review.vm'
-import type { TrackingAlertProjectionSource } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
@@ -133,21 +131,6 @@ function toTimelineItem(item: TimelineResponseItem): TrackingTimelineItem {
         }),
     ...(seriesHistory === undefined ? {} : { seriesHistory }),
   }
-}
-
-function toAlertProjectionSources(
-  alerts: ProcessDetailResponse['alerts'] | undefined,
-): readonly TrackingAlertProjectionSource[] {
-  return (alerts ?? []).map((alert) => {
-    const { lifecycle_state, resolved_at, resolved_reason, ...rest } = alert
-
-    return {
-      ...rest,
-      ...(lifecycle_state === undefined ? {} : { lifecycle_state }),
-      ...(resolved_at === undefined ? {} : { resolved_at }),
-      ...(resolved_reason === undefined ? {} : { resolved_reason }),
-    }
-  })
 }
 
 function toEtaTone(
@@ -514,7 +497,7 @@ export function toShipmentDetailVM(
     processEtaSecondaryVm,
     trackingValidation: toProcessTrackingValidationVm(data.tracking_validation),
     containers,
-    alerts: toAlertDisplayVMs(toAlertProjectionSources(data.alerts), locale),
-    alertIncidents: toAlertIncidentsVm(data.alert_incidents),
+    alerts: [],
+    alertIncidents: toAlertIncidentsVm(data.operational_incidents),
   }
 }

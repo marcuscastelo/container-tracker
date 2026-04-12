@@ -37,6 +37,15 @@ type TransshipmentOccurrence = {
   readonly alertFingerprint: string
 }
 
+export type DerivedTransshipmentOccurrence = {
+  readonly port: string
+  readonly vesselFrom: string
+  readonly vesselTo: string
+  readonly detectedAt: string
+  readonly sourceObservationFingerprints: readonly string[]
+  readonly alertFingerprint: string
+}
+
 type MonitoringAutoResolution = {
   readonly alertId: string
   readonly reason: TrackingAlertResolvedReason
@@ -256,6 +265,20 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
   }
 }
 
+export function deriveTransshipmentOccurrences(
+  timeline: Timeline,
+  now: Instant = systemClock.now(),
+): readonly DerivedTransshipmentOccurrence[] {
+  return collapseTransshipmentOccurrences(findTransshipmentPairs(timeline)).map((occurrence) => ({
+    port: occurrence.port,
+    vesselFrom: occurrence.vesselFrom,
+    vesselTo: occurrence.vesselTo,
+    detectedAt: toDetectedAtIso(occurrence.loadObs.event_time, now),
+    sourceObservationFingerprints: [...occurrence.sourceObservationFingerprints],
+    alertFingerprint: occurrence.alertFingerprint,
+  }))
+}
+
 /**
  * Derive tracking alerts from timeline, status, and existing alerts.
  *
@@ -308,9 +331,7 @@ export function deriveAlertTransitions(
   // CRITICAL: Fact-based alerts should only trigger on ACTUAL observations
 
   // 1. Transshipment detection — one alert per confirmed DISCHARGE → LOAD vessel-change pair
-  const transshipmentOccurrences = collapseTransshipmentOccurrences(
-    findTransshipmentPairs(timeline),
-  )
+  const transshipmentOccurrences = collapseTransshipmentOccurrences(findTransshipmentPairs(timeline))
   for (const occurrence of transshipmentOccurrences) {
     // detected_at = time the LOAD onto the new vessel was confirmed
     const detectedAt = toDetectedAtIso(occurrence.loadObs.event_time, now)

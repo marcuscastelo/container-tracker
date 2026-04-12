@@ -1,13 +1,12 @@
 import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
 import { toContainerWithTrackingResponse } from '~/modules/process/interface/http/process.http.mappers'
+import type { OperationalIncidentsReadModel } from '~/modules/tracking/application/projection/tracking.operational-incidents.readmodel'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
-import type { ShipmentAlertIncidentsReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import {
   type ContainerSyncRecord,
   createContainerSyncMetadataFallback,
 } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
-import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { TrackingContainmentReadModel } from '~/modules/tracking/features/containment/application/projection/tracking.containment.readmodel'
 import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { Instant } from '~/shared/time/instant'
@@ -20,8 +19,7 @@ type ProcessTrackingDeps = Pick<
 
 type ProcessTrackingResult = {
   readonly containersWithTracking: readonly ReturnType<typeof toContainerWithTrackingResponse>[]
-  readonly activeAlerts: readonly TrackingAlert[]
-  readonly activeAlertIncidents: ShipmentAlertIncidentsReadModel
+  readonly activeOperationalIncidents: OperationalIncidentsReadModel
   readonly operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>
   readonly trackingValidationByContainerId: ReadonlyMap<string, TrackingValidationContainerSummary>
   readonly trackingContainmentByContainerId: ReadonlyMap<string, TrackingContainmentReadModel>
@@ -155,8 +153,7 @@ export async function resolveProcessDetailTracking(
 
   return {
     containersWithTracking,
-    activeAlerts: trackingProjection.activeAlerts,
-    activeAlertIncidents: trackingProjection.activeAlertIncidents,
+    activeOperationalIncidents: trackingProjection.activeOperationalIncidents,
     operationalByContainerId,
     trackingValidationByContainerId,
     trackingContainmentByContainerId,

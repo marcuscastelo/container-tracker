@@ -1,8 +1,15 @@
 import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
+import {
+  derivePlannedTransshipmentAlertTransitions,
+  toTransshipmentSemanticKey,
+} from '~/modules/tracking/application/projection/tracking.planned-transshipment.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import { deriveAlertTransitions } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
+import {
+  deriveAlertTransitions,
+  deriveTransshipmentOccurrences,
+} from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { diffObservations } from '~/modules/tracking/features/observation/application/orchestration/diffObservations'
@@ -318,14 +325,74 @@ export async function runTrackingReplay(
         false,
         snapshotNow,
       )
-      const createdAlerts = alertTransitions.newAlerts.map((alert, alertIndex) => ({
+      const projectionObservations = suppressSupersededObservationsForProjection(observations)
+      const timelineItems = deriveTimelineWithSeriesReadModel(
+        toTrackingObservationProjections(projectionObservations),
+        snapshotNow,
+        { includeSeriesHistory: false },
+      )
+      const activeFactTransshipmentSemanticKeys = new Set(
+        deriveTransshipmentOccurrences(currentTimeline, snapshotNow).map((occurrence) =>
+          toTransshipmentSemanticKey({
+            port: occurrence.port,
+            fromVessel: occurrence.vesselFrom,
+            toVessel: occurrence.vesselTo,
+          }),
+        ),
+      )
+      const plannedTransitions = derivePlannedTransshipmentAlertTransitions({
+        timelineItems,
+        observations: projectionObservations,
+        existingAlerts: alerts,
+        activeFactTransshipmentSemanticKeys,
+        now: snapshotNow,
+      })
+      const existingPlannedFingerprints = new Set(
+        alerts
+          .filter((alert) => alert.type === 'PLANNED_TRANSSHIPMENT')
+          .map((alert) => alert.alert_fingerprint)
+          .filter((fingerprint): fingerprint is string => fingerprint !== null),
+      )
+      const plannedAlerts = plannedTransitions.occurrences
+        .filter((occurrence) => !existingPlannedFingerprints.has(occurrence.alertFingerprint))
+        .map((occurrence) => ({
+          lifecycle_state: 'ACTIVE' as const,
+          container_id: currentTimeline.container_id,
+          category: 'monitoring' as const,
+          type: 'PLANNED_TRANSSHIPMENT' as const,
+          severity: 'warning' as const,
+          message_key: 'alerts.plannedTransshipmentDetected' as const,
+          message_params: {
+            port: occurrence.port,
+            fromVessel: occurrence.fromVessel,
+            toVessel: occurrence.toVessel,
+          },
+          detected_at: occurrence.detectedAt,
+          triggered_at: snapshotNow.toIsoString(),
+          source_observation_fingerprints: [...occurrence.sourceObservationFingerprints],
+          alert_fingerprint: occurrence.alertFingerprint,
+          retroactive: false,
+          provider: null,
+          acked_at: null,
+          acked_by: null,
+          acked_source: null,
+          resolved_at: null,
+          resolved_reason: null,
+        }))
+      const createdAlerts = [...alertTransitions.newAlerts, ...plannedAlerts].map((alert, alertIndex) => ({
         ...alert,
         id: toReplayAlertId(++replayAlertSequence, alertIndex, alert.alert_fingerprint),
       }))
       alerts = applyReplayAlertTransitions(
         alerts,
         createdAlerts,
-        alertTransitions.monitoringAutoResolutions,
+        [
+          ...alertTransitions.monitoringAutoResolutions,
+          ...plannedTransitions.alertIdsToAutoResolve.map((alertId) => ({
+            alertId,
+            reason: 'condition_cleared' as const,
+          })),
+        ],
         snapshotNow.toIsoString(),
       )
 

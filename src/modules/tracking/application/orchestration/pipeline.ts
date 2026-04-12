@@ -9,10 +9,16 @@ import {
   noopTrackingValidationLifecycleRepository,
   type TrackingValidationLifecycleRepository,
 } from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
+import {
+  derivePlannedTransshipmentAlertTransitions,
+  toTransshipmentSemanticKey,
+} from '~/modules/tracking/application/projection/tracking.planned-transshipment.readmodel'
+import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import {
   deriveAlertTransitions,
+  deriveTransshipmentOccurrences,
   deriveTransshipment,
 } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type {
@@ -22,12 +28,14 @@ import type {
 import { detectContainerReuseAfterCompletion } from '~/modules/tracking/features/containment/domain/services/detectContainerReuseAfterCompletion'
 import { diffObservations } from '~/modules/tracking/features/observation/application/orchestration/diffObservations'
 import { normalizeSnapshot } from '~/modules/tracking/features/observation/application/orchestration/normalizeSnapshot'
+import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type {
   NewObservation,
   Observation,
 } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
+import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 import {
@@ -165,6 +173,7 @@ async function derivePipelineState(command: {
   readonly isBackfill: boolean
   readonly allowAlertMutations: boolean
 }) {
+  const derivationNow = systemClock.now()
   const timeline = deriveTimeline(
     command.containerId,
     command.containerNumber,
@@ -183,14 +192,77 @@ async function derivePipelineState(command: {
       status,
       existingAlerts,
       command.isBackfill,
+      derivationNow,
     )
-    const newAlertDescriptors: readonly NewTrackingAlert[] = alertTransitions.newAlerts
+    const projectionObservations = suppressSupersededObservationsForProjection(command.allObservations)
+    const timelineItems = deriveTimelineWithSeriesReadModel(
+      toTrackingObservationProjections(projectionObservations),
+      derivationNow,
+      { includeSeriesHistory: false },
+    )
+    const activeFactTransshipmentSemanticKeys = new Set(
+      deriveTransshipmentOccurrences(timeline, derivationNow).map((occurrence) =>
+        toTransshipmentSemanticKey({
+          port: occurrence.port,
+          fromVessel: occurrence.vesselFrom,
+          toVessel: occurrence.vesselTo,
+        }),
+      ),
+    )
+    const plannedTransitions = derivePlannedTransshipmentAlertTransitions({
+      timelineItems,
+      observations: projectionObservations,
+      existingAlerts,
+      activeFactTransshipmentSemanticKeys,
+      now: derivationNow,
+    })
+    const existingPlannedFingerprints = new Set(
+      existingAlerts
+        .filter((alert) => alert.type === 'PLANNED_TRANSSHIPMENT')
+        .map((alert) => alert.alert_fingerprint)
+        .filter((fingerprint): fingerprint is string => fingerprint !== null),
+    )
+    const newPlannedAlertDescriptors: readonly NewTrackingAlert[] = plannedTransitions.occurrences
+      .filter((occurrence) => !existingPlannedFingerprints.has(occurrence.alertFingerprint))
+      .map((occurrence) => ({
+        lifecycle_state: 'ACTIVE',
+        container_id: timeline.container_id,
+        category: 'monitoring',
+        type: 'PLANNED_TRANSSHIPMENT',
+        severity: 'warning',
+        message_key: 'alerts.plannedTransshipmentDetected',
+        message_params: {
+          port: occurrence.port,
+          fromVessel: occurrence.fromVessel,
+          toVessel: occurrence.toVessel,
+        },
+        detected_at: occurrence.detectedAt,
+        triggered_at: derivationNow.toIsoString(),
+        source_observation_fingerprints: [...occurrence.sourceObservationFingerprints],
+        alert_fingerprint: occurrence.alertFingerprint,
+        retroactive: false,
+        provider: null,
+        acked_at: null,
+        acked_by: null,
+        acked_source: null,
+        resolved_at: null,
+        resolved_reason: null,
+      }))
+    const newAlertDescriptors: readonly NewTrackingAlert[] = [
+      ...alertTransitions.newAlerts,
+      ...newPlannedAlertDescriptors,
+    ]
+    const allAutoResolutions = [
+      ...alertTransitions.monitoringAutoResolutions,
+      ...plannedTransitions.alertIdsToAutoResolve.map((alertId) => ({
+        alertId,
+        reason: 'condition_cleared' as const,
+      })),
+    ]
 
-    if (alertTransitions.monitoringAutoResolutions.length > 0) {
+    if (allAutoResolutions.length > 0) {
       const reasonByAlertId = new Map(
-        alertTransitions.monitoringAutoResolutions.map(
-          (entry) => [entry.alertId, entry.reason] as const,
-        ),
+        allAutoResolutions.map((entry) => [entry.alertId, entry.reason] as const),
       )
       const idsByReason = new Map<string, string[]>()
       for (const [alertId, reason] of reasonByAlertId) {
@@ -202,7 +274,7 @@ async function derivePipelineState(command: {
         }
       }
 
-      const resolvedAt = systemClock.now().toIsoString()
+      const resolvedAt = derivationNow.toIsoString()
       for (const [reason, alertIds] of idsByReason) {
         if (reason === 'condition_cleared' || reason === 'terminal_state') {
           await command.deps.trackingAlertRepository.autoResolveMany({

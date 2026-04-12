@@ -18,7 +18,7 @@ function makeTransshipmentIncident(command: {
     category: 'movement',
     type: 'TRANSSHIPMENT',
     severity: 'warning',
-    messageKey: 'alerts.transshipmentDetected',
+    messageKey: 'incidents.fact.transshipmentDetected',
     messageParams: {
       port: command.port,
       fromVessel: command.fromVessel,

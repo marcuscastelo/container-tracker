@@ -28,6 +28,7 @@ export type TrackingAlertProjection = {
   readonly severity: 'info' | 'warning' | 'danger'
   readonly messageKey:
     | 'alerts.transshipmentDetected'
+    | 'alerts.plannedTransshipmentDetected'
     | 'alerts.customsHoldDetected'
     | 'alerts.etaMissing'
     | 'alerts.etaPassed'
@@ -46,6 +47,7 @@ export type TrackingAlertProjection = {
 function alertTypeToProjection(type: string): TrackingAlertProjection['type'] {
   switch (type) {
     case 'TRANSSHIPMENT':
+    case 'PLANNED_TRANSSHIPMENT':
       return 'transshipment'
     case 'CUSTOMS_HOLD':
       return 'customs'

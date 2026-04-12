@@ -8,10 +8,10 @@ import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.
 import type { ProcessContainerNavigationState } from '~/shared/ui/navigation/app-navigation'
 
 function makeNavigationState(
-  requestKey: string = 'navbar-alert-1',
+  requestKey: string = 'navbar-incident-1',
 ): ProcessContainerNavigationState {
   return {
-    source: 'navbar-alerts',
+    source: 'navbar-incidents',
     focusSection: 'current-status',
     revealLiveStatus: true,
     requestKey,
@@ -139,8 +139,8 @@ describe('resolveShipmentAlertNavigationAction', () => {
   it('returns null when the navigation request was already handled', () => {
     expect(
       resolveShipmentAlertNavigationAction({
-        navigationState: makeNavigationState('navbar-alert-2'),
-        handledRequestKey: 'navbar-alert-2',
+        navigationState: makeNavigationState('navbar-incident-2'),
+        handledRequestKey: 'navbar-incident-2',
         shipment: undefined,
         preferredContainerNumber: null,
         selectedContainer: null,

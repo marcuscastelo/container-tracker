@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
-import { ContainerAlertGroup } from '~/shared/ui/navbar-alerts/ContainerAlertGroup'
+import { AlertItem } from '~/shared/ui/navbar-alerts/AlertItem'
 import type { NavbarProcessAlertGroupVM } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
 import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
@@ -37,7 +37,12 @@ export function ProcessAlertGroup(props: ProcessAlertGroupProps): JSX.Element {
         </div>
         <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           <span class="rounded border border-tone-danger-border bg-tone-danger-bg px-1.5 py-0.5 text-micro font-semibold text-tone-danger-fg">
-            {t(keys.header.alertsPanel.alertsCount, { count: props.process.activeAlertsCount })}
+            {t(keys.header.alertsPanel.alertsCount, { count: props.process.activeIncidentCount })}
+          </span>
+          <span class="rounded border border-border bg-surface-muted px-1.5 py-0.5 text-micro font-semibold text-text-muted">
+            {t(keys.header.alertsPanel.affectedContainers, {
+              count: props.process.affectedContainerCount,
+            })}
           </span>
           <button
             type="button"
@@ -49,11 +54,12 @@ export function ProcessAlertGroup(props: ProcessAlertGroupProps): JSX.Element {
         </div>
       </div>
 
-      <For each={props.process.containers}>
-        {(container) => (
-          <ContainerAlertGroup
+      <For each={props.process.incidents}>
+        {(incident) => (
+          <AlertItem
             processId={props.process.processId}
-            container={container}
+            incident={incident}
+            onOpenProcess={props.onOpenProcess}
             onOpenContainer={props.onOpenContainer}
           />
         )}

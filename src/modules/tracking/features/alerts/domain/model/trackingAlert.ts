@@ -17,6 +17,8 @@ export type TrackingAlertResolvedReason = 'condition_cleared' | 'terminal_state'
 export type TrackingAlertType =
   /** Transshipment detected */
   | 'TRANSSHIPMENT'
+  /** Planned transshipment detected from coherent expected continuation */
+  | 'PLANNED_TRANSSHIPMENT'
   /** Customs hold */
   | 'CUSTOMS_HOLD'
   /** Final port changed */
@@ -35,6 +37,14 @@ type EmptyAlertMessageParams = Readonly<Record<never, never>>
 export type TrackingAlertMessageContract =
   | {
       readonly message_key: 'alerts.transshipmentDetected'
+      readonly message_params: {
+        readonly port: string
+        readonly fromVessel: string
+        readonly toVessel: string
+      }
+    }
+  | {
+      readonly message_key: 'alerts.plannedTransshipmentDetected'
       readonly message_params: {
         readonly port: string
         readonly fromVessel: string

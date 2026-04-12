@@ -135,11 +135,11 @@ function toDominantSeverity(process: ProcessSummaryVM): DashboardProcessSeverity
 }
 
 function toAlertBadgeSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
-  const highestSeverity = process.highestAlertSeverity
+  const highestSeverity = process.dominantIncident?.severity ?? null
   if (highestSeverity === 'danger') return 'danger'
   if (highestSeverity === 'warning') return 'warning'
   if (highestSeverity === 'info') return 'info'
-  if (process.alertsCount > 0) return 'info'
+  if (process.activeIncidentCount > 0) return 'info'
   return 'none'
 }
 
@@ -148,9 +148,12 @@ function toDominantAlertLabel(
   t: (key: string, opts?: Record<string, unknown>) => string,
   keys: ReturnType<typeof useTranslation>['keys'],
 ): string {
-  if (process.alertsCount === 0) return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
-  if (process.hasTransshipment) return t(keys.dashboard.table.dominantAlertLabel.transshipment)
-  return t(keys.dashboard.table.dominantAlertLabel.alertsPresent, { count: process.alertsCount })
+  const dominantIncident = process.dominantIncident
+  if (dominantIncident === null) {
+    return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
+  }
+
+  return t(dominantIncident.factMessageKey, dominantIncident.factMessageParams)
 }
 
 function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
@@ -471,7 +474,7 @@ function AlertsSummaryBadge(props: {
   readonly dominantAlertLabel: string
   readonly severityLabel: string
   readonly alertTooltip: string | undefined
-  readonly alertsCount: number
+  readonly incidentCount: number
 }): JSX.Element {
   return (
     <Show
@@ -493,7 +496,7 @@ function AlertsSummaryBadge(props: {
         title={props.alertTooltip}
       >
         <span aria-hidden="true">{toUnifiedAlertIcon(props.dominantSeverity)}</span>
-        {props.alertsCount}
+        {props.incidentCount}
         <span class="sr-only">{`${props.severityLabel}: ${props.dominantAlertLabel}`}</span>
       </span>
     </Show>
@@ -578,7 +581,7 @@ function AlertsCell(ctx: CellContext): JSX.Element {
 
   const alertAge = () =>
     formatDashboardAlertAge({
-      triggeredAtIso: ctx.process.dominantAlertCreatedAt,
+      triggeredAtIso: ctx.process.dominantIncident?.triggeredAt ?? null,
       t: ctx.t,
       keys: ctx.keys,
     })
@@ -588,10 +591,11 @@ function AlertsCell(ctx: CellContext): JSX.Element {
     const parts: string[] = [dominantAlertLabel()]
     const age = alertAge()
     if (age) parts.push(`· ${age.label}`)
-    const extra = ctx.process.alertsCount - 1
-    if (extra > 0) {
-      parts.push(ctx.t(ctx.keys.dashboard.table.alertTooltip.additionalAlerts, { count: extra }))
-    }
+    parts.push(
+      ctx.t(ctx.keys.dashboard.table.alertTooltip.additionalAlerts, {
+        count: ctx.process.affectedContainerCount,
+      }),
+    )
     return parts.join('\n')
   }
 
@@ -608,7 +612,7 @@ function AlertsCell(ctx: CellContext): JSX.Element {
             dominantAlertLabel={dominantAlertLabel()}
             severityLabel={severityLabel()}
             alertTooltip={alertTooltip()}
-            alertsCount={ctx.process.alertsCount}
+            incidentCount={ctx.process.activeIncidentCount}
           />
           <TrackingValidationChip
             visible={hasTrackingValidation()}
@@ -855,13 +859,15 @@ function DashboardTableHeader(props: {
 function DashboardProcessRows(props: TableRowsProps): JSX.Element {
   const gridStyle = createMemo(() => buildGridTemplate(props.columnOrder))
 
-  /** Default priority ordering: severity desc → alert count desc → preserve API order. */
+  /** Default priority ordering: severity desc → incident count desc → affected containers desc. */
   const prioritySorted = (): readonly ProcessSummaryVM[] => {
     if (props.sortSelection !== null) return props.processes
     return [...props.processes].sort((a, b) => {
       const sevDiff = SEVERITY_ORDER[toDominantSeverity(a)] - SEVERITY_ORDER[toDominantSeverity(b)]
       if (sevDiff !== 0) return sevDiff
-      return b.alertsCount - a.alertsCount
+      const incidentDiff = b.activeIncidentCount - a.activeIncidentCount
+      if (incidentDiff !== 0) return incidentDiff
+      return b.affectedContainerCount - a.affectedContainerCount
     })
   }
 

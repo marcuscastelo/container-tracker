@@ -1,8 +1,8 @@
 import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import {
-  buildShipmentAlertIncidentsReadModel,
-  type ShipmentAlertIncidentsReadModel,
-} from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
+  buildOperationalIncidentsReadModel,
+  type OperationalIncidentsReadModel,
+} from '~/modules/tracking/application/projection/tracking.operational-incidents.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import {
   computeFingerprint,
@@ -197,15 +197,15 @@ export async function findObservationInspectorProjection(
   return enrichObservationCarrierLabel(observation, snapshots)
 }
 
-export async function findContainersRecognizedAlertIncidentsProjection(
+export async function findContainersRecognizedOperationalIncidentsProjection(
   deps: TrackingUseCasesDeps,
   command: {
     readonly containers: readonly ContainerTarget[]
   },
-): Promise<ShipmentAlertIncidentsReadModel> {
+): Promise<OperationalIncidentsReadModel> {
   const allAlerts = await loadAllAlertsByContainerId(deps, command.containers)
 
-  return buildShipmentAlertIncidentsReadModel({
+  return buildOperationalIncidentsReadModel({
     containers: command.containers.map((container) => ({
       containerId: container.containerId,
       containerNumber: container.containerNumber,
@@ -213,3 +213,6 @@ export async function findContainersRecognizedAlertIncidentsProjection(
     })),
   })
 }
+
+export const findContainersRecognizedAlertIncidentsProjection =
+  findContainersRecognizedOperationalIncidentsProjection

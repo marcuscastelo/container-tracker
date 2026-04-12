@@ -10,35 +10,34 @@ function buildProcessAlertGroup(): NavbarProcessAlertGroupVM {
     processReference: 'CA048-26',
     carrier: 'MSC',
     routeSummary: 'Shanghai -> Santos',
-    activeAlertsCount: 1,
+    activeIncidentCount: 1,
+    affectedContainerCount: 1,
     dominantSeverity: 'warning',
-    latestAlertAt: '2026-04-10T10:00:00.000Z',
-    containers: [
+    latestIncidentAt: '2026-04-10T10:00:00.000Z',
+    incidents: [
       {
-        containerId: 'container-1',
-        containerNumber: 'MSCU1234567',
-        status: 'IN_TRANSIT',
-        eta: {
-          kind: 'date',
-          value: '2026-04-20',
-          timezone: 'UTC',
+        incidentKey: 'TRANSSHIPMENT:1:KRPUS:MSC IRIS:MSC BIANCA SILVIA',
+        type: 'TRANSSHIPMENT',
+        severity: 'warning',
+        category: 'movement',
+        factMessageKey: 'incidents.fact.transshipmentDetected',
+        factMessageParams: {
+          port: 'KRPUS',
+          fromVessel: 'MSC IRIS',
+          toVessel: 'MSC BIANCA SILVIA',
         },
-        activeAlertsCount: 1,
-        dominantSeverity: 'warning',
-        latestAlertAt: '2026-04-10T10:00:00.000Z',
-        alerts: [
+        action: {
+          actionKey: 'incidents.action.updateRedestination',
+          actionParams: {},
+          actionKind: 'UPDATE_REDESTINATION',
+        },
+        affectedContainerCount: 1,
+        triggeredAt: '2026-04-10T10:00:00.000Z',
+        containers: [
           {
-            alertId: 'alert-1',
-            severity: 'warning',
-            category: 'fact',
-            messageKey: 'alerts.transshipmentDetected',
-            messageParams: {
-              port: 'KRPUS',
-              fromVessel: 'MSC IRIS',
-              toVessel: 'MSC BIANCA SILVIA',
-            },
-            occurredAt: '2026-04-10T10:00:00.000Z',
-            retroactive: true,
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            lifecycleState: 'ACTIVE',
           },
         ],
       },
@@ -50,7 +49,7 @@ function renderPanel(overrides: Partial<Parameters<typeof NavbarAlertsPanel>[0]>
   return renderToString(() =>
     createComponent(NavbarAlertsPanel, {
       panelId: 'alerts-panel',
-      totalAlerts: 0,
+      totalActiveIncidents: 0,
       processes: [],
       loading: false,
       error: null,
@@ -75,14 +74,14 @@ describe('NavbarAlertsPanel', () => {
     const emptyHtml = renderPanel({})
 
     expect(loadingHtml).toContain('animate-pulse')
-    expect(errorHtml).toContain('Falha ao carregar alertas')
+    expect(errorHtml).toContain('Falha ao carregar incidentes')
     expect(errorHtml).toContain('Tentar novamente')
-    expect(emptyHtml).toContain('Nenhum alerta ativo')
+    expect(emptyHtml).toContain('Nenhum incidente ativo')
   })
 
-  it('renders process, container and retroactive alert information without deriving alert meaning', () => {
+  it('renders process and incident information without deriving semantics in the UI', () => {
     const html = renderPanel({
-      totalAlerts: 1,
+      totalActiveIncidents: 1,
       processes: [buildProcessAlertGroup()],
     })
 
@@ -90,7 +89,7 @@ describe('NavbarAlertsPanel', () => {
     expect(html).toContain('MSC')
     expect(html).toContain('Shanghai -> Santos')
     expect(html).toContain('MSCU1234567')
-    expect(html).toContain('Transbordo detectado em KRPUS')
-    expect(html).toContain('Retroativo')
+    expect(html).toContain('Transbordo detectado')
+    expect(html).toContain('Ação sugerida')
   })
 })

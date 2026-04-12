@@ -11,6 +11,7 @@ import {
   toOperationalStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.operational-incidents.readmodel'
 import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
 import {
   aggregateTrackingValidationProjection,
@@ -39,11 +40,6 @@ type ContainerTrackingSummary = {
     readonly etaApplicable?: boolean
     readonly lifecycleBucket?: 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
   }
-  readonly alerts: readonly {
-    readonly severity: string
-    readonly type: string
-    readonly triggered_at: string
-  }[]
   readonly tracking_validation: TrackingValidationContainerSummary
   readonly has_observations: boolean
   readonly last_event_at: TemporalValue | null
@@ -208,12 +204,12 @@ function toContainerTrackingOperational(command: {
   }
 }
 
-function shouldPreferAlertByTriggeredAt(
-  candidate: { readonly triggered_at: string },
-  current: { readonly triggered_at: string },
+function shouldPreferIncidentByTriggeredAt(
+  candidate: { readonly triggeredAt: string },
+  current: { readonly triggeredAt: string },
 ): boolean {
-  const candidateTimestamp = parseInstantFromIso(candidate.triggered_at)?.toEpochMs()
-  const currentTimestamp = parseInstantFromIso(current.triggered_at)?.toEpochMs()
+  const candidateTimestamp = parseInstantFromIso(candidate.triggeredAt)?.toEpochMs()
+  const currentTimestamp = parseInstantFromIso(current.triggeredAt)?.toEpochMs()
 
   if (candidateTimestamp !== undefined && currentTimestamp !== undefined) {
     if (candidateTimestamp !== currentTimestamp) {
@@ -225,7 +221,7 @@ function shouldPreferAlertByTriggeredAt(
     return false
   }
 
-  return candidate.triggered_at > current.triggered_at
+  return candidate.triggeredAt > current.triggeredAt
 }
 
 function toLifecycleBucketFromStatus(
@@ -383,6 +379,7 @@ export function aggregateOperationalSummary(
   carrier: string | null,
   containerCount: number,
   summaries: readonly ContainerTrackingSummary[],
+  activeOperationalIncidents: readonly OperationalIncidentReadModel[],
   now?: TemporalValueDto,
 ): ProcessOperationalSummary {
   // --- Process Status ---
@@ -449,51 +446,32 @@ export function aggregateOperationalSummary(
   const fullLogisticsComplete =
     statuses.length > 0 && statuses.every((status) => status === 'EMPTY_RETURNED')
 
-  // --- Alerts ---
-  const allActiveAlerts: Array<{
-    readonly severity: string
-    readonly type: string
-    readonly triggered_at: string
-  }> = []
-  for (const s of summaries) {
-    for (const a of s.alerts) {
-      allActiveAlerts.push(a)
-    }
-  }
-
-  const alertsCount = allActiveAlerts.length
-
+  // --- Operational incidents ---
   const severityOrder: Record<'info' | 'warning' | 'danger', number> = {
     info: 1,
     warning: 2,
     danger: 3,
   }
-  let highestAlertSeverity: 'info' | 'warning' | 'danger' | null = null
+  let highestIncidentSeverity: 'info' | 'warning' | 'danger' | null = null
   let highestSeverityIdx = 0
-  let dominantAlertCreatedAt: string | null = null
-  let dominantAlert: (typeof allActiveAlerts)[number] | null = null
-  for (const a of allActiveAlerts) {
-    const severity = toOperationalAlertSeverity(a.severity)
+  let dominantIncident: OperationalIncidentReadModel | null = null
+  for (const incident of activeOperationalIncidents) {
+    const severity = toOperationalAlertSeverity(incident.severity)
     if (!severity) continue
     const idx = severityOrder[severity]
     if (idx > highestSeverityIdx) {
       highestSeverityIdx = idx
-      highestAlertSeverity = severity
-      dominantAlert = a
-      dominantAlertCreatedAt = a.triggered_at
+      highestIncidentSeverity = severity
+      dominantIncident = incident
       continue
     }
 
-    if (idx === highestSeverityIdx && dominantAlert !== null) {
-      if (shouldPreferAlertByTriggeredAt(a, dominantAlert)) {
-        dominantAlert = a
-        dominantAlertCreatedAt = a.triggered_at
+    if (idx === highestSeverityIdx && dominantIncident !== null) {
+      if (shouldPreferIncidentByTriggeredAt(incident, dominantIncident)) {
+        dominantIncident = incident
       }
     }
   }
-
-  // --- Transshipment ---
-  const hasTransshipment = allActiveAlerts.some((a) => a.type === 'TRANSSHIPMENT')
   const trackingValidation = aggregateTrackingValidationProjection(
     summaries.map((summary) => summary.tracking_validation),
   )
@@ -505,7 +483,7 @@ export function aggregateOperationalSummary(
   )
   const validationAttentionSeverity = toTrackingValidationAttentionSeverity(trackingValidation)
   const attentionSeverity =
-    validationAttentionSeverity === null ? highestAlertSeverity : validationAttentionSeverity
+    validationAttentionSeverity === null ? highestIncidentSeverity : validationAttentionSeverity
 
   // --- Last Event ---
   let lastEventAt: TemporalValue | null = null
@@ -543,13 +521,34 @@ export function aggregateOperationalSummary(
       eligible_total: etaEligibleTotal,
       with_eta: etaWithValue,
     },
-    alerts_count: alertsCount,
-    highest_alert_severity: highestAlertSeverity,
+    operational_incidents: {
+      summary: {
+        active_incidents_count: activeOperationalIncidents.length,
+        affected_containers_count: new Set(
+          activeOperationalIncidents.flatMap((incident) =>
+            incident.scope.containers.map((container) => container.containerId),
+          ),
+        ).size,
+        recognized_incidents_count: 0,
+      },
+      dominant:
+        dominantIncident === null
+          ? null
+          : {
+              incidentKey: dominantIncident.incidentKey,
+              category: dominantIncident.category,
+              type: dominantIncident.type,
+              severity: dominantIncident.severity,
+              fact: dominantIncident.fact,
+              action: dominantIncident.action,
+              detectedAt: dominantIncident.detectedAt,
+              triggeredAt: dominantIncident.triggeredAt,
+              scope: dominantIncident.scope,
+            },
+    },
     attention_severity: attentionSeverity,
-    dominant_alert_created_at: dominantAlertCreatedAt,
     tracking_validation: trackingValidation,
     tracking_validation_top_issue: trackingValidationTopIssue,
-    has_transshipment: hasTransshipment,
     last_event_at: lastEventAt ? toTemporalValueDto(lastEventAt) : null,
   }
 }
@@ -593,6 +592,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
       allProcesses.map(async (process) => {
         const containers = containersByProcessId.get(process.id) ?? []
         const pwc: ProcessWithContainers = { process, containers }
+        const processContainerIds = new Set(containers.map((container) => String(container.id)))
 
         const summaries = containers.map((container) => {
           const hotRead = hotReadByContainerId.get(String(container.id))
@@ -615,16 +615,15 @@ export function createListProcessesWithOperationalSummaryUseCase(
               etaApplicable: hotRead.operational.etaApplicable,
               lifecycleBucket: hotRead.operational.lifecycleBucket,
             }),
-            alerts: hotRead.activeAlerts.map((alert) => ({
-              severity: alert.severity,
-              type: alert.type,
-              triggered_at: alert.triggered_at,
-            })),
             tracking_validation: hotRead.trackingValidation,
             has_observations: hotRead.hasObservations,
             last_event_at: hotRead.lastEventAt,
           } satisfies ContainerTrackingSummary
         })
+        const activeOperationalIncidents = hotReadProjection.activeOperationalIncidents.active.filter(
+          (incident) =>
+            incident.triggerRefs.some((triggerRef) => processContainerIds.has(triggerRef.containerId)),
+        )
 
         const summary = aggregateOperationalSummary(
           process.id,
@@ -632,6 +631,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
           process.carrier ?? null,
           containers.length,
           summaries,
+          activeOperationalIncidents,
           now,
         )
         const sync = deriveProcessSyncSummary({

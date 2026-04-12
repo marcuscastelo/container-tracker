@@ -4,7 +4,7 @@ import type { ContainerObservationVM } from '~/modules/process/ui/viewmodels/shi
 import { typedFetch } from '~/shared/api/typedFetch'
 import {
   ObservationResponseSchema,
-  ProcessRecognizedAlertIncidentsResponseSchema,
+  ProcessRecognizedOperationalIncidentsResponseSchema,
   ProcessSyncSnapshotResponseSchema,
   TrackingPredictionHistoryResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
@@ -73,35 +73,72 @@ function toPredictionHistorySource(
 
 function toAlertIncidentVm(
   incident: ReturnType<
-    typeof ProcessRecognizedAlertIncidentsResponseSchema.parse
+    typeof ProcessRecognizedOperationalIncidentsResponseSchema.parse
   >['recognized'][number],
 ): AlertIncidentVM {
+  const transshipmentOrder = (() => {
+    if (incident.type !== 'TRANSSHIPMENT' && incident.type !== 'PLANNED_TRANSSHIPMENT') {
+      return null
+    }
+
+    const [, maybeOrder] = incident.incident_key.split(':')
+    const order = Number(maybeOrder ?? '')
+    return Number.isInteger(order) && order > 0 ? order : null
+  })()
+  const port = typeof incident.fact.message_params.port === 'string'
+    ? incident.fact.message_params.port
+    : null
+  const fromVessel = typeof incident.fact.message_params.fromVessel === 'string'
+    ? incident.fact.message_params.fromVessel
+    : null
+  const toVessel = typeof incident.fact.message_params.toVessel === 'string'
+    ? incident.fact.message_params.toVessel
+    : null
+  const activeAlertIds = incident.members.flatMap((member) =>
+    member.records
+      .filter((record) => record.lifecycle_state === 'ACTIVE')
+      .map((record) => record.alert_id),
+  )
+  const ackedAlertIds = incident.members.flatMap((member) =>
+    member.records
+      .filter((record) => record.lifecycle_state === 'ACKED')
+      .map((record) => record.alert_id),
+  )
+
   return {
     incidentKey: incident.incident_key,
     bucket: incident.bucket,
     category: incident.category,
     type: incident.type,
     severity: incident.severity,
-    messageKey: incident.message_key,
-    messageParams: incident.message_params,
+    messageKey: incident.fact.message_key,
+    messageParams: incident.fact.message_params,
+    action:
+      incident.action === null
+        ? null
+        : {
+            actionKey: incident.action.action_key,
+            actionParams: incident.action.action_params,
+            actionKind: incident.action.action_kind,
+          },
     detectedAtIso: incident.detected_at,
     triggeredAtIso: incident.triggered_at,
-    transshipmentOrder: incident.transshipment_order,
-    port: incident.port,
-    fromVessel: incident.from_vessel,
-    toVessel: incident.to_vessel,
-    affectedContainerCount: incident.affected_container_count,
-    activeAlertIds: [...incident.active_alert_ids],
-    ackedAlertIds: [...incident.acked_alert_ids],
+    transshipmentOrder,
+    port,
+    fromVessel,
+    toVessel,
+    affectedContainerCount: incident.scope.affected_container_count,
+    activeAlertIds,
+    ackedAlertIds,
     members: incident.members.map((member) => ({
       containerId: member.container_id,
       containerNumber: member.container_number,
       lifecycleState: member.lifecycle_state,
       detectedAtIso: member.detected_at,
-      transshipmentOrder: member.transshipment_order,
-      port: member.port,
-      fromVessel: member.from_vessel,
-      toVessel: member.to_vessel,
+      transshipmentOrder,
+      port,
+      fromVessel,
+      toVessel,
       records: member.records.map((record) => ({
         alertId: record.alert_id,
         lifecycleState: record.lifecycle_state,
@@ -129,9 +166,9 @@ export async function fetchRecognizedAlertIncidents(
   processId: string,
 ): Promise<readonly AlertIncidentVM[]> {
   const response = await typedFetch(
-    `/api/processes/${encodeURIComponent(processId)}/alerts/recognized`,
+    `/api/processes/${encodeURIComponent(processId)}/operational-incidents/recognized`,
     undefined,
-    ProcessRecognizedAlertIncidentsResponseSchema,
+    ProcessRecognizedOperationalIncidentsResponseSchema,
   )
 
   return response.recognized.map(toAlertIncidentVm)
