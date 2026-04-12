@@ -214,7 +214,7 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
       'ETA_PASSED:container-warn-1',
       'ETA_MISSING:container-warn-2',
     ])
-    expect(result.processes[1]?.routeSummary).toBe('  Santos  →  Hamburg  ')
+    expect(result.processes[1]?.routeSummary).toBe('Santos → Hamburg')
   })
 
   it('returns empty summary when no active incidents exist', async () => {
@@ -243,5 +243,43 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
       totalActiveIncidents: 0,
       processes: [],
     })
+  })
+
+  it('normalizes blank route endpoints to placeholders for navbar display', async () => {
+    const useCase = createDashboardNavbarAlertsReadModelUseCase(
+      createDeps({
+        processes: [
+          {
+            pwc: {
+              process: {
+                id: 'process-blank-route',
+                reference: 'REF-BLANK',
+                origin: '   ',
+                destination: '',
+                carrier: 'MSC',
+              },
+              containers: [{ id: 'container-blank-1', containerNumber: 'MSCU1111111' }],
+            },
+            summary: {},
+          },
+        ],
+        incidents: [
+          makeIncident({
+            incidentKey: 'ETA_MISSING:container-blank-1',
+            containerId: 'container-blank-1',
+            containerNumber: 'MSCU1111111',
+            category: 'eta',
+            type: 'ETA_MISSING',
+            severity: 'warning',
+            triggeredAt: '2026-03-12T12:00:00.000Z',
+          }),
+        ],
+      }),
+    )
+
+    const result = await useCase()
+
+    expect(result.processes).toHaveLength(1)
+    expect(result.processes[0]?.routeSummary).toBe('— → —')
   })
 })

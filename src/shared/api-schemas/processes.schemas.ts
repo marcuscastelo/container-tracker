@@ -567,11 +567,110 @@ export const CreateProcessResponseSchema = z.object({
   warnings: z.array(z.string()).readonly(),
 })
 
-export const SyncAllProcessesResponseSchema = z.object({
-  ok: z.literal(true),
-  syncedProcesses: z.number().int().nonnegative(),
-  syncedContainers: z.number().int().nonnegative(),
+const SyncAllProcessesSkippedReasonCodeSchema = z.enum([
+  'UNSUPPORTED_PROVIDER',
+  'DUPLICATE_OPEN_REQUEST',
+  'MISSING_REQUIRED_DATA',
+  'INELIGIBLE_TARGET',
+])
+
+const SyncAllProcessesFailedReasonCodeSchema = z.enum([
+  'ENQUEUE_FAILED',
+  'INFRASTRUCTURE_ERROR',
+  'UNEXPECTED_ERROR',
+])
+
+const SyncAllProcessesTargetBaseSchema = z.object({
+  processId: z.string(),
+  processReference: z.string().nullable(),
+  containerNumber: z.string(),
+  provider: z.string(),
 })
+
+const SyncAllProcessesEnqueuedTargetResponseSchema = SyncAllProcessesTargetBaseSchema.extend({
+  syncRequestId: z.string(),
+})
+
+const SyncAllProcessesSkippedTargetResponseSchema = SyncAllProcessesTargetBaseSchema.extend({
+  reasonCode: SyncAllProcessesSkippedReasonCodeSchema,
+  reasonMessage: z.string(),
+})
+
+const SyncAllProcessesFailedTargetResponseSchema = SyncAllProcessesTargetBaseSchema.extend({
+  reasonCode: SyncAllProcessesFailedReasonCodeSchema,
+  reasonMessage: z.string(),
+})
+
+const SyncAllProcessesBatchSummaryResponseSchema = z
+  .object({
+    requestedProcesses: z.number().int().nonnegative(),
+    requestedContainers: z.number().int().nonnegative(),
+    enqueued: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.requestedContainers !== value.enqueued + value.skipped + value.failed) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['requestedContainers'],
+        message: 'requestedContainers must equal enqueued + skipped + failed',
+      })
+    }
+  })
+
+function validateSyncAllProcessesBatchResponse(
+  value: {
+    readonly summary: z.infer<typeof SyncAllProcessesBatchSummaryResponseSchema>
+    readonly enqueuedTargets: readonly unknown[]
+    readonly skippedTargets: readonly unknown[]
+    readonly failedTargets: readonly unknown[]
+  },
+  ctx: z.RefinementCtx,
+): void {
+  if (value.summary.enqueued !== value.enqueuedTargets.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['enqueuedTargets'],
+      message: 'enqueuedTargets length must match summary.enqueued',
+    })
+  }
+
+  if (value.summary.skipped !== value.skippedTargets.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['skippedTargets'],
+      message: 'skippedTargets length must match summary.skipped',
+    })
+  }
+
+  if (value.summary.failed !== value.failedTargets.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['failedTargets'],
+      message: 'failedTargets length must match summary.failed',
+    })
+  }
+}
+
+const SyncAllProcessesBatchResponseSchema = z
+  .object({
+    summary: SyncAllProcessesBatchSummaryResponseSchema,
+    enqueuedTargets: z.array(SyncAllProcessesEnqueuedTargetResponseSchema),
+    skippedTargets: z.array(SyncAllProcessesSkippedTargetResponseSchema),
+    failedTargets: z.array(SyncAllProcessesFailedTargetResponseSchema),
+  })
+  .superRefine(validateSyncAllProcessesBatchResponse)
+
+export const SyncAllProcessesSuccessResponseSchema = SyncAllProcessesBatchResponseSchema.extend({
+  ok: z.literal(true),
+})
+
+export const SyncAllProcessesBusinessErrorResponseSchema =
+  SyncAllProcessesBatchResponseSchema.extend({
+    ok: z.literal(false),
+    error: z.string(),
+  })
 
 export const SyncProcessResponseSchema = z.object({
   ok: z.literal(true),

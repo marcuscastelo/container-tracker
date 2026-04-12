@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { SyncMode } from '~/capabilities/sync/application/commands/enqueue-sync.command'
+import type { SyncDashboardEnqueueService } from '~/capabilities/sync/application/services/sync-dashboard-enqueue.service'
+import type { DashboardSyncEligibleTarget } from '~/capabilities/sync/application/services/sync-dashboard-targets.service'
 import {
   createSyncDashboardUseCase,
   type SyncDashboardDeps,
@@ -22,38 +25,64 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
     now += delayMs
   })
 
-  const resolveTargets = vi.fn(async () => [
-    {
-      processId: 'process-a',
-      containerNumber: 'MSCU1234567',
-      provider: 'msc' as const,
-    },
-    {
-      processId: 'process-b',
-      containerNumber: 'MRKU7654321',
-      provider: 'maersk' as const,
-    },
-  ])
-
-  const enqueue = vi.fn(async () => ({
-    requestedTargets: 2,
-    queuedTargets: 2,
-    syncRequestIds: ['sync-1', 'sync-2'],
-    requests: [
+  const resolveTargets = vi.fn(async () => ({
+    requestedProcesses: 2,
+    requestedContainers: 2,
+    eligibleTargets: [
       {
         processId: 'process-a',
+        processReference: 'REF-A',
         containerNumber: 'MSCU1234567',
-        syncRequestId: 'sync-1',
-        deduped: false,
+        provider: 'msc' as const,
       },
       {
         processId: 'process-b',
+        processReference: 'REF-B',
         containerNumber: 'MRKU7654321',
-        syncRequestId: 'sync-2',
-        deduped: false,
+        provider: 'maersk' as const,
       },
     ],
+    skippedTargets: [],
   }))
+
+  const enqueueImpl: SyncDashboardEnqueueService['enqueue'] = async (command: {
+    readonly tenantId: string
+    readonly mode: SyncMode
+    readonly targets: readonly DashboardSyncEligibleTarget[]
+  }) => {
+    if (command.targets.length === 0) {
+      return {
+        enqueuedTargets: [],
+        skippedTargets: [],
+        failedTargets: [],
+        newSyncRequestIds: [],
+      }
+    }
+
+    return {
+      enqueuedTargets: [
+        {
+          processId: 'process-a',
+          processReference: 'REF-A',
+          containerNumber: 'MSCU1234567',
+          provider: 'msc' as const,
+          syncRequestId: 'sync-1',
+        },
+        {
+          processId: 'process-b',
+          processReference: 'REF-B',
+          containerNumber: 'MRKU7654321',
+          provider: 'maersk' as const,
+          syncRequestId: 'sync-2',
+        },
+      ],
+      skippedTargets: [],
+      failedTargets: [],
+      newSyncRequestIds: ['sync-1', 'sync-2'],
+    }
+  }
+
+  const enqueue = vi.fn(enqueueImpl)
 
   const getSyncRequestStatuses = vi.fn(
     async (command: { readonly syncRequestIds: readonly string[] }) => ({
@@ -69,10 +98,10 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
   )
 
   const deps: SyncDashboardDeps = {
-    targetResolverService: {
+    dashboardTargetsService: {
       resolveTargets,
     },
-    enqueuePolicyService: {
+    dashboardEnqueueService: {
       enqueue,
     },
     queuePort: {
@@ -92,7 +121,7 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
 }
 
 describe('sync-dashboard.usecase', () => {
-  it('returns synced process and container counters when all sync requests finish as DONE', async () => {
+  it('returns structured summary and targets when all new sync requests finish as DONE', async () => {
     const { deps } = createDeps()
 
     const execute = createSyncDashboardUseCase(deps)
@@ -103,36 +132,137 @@ describe('sync-dashboard.usecase', () => {
     })
 
     expect(result).toEqual({
-      syncedProcesses: 2,
-      syncedContainers: 2,
+      summary: {
+        requestedProcesses: 2,
+        requestedContainers: 2,
+        enqueued: 2,
+        skipped: 0,
+        failed: 0,
+      },
+      enqueuedTargets: [
+        {
+          processId: 'process-a',
+          processReference: 'REF-A',
+          containerNumber: 'MSCU1234567',
+          provider: 'msc',
+          syncRequestId: 'sync-1',
+        },
+        {
+          processId: 'process-b',
+          processReference: 'REF-B',
+          containerNumber: 'MRKU7654321',
+          provider: 'maersk',
+          syncRequestId: 'sync-2',
+        },
+      ],
+      skippedTargets: [],
+      failedTargets: [],
     })
   })
 
-  it('propagates unsupported carrier/provider errors from target resolver', async () => {
+  it('returns skipped-only results for unsupported providers instead of throwing', async () => {
     const { deps, enqueue } = createDeps({
-      targetResolverService: {
-        resolveTargets: vi.fn(async () => {
-          throw new HttpError('unsupported_sync_provider_for_container:MSCU1234567:one', 422)
-        }),
+      dashboardTargetsService: {
+        resolveTargets: vi.fn(async () => ({
+          requestedProcesses: 1,
+          requestedContainers: 1,
+          eligibleTargets: [],
+          skippedTargets: [
+            {
+              processId: 'process-a',
+              processReference: 'REF-A',
+              containerNumber: 'MSCU1234567',
+              provider: 'hapag',
+              reasonCode: 'UNSUPPORTED_PROVIDER' as const,
+              reasonMessage: 'Provider is not supported for dashboard manual sync.',
+            },
+          ],
+        })),
       },
     })
 
     const execute = createSyncDashboardUseCase(deps)
+    const result = await execute({
+      tenantId: 'tenant-a',
+      scope: { kind: 'dashboard' },
+      mode: 'manual',
+    })
 
-    let thrown: unknown = null
-    try {
-      await execute({
-        tenantId: 'tenant-a',
-        scope: { kind: 'dashboard' },
-        mode: 'manual',
-      })
-    } catch (error) {
-      thrown = error
-    }
+    expect(result.summary).toEqual({
+      requestedProcesses: 1,
+      requestedContainers: 1,
+      enqueued: 0,
+      skipped: 1,
+      failed: 0,
+    })
+    expect(result.skippedTargets[0]?.reasonCode).toBe('UNSUPPORTED_PROVIDER')
+    expect(enqueue).toHaveBeenCalledTimes(1)
+  })
 
-    const httpError = toHttpErrorOrThrow(thrown)
-    expect(httpError.status).toBe(422)
-    expect(enqueue).toHaveBeenCalledTimes(0)
+  it('logs batch results as one aggregate entry without per-target log spam', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const { deps } = createDeps({
+      dashboardTargetsService: {
+        resolveTargets: vi.fn(async () => ({
+          requestedProcesses: 2,
+          requestedContainers: 2,
+          eligibleTargets: [],
+          skippedTargets: [
+            {
+              processId: 'process-a',
+              processReference: 'REF-A',
+              containerNumber: 'MSCU1234567',
+              provider: 'hapag',
+              reasonCode: 'UNSUPPORTED_PROVIDER' as const,
+              reasonMessage: 'Provider is not supported for dashboard manual sync.',
+            },
+            {
+              processId: 'process-b',
+              processReference: 'REF-B',
+              containerNumber: 'MRKU7654321',
+              provider: 'maersk',
+              reasonCode: 'MISSING_REQUIRED_DATA' as const,
+              reasonMessage: 'Container number is missing.',
+            },
+          ],
+        })),
+      },
+      dashboardEnqueueService: {
+        enqueue: vi.fn(async () => ({
+          enqueuedTargets: [],
+          skippedTargets: [],
+          failedTargets: [
+            {
+              processId: 'process-c',
+              processReference: 'REF-C',
+              containerNumber: 'CAXU1111111',
+              provider: 'msc',
+              reasonCode: 'ENQUEUE_FAILED' as const,
+              reasonMessage: 'Dashboard sync request failed after enqueue.',
+            },
+          ],
+          newSyncRequestIds: [],
+        })),
+      },
+    })
+
+    const execute = createSyncDashboardUseCase(deps)
+    await execute({
+      tenantId: 'tenant-a',
+      scope: { kind: 'dashboard' },
+      mode: 'manual',
+    })
+
+    expect(infoSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy).not.toHaveBeenCalled()
+    expect(errorSpy).not.toHaveBeenCalled()
+
+    infoSpy.mockRestore()
+    warnSpy.mockRestore()
+    errorSpy.mockRestore()
   })
 
   it('fails with 504 when sync requests do not reach terminal state before timeout', async () => {
@@ -175,7 +305,7 @@ describe('sync-dashboard.usecase', () => {
     expect(getSyncRequestStatusesMock).toHaveBeenCalledTimes(3)
   })
 
-  it('fails with 502 when at least one sync request reaches FAILED status', async () => {
+  it('reclassifies terminal queue failures as failed targets while keeping the batch response', async () => {
     const { deps } = createDeps({
       queuePort: {
         getSyncRequestStatuses: vi.fn(async () => ({
@@ -188,26 +318,53 @@ describe('sync-dashboard.usecase', () => {
               updatedAt: '2026-03-06T10:00:00.000Z',
               refValue: 'MSCU1234567',
             },
+            {
+              syncRequestId: 'sync-2',
+              status: 'DONE' as const,
+              lastError: null,
+              updatedAt: '2026-03-06T10:00:00.000Z',
+              refValue: 'MRKU7654321',
+            },
           ],
         })),
       },
     })
 
     const execute = createSyncDashboardUseCase(deps)
+    const result = await execute({
+      tenantId: 'tenant-a',
+      scope: { kind: 'dashboard' },
+      mode: 'manual',
+    })
 
-    let thrown: unknown = null
-    try {
-      await execute({
-        tenantId: 'tenant-a',
-        scope: { kind: 'dashboard' },
-        mode: 'manual',
-      })
-    } catch (error) {
-      thrown = error
-    }
-
-    const httpError = toHttpErrorOrThrow(thrown)
-    expect(httpError.status).toBe(502)
-    expect(httpError.message).toContain('provider_unavailable')
+    expect(result).toEqual({
+      summary: {
+        requestedProcesses: 2,
+        requestedContainers: 2,
+        enqueued: 1,
+        skipped: 0,
+        failed: 1,
+      },
+      enqueuedTargets: [
+        {
+          processId: 'process-b',
+          processReference: 'REF-B',
+          containerNumber: 'MRKU7654321',
+          provider: 'maersk',
+          syncRequestId: 'sync-2',
+        },
+      ],
+      skippedTargets: [],
+      failedTargets: [
+        {
+          processId: 'process-a',
+          processReference: 'REF-A',
+          containerNumber: 'MSCU1234567',
+          provider: 'msc',
+          reasonCode: 'ENQUEUE_FAILED',
+          reasonMessage: 'Dashboard sync request failed after enqueue.',
+        },
+      ],
+    })
   })
 })

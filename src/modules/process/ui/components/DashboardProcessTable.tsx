@@ -19,7 +19,10 @@ import {
   readColumnOrderFromLocalStorage,
   writeColumnOrderToLocalStorage,
 } from '~/modules/process/ui/components/dashboard-columns'
-import { toDashboardEtaCellLabel } from '~/modules/process/ui/components/dashboard-process-table.presenter'
+import {
+  toDashboardAdditionalIncidentsTooltipLine,
+  toDashboardEtaCellLabel,
+} from '~/modules/process/ui/components/dashboard-process-table.presenter'
 import { createDashboardStatusCellDisplayMemo } from '~/modules/process/ui/components/dashboard-status-cell.display'
 import {
   SyncCell as SyncCellComponent,
@@ -46,6 +49,7 @@ import type {
   DashboardSortField,
   DashboardSortSelection,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
+import type { DashboardProcessRowVM } from '~/modules/process/ui/viewmodels/dashboard-sync-batch-result.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { EmptyState } from '~/shared/ui/EmptyState'
@@ -60,7 +64,7 @@ import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 type DashboardProcessSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 
 type Props = {
-  readonly processes: readonly ProcessSummaryVM[]
+  readonly processes: readonly DashboardProcessRowVM[]
   readonly highlightedProcessId: string | null
   readonly initialLoading: boolean
   readonly refreshing: boolean
@@ -76,7 +80,7 @@ type Props = {
 }
 
 type RowProps = {
-  readonly process: ProcessSummaryVM
+  readonly process: DashboardProcessRowVM
   readonly isHighlighted: boolean
   readonly columnOrder: readonly DashboardColumnId[]
   readonly gridStyle: string
@@ -86,7 +90,7 @@ type RowProps = {
 }
 
 type TableRowsProps = {
-  readonly processes: readonly ProcessSummaryVM[]
+  readonly processes: readonly DashboardProcessRowVM[]
   readonly highlightedProcessId: string | null
   readonly sortSelection: DashboardSortSelection
   readonly onSortToggle: (field: DashboardSortField) => void
@@ -302,7 +306,7 @@ function formatDashboardAlertAge(params: {
 // ---------------------------------------------------------------------------
 
 type CellContext = {
-  readonly process: ProcessSummaryVM
+  readonly process: DashboardProcessRowVM
   readonly processHref: string
   readonly handleProcessLinkClick: (event: MouseEvent) => void
   readonly t: (key: string, opts?: Record<string, unknown>) => string
@@ -462,6 +466,7 @@ function SyncCell(ctx: CellContext): JSX.Element {
   return (
     <SyncCellComponent
       state={cellState()}
+      issue={ctx.process.syncIssue}
       onSync={() => {
         void ctx.onProcessSync(ctx.process.id)
       }}
@@ -591,11 +596,14 @@ function AlertsCell(ctx: CellContext): JSX.Element {
     const parts: string[] = [dominantAlertLabel()]
     const age = alertAge()
     if (age) parts.push(`· ${age.label}`)
-    parts.push(
-      ctx.t(ctx.keys.dashboard.table.alertTooltip.additionalAlerts, {
-        count: ctx.process.affectedContainerCount,
-      }),
+    const additionalIncidentsLine = toDashboardAdditionalIncidentsTooltipLine(
+      ctx.process.activeIncidentCount,
+      ctx.t,
+      ctx.keys,
     )
+    if (additionalIncidentsLine !== null) {
+      parts.push(additionalIncidentsLine)
+    }
     return parts.join('\n')
   }
 
@@ -860,7 +868,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
   const gridStyle = createMemo(() => buildGridTemplate(props.columnOrder))
 
   /** Default priority ordering: severity desc → incident count desc → affected containers desc. */
-  const prioritySorted = (): readonly ProcessSummaryVM[] => {
+  const prioritySorted = (): readonly DashboardProcessRowVM[] => {
     if (props.sortSelection !== null) return props.processes
     return [...props.processes].sort((a, b) => {
       const sevDiff = SEVERITY_ORDER[toDominantSeverity(a)] - SEVERITY_ORDER[toDominantSeverity(b)]

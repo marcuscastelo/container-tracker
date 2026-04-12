@@ -51,11 +51,16 @@ export type DashboardNavbarAlertsReadModelDeps = {
   readonly trackingUseCases: DashboardNavbarTrackingUseCases
 }
 
+function toRouteEndpointLabel(value: string | null | undefined): string {
+  const normalizedValue = value?.trim()
+  return normalizedValue ? normalizedValue : '—'
+}
+
 function toRouteSummary(
   origin: string | null | undefined,
   destination: string | null | undefined,
 ): string {
-  return `${origin ?? '—'} → ${destination ?? '—'}`
+  return `${toRouteEndpointLabel(origin)} → ${toRouteEndpointLabel(destination)}`
 }
 
 function toDominantSeverity(

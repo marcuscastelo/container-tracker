@@ -311,7 +311,12 @@ function DashboardPreview(props: {
   const rows = createMemo(() => {
     const row = props.row
     if (!row) return []
-    return [row]
+    return [
+      {
+        ...row,
+        syncIssue: null,
+      },
+    ]
   })
 
   return (

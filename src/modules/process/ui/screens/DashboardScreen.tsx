@@ -21,6 +21,7 @@ import { DashboardActivityChartCard } from '~/modules/process/ui/components/Dash
 import { DashboardKpiRow } from '~/modules/process/ui/components/DashboardKpiRow'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { DashboardRefreshButton } from '~/modules/process/ui/components/DashboardRefreshButton'
+import { DashboardSyncBatchResultPanel } from '~/modules/process/ui/components/DashboardSyncBatchResultPanel'
 import { ExportImportActions } from '~/modules/process/ui/components/export-import/ExportImportActions'
 import { UnifiedDashboardFilters } from '~/modules/process/ui/components/UnifiedDashboardFilters'
 import { fetchDashboardKpis } from '~/modules/process/ui/fetchDashboardKpis'
@@ -221,15 +222,20 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const sortedProcesses = createMemo(() =>
     sortDashboardProcesses(filteredProcesses(), sortSelection()),
   )
-  const { processesWithSyncFeedback, handleDashboardRefresh, handleProcessSync } =
-    useDashboardSyncController({
-      allProcesses: () => processesState.data() ?? [],
-      sortedProcesses,
-      refetchProcesses,
-      refetchGlobalAlerts,
-      refetchDashboardKpis,
-      refetchDashboardProcessesCreatedByMonth,
-    })
+  const {
+    processesWithSyncFeedback,
+    dashboardSyncBatchResult,
+    dismissDashboardSyncBatchResult,
+    handleDashboardRefresh,
+    handleProcessSync,
+  } = useDashboardSyncController({
+    allProcesses: () => processesState.data() ?? [],
+    sortedProcesses,
+    refetchProcesses,
+    refetchGlobalAlerts,
+    refetchDashboardKpis,
+    refetchDashboardProcessesCreatedByMonth,
+  })
   const highlightedProcessId = createMemo(() =>
     resolveHighlightedDashboardProcessId({
       processes: processesWithSyncFeedback(),
@@ -375,6 +381,14 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
             onSeveritySelect={handleSeverityFilterSelect}
             onClearAllFilters={handleClearAllFilters}
           />
+          <Show when={dashboardSyncBatchResult()}>
+            {(result) => (
+              <DashboardSyncBatchResultPanel
+                result={result()}
+                onDismiss={dismissDashboardSyncBatchResult}
+              />
+            )}
+          </Show>
           <DashboardProcessTable
             processes={processesWithSyncFeedback()}
             highlightedProcessId={highlightedProcessId()}
