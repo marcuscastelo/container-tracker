@@ -110,27 +110,25 @@ export function TrackingReplayScreen(): JSX.Element {
 
           <Show when={controller.state() === 'ready'}>
             <Show when={controller.target()}>
-              {(target) => (
-                <>
-                  <ReplayTargetSummaryView target={target()} />
-                  <ReplayActionsView
-                    reason={controller.reasonInput()}
-                    busyAction={controller.busyAction()}
-                    onReasonInput={controller.setReasonInput}
-                    onPreview={controller.preview}
-                    onApply={controller.apply}
-                    onRollback={controller.rollback}
-                  />
+              {(target) => <ReplayTargetSummaryView target={target()} />}
+            </Show>
+            <Show when={controller.target()}>
+              <ReplayActionsView
+                reason={controller.reasonInput()}
+                busyAction={controller.busyAction()}
+                onReasonInput={controller.setReasonInput}
+                onPreview={controller.preview}
+                onApply={controller.apply}
+                onRollback={controller.rollback}
+              />
+            </Show>
 
-                  <Show when={controller.currentRun()}>
-                    {(run) => <ReplayRunSummaryView run={run()} />}
-                  </Show>
+            <Show when={controller.currentRun()}>
+              {(run) => <ReplayRunSummaryView run={run()} />}
+            </Show>
 
-                  <Show when={controller.diff()}>
-                    {(diff) => <ReplayDiffSummaryView diff={diff()} />}
-                  </Show>
-                </>
-              )}
+            <Show when={controller.diff()}>
+              {(diff) => <ReplayDiffSummaryView diff={diff()} />}
             </Show>
           </Show>
         </main>
