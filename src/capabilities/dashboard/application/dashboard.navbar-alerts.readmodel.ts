@@ -1,124 +1,191 @@
-import {
-  indexProcessContextById,
-  toContainerSummaryCommand,
-  upsertContainerAccumulator,
-  upsertProcessAccumulator,
-} from '~/capabilities/dashboard/application/dashboard.navbar-alerts.grouping'
-import { toAlertItemReadModel } from '~/capabilities/dashboard/application/dashboard.navbar-alerts.message-contract'
-import type {
-  DashboardNavbarAlertsReadModelDeps,
-  MutableProcessAccumulator,
-  NavbarAlertsSummaryReadModel,
-  NavbarContainerAlertGroupReadModel,
-  NavbarProcessAlertGroupReadModel,
-} from '~/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel.shared'
-import {
-  compareNavbarAlertItems,
-  compareNavbarContainers,
-  compareNavbarProcesses,
-  resolveDominantSeverity,
-  resolveLatestAlertAt,
-} from '~/capabilities/dashboard/application/dashboard.navbar-alerts.sorting'
-import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { DashboardProcessUseCases } from '~/capabilities/dashboard/application/dashboard.processes.projection'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
+import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
 import { systemClock } from '~/shared/time/clock'
 
-export type {
-  DashboardNavbarAlertsReadModelDeps,
-  NavbarAlertsSummaryReadModel,
-} from '~/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel.shared'
+type NavbarIncidentItemReadModel = {
+  readonly incidentKey: string
+  readonly type: OperationalIncidentReadModel['type']
+  readonly category: OperationalIncidentReadModel['category']
+  readonly severity: OperationalIncidentReadModel['severity']
+  readonly fact: OperationalIncidentReadModel['fact']
+  readonly action: OperationalIncidentReadModel['action']
+  readonly affectedContainerCount: number
+  readonly triggeredAt: string
+  readonly containers: readonly {
+    readonly containerId: string
+    readonly containerNumber: string
+    readonly lifecycleState: 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED'
+  }[]
+}
+
+export type NavbarProcessAlertGroupReadModel = {
+  readonly processId: string
+  readonly processReference: string | null
+  readonly carrier: string | null
+  readonly routeSummary: string
+  readonly activeIncidentCount: number
+  readonly affectedContainerCount: number
+  readonly dominantSeverity: 'danger' | 'warning' | 'info' | 'success' | 'none'
+  readonly latestIncidentAt: string | null
+  readonly incidents: readonly NavbarIncidentItemReadModel[]
+}
+
+export type NavbarAlertsSummaryReadModel = {
+  readonly totalActiveIncidents: number
+  readonly processes: readonly NavbarProcessAlertGroupReadModel[]
+}
+
+type DashboardNavbarTrackingUseCases = {
+  findContainersHotReadProjection(command: {
+    readonly containers: readonly {
+      readonly containerId: string
+      readonly containerNumber: string
+    }[]
+    readonly now: ReturnType<typeof systemClock.now>
+  }): Promise<FindContainersHotReadProjectionResult>
+}
+
+export type DashboardNavbarAlertsReadModelDeps = {
+  readonly processUseCases: DashboardProcessUseCases
+  readonly trackingUseCases: DashboardNavbarTrackingUseCases
+}
+
+function toRouteEndpointLabel(value: string | null | undefined): string {
+  const normalizedValue = value?.trim()
+  return normalizedValue ? normalizedValue : '—'
+}
+
+function toRouteSummary(
+  origin: string | null | undefined,
+  destination: string | null | undefined,
+): string {
+  return `${toRouteEndpointLabel(origin)} → ${toRouteEndpointLabel(destination)}`
+}
+
+function toDominantSeverity(
+  incidents: readonly OperationalIncidentReadModel[],
+): NavbarProcessAlertGroupReadModel['dominantSeverity'] {
+  if (incidents.some((incident) => incident.severity === 'danger')) return 'danger'
+  if (incidents.some((incident) => incident.severity === 'warning')) return 'warning'
+  if (incidents.some((incident) => incident.severity === 'info')) return 'info'
+  return 'none'
+}
+
+function compareIncidentItems(
+  left: OperationalIncidentReadModel,
+  right: OperationalIncidentReadModel,
+): number {
+  const severityRank = { info: 0, warning: 1, danger: 2 } as const
+  const severityCompare = severityRank[right.severity] - severityRank[left.severity]
+  if (severityCompare !== 0) return severityCompare
+
+  const triggeredAtCompare = right.triggeredAt.localeCompare(left.triggeredAt)
+  if (triggeredAtCompare !== 0) return triggeredAtCompare
+
+  return left.incidentKey.localeCompare(right.incidentKey)
+}
 
 export function createDashboardNavbarAlertsReadModelUseCase(
   deps: DashboardNavbarAlertsReadModelDeps,
 ) {
   return async function execute(): Promise<NavbarAlertsSummaryReadModel> {
-    const [{ processes }, activeAlertsResult] = await Promise.all([
-      deps.processUseCases.listProcessesWithOperationalSummary(),
-      deps.trackingUseCases.listActiveAlertReadModel(),
-    ])
+    const { processes } = await deps.processUseCases.listProcessesWithOperationalSummary()
+    const containers = processes.flatMap((process) =>
+      process.pwc.containers.map((container) => ({
+        containerId: container.id,
+        containerNumber: container.containerNumber,
+      })),
+    )
 
-    const activeAlerts = activeAlertsResult.alerts.filter((alert) => alert.is_active === true)
-    if (activeAlerts.length === 0) {
+    if (containers.length === 0) {
       return {
-        totalActiveAlerts: 0,
+        totalActiveIncidents: 0,
         processes: [],
       }
     }
 
-    const contextByProcessId = indexProcessContextById(processes)
-    const containerSummaryCommand = toContainerSummaryCommand(activeAlerts, contextByProcessId)
+    const hotRead = await deps.trackingUseCases.findContainersHotReadProjection({
+      containers,
+      now: systemClock.now(),
+    })
+    const processIdByContainerId = new Map<string, string>()
+    for (const process of processes) {
+      for (const container of process.pwc.containers) {
+        processIdByContainerId.set(container.id, process.pwc.process.id)
+      }
+    }
 
-    const containerOperationalById =
-      containerSummaryCommand.length === 0
-        ? new Map<string, TrackingOperationalSummary>()
-        : await deps.trackingUseCases.findContainersOperationalSummaryProjection({
-            containers: containerSummaryCommand,
-            now: systemClock.now(),
-          })
+    const incidentsByProcessId = new Map<string, OperationalIncidentReadModel[]>()
+    for (const incident of hotRead.activeOperationalIncidents.active) {
+      const processId = incident.triggerRefs
+        .map((triggerRef) => processIdByContainerId.get(triggerRef.containerId) ?? null)
+        .find((candidate) => candidate !== null)
+      if (processId === undefined || processId === null) continue
 
-    const processAccumulatorsById = new Map<string, MutableProcessAccumulator>()
+      const existing = incidentsByProcessId.get(processId)
+      if (existing === undefined) {
+        incidentsByProcessId.set(processId, [incident])
+        continue
+      }
 
-    for (const alert of activeAlerts) {
-      const context = contextByProcessId.get(alert.process_id)
-      const processAccumulator = upsertProcessAccumulator(processAccumulatorsById, {
-        alert,
-        context,
-      })
-
-      const containerSummary = containerOperationalById.get(alert.container_id)
-      const containerAccumulator = upsertContainerAccumulator({
-        processAccumulator,
-        alert,
-        context,
-        status: containerSummary?.status ?? null,
-        eta: containerSummary?.eta?.eventTime ?? null,
-      })
-
-      containerAccumulator.alerts.push(toAlertItemReadModel(alert))
+      existing.push(incident)
     }
 
     const processGroups: NavbarProcessAlertGroupReadModel[] = []
-    for (const processAccumulator of processAccumulatorsById.values()) {
-      const containerGroups: NavbarContainerAlertGroupReadModel[] = []
-      for (const containerAccumulator of processAccumulator.containersById.values()) {
-        const sortedAlerts = [...containerAccumulator.alerts].sort(compareNavbarAlertItems)
-        const dominantSeverity = resolveDominantSeverity(
-          sortedAlerts.map((alert) => alert.severity),
-        )
-        const latestAlertAt = resolveLatestAlertAt(sortedAlerts)
 
-        containerGroups.push({
-          containerId: containerAccumulator.containerId,
-          containerNumber: containerAccumulator.containerNumber,
-          status: containerAccumulator.status,
-          eta: containerAccumulator.eta,
-          activeAlertsCount: sortedAlerts.length,
-          dominantSeverity,
-          latestAlertAt,
-          alerts: sortedAlerts,
-        })
-      }
-
-      const sortedContainers = [...containerGroups].sort(compareNavbarContainers)
-      const processAlerts = sortedContainers.flatMap((container) => container.alerts)
-      const processDominantSeverity = resolveDominantSeverity(
-        processAlerts.map((alert) => alert.severity),
+    for (const process of processes) {
+      const incidents = [...(incidentsByProcessId.get(process.pwc.process.id) ?? [])].sort(
+        compareIncidentItems,
       )
+      if (incidents.length === 0) continue
+
+      const affectedContainerCount = new Set(
+        incidents.flatMap((incident) =>
+          incident.scope.containers.map((container) => container.containerId),
+        ),
+      ).size
 
       processGroups.push({
-        processId: processAccumulator.processId,
-        processReference: processAccumulator.processReference,
-        carrier: processAccumulator.carrier,
-        routeSummary: processAccumulator.routeSummary,
-        activeAlertsCount: processAlerts.length,
-        dominantSeverity: processDominantSeverity,
-        latestAlertAt: resolveLatestAlertAt(processAlerts),
-        containers: sortedContainers,
+        processId: process.pwc.process.id,
+        processReference: process.pwc.process.reference ?? null,
+        carrier: process.pwc.process.carrier ?? null,
+        routeSummary: toRouteSummary(process.pwc.process.origin, process.pwc.process.destination),
+        activeIncidentCount: incidents.length,
+        affectedContainerCount,
+        dominantSeverity: toDominantSeverity(incidents),
+        latestIncidentAt: incidents[0]?.triggeredAt ?? null,
+        incidents: incidents.map((incident) => ({
+          incidentKey: incident.incidentKey,
+          type: incident.type,
+          category: incident.category,
+          severity: incident.severity,
+          fact: incident.fact,
+          action: incident.action,
+          affectedContainerCount: incident.scope.affectedContainerCount,
+          triggeredAt: incident.triggeredAt,
+          containers: incident.scope.containers.map((container) => ({
+            containerId: container.containerId,
+            containerNumber: container.containerNumber,
+            lifecycleState: container.lifecycleState,
+          })),
+        })),
       })
     }
 
+    processGroups.sort((left, right) => {
+      const severityRank = { none: 0, success: 1, info: 2, warning: 3, danger: 4 } as const
+      const severityCompare =
+        severityRank[right.dominantSeverity] - severityRank[left.dominantSeverity]
+      if (severityCompare !== 0) return severityCompare
+      const countCompare = right.activeIncidentCount - left.activeIncidentCount
+      if (countCompare !== 0) return countCompare
+      return left.processId.localeCompare(right.processId)
+    })
+
     return {
-      totalActiveAlerts: activeAlerts.length,
-      processes: processGroups.sort(compareNavbarProcesses),
+      totalActiveIncidents: hotRead.activeOperationalIncidents.summary.activeIncidentCount,
+      processes: processGroups,
     }
   }
 }

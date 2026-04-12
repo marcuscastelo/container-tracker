@@ -43,15 +43,15 @@ export function NavbarAlertsButton(): JSX.Element {
         aria-haspopup="dialog"
         aria-expanded={controller.isOpen()}
         aria-controls={panelId}
-        aria-label={t(keys.header.alertsBadge, { count: controller.totalAlerts() })}
+        aria-label={t(keys.header.alertsBadge, { count: controller.totalActiveIncidents() })}
         title={controller.buttonTitle()}
         class={clsx(
-          'inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs-ui font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+          'motion-focus-surface motion-interactive inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs-ui font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
           {
             'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg hover:border-tone-danger-strong':
-              controller.totalAlerts() > 0,
+              controller.totalActiveIncidents() > 0,
             'border-border bg-surface text-text-muted hover:border-border-strong hover:bg-surface-muted':
-              controller.totalAlerts() === 0,
+              controller.totalActiveIncidents() === 0,
           },
         )}
       >
@@ -69,14 +69,14 @@ export function NavbarAlertsButton(): JSX.Element {
             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
           />
         </svg>
-        <span>{controller.totalAlerts()}</span>
+        <span>{controller.totalActiveIncidents()}</span>
         <span class="hidden min-[1280px]:inline">{t(keys.header.alertsLabel)}</span>
       </button>
 
       <Show when={controller.isOpen()}>
         <NavbarAlertsPanel
           panelId={panelId}
-          totalAlerts={controller.totalAlerts()}
+          totalActiveIncidents={controller.totalActiveIncidents()}
           processes={controller.state().processes}
           loading={controller.state().loading}
           error={controller.state().error}

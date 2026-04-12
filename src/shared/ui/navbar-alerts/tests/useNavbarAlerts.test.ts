@@ -10,7 +10,6 @@ vi.mock('~/shared/api/navbar-alerts/navbar-alerts.api', () => ({
 
 import { createRoot } from 'solid-js'
 import type { NavbarAlertsSummaryData } from '~/shared/api/navbar-alerts/navbar-alerts.contract'
-import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 import {
   hasResolvedNavbarAlertsResource,
   toNavbarAlertsState,
@@ -39,39 +38,44 @@ function createDeferred<T>(): Deferred<T> {
 }
 
 function buildNavbarAlertsSummaryData(command?: {
-  readonly totalActiveAlerts?: number
+  readonly totalActiveIncidents?: number
   readonly processId?: string
 }): NavbarAlertsSummaryData {
   return {
     generated_at: '2026-04-11T12:00:00.000Z',
-    total_active_alerts: command?.totalActiveAlerts ?? 1,
+    total_active_incidents: command?.totalActiveIncidents ?? 1,
     processes: [
       {
         process_id: command?.processId ?? 'process-1',
         process_reference: 'REF-001',
         carrier: 'MSC',
         route_summary: 'Shanghai -> Santos',
-        active_alerts_count: command?.totalActiveAlerts ?? 1,
+        active_incident_count: command?.totalActiveIncidents ?? 1,
+        affected_container_count: 1,
         dominant_severity: 'warning',
-        latest_alert_at: '2026-04-10T09:00:00.000Z',
-        containers: [
+        latest_incident_at: '2026-04-10T09:00:00.000Z',
+        incidents: [
           {
-            container_id: 'container-1',
-            container_number: 'MSCU1234567',
-            status: 'IN_TRANSIT',
-            eta: temporalDtoFromCanonical('2026-04-20T00:00:00.000Z'),
-            active_alerts_count: command?.totalActiveAlerts ?? 1,
-            dominant_severity: 'warning',
-            latest_alert_at: '2026-04-10T09:00:00.000Z',
-            alerts: [
+            incident_key: 'ETA_PASSED',
+            type: 'ETA_PASSED',
+            category: 'eta',
+            severity: 'warning',
+            fact: {
+              message_key: 'incidents.fact.etaPassed',
+              message_params: {},
+            },
+            action: {
+              action_key: 'incidents.action.checkEta',
+              action_params: {},
+              action_kind: 'CHECK_ETA',
+            },
+            affected_container_count: 1,
+            triggered_at: '2026-04-10T09:00:00.000Z',
+            containers: [
               {
-                alert_id: 'alert-1',
-                severity: 'warning',
-                category: 'monitoring',
-                message_key: 'alerts.etaPassed',
-                message_params: {},
-                occurred_at: '2026-04-10T09:00:00.000Z',
-                retroactive: false,
+                container_id: 'container-1',
+                container_number: 'MSCU1234567',
+                lifecycle_state: 'ACTIVE',
               },
             ],
           },
@@ -109,7 +113,7 @@ describe('useNavbarAlerts helpers', () => {
     const resource = buildErroredNavbarAlertsResource()
 
     expect(toNavbarAlertsState(resource)).toEqual({
-      totalAlerts: 0,
+      totalActiveIncidents: 0,
       processes: [],
       loading: false,
       error: 'navbar failed',
@@ -127,11 +131,11 @@ describe('useNavbarAlerts', () => {
     vi.restoreAllMocks()
   })
 
-  it('loads alerts with cached preference first, then refreshes against the server snapshot', async () => {
+  it('loads incidents with cached preference first, then refreshes against the server snapshot', async () => {
     const initialLoad = createDeferred<NavbarAlertsSummaryData>()
     fetchNavbarAlertsSummaryMock
       .mockReturnValueOnce(initialLoad.promise)
-      .mockResolvedValueOnce(buildNavbarAlertsSummaryData({ totalActiveAlerts: 2 }))
+      .mockResolvedValueOnce(buildNavbarAlertsSummaryData({ totalActiveIncidents: 2 }))
     const harness = createHookHarness()
 
     await flushAsyncWork()
@@ -144,7 +148,7 @@ describe('useNavbarAlerts', () => {
     await flushAsyncWork()
 
     expect(harness.hook.state()).toMatchObject({
-      totalAlerts: 1,
+      totalActiveIncidents: 1,
       loading: false,
       error: null,
     })
@@ -156,7 +160,7 @@ describe('useNavbarAlerts', () => {
 
     expect(fetchNavbarAlertsSummaryMock).toHaveBeenNthCalledWith(2, { preferCached: false })
     expect(harness.hook.state()).toMatchObject({
-      totalAlerts: 2,
+      totalActiveIncidents: 2,
       loading: false,
       error: null,
     })
@@ -171,7 +175,7 @@ describe('useNavbarAlerts', () => {
     await flushAsyncWork()
 
     expect(harness.hook.state()).toEqual({
-      totalAlerts: 0,
+      totalActiveIncidents: 0,
       processes: [],
       loading: false,
       error: 'network down',

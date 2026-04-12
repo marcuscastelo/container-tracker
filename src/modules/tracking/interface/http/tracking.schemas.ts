@@ -64,6 +64,16 @@ export const AlertResponseDtoSchema = z.discriminatedUnion('message_key', [
       .strict(),
   }),
   AlertResponseBaseSchema.extend({
+    message_key: z.literal('alerts.plannedTransshipmentDetected'),
+    message_params: z
+      .object({
+        port: z.string(),
+        fromVessel: z.string(),
+        toVessel: z.string(),
+      })
+      .strict(),
+  }),
+  AlertResponseBaseSchema.extend({
     message_key: z.literal('alerts.customsHoldDetected'),
     message_params: z
       .object({

@@ -140,7 +140,7 @@ Response `200` (example shape):
   "tenantId": "11111111-1111-4111-8111-111111111111",
   "intervalSec": 60,
   "limit": 10,
-  "supabaseUrl": "https://project.supabase.co",
+  "supabaseUrl": "http://127.0.0.1:54321",
   "supabaseAnonKey": "anon-key",
   "providers": {
     "maerskEnabled": false,
@@ -161,9 +161,9 @@ Rules:
 
 Apply:
 
-- [20260225_01_agent_sync_mvp.sql](supabase/migrations/20260225_01_agent_sync_mvp.sql)
-- [20260225_02_refresh_queue_first.sql](supabase/migrations/20260225_02_refresh_queue_first.sql)
-- [20260226_01_agent_runtime_enrolment.sql](supabase/migrations/20260226_01_agent_runtime_enrolment.sql)
+- [20260225_01_agent_sync_mvp.sql](supabase/migrations/2026022501_agent_sync_mvp.sql)
+- [20260225_02_refresh_queue_first.sql](supabase/migrations/2026022502_refresh_queue_first.sql)
+- [20260226_01_agent_runtime_enrolment.sql](supabase/migrations/2026022601_agent_runtime_enrolment.sql)
 
 ## 5) API Smoke Tests
 

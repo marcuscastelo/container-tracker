@@ -17,19 +17,19 @@ No. Manual refresh is queue + agent, but `POST /api/processes/sync` and `POST /a
 
 ## Where is `sync_requests` written?
 
-Through the RPC `enqueue_sync_request`, called from tracking refresh bootstrap and process bootstrap ports (`src/modules/tracking/interface/http/refresh.controllers.bootstrap.ts:43-69`, `src/modules/process/infrastructure/bootstrap/process.bootstrap.ts:95-124`, `supabase/migrations/20260225_02_refresh_queue_first.sql:27-117`).
+Through the RPC `enqueue_sync_request`, called from tracking refresh bootstrap and process bootstrap ports (`src/modules/tracking/interface/http/refresh.controllers.bootstrap.ts:43-69`, `src/modules/process/infrastructure/bootstrap/process.bootstrap.ts:95-124`, `supabase/migrations/2026022502_refresh_queue_first.sql:27-117`).
 
 ## What statuses exist?
 
-`PENDING`, `LEASED`, `DONE`, `FAILED` in the DB enum; the UI/status APIs also surface `NOT_FOUND` as a synthetic read-state when a requested id is absent (`supabase/migrations/20260225_01_agent_sync_mvp.sql:14-40`, `src/modules/tracking/interface/http/refresh.schemas.ts:34-52`, `src/modules/process/infrastructure/bootstrap/process.bootstrap.ts:160-190`).
+`PENDING`, `LEASED`, `DONE`, `FAILED` in the DB enum; the UI/status APIs also surface `NOT_FOUND` as a synthetic read-state when a requested id is absent (`supabase/migrations/2026022501_agent_sync_mvp.sql:14-40`, `src/modules/tracking/interface/http/refresh.schemas.ts:34-52`, `src/modules/process/infrastructure/bootstrap/process.bootstrap.ts:160-190`).
 
 ## How does leasing work?
 
-`lease_sync_requests()` claims `PENDING` rows and expired `LEASED` rows with `FOR UPDATE SKIP LOCKED`, sets `leased_by`, sets `leased_until`, and increments `attempts`. Lease validity is rechecked during ingest before marking terminal state (`supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:53-118`).
+`lease_sync_requests()` claims `PENDING` rows and expired `LEASED` rows with `FOR UPDATE SKIP LOCKED`, sets `leased_by`, sets `leased_until`, and increments `attempts`. Lease validity is rechecked during ingest before marking terminal state (`supabase/migrations/2026022501_agent_sync_mvp.sql:59-98`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:53-118`).
 
 ## Is there a lease heartbeat or renewal?
 
-No confirmed implementation was found. Current recovery is lease expiry and reclaim (`supabase/migrations/20260225_01_agent_sync_mvp.sql:80-98`).
+No confirmed implementation was found. Current recovery is lease expiry and reclaim (`supabase/migrations/2026022501_agent_sync_mvp.sql:80-98`).
 
 ## Does the UI use polling, realtime, or both?
 
@@ -76,7 +76,7 @@ Yes. In the active runtime, the agent fetches raw payloads but the server persis
 - normalized observations: `container_observations` (`src/modules/tracking/infrastructure/persistence/supabaseObservationRepository.ts:14-43`)
 - timeline: not persisted; runtime projection (`src/modules/tracking/features/timeline/domain/derive/deriveTimeline.ts:213-290`)
 - alerts: `tracking_alerts` (`src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts:18-55`)
-- sync metadata: `sync_requests` (`supabase/migrations/20260225_01_agent_sync_mvp.sql:18-40`)
+- sync metadata: `sync_requests` (`supabase/migrations/2026022501_agent_sync_mvp.sql:18-40`)
 
 ## What is deterministic vs monitoring?
 
@@ -95,4 +95,4 @@ Yes. In the active runtime, the agent fetches raw payloads but the server persis
   - agent enrollment backoff
 - Explicit per-job retry policy, provider rate limiter, dead-letter queue, metrics, and tracing were not found in the audited sync runtime.
 
-Sources: `supabase/migrations/20260225_01_agent_sync_mvp.sql:80-98`, `src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`, `tools/agent/backoff.ts:1-31`, `tools/agent/agent.ts:740-855`, `src/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher.ts:17-60`, `src/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher.ts:10-58`, `src/modules/tracking/infrastructure/carriers/fetchers/maersk.puppeteer.fetcher.ts:277-339`.
+Sources: `supabase/migrations/2026022501_agent_sync_mvp.sql:80-98`, `src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`, `tools/agent/backoff.ts:1-31`, `tools/agent/agent.ts:740-855`, `src/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher.ts:17-60`, `src/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher.ts:10-58`, `src/modules/tracking/infrastructure/carriers/fetchers/maersk.puppeteer.fetcher.ts:277-339`.

@@ -46,7 +46,7 @@ function createSnapshot() {
       requiresRestart: [],
     },
     infra: {
-      supabaseUrl: 'https://nwnprtgcjxzvvqpyqdrk.supabase.co',
+      supabaseUrl: 'http://127.0.0.1:54321',
       source: 'FALLBACK' as const,
     },
   }

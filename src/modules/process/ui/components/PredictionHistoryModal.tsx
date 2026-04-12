@@ -68,7 +68,7 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
           <button
             type="button"
             onClick={() => props.onClose()}
-            class="rounded-md border border-border bg-surface px-4 py-2 text-sm-ui font-medium text-foreground transition-colors hover:bg-surface-muted"
+            class="motion-focus-surface motion-interactive rounded-md border border-border bg-surface px-4 py-2 text-sm-ui font-medium text-foreground hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             {t(keys.shipmentView.timeline.predictionHistory.close)}
           </button>

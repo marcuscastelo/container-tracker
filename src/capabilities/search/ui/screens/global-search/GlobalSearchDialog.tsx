@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createSignal, onMount, Show } from 'solid-js'
+import { createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { SearchOverlayFooter } from '~/capabilities/search/ui/SearchOverlay.footer'
 import { SearchTriggerButton } from '~/capabilities/search/ui/SearchOverlay.trigger'
 import { useGlobalSearchController } from '~/capabilities/search/ui/screens/global-search/hooks/useGlobalSearchController'
@@ -11,6 +11,12 @@ import {
   resolveGlobalSearchActiveListId,
 } from '~/capabilities/search/ui/screens/global-search/views/globalSearch.a11y'
 import { useTranslation } from '~/shared/localization/i18n'
+import {
+  clearMotionTimeout,
+  prefersReducedMotion,
+  scheduleMotionFrame,
+  scheduleMotionTimeout,
+} from '~/shared/ui/motion/motion.utils'
 
 function readNavigatorPlatform(): string | undefined {
   const userAgentData = Reflect.get(navigator, 'userAgentData')
@@ -36,23 +42,161 @@ function detectShortcutLabel(): string {
   return isApplePlatform ? '⌘K' : 'Ctrl K'
 }
 
-export function GlobalSearchDialog(): JSX.Element {
-  const translation = useTranslation()
-  const controller = useGlobalSearchController()
-  const [shortcutLabel, setShortcutLabel] = createSignal('Ctrl K')
-
-  const activeA11yState = () => ({
+function resolveActiveA11yState(controller: ReturnType<typeof useGlobalSearchController>) {
+  return {
     showSuggestions: controller.showSuggestions(),
     showResults: controller.uiState() === 'ready' && controller.results().length > 0,
     activeSuggestionIndex: controller.activeSuggestionIndex(),
     activeResultIndex: controller.activeResultIndex(),
-  })
+  }
+}
 
-  const activeListId = () => resolveGlobalSearchActiveListId(activeA11yState())
-  const activeDescendantId = () => resolveGlobalSearchActiveDescendantId(activeA11yState())
+type SearchPanelSurfaceProps = {
+  readonly visualState: 'open' | 'closed'
+  readonly ariaLabel: string
+  readonly contentShellStyle: Record<string, string>
+  readonly shouldUseInitialSizeStyle: boolean
+  readonly onContentMeasureRef: (element: HTMLDivElement) => void
+  readonly children: JSX.Element
+}
+
+function SearchPanelSurface(props: SearchPanelSurfaceProps): JSX.Element {
+  return (
+    <div
+      class="motion-dialog-panel relative z-10 w-full max-w-5xl overflow-hidden rounded-xl border border-control-border bg-control-popover shadow-2xl"
+      data-state={props.visualState}
+      role="dialog"
+      aria-modal="true"
+      aria-label={props.ariaLabel}
+    >
+      <div
+        class="motion-dialog-size"
+        style={props.shouldUseInitialSizeStyle ? {} : props.contentShellStyle}
+      >
+        <div ref={props.onContentMeasureRef}>{props.children}</div>
+      </div>
+    </div>
+  )
+}
+
+export function GlobalSearchDialog(): JSX.Element {
+  const translation = useTranslation()
+  const controller = useGlobalSearchController()
+  const [shortcutLabel, setShortcutLabel] = createSignal('Ctrl K')
+  const [isRendered, setIsRendered] = createSignal(controller.isOpen())
+  const [visualState, setVisualState] = createSignal<'open' | 'closed'>(
+    controller.isOpen() ? 'open' : 'closed',
+  )
+  const [contentShellStyle, setContentShellStyle] = createSignal<Record<string, string>>({})
+  let closeTimeoutId: number | null = null
+  let sizeSettleTimeoutId: number | null = null
+  let resizeObserver: ResizeObserver | null = null
+  let contentHeight = 0
+  let contentMeasureRef: HTMLDivElement | undefined
+  const activeListId = () => resolveGlobalSearchActiveListId(resolveActiveA11yState(controller))
+  const activeDescendantId = () =>
+    resolveGlobalSearchActiveDescendantId(resolveActiveA11yState(controller))
 
   onMount(() => {
     setShortcutLabel(detectShortcutLabel())
+  })
+
+  const clearSizeMotion = (): void => {
+    clearMotionTimeout(sizeSettleTimeoutId)
+    sizeSettleTimeoutId = null
+  }
+
+  const resetSizeTracking = (): void => {
+    resizeObserver?.disconnect()
+    resizeObserver = null
+    clearSizeMotion()
+    contentHeight = 0
+    setContentShellStyle({})
+  }
+
+  const syncSearchPanelHeight = (): void => {
+    if (typeof window === 'undefined' || contentMeasureRef === undefined) {
+      return
+    }
+
+    if (prefersReducedMotion()) {
+      contentHeight = 0
+      setContentShellStyle({})
+      return
+    }
+
+    const nextHeight = Math.ceil(contentMeasureRef.getBoundingClientRect().height)
+    if (nextHeight <= 0 || nextHeight === contentHeight) {
+      return
+    }
+
+    contentHeight = nextHeight
+    setContentShellStyle({
+      height: `${nextHeight}px`,
+      overflow: 'clip',
+    })
+
+    clearSizeMotion()
+    sizeSettleTimeoutId = scheduleMotionTimeout(() => {
+      sizeSettleTimeoutId = null
+      setContentShellStyle({
+        height: `${contentHeight}px`,
+        overflow: 'visible',
+      })
+    }, 'panel')
+  }
+
+  createEffect(() => {
+    if (controller.isOpen()) {
+      clearMotionTimeout(closeTimeoutId)
+      setIsRendered(true)
+      scheduleMotionFrame(() => {
+        setVisualState('open')
+      })
+      return
+    }
+
+    if (!isRendered()) {
+      setVisualState('closed')
+      return
+    }
+
+    setVisualState('closed')
+    closeTimeoutId = scheduleMotionTimeout(() => {
+      setIsRendered(false)
+      closeTimeoutId = null
+    }, 'base')
+  })
+
+  createEffect(() => {
+    if (!isRendered()) {
+      resetSizeTracking()
+      return
+    }
+
+    scheduleMotionFrame(() => {
+      syncSearchPanelHeight()
+    })
+
+    if (typeof ResizeObserver !== 'function' || contentMeasureRef === undefined) {
+      return
+    }
+
+    resizeObserver?.disconnect()
+    resizeObserver = new ResizeObserver(() => {
+      syncSearchPanelHeight()
+    })
+    resizeObserver.observe(contentMeasureRef)
+
+    onCleanup(() => {
+      resizeObserver?.disconnect()
+      resizeObserver = null
+    })
+  })
+
+  onCleanup(() => {
+    clearMotionTimeout(closeTimeoutId)
+    resetSizeTracking()
   })
 
   return (
@@ -63,24 +207,24 @@ export function GlobalSearchDialog(): JSX.Element {
         onOpen={() => controller.open()}
       />
 
-      <Show when={controller.isOpen()}>
-        <div
-          class="fixed inset-0 z-50 flex items-start justify-center px-2 pt-[8vh] sm:px-4"
-          style={{ animation: 'search-overlay-in 150ms ease-out' }}
-        >
+      <Show when={isRendered()}>
+        <div class="fixed inset-0 z-50 flex items-start justify-center px-2 pt-[8vh] sm:px-4">
           <button
             type="button"
-            class="absolute inset-0 bg-ring/60 backdrop-blur-sm"
+            class="motion-dialog-overlay absolute inset-0 bg-ring/60 backdrop-blur-sm"
+            data-state={visualState()}
             onClick={() => controller.close()}
             aria-label={translation.t(translation.keys.search.close)}
           />
 
-          <div
-            class="relative z-10 w-full max-w-5xl overflow-hidden rounded-xl border border-control-border bg-control-popover shadow-2xl"
-            style={{ animation: 'search-modal-in 150ms ease-out' }}
-            role="dialog"
-            aria-modal="true"
-            aria-label={translation.t(translation.keys.search.placeholder)}
+          <SearchPanelSurface
+            visualState={visualState()}
+            ariaLabel={translation.t(translation.keys.search.placeholder)}
+            contentShellStyle={contentShellStyle()}
+            shouldUseInitialSizeStyle={controller.isOpen() && !isRendered()}
+            onContentMeasureRef={(element) => {
+              contentMeasureRef = element
+            }}
           >
             <GlobalSearchComposerView
               chips={controller.chips()}
@@ -143,7 +287,7 @@ export function GlobalSearchDialog(): JSX.Element {
               selectLabel={translation.t(translation.keys.search.footer.select)}
               closeLabel={translation.t(translation.keys.search.footer.close)}
             />
-          </div>
+          </SearchPanelSurface>
         </div>
       </Show>
     </>

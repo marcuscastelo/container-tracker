@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { buildShipmentAlertIncidentsReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
+function toIncidentOrder(incidentKey: string): number | null {
+  const [, maybeOrder] = incidentKey.split(':')
+  const order = Number(maybeOrder ?? '')
+  return Number.isInteger(order) && order > 0 ? order : null
+}
+
+function toFactStringParam(params: Record<string, string | number>, key: string): string | null {
+  const value = params[key]
+  return typeof value === 'string' ? value : null
+}
+
 function makeTransshipmentAlert(command: {
   readonly id: string
   readonly containerId: string
@@ -165,8 +176,8 @@ describe('tracking.shipment-alert-incidents.readmodel', () => {
     expect(result.summary.affectedContainerCount).toBe(3)
     expect(result.active[0]?.type).toBe('TRANSSHIPMENT')
     expect(result.active[0]?.incidentKey).toBe('TRANSSHIPMENT:1:KRPUS:MSC IRIS:MSC BIANCA SILVIA')
-    expect(result.active[0]?.affectedContainerCount).toBe(3)
-    expect(result.active[0]?.transshipmentOrder).toBe(1)
+    expect(result.active[0]?.scope.affectedContainerCount).toBe(3)
+    expect(toIncidentOrder(result.active[0]?.incidentKey ?? '')).toBe(1)
     expect(result.active[0]?.detectedAt).toBe('2026-03-30T10:00:00.000Z')
     expect(result.active[0]?.members.map((member) => member.containerNumber)).toEqual([
       'CAIU6241835',
@@ -216,10 +227,9 @@ describe('tracking.shipment-alert-incidents.readmodel', () => {
     })
 
     expect(result.summary.activeIncidentCount).toBe(2)
-    expect(result.active.map((incident) => incident.toVessel)).toEqual([
-      'FEEDER ALPHA',
-      'MSC BIANCA SILVIA',
-    ])
+    expect(
+      result.active.map((incident) => toFactStringParam(incident.fact.messageParams, 'toVessel')),
+    ).toEqual(['FEEDER ALPHA', 'MSC BIANCA SILVIA'])
   })
 
   it('separates transshipments when the same vessel change occurs in a different order', () => {
@@ -270,9 +280,13 @@ describe('tracking.shipment-alert-incidents.readmodel', () => {
       ],
     })
 
-    const singaporeIncidents = result.active.filter((incident) => incident.port === 'SGSIN')
+    const singaporeIncidents = result.active.filter(
+      (incident) => toFactStringParam(incident.fact.messageParams, 'port') === 'SGSIN',
+    )
     expect(singaporeIncidents).toHaveLength(2)
-    expect(singaporeIncidents.map((incident) => incident.transshipmentOrder)).toEqual([2, 1])
+    expect(singaporeIncidents.map((incident) => toIncidentOrder(incident.incidentKey))).toEqual([
+      2, 1,
+    ])
   })
 
   it('groups eta-passed alerts into one active incident per type', () => {
@@ -309,8 +323,10 @@ describe('tracking.shipment-alert-incidents.readmodel', () => {
     expect(result.summary.affectedContainerCount).toBe(2)
     expect(result.active[0]?.type).toBe('ETA_PASSED')
     expect(result.active[0]?.category).toBe('eta')
-    expect(result.active[0]?.affectedContainerCount).toBe(2)
-    expect(result.active[0]?.activeAlertIds).toEqual(['alert-eta-2', 'alert-eta-1'])
+    expect(result.active[0]?.scope.affectedContainerCount).toBe(2)
+    expect(
+      result.active[0]?.members.flatMap((member) => member.records.map((record) => record.alertId)),
+    ).toEqual(['alert-eta-2', 'alert-eta-1'])
   })
 
   it('places acknowledged and auto-resolved incidents in the recognized bucket', () => {

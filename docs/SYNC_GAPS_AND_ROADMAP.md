@@ -10,7 +10,7 @@ This document records the main sync findings from the audit, with impact, risk, 
 
 **What**
 
-The queue model has `leased_until`, but no heartbeat/renew endpoint/function was found. Work is reclaimed only after lease expiry (`supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:53-118`).
+The queue model has `leased_until`, but no heartbeat/renew endpoint/function was found. Work is reclaimed only after lease expiry (`supabase/migrations/2026022501_agent_sync_mvp.sql:59-98`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:53-118`).
 
 **Impact**
 
@@ -207,8 +207,8 @@ Design backfill as a first-class sync mode before any bulk onboarding/backfill f
 
 1. Migrate `ShipmentView` to `POST /api/processes/:id/refresh` and reduce endpoint fragmentation (`src/modules/process/ui/ShipmentView.tsx:333-356`, `src/routes/api/processes/[id]/refresh.ts:1-5`).
 2. Add immediate failure marking for agent scrape/ingest failures instead of waiting for lease expiry (`tools/agent/agent.ts:735-748`).
-3. Add lease heartbeat/renewal for long-running jobs (`supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`).
-4. Add a focused sync ops panel on top of `GET /api/processes/sync-status` and `sync_requests` timestamps (`src/modules/process/interface/http/process.controllers.ts:163-186`, `supabase/migrations/20260306_02_process_sync_observability_and_alert_ack_metadata.sql:28-31`).
+3. Add lease heartbeat/renewal for long-running jobs (`supabase/migrations/2026022501_agent_sync_mvp.sql:59-98`).
+4. Add a focused sync ops panel on top of `GET /api/processes/sync-status` and `sync_requests` timestamps (`src/modules/process/interface/http/process.controllers.ts:163-186`, `supabase/migrations/2026030602_process_sync_observability_and_alert_ack_metadata.sql:28-31`).
 5. Remove or quarantine unused direct server fetch API surface (`src/modules/tracking/application/tracking.usecases.ts:67-90`).
 
 ## Incremental Roadmap

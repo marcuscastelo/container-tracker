@@ -57,8 +57,8 @@ type HeaderIconButtonProps = {
 function HeaderIconButton(props: HeaderIconButtonProps): JSX.Element {
   const className = () =>
     props.variant === 'danger'
-      ? 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg transition-colors hover:bg-tone-danger-bg'
-      : 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground'
+      ? 'motion-focus-surface motion-interactive inline-flex h-8 w-8 items-center justify-center rounded-md border border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg hover:bg-tone-danger-bg'
+      : 'motion-focus-surface motion-interactive inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-text-muted hover:bg-surface-muted hover:text-foreground'
 
   return (
     <button type="button" title={props.title} onClick={() => props.onClick()} class={className()}>
@@ -75,7 +75,7 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
       <button
         type="button"
         aria-label={props.message}
-        class="inline-flex h-4 w-16 p-2 text-xs align-text-top italic bold text-tone-warning-fg items-center justify-center rounded-full bg-tone-warning-bg text-xs-ui font-medium animate-pulse transition-transform hover:cursor-pointer hover:scale-110 hover:bg-surface-muted"
+        class="motion-focus-surface motion-interactive inline-flex h-4 w-16 items-center justify-center rounded-full bg-tone-warning-bg p-2 text-xs-ui font-medium italic text-tone-warning-fg hover:cursor-pointer hover:bg-surface-muted"
         onClick={() => setOpen((current) => !current)}
       >
         sem ref
@@ -90,7 +90,7 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
           <div class="mt-2 text-right">
             <button
               type="button"
-              class="rounded bg-secondary px-2 py-1 text-sm-ui font-medium text-secondary-foreground outline hover:bg-surface-muted"
+              class="motion-focus-surface motion-interactive rounded bg-secondary px-2 py-1 text-sm-ui font-medium text-secondary-foreground outline hover:bg-surface-muted"
               onClick={() => {
                 props.onOpenReference()
                 setOpen(false)
@@ -115,14 +115,14 @@ function UnknownCarrierActions(props: {
     <div class="flex justify-end gap-3">
       <button
         type="button"
-        class="rounded-md px-3 py-2 text-sm-ui font-medium text-text-muted hover:bg-surface-muted"
+        class="motion-focus-surface motion-interactive rounded-md px-3 py-2 text-sm-ui font-medium text-text-muted hover:bg-surface-muted"
         onClick={() => props.onCancel()}
       >
         {props.cancelLabel}
       </button>
       <button
         type="button"
-        class="rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover"
+        class="motion-focus-surface motion-interactive rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover"
         onClick={() => props.onEdit()}
       >
         {props.editLabel}
@@ -164,7 +164,7 @@ function HeaderActions(props: {
       <button
         type="button"
         onClick={() => props.onRefresh()}
-        class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-sm-ui font-semibold text-foreground transition-colors hover:bg-surface-muted"
+        class="motion-focus-surface motion-interactive inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-sm-ui font-semibold text-foreground hover:bg-surface-muted"
         title={props.refreshLabel}
       >
         <RefreshCw class={`h-3.5 w-3.5 ${props.isRefreshing ? 'animate-spin' : ''}`} />

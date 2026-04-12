@@ -18,7 +18,7 @@ export function SearchTriggerButton(props: SearchTriggerButtonProps): JSX.Elemen
       onClick={() => props.onOpen()}
       onFocusIn={() => setIsFocused(true)}
       onFocusOut={() => setIsFocused(false)}
-      class="group relative flex w-full items-center gap-2 rounded-md border border-control-border bg-control-bg px-3 pr-12 text-left transition-colors hover:border-control-border-hover hover:bg-control-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      class="motion-focus-surface motion-interactive group relative flex w-full items-center gap-2 rounded-md border border-control-border bg-control-bg px-3 pr-12 text-left hover:border-control-border-hover hover:bg-control-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       style={{ height: 'var(--dashboard-search-height)' }}
     >
       <SearchIcon />

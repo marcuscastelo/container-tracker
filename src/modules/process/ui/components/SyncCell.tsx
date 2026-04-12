@@ -139,7 +139,7 @@ function SyncIssueBadge(props: { readonly issue: DashboardProcessSyncIssueVM }):
 
 function toButtonClasses(state: SyncCellState): string {
   const base =
-    'inline-flex h-[var(--dashboard-sync-button-size)] w-[var(--dashboard-sync-button-size)] items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
+    'motion-focus-surface motion-interactive inline-flex h-[var(--dashboard-sync-button-size)] w-[var(--dashboard-sync-button-size)] items-center justify-center rounded-md border border-border bg-surface text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
 
   if (state === 'syncing')
     return `${base} border-tone-info-border bg-tone-info-bg text-tone-info-fg cursor-default`

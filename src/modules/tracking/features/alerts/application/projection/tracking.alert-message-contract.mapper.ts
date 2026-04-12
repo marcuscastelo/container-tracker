@@ -9,6 +9,11 @@ export function toTrackingAlertMessageContract(
         message_key: alert.message_key,
         message_params: alert.message_params,
       }
+    case 'alerts.plannedTransshipmentDetected':
+      return {
+        message_key: alert.message_key,
+        message_params: alert.message_params,
+      }
     case 'alerts.customsHoldDetected':
       return {
         message_key: alert.message_key,

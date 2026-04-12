@@ -1,3 +1,4 @@
+import { Check, Copy } from 'lucide-solid'
 import { createMemo, For, type JSX, Show } from 'solid-js'
 import toast from 'solid-toast'
 import { TimelineNode } from '~/modules/process/ui/components/TimelineNode'
@@ -31,6 +32,7 @@ import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Panel } from '~/shared/ui/layout/Panel'
+import { useTransientFlag } from '~/shared/ui/motion/useTransientFlag'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 import { copyToClipboard } from '~/shared/utils/clipboard'
 
@@ -123,6 +125,7 @@ export function TrackingTimelinePanelContent(
   props: TrackingTimelinePanelContentProps,
 ): JSX.Element {
   const { t, keys, locale } = useTranslation()
+  const copyFeedback = useTransientFlag()
   const timeline = () => props.timeline
   const currentVessel = createMemo(() =>
     props.container?.currentContext.vesselVisible === false
@@ -149,7 +152,7 @@ export function TrackingTimelinePanelContent(
         }),
       )
       if (copied) {
-        toast.success(t(keys.shipmentView.actions.copyTimelineSuccess))
+        copyFeedback.activate()
       } else {
         toast.error(t(keys.shipmentView.actions.copyTimelineError))
       }
@@ -168,10 +171,26 @@ export function TrackingTimelinePanelContent(
         <Show when={showCopyAction()}>
           <button
             type="button"
-            class="inline-flex h-7 items-center rounded-md border border-border bg-surface px-2.5 text-xs-ui font-medium text-foreground transition-colors hover:bg-surface-muted"
+            class="motion-focus-surface motion-interactive inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs-ui font-medium text-foreground hover:bg-surface-muted"
             onClick={() => void handleCopyTimeline()}
           >
-            {t(keys.shipmentView.actions.copyTimeline)}
+            <Show
+              when={copyFeedback.isActive()}
+              fallback={<Copy class="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden="true" />}
+            >
+              <Check
+                class="motion-copy-feedback h-3.5 w-3.5 shrink-0 text-tone-success-fg"
+                aria-hidden="true"
+              />
+            </Show>
+            <span
+              class="motion-copy-feedback"
+              data-state={copyFeedback.isActive() ? 'copied' : 'idle'}
+            >
+              {copyFeedback.isActive()
+                ? t(keys.shipmentView.actions.copyTimelineCopied)
+                : t(keys.shipmentView.actions.copyTimeline)}
+            </span>
           </button>
         </Show>
       }

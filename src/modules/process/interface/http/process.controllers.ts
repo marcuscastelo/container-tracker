@@ -7,7 +7,7 @@ import {
   toProcessResponse,
   toProcessResponseWithSummary,
   toProcessSyncSnapshotResponse,
-  toRecognizedAlertIncidentsResponse,
+  toRecognizedOperationalIncidentsResponse,
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
 import {
@@ -20,7 +20,7 @@ import { jsonResponse } from '~/shared/api/typedRoute'
 import {
   ProcessDetailResponseSchema,
   ProcessesV2ResponseSchema,
-  ProcessRecognizedAlertIncidentsResponseSchema,
+  ProcessRecognizedOperationalIncidentsResponseSchema,
   ProcessResponseSchema,
   ProcessSyncSnapshotResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
@@ -48,7 +48,7 @@ type ProcessControllerDeps = {
     TrackingUseCases,
     'findContainersHotReadProjection' | 'getContainersSyncMetadata'
   > &
-    Partial<Pick<TrackingUseCases, 'findContainersRecognizedAlertIncidentsProjection'>>
+    Partial<Pick<TrackingUseCases, 'findContainersRecognizedOperationalIncidentsProjection'>>
 }
 
 // ---------------------------------------------------------------------------
@@ -68,8 +68,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     const now = systemClock.now()
     const {
       containersWithTracking,
-      activeAlerts,
-      activeAlertIncidents,
+      activeOperationalIncidents,
       operationalByContainerId,
       trackingContainmentByContainerId,
       trackingValidationByContainerId,
@@ -79,15 +78,12 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     return {
       pwc,
       containersWithTracking,
-      activeAlerts,
-      activeAlertIncidents,
       operationalByContainerId,
       containersSync,
       response: toProcessDetailResponse(
         pwc,
         containersWithTracking,
-        activeAlerts,
-        activeAlertIncidents,
+        activeOperationalIncidents,
         operationalByContainerId,
         trackingContainmentByContainerId,
         trackingValidationByContainerId,
@@ -252,7 +248,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     )
   }
 
-  async function getProcessRecognizedAlertIncidents({
+  async function getProcessRecognizedOperationalIncidents({
     params,
     request,
   }: {
@@ -261,9 +257,9 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
   }): Promise<Response> {
     return runWithReadRequestAudit(
       {
-        endpoint: '/api/processes/:id/alerts/recognized',
-        projection: 'ProcessRecognizedAlertIncidentsResponse',
-        readStrategy: 'tracking.recognized_alerts_projection.lazy',
+        endpoint: '/api/processes/:id/operational-incidents/recognized',
+        projection: 'ProcessRecognizedOperationalIncidentsResponse',
+        readStrategy: 'tracking.recognized_operational_incidents_projection.lazy',
         triggeredBy: readAuditedTriggerSource(request),
       },
       async () => {
@@ -278,8 +274,8 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
             return jsonResponse({ error: 'Process not found' }, 404)
           }
 
-          const recognizedAlertIncidents =
-            trackingUseCases.findContainersRecognizedAlertIncidentsProjection === undefined
+          const recognizedOperationalIncidents =
+            trackingUseCases.findContainersRecognizedOperationalIncidentsProjection === undefined
               ? {
                   summary: {
                     activeIncidentCount: 0,
@@ -289,18 +285,18 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
                   active: [],
                   recognized: [],
                 }
-              : await trackingUseCases.findContainersRecognizedAlertIncidentsProjection({
+              : await trackingUseCases.findContainersRecognizedOperationalIncidentsProjection({
                   containers: result.process.containers.map((container) => ({
                     containerId: String(container.id),
                     containerNumber: String(container.containerNumber),
                   })),
                 })
 
-          const response = toRecognizedAlertIncidentsResponse(recognizedAlertIncidents)
+          const response = toRecognizedOperationalIncidentsResponse(recognizedOperationalIncidents)
 
-          return jsonResponse(response, 200, ProcessRecognizedAlertIncidentsResponseSchema)
+          return jsonResponse(response, 200, ProcessRecognizedOperationalIncidentsResponseSchema)
         } catch (err) {
-          console.error('GET /api/processes/[id]/alerts/recognized error:', err)
+          console.error('GET /api/processes/[id]/operational-incidents/recognized error:', err)
           return mapErrorToResponse(err)
         }
       },
@@ -421,7 +417,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     createProcess,
     getProcessById,
     getProcessSyncSnapshot,
-    getProcessRecognizedAlertIncidents,
+    getProcessRecognizedOperationalIncidents,
     updateProcessById,
     deleteProcessById,
   }

@@ -49,7 +49,7 @@ export function AgentFiltersBar(props: Props): JSX.Element {
           placeholder="Search tenant, host, id…"
           value={props.searchText}
           onInput={(e) => props.onSearchChange(e.currentTarget.value)}
-          class="w-full rounded border border-control-border bg-control-bg py-1.5 pl-8 pr-3 text-sm-ui text-control-popover-foreground placeholder:text-control-placeholder focus:border-control-selected-border focus:outline-none focus:ring-2 focus:ring-ring/40"
+          class="motion-focus-surface w-full rounded border border-control-border bg-control-bg py-1.5 pl-8 pr-3 text-sm-ui text-control-popover-foreground placeholder:text-control-placeholder focus:border-control-selected-border focus:outline-none focus:ring-2 focus:ring-ring/40"
         />
       </div>
 
@@ -60,7 +60,7 @@ export function AgentFiltersBar(props: Props): JSX.Element {
             <button
               type="button"
               onClick={() => props.onStatusFilterChange(opt.value)}
-              class={`px-2.5 py-1.5 text-xs-ui font-medium transition-colors first:rounded-l last:rounded-r ${
+              class={`motion-focus-surface motion-interactive px-2.5 py-1.5 text-xs-ui font-medium first:rounded-l last:rounded-r ${
                 props.statusFilter === opt.value
                   ? 'bg-primary text-primary-foreground'
                   : 'text-control-foreground hover:bg-control-bg-hover hover:text-control-foreground-strong'
@@ -76,14 +76,14 @@ export function AgentFiltersBar(props: Props): JSX.Element {
       <select
         value={props.capabilityFilter}
         onChange={(e) => props.onCapabilityFilterChange(e.currentTarget.value)}
-        class="rounded border border-control-border bg-control-bg px-2.5 py-1.5 text-sm-ui text-control-popover-foreground focus:border-control-selected-border focus:outline-none focus:ring-2 focus:ring-ring/40"
+        class="motion-focus-surface rounded border border-control-border bg-control-bg px-2.5 py-1.5 text-sm-ui text-control-popover-foreground focus:border-control-selected-border focus:outline-none focus:ring-2 focus:ring-ring/40"
       >
         <option value="">All Providers</option>
         <For each={props.availableCapabilities}>{(cap) => <option value={cap}>{cap}</option>}</For>
       </select>
 
       {/* Only problematic toggle */}
-      <label class="inline-flex cursor-pointer items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1.5 text-xs-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong">
+      <label class="motion-focus-surface motion-interactive inline-flex cursor-pointer items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1.5 text-xs-ui font-medium text-control-foreground hover:bg-control-bg-hover hover:text-control-foreground-strong">
         <input
           type="checkbox"
           checked={props.onlyProblematic}

@@ -1,5 +1,5 @@
 import { createRoot } from 'solid-js'
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ImportValidationState } from '~/modules/process/ui/components/export-import/useExportImportActionsController'
 
 const requestPortableExportMock = vi.hoisted(() => vi.fn(async () => undefined))
@@ -13,12 +13,10 @@ const executeSymmetricImportBundleMock = vi.hoisted(() =>
   })),
 )
 const copyToClipboardMock = vi.hoisted(() => vi.fn(async () => true))
-const toastSuccessMock = vi.hoisted(() => vi.fn())
 const toastErrorMock = vi.hoisted(() => vi.fn())
 
 const translationKeys = vi.hoisted(() => ({
   exportImport: {
-    copyTrelloSuccess: 'Copied Trello export',
     copyTrelloError: 'Failed to copy Trello export',
     importDialog: {
       invalidBundleJson: 'Invalid bundle JSON',
@@ -43,7 +41,6 @@ vi.mock('~/shared/utils/clipboard', () => ({
 
 vi.mock('solid-toast', () => ({
   default: {
-    success: toastSuccessMock,
     error: toastErrorMock,
   },
 }))
@@ -68,6 +65,7 @@ type ControllerHarness = ReturnType<typeof useExportImportActionsController> & {
 }
 
 type OriginalHtmlInputElement = typeof globalThis.HTMLInputElement | undefined
+type OriginalWindow = typeof globalThis.window | undefined
 
 class FakeHtmlInputElement {
   files: readonly File[] | null = null
@@ -118,6 +116,7 @@ function createFileChangeEvent(file: File | null): Event {
 
 describe('useExportImportActionsController', () => {
   let originalHtmlInputElement: OriginalHtmlInputElement
+  let originalWindow: OriginalWindow
 
   beforeAll(() => {
     originalHtmlInputElement = globalThis.HTMLInputElement
@@ -130,23 +129,40 @@ describe('useExportImportActionsController', () => {
   afterAll(() => {
     if (originalHtmlInputElement === undefined) {
       Reflect.deleteProperty(globalThis, 'HTMLInputElement')
+    } else {
+      Object.defineProperty(globalThis, 'HTMLInputElement', {
+        configurable: true,
+        value: originalHtmlInputElement,
+      })
+    }
+  })
+
+  afterEach(() => {
+    vi.clearAllTimers()
+    vi.useRealTimers()
+    if (originalWindow === undefined) {
+      Reflect.deleteProperty(globalThis, 'window')
       return
     }
 
-    Object.defineProperty(globalThis, 'HTMLInputElement', {
+    Object.defineProperty(globalThis, 'window', {
       configurable: true,
-      value: originalHtmlInputElement,
+      value: originalWindow,
     })
   })
 
   beforeEach(() => {
+    originalWindow = globalThis.window
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: globalThis,
+    })
     requestPortableExportMock.mockReset()
     requestOperationalReportExportMock.mockReset()
     requestOperationalReportExportTextMock.mockReset()
     validateSymmetricImportBundleMock.mockReset()
     executeSymmetricImportBundleMock.mockReset()
     copyToClipboardMock.mockReset()
-    toastSuccessMock.mockReset()
     toastErrorMock.mockReset()
 
     requestPortableExportMock.mockResolvedValue(undefined)
@@ -170,7 +186,8 @@ describe('useExportImportActionsController', () => {
     controller.dispose()
   })
 
-  it('copies Trello text and reports clipboard failures', async () => {
+  it('copies Trello text with inline feedback and keeps toast only for failures', async () => {
+    vi.useFakeTimers()
     const controller = mountController('process-1')
 
     await controller.copyTrello()
@@ -189,12 +206,14 @@ describe('useExportImportActionsController', () => {
       },
     })
     expect(copyToClipboardMock).toHaveBeenCalledWith('trello export')
-    expect(toastSuccessMock).toHaveBeenCalledWith('Copied Trello export')
+    expect(controller.copyTrelloFeedback()).toBe(true)
 
     copyToClipboardMock.mockResolvedValueOnce(false)
     await controller.copyTrello()
 
     expect(toastErrorMock).toHaveBeenCalledWith('Failed to copy Trello export')
+    vi.advanceTimersByTime(1_200)
+    expect(controller.copyTrelloFeedback()).toBe(false)
     controller.dispose()
   })
 

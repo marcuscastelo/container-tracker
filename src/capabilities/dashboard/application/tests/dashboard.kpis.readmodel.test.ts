@@ -9,7 +9,7 @@ type ProcessesProjection = Awaited<
 >['processes']
 
 describe('createDashboardKpisReadModelUseCase', () => {
-  it('counts active processes, tracked containers, processes with alerts and latest sync', async () => {
+  it('counts active processes, tracked containers, active incidents and latest sync', async () => {
     const processes: ProcessesProjection = [
       {
         pwc: {
@@ -21,7 +21,14 @@ describe('createDashboardKpisReadModelUseCase', () => {
         },
         summary: {
           full_logistics_complete: false,
-          alerts_count: 2,
+          operational_incidents: {
+            summary: {
+              active_incidents_count: 2,
+              affected_containers_count: 2,
+              recognized_incidents_count: 0,
+            },
+            dominant: null,
+          },
         },
         sync: {
           lastSyncAt: '2026-03-12T10:00:00.000Z',
@@ -34,7 +41,14 @@ describe('createDashboardKpisReadModelUseCase', () => {
         },
         summary: {
           full_logistics_complete: true,
-          alerts_count: 0,
+          operational_incidents: {
+            summary: {
+              active_incidents_count: 0,
+              affected_containers_count: 0,
+              recognized_incidents_count: 0,
+            },
+            dominant: null,
+          },
         },
         sync: {
           lastSyncAt: '2026-03-12T11:30:00.000Z',
@@ -47,7 +61,14 @@ describe('createDashboardKpisReadModelUseCase', () => {
         },
         summary: {
           full_logistics_complete: false,
-          alerts_count: 1,
+          operational_incidents: {
+            summary: {
+              active_incidents_count: 1,
+              affected_containers_count: 1,
+              recognized_incidents_count: 0,
+            },
+            dominant: null,
+          },
         },
         sync: {
           lastSyncAt: null,
@@ -68,7 +89,8 @@ describe('createDashboardKpisReadModelUseCase', () => {
     expect(result).toEqual({
       activeProcesses: 2,
       trackedContainers: 3,
-      processesWithAlerts: 2,
+      activeIncidents: 3,
+      affectedContainers: 3,
       lastSyncAt: '2026-03-12T11:30:00.000Z',
     })
   })
@@ -82,7 +104,14 @@ describe('createDashboardKpisReadModelUseCase', () => {
         },
         summary: {
           full_logistics_complete: false,
-          alerts_count: 0,
+          operational_incidents: {
+            summary: {
+              active_incidents_count: 0,
+              affected_containers_count: 0,
+              recognized_incidents_count: 0,
+            },
+            dominant: null,
+          },
         },
         sync: {
           lastSyncAt: null,
@@ -95,7 +124,14 @@ describe('createDashboardKpisReadModelUseCase', () => {
         },
         summary: {
           full_logistics_complete: false,
-          alerts_count: 0,
+          operational_incidents: {
+            summary: {
+              active_incidents_count: 0,
+              affected_containers_count: 0,
+              recognized_incidents_count: 0,
+            },
+            dominant: null,
+          },
         },
         sync: {
           lastSyncAt: 'invalid-date',
@@ -116,6 +152,7 @@ describe('createDashboardKpisReadModelUseCase', () => {
     expect(result.lastSyncAt).toBeNull()
     expect(result.activeProcesses).toBe(2)
     expect(result.trackedContainers).toBe(1)
-    expect(result.processesWithAlerts).toBe(0)
+    expect(result.activeIncidents).toBe(0)
+    expect(result.affectedContainers).toBe(0)
   })
 })

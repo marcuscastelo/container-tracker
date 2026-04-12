@@ -30,7 +30,7 @@ export function GlobalSearchComposerView(props: GlobalSearchComposerViewProps): 
             <button
               type="button"
               onClick={() => props.onRemoveChip(index())}
-              class="rounded text-text-muted transition-colors hover:text-control-foreground"
+              class="motion-focus-surface motion-interactive rounded text-text-muted hover:text-control-foreground"
               aria-label={chip.label}
             >
               ×
@@ -46,7 +46,7 @@ export function GlobalSearchComposerView(props: GlobalSearchComposerViewProps): 
         onInput={(event) => props.onDraftInput(event.currentTarget.value)}
         onKeyDown={(event) => props.onKeyDown(event)}
         placeholder={props.placeholder}
-        class="min-w-[12rem] flex-1 bg-transparent text-sm-ui text-control-popover-foreground placeholder:text-control-placeholder outline-none"
+        class="motion-focus-surface min-w-[12rem] flex-1 rounded-md bg-transparent px-1 py-1 text-sm-ui text-control-popover-foreground placeholder:text-control-placeholder outline-none"
         autocomplete="off"
         spellcheck={false}
         role="combobox"
@@ -60,7 +60,7 @@ export function GlobalSearchComposerView(props: GlobalSearchComposerViewProps): 
       <button
         type="button"
         onClick={() => props.onClear()}
-        class="rounded p-0.5 text-control-foreground hover:text-control-foreground-strong"
+        class="motion-focus-surface motion-interactive rounded p-0.5 text-control-foreground hover:text-control-foreground-strong"
         aria-label={props.clearLabel}
       >
         <svg
