@@ -18,7 +18,7 @@ type Props = {
 }
 
 const OUTLINE_BUTTON_CLASS =
-  'inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-3 text-sm-ui font-medium text-text-muted transition-colors hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
+  'motion-focus-surface motion-interactive inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-3 text-sm-ui font-medium text-text-muted hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
 
 function NavLink(props: {
   readonly href: string
@@ -48,6 +48,7 @@ function NavLink(props: {
       onPointerDown={() => props.onIntent?.()}
       class={clsx(
         'relative px-1 py-2 text-sm-ui font-medium transition-colors hover:text-primary',
+        'motion-focus-surface',
         {
           [activeClass]: isActive(),
           [mutedClass]: !isActive() && !(props.end && startsWith),
@@ -79,25 +80,19 @@ function HeaderBrand(props: {
         <img
           src={BRANDING.logoPrimaryLight}
           alt={BRANDING.companyName}
-          class={clsx(
-            'absolute inset-0 block h-10 w-auto object-contain transition-all duration-200 ease-out',
-            {
-              'opacity-100 scale-100': !isDark(),
-              'opacity-0 scale-95': isDark(),
-            },
-          )}
+          class={clsx('absolute inset-0 block h-10 w-auto object-contain motion-overlay-surface', {
+            'opacity-100 scale-100': !isDark(),
+            'opacity-0 scale-95': isDark(),
+          })}
         />
         <img
           src={BRANDING.logoPrimaryDark}
           alt=""
           aria-hidden="true"
-          class={clsx(
-            'absolute inset-0 block h-10 w-auto object-contain transition-all duration-200 ease-out',
-            {
-              'opacity-100 scale-100': isDark(),
-              'opacity-0 scale-95': !isDark(),
-            },
-          )}
+          class={clsx('absolute inset-0 block h-10 w-auto object-contain motion-overlay-surface', {
+            'opacity-100 scale-100': isDark(),
+            'opacity-0 scale-95': !isDark(),
+          })}
         />
       </span>
       <span class="flex min-w-0 flex-col">
@@ -166,7 +161,7 @@ function CreateProcessButton(props: {
         type="button"
         onClick={() => props.onCreateProcess?.()}
         aria-label={props.label}
-        class="inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] flex-none items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] bg-primary px-3.5 text-sm-ui font-medium text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        class="motion-focus-surface motion-interactive inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] flex-none items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] bg-primary px-3.5 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         <svg
           class="h-4 w-4"

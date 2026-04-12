@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./shared/ui/theme.css";
+@import "./shared/ui/motion/motion.css";
 
 /* https://base-ui-docs-solid.vercel.app/solid/overview/quick-start */
 /* BaseUI Portals isolation (to be on top) */

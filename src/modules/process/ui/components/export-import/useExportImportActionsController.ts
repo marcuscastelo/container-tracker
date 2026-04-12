@@ -9,6 +9,7 @@ import {
   validateSymmetricImportBundle,
 } from '~/modules/process/ui/api/export-import.api'
 import { useTranslation } from '~/shared/localization/i18n'
+import { useTransientFlag } from '~/shared/ui/motion/useTransientFlag'
 import { copyToClipboard } from '~/shared/utils/clipboard'
 
 export type ExportType = 'portable' | 'report'
@@ -70,6 +71,7 @@ function parsePortableFormat(value: string): PortableFormat {
 
 export function useExportImportActionsController(params: UseExportImportActionsControllerParams) {
   const { t, keys } = useTranslation()
+  const copyTrelloFeedback = useTransientFlag()
 
   const [isExportDialogOpen, setIsExportDialogOpen] = createSignal(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = createSignal(false)
@@ -143,7 +145,7 @@ export function useExportImportActionsController(params: UseExportImportActionsC
       })
       const copied = await copyToClipboard(markdown)
       if (copied) {
-        toast.success(t(keys.exportImport.copyTrelloSuccess))
+        copyTrelloFeedback.activate()
       } else {
         toast.error(t(keys.exportImport.copyTrelloError))
       }
@@ -258,6 +260,7 @@ export function useExportImportActionsController(params: UseExportImportActionsC
     importSuccess,
     showCopyTrello: () => params.processId !== null,
     showImport: () => params.showImport && !importDisabled,
+    copyTrelloFeedback: copyTrelloFeedback.isActive,
     copyTrello: handleCopyTrello,
   }
 }

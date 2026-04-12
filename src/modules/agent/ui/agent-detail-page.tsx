@@ -118,7 +118,7 @@ function AgentDetailToolbar(props: AgentDetailToolbarProps): JSX.Element {
         <button
           type="button"
           onClick={() => props.onBack()}
-          class="inline-flex items-center gap-1 rounded border border-control-border bg-control-bg px-2 py-1 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
+          class="motion-focus-surface motion-interactive inline-flex items-center gap-1 rounded border border-control-border bg-control-bg px-2 py-1 text-sm-ui font-medium text-control-foreground hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
           <svg
             class="h-3.5 w-3.5"
@@ -152,21 +152,21 @@ function AgentDetailToolbar(props: AgentDetailToolbarProps): JSX.Element {
         <button
           type="button"
           onClick={() => void props.onRequestUpdate()}
-          class="inline-flex items-center rounded border border-tone-info-border bg-tone-info-bg px-2.5 py-1 text-sm-ui font-medium text-tone-info-fg transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-tone-info-border/50"
+          class="motion-focus-surface motion-interactive inline-flex items-center rounded border border-tone-info-border bg-tone-info-bg px-2.5 py-1 text-sm-ui font-medium text-tone-info-fg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-tone-info-border/50"
         >
           Request update
         </button>
         <button
           type="button"
           onClick={() => void props.onRequestRestart()}
-          class="inline-flex items-center rounded border border-tone-warning-border bg-tone-warning-bg px-2.5 py-1 text-sm-ui font-medium text-tone-warning-fg transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-tone-warning-border/50"
+          class="motion-focus-surface motion-interactive inline-flex items-center rounded border border-tone-warning-border bg-tone-warning-bg px-2.5 py-1 text-sm-ui font-medium text-tone-warning-fg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-tone-warning-border/50"
         >
           Request restart
         </button>
         <button
           type="button"
           onClick={() => props.onToggleLogs()}
-          class="inline-flex items-center rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
+          class="motion-focus-surface motion-interactive inline-flex items-center rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
           {props.showLogs() ? 'Hide logs' : 'View logs'}
         </button>
@@ -176,7 +176,7 @@ function AgentDetailToolbar(props: AgentDetailToolbarProps): JSX.Element {
         <button
           type="button"
           onClick={() => props.onRefresh()}
-          class="inline-flex items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
+          class="motion-focus-surface motion-interactive inline-flex items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
           <svg
             class="h-3.5 w-3.5"

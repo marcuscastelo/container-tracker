@@ -63,7 +63,7 @@ export function AlertItem(props: AlertItemProps): JSX.Element {
     <button
       type="button"
       onClick={() => props.onOpenContainer()}
-      class={`block w-full rounded-md border px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${toAlertCardTone(
+      class={`motion-focus-surface motion-interactive block w-full rounded-md border px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${toAlertCardTone(
         props.alert.severity,
       )} ${toAlertCardHoverTone(props.alert.severity)}`}
     >

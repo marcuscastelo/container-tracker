@@ -20,7 +20,7 @@ export function GlobalSearchResultRow(props: GlobalSearchResultRowProps): JSX.El
       data-search-process-id={props.item.processId}
       onClick={() => props.onSelect(props.item)}
       onMouseEnter={() => props.onHover(props.index)}
-      class={`flex w-full flex-col gap-3 border-b border-control-border px-4 py-3 text-left transition-colors last:border-b-0 ${
+      class={`motion-focus-surface motion-interactive flex w-full flex-col gap-3 border-b border-control-border px-4 py-3 text-left last:border-b-0 ${
         props.active
           ? 'bg-control-selected-bg text-control-selected-foreground'
           : 'bg-control-popover text-control-popover-foreground hover:bg-control-bg-hover'

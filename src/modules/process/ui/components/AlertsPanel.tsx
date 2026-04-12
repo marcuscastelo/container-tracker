@@ -20,6 +20,7 @@ type Props = {
   readonly processId: string
   readonly alertIncidents: AlertIncidentsVM
   readonly busyAlertIds: ReadonlySet<string>
+  readonly recentlyChangedAlertIds: ReadonlySet<string>
   readonly onAcknowledge: (alertIds: readonly string[]) => void
   readonly onUnacknowledge: (alertIds: readonly string[]) => void
   readonly onSelectContainer: (containerId: string) => void
@@ -32,7 +33,11 @@ type FilterOption = {
 
 type AlertIncidentHandlers = Pick<
   Props,
-  'busyAlertIds' | 'onAcknowledge' | 'onUnacknowledge' | 'onSelectContainer'
+  | 'busyAlertIds'
+  | 'recentlyChangedAlertIds'
+  | 'onAcknowledge'
+  | 'onUnacknowledge'
+  | 'onSelectContainer'
 >
 
 function AlertsPanelHeader(props: { readonly summaryLine: string }): JSX.Element {
@@ -118,6 +123,7 @@ function AlertIncidentList(
           <AlertIncidentItem
             incident={incident}
             busyAlertIds={props.busyAlertIds}
+            recentlyChangedAlertIds={props.recentlyChangedAlertIds}
             onAcknowledgeIncident={props.onAcknowledge}
             onUnacknowledgeIncident={props.onUnacknowledge}
             onSelectContainer={props.onSelectContainer}
@@ -180,6 +186,7 @@ function RecognizedIncidentsSection(
                 incidents={props.incidents}
                 duplicatedTransshipmentIncidentKeys={props.duplicatedTransshipmentIncidentKeys}
                 busyAlertIds={props.busyAlertIds}
+                recentlyChangedAlertIds={props.recentlyChangedAlertIds}
                 onAcknowledge={props.onAcknowledge}
                 onUnacknowledge={props.onUnacknowledge}
                 onSelectContainer={props.onSelectContainer}
@@ -302,6 +309,7 @@ export function AlertsPanel(props: Props): JSX.Element {
               incidents={visibleActiveIncidents()}
               duplicatedTransshipmentIncidentKeys={duplicatedActiveTransshipmentIncidentKeys()}
               busyAlertIds={props.busyAlertIds}
+              recentlyChangedAlertIds={props.recentlyChangedAlertIds}
               onAcknowledge={props.onAcknowledge}
               onUnacknowledge={props.onUnacknowledge}
               onSelectContainer={props.onSelectContainer}
@@ -322,6 +330,7 @@ export function AlertsPanel(props: Props): JSX.Element {
             void loadRecognizedIncidents()
           }}
           busyAlertIds={props.busyAlertIds}
+          recentlyChangedAlertIds={props.recentlyChangedAlertIds}
           onAcknowledge={props.onAcknowledge}
           onUnacknowledge={props.onUnacknowledge}
           onSelectContainer={props.onSelectContainer}

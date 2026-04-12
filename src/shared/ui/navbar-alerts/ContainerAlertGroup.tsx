@@ -34,7 +34,7 @@ export function ContainerAlertGroup(props: ContainerAlertGroupProps): JSX.Elemen
       <button
         type="button"
         onClick={openContainer}
-        class="block w-full rounded-md border border-border bg-surface px-2.5 py-2 text-left transition-colors hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        class="motion-focus-surface motion-interactive block w-full rounded-md border border-border bg-surface px-2.5 py-2 text-left hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         <div class="flex items-center justify-between gap-2">
           <p class="font-mono text-sm-ui font-semibold text-foreground truncate">

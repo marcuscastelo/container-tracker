@@ -1,7 +1,12 @@
 import type { JSX } from 'solid-js'
-import { createEffect, onCleanup, Show } from 'solid-js'
+import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import { useTranslation } from '~/shared/localization/i18n'
+import {
+  clearMotionTimeout,
+  scheduleMotionFrame,
+  scheduleMotionTimeout,
+} from '~/shared/ui/motion/motion.utils'
 
 type Props = {
   readonly open: boolean
@@ -43,7 +48,7 @@ function DialogHeader(props: HeaderProps): JSX.Element {
         <button
           type="button"
           onClick={() => props.onClose()}
-          class="-m-2 rounded-md p-2 text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground"
+          class="-m-2 rounded-md p-2 text-text-muted motion-focus-surface motion-interactive hover:bg-surface-muted hover:text-foreground"
           aria-label={props.closeLabel}
         >
           <svg
@@ -68,9 +73,39 @@ function DialogHeader(props: HeaderProps): JSX.Element {
 
 export function Dialog(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
-  // Handle escape key
+  const [isRendered, setIsRendered] = createSignal(false)
+  const [visualState, setVisualState] = createSignal<'open' | 'closed'>('closed')
+  let closeTimeoutId: number | null = null
+
   createEffect(() => {
-    if (!props.open) return
+    if (props.open) {
+      clearMotionTimeout(closeTimeoutId)
+      setIsRendered(true)
+      if (typeof window === 'undefined') {
+        setVisualState('open')
+        return
+      }
+
+      scheduleMotionFrame(() => {
+        setVisualState('open')
+      })
+      return
+    }
+
+    if (!isRendered()) {
+      setVisualState('closed')
+      return
+    }
+
+    setVisualState('closed')
+    closeTimeoutId = scheduleMotionTimeout(() => {
+      setIsRendered(false)
+      closeTimeoutId = null
+    }, 'slow')
+  })
+
+  createEffect(() => {
+    if (!isRendered()) return
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -79,7 +114,6 @@ export function Dialog(props: Props): JSX.Element {
     }
 
     document.addEventListener('keydown', handleEscape)
-    // Prevent body scroll when dialog is open
     document.body.style.overflow = 'hidden'
 
     onCleanup(() => {
@@ -88,20 +122,26 @@ export function Dialog(props: Props): JSX.Element {
     })
   })
 
+  onCleanup(() => {
+    clearMotionTimeout(closeTimeoutId)
+  })
+
   const widthClass = () => maxWidthClasses[props.maxWidth ?? 'lg']
 
   return (
-    <Show when={props.open}>
+    <Show when={props.open || isRendered()}>
       <Portal>
         <div class="fixed inset-0 z-50 overflow-y-auto">
           <div
-            class="fixed inset-0 bg-ring/50 transition-opacity"
+            data-state={props.open && !isRendered() ? 'open' : visualState()}
+            class="motion-dialog-overlay fixed inset-0 bg-ring/50"
             onClick={() => props.onClose()}
             aria-hidden="true"
           />
           <div class="flex min-h-full items-start justify-center p-4 pt-16 sm:pt-24">
             <div
-              class={`relative w-full ${widthClass()} transform rounded-lg border border-border bg-popover text-popover-foreground shadow-xl transition-all`}
+              data-state={props.open && !isRendered() ? 'open' : visualState()}
+              class={`motion-dialog-panel relative w-full ${widthClass()} rounded-lg border border-border bg-popover text-popover-foreground shadow-xl`}
               role="dialog"
               aria-modal="true"
               aria-labelledby="dialog-title"

@@ -42,7 +42,7 @@ export function ProcessAlertGroup(props: ProcessAlertGroupProps): JSX.Element {
           <button
             type="button"
             onClick={() => props.onOpenProcess(props.process.processId)}
-            class="inline-flex h-7 items-center justify-center rounded border border-border bg-surface px-2 text-xs-ui font-medium text-foreground transition-colors hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            class="motion-focus-surface motion-interactive inline-flex h-7 items-center justify-center rounded border border-border bg-surface px-2 text-xs-ui font-medium text-foreground hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             {t(keys.header.alertsPanel.openProcess)}
           </button>

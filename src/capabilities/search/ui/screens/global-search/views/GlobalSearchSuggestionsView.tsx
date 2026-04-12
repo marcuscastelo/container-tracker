@@ -45,7 +45,7 @@ export function GlobalSearchSuggestionsView(props: GlobalSearchSuggestionsViewPr
             type="button"
             onClick={() => props.onSelect(suggestion)}
             onMouseEnter={() => props.onHover(index())}
-            class={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm-ui transition-colors ${
+            class={`motion-focus-surface motion-interactive flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm-ui ${
               props.activeIndex === index()
                 ? 'bg-control-selected-bg text-control-selected-foreground'
                 : 'bg-control-popover text-control-popover-foreground hover:bg-control-bg-hover'

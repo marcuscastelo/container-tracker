@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createSignal, onMount, Show } from 'solid-js'
+import { createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { SearchOverlayFooter } from '~/capabilities/search/ui/SearchOverlay.footer'
 import { SearchTriggerButton } from '~/capabilities/search/ui/SearchOverlay.trigger'
 import { useGlobalSearchController } from '~/capabilities/search/ui/screens/global-search/hooks/useGlobalSearchController'
@@ -11,6 +11,11 @@ import {
   resolveGlobalSearchActiveListId,
 } from '~/capabilities/search/ui/screens/global-search/views/globalSearch.a11y'
 import { useTranslation } from '~/shared/localization/i18n'
+import {
+  clearMotionTimeout,
+  scheduleMotionFrame,
+  scheduleMotionTimeout,
+} from '~/shared/ui/motion/motion.utils'
 
 function readNavigatorPlatform(): string | undefined {
   const userAgentData = Reflect.get(navigator, 'userAgentData')
@@ -40,6 +45,11 @@ export function GlobalSearchDialog(): JSX.Element {
   const translation = useTranslation()
   const controller = useGlobalSearchController()
   const [shortcutLabel, setShortcutLabel] = createSignal('Ctrl K')
+  const [isRendered, setIsRendered] = createSignal(controller.isOpen())
+  const [visualState, setVisualState] = createSignal<'open' | 'closed'>(
+    controller.isOpen() ? 'open' : 'closed',
+  )
+  let closeTimeoutId: number | null = null
 
   const activeA11yState = () => ({
     showSuggestions: controller.showSuggestions(),
@@ -55,6 +65,32 @@ export function GlobalSearchDialog(): JSX.Element {
     setShortcutLabel(detectShortcutLabel())
   })
 
+  createEffect(() => {
+    if (controller.isOpen()) {
+      clearMotionTimeout(closeTimeoutId)
+      setIsRendered(true)
+      scheduleMotionFrame(() => {
+        setVisualState('open')
+      })
+      return
+    }
+
+    if (!isRendered()) {
+      setVisualState('closed')
+      return
+    }
+
+    setVisualState('closed')
+    closeTimeoutId = scheduleMotionTimeout(() => {
+      setIsRendered(false)
+      closeTimeoutId = null
+    }, 'base')
+  })
+
+  onCleanup(() => {
+    clearMotionTimeout(closeTimeoutId)
+  })
+
   return (
     <>
       <SearchTriggerButton
@@ -63,21 +99,19 @@ export function GlobalSearchDialog(): JSX.Element {
         onOpen={() => controller.open()}
       />
 
-      <Show when={controller.isOpen()}>
-        <div
-          class="fixed inset-0 z-50 flex items-start justify-center px-2 pt-[8vh] sm:px-4"
-          style={{ animation: 'search-overlay-in 150ms ease-out' }}
-        >
+      <Show when={isRendered()}>
+        <div class="fixed inset-0 z-50 flex items-start justify-center px-2 pt-[8vh] sm:px-4">
           <button
             type="button"
-            class="absolute inset-0 bg-ring/60 backdrop-blur-sm"
+            class="motion-dialog-overlay absolute inset-0 bg-ring/60 backdrop-blur-sm"
+            data-state={visualState()}
             onClick={() => controller.close()}
             aria-label={translation.t(translation.keys.search.close)}
           />
 
           <div
-            class="relative z-10 w-full max-w-5xl overflow-hidden rounded-xl border border-control-border bg-control-popover shadow-2xl"
-            style={{ animation: 'search-modal-in 150ms ease-out' }}
+            class="motion-dialog-panel relative z-10 w-full max-w-5xl overflow-hidden rounded-xl border border-control-border bg-control-popover shadow-2xl"
+            data-state={visualState()}
             role="dialog"
             aria-modal="true"
             aria-label={translation.t(translation.keys.search.placeholder)}

@@ -1,4 +1,4 @@
-import { Copy, Download, Upload } from 'lucide-solid'
+import { Check, Copy, Download, Upload } from 'lucide-solid'
 import { createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js'
 import type { ReportFormat } from '~/modules/process/ui/api/export-import.api'
 import {
@@ -18,28 +18,51 @@ type ExportImportActionsProps = {
 type ExportImportMenuProps = {
   readonly showImport: boolean
   readonly showCopyTrello: boolean
+  readonly copyTrelloFeedback: boolean
   readonly onOpenExport: () => void
   readonly onOpenImport: () => void
   readonly onCopyTrello: () => void
 }
 
 const HEADER_MENU_BUTTON_CLASS =
-  'inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] cursor-pointer list-none items-center justify-center gap-1.5 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-2.5 text-sm-ui font-medium text-text-muted transition-colors select-none hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
+  'motion-focus-surface motion-interactive inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] cursor-pointer list-none items-center justify-center gap-1.5 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-2.5 text-sm-ui font-medium text-text-muted select-none hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
 
 const HEADER_MENU_ITEM_CLASS =
-  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm-ui font-medium text-foreground transition-colors hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none'
+  'motion-focus-surface motion-interactive flex w-full items-center gap-2 px-3 py-2 text-left text-sm-ui font-medium text-foreground hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none'
+
+function CopyTrelloMenuItem(props: {
+  readonly copied: boolean
+  readonly onClick: () => void
+}): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <button type="button" class={HEADER_MENU_ITEM_CLASS} onClick={() => props.onClick()}>
+      <Show
+        when={props.copied}
+        fallback={<Copy class="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />}
+      >
+        <Check
+          class="motion-copy-feedback h-4 w-4 shrink-0 text-tone-success-fg"
+          aria-hidden="true"
+        />
+      </Show>
+      <span class="motion-copy-feedback" data-state={props.copied ? 'copied' : 'idle'}>
+        {props.copied
+          ? t(keys.exportImport.copyTrelloCopied)
+          : t(keys.exportImport.copyTrelloAction)}
+      </span>
+    </button>
+  )
+}
 
 function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
   const { t, keys } = useTranslation()
   const [isMenuOpen, setIsMenuOpen] = createSignal(false)
-  let menuRef: HTMLDetailsElement | undefined
+  let menuRef: HTMLDivElement | undefined
 
   const closeMenu = (): void => {
-    if (!menuRef) {
-      setIsMenuOpen(false)
-      return
-    }
-    menuRef.open = false
+    setIsMenuOpen(false)
   }
 
   const handleExportClick = (): void => {
@@ -60,63 +83,62 @@ function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
   onMount(() => {
     const onDocClick: EventListener = (ev) => {
       if (!menuRef) return
-      if (!menuRef.open) return
+      if (!isMenuOpen()) return
       const target = ev.target
       if (target instanceof Node && menuRef.contains(target)) return
-      menuRef.open = false
+      setIsMenuOpen(false)
     }
 
     const onEscape = (event: KeyboardEvent) => {
-      if (!menuRef?.open) return
+      if (!isMenuOpen()) return
       if (event.key !== 'Escape') return
       event.preventDefault()
-      menuRef.open = false
+      setIsMenuOpen(false)
     }
 
     const onOtherOpened: EventListener = (ev) => {
       if (!menuRef) return
       if (!(ev instanceof CustomEvent)) return
       if (ev.detail !== menuRef) {
-        menuRef.open = false
-      }
-    }
-
-    const onToggle: EventListener = () => {
-      if (!menuRef) return
-      setIsMenuOpen(menuRef.open)
-      if (menuRef.open) {
-        window.dispatchEvent(new CustomEvent('unified-dropdown-opened', { detail: menuRef }))
+        setIsMenuOpen(false)
       }
     }
 
     document.addEventListener('click', onDocClick)
     document.addEventListener('keydown', onEscape)
     window.addEventListener('unified-dropdown-opened', onOtherOpened)
-    menuRef?.addEventListener('toggle', onToggle)
 
     onCleanup(() => {
       document.removeEventListener('click', onDocClick)
       document.removeEventListener('keydown', onEscape)
       window.removeEventListener('unified-dropdown-opened', onOtherOpened)
-      menuRef?.removeEventListener('toggle', onToggle)
     })
   })
 
   return (
-    <details
+    <div
       ref={(el) => {
-        if (el instanceof HTMLDetailsElement) menuRef = el
+        if (el instanceof HTMLDivElement) menuRef = el
         else menuRef = undefined
       }}
       class="group relative"
       data-testid="export-import-actions-menu"
     >
-      <summary
+      <button
+        type="button"
         aria-haspopup="menu"
+        aria-expanded={isMenuOpen()}
         aria-label={t(keys.exportImport.moreActions)}
         title={t(keys.exportImport.moreActions)}
         data-state={isMenuOpen() ? 'open' : 'closed'}
         class={HEADER_MENU_BUTTON_CLASS}
+        onClick={() => {
+          const nextOpen = !isMenuOpen()
+          setIsMenuOpen(nextOpen)
+          if (nextOpen) {
+            window.dispatchEvent(new CustomEvent('unified-dropdown-opened', { detail: menuRef }))
+          }
+        }}
       >
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <circle cx="12" cy="5" r="1.75" />
@@ -124,15 +146,15 @@ function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
           <circle cx="12" cy="19" r="1.75" />
         </svg>
         <span class="sr-only">{t(keys.exportImport.moreActions)}</span>
-      </summary>
+      </button>
 
-      <div class="absolute right-0 top-full z-20 mt-1 min-w-56 overflow-hidden rounded-md border border-border bg-surface shadow-lg">
+      <div
+        class="motion-dropdown-panel motion-overlay-surface absolute right-0 top-full z-20 mt-1 min-w-56 overflow-hidden rounded-md border border-border bg-surface shadow-lg"
+        data-state={isMenuOpen() ? 'open' : 'closed'}
+      >
         <div class="divide-y divide-border py-1">
           <Show when={props.showCopyTrello}>
-            <button type="button" class={HEADER_MENU_ITEM_CLASS} onClick={handleCopyTrelloClick}>
-              <Copy class="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
-              {t(keys.exportImport.copyTrelloAction)}
-            </button>
+            <CopyTrelloMenuItem copied={props.copyTrelloFeedback} onClick={handleCopyTrelloClick} />
           </Show>
 
           <Show when={props.showImport}>
@@ -148,7 +170,7 @@ function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
           </button>
         </div>
       </div>
-    </details>
+    </div>
   )
 }
 
@@ -245,7 +267,7 @@ function ExportDialog(props: ExportDialogProps): JSX.Element {
         <label class="block space-y-1 text-sm-ui text-foreground">
           <span>{t(keys.exportImport.dialog.exportType)}</span>
           <select
-            class="w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
+            class="motion-focus-surface w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
             value={props.exportType}
             onInput={(event) => props.onExportTypeChange(event.currentTarget.value)}
           >
@@ -260,7 +282,7 @@ function ExportDialog(props: ExportDialogProps): JSX.Element {
             <label class="block space-y-1 text-sm-ui text-foreground">
               <span>{t(keys.exportImport.dialog.format)}</span>
               <select
-                class="w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
+                class="motion-focus-surface w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
                 value={props.reportFormat}
                 onInput={(event) => props.onReportFormatChange(event.currentTarget.value)}
               >
@@ -277,7 +299,7 @@ function ExportDialog(props: ExportDialogProps): JSX.Element {
           <label class="block space-y-1 text-sm-ui text-foreground">
             <span>{t(keys.exportImport.dialog.format)}</span>
             <select
-              class="w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
+              class="motion-focus-surface w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
               value={props.portableFormat}
               onInput={(event) => props.onPortableFormatChange(event.currentTarget.value)}
             >
@@ -339,14 +361,14 @@ function ExportDialog(props: ExportDialogProps): JSX.Element {
         <div class="flex justify-end gap-2">
           <button
             type="button"
-            class="rounded-md px-3 py-2 text-sm-ui font-medium text-text-muted hover:bg-surface-muted"
+            class="motion-focus-surface motion-interactive rounded-md px-3 py-2 text-sm-ui font-medium text-text-muted hover:bg-surface-muted"
             onClick={() => props.onClose()}
           >
             {t(keys.exportImport.dialog.cancel)}
           </button>
           <button
             type="button"
-            class="rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            class="motion-focus-surface motion-interactive rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             disabled={props.isExporting}
             onClick={() => props.onSubmit()}
           >
@@ -395,7 +417,7 @@ function ImportDialog(props: ImportDialogProps): JSX.Element {
           <input
             type="file"
             accept="application/json"
-            class="w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
+            class="motion-focus-surface w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
             onChange={(event) => props.onFileChange(event)}
           />
         </label>
@@ -403,7 +425,7 @@ function ImportDialog(props: ImportDialogProps): JSX.Element {
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
-            class="rounded-md border border-border bg-surface px-3 py-2 text-sm-ui font-medium text-foreground hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
+            class="motion-focus-surface motion-interactive rounded-md border border-border bg-surface px-3 py-2 text-sm-ui font-medium text-foreground hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!props.canRunDryRun || props.isValidating}
             onClick={() => props.onDryRun()}
           >
@@ -413,7 +435,7 @@ function ImportDialog(props: ImportDialogProps): JSX.Element {
           </button>
           <button
             type="button"
-            class="rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            class="motion-focus-surface motion-interactive rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             disabled={props.isImporting || !props.canExecuteImport}
             onClick={() => props.onExecuteImport()}
           >
@@ -460,6 +482,7 @@ export function ExportImportActions(props: ExportImportActionsProps): JSX.Elemen
       <ExportImportMenu
         showImport={controller.showImport()}
         showCopyTrello={controller.showCopyTrello()}
+        copyTrelloFeedback={controller.copyTrelloFeedback()}
         onOpenExport={controller.openExportDialog}
         onOpenImport={controller.openImportDialog}
         onCopyTrello={controller.copyTrello}
