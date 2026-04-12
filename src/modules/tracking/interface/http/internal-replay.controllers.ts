@@ -29,6 +29,7 @@ type InternalReplayControllersDeps = {
     | 'getTrackingReplayRun'
   >
   readonly isEnabled: () => boolean
+  readonly authenticateRequest: (request: Request) => boolean
   readonly resolveCodeVersion: () => string | null
 }
 
@@ -59,6 +60,19 @@ export function createInternalReplayControllers(deps: InternalReplayControllersD
     return internalReplayNotFoundResponse()
   }
 
+  function guardAuthorized(request: Request): Response | null {
+    const disabled = guardEnabled()
+    if (disabled) {
+      return disabled
+    }
+
+    if (!deps.authenticateRequest(request)) {
+      return internalReplayNotFoundResponse()
+    }
+
+    return null
+  }
+
   async function enabled(): Promise<Response> {
     const disabled = guardEnabled()
     if (disabled) {
@@ -70,9 +84,9 @@ export function createInternalReplayControllers(deps: InternalReplayControllersD
 
   async function lookup({ request }: { readonly request: Request }): Promise<Response> {
     try {
-      const disabled = guardEnabled()
-      if (disabled) {
-        return disabled
+      const unauthorized = guardAuthorized(request)
+      if (unauthorized) {
+        return unauthorized
       }
 
       const body = await parseBody(request, ReplayLookupRequestSchema)
@@ -88,9 +102,9 @@ export function createInternalReplayControllers(deps: InternalReplayControllersD
 
   async function preview({ request }: { readonly request: Request }): Promise<Response> {
     try {
-      const disabled = guardEnabled()
-      if (disabled) {
-        return disabled
+      const unauthorized = guardAuthorized(request)
+      if (unauthorized) {
+        return unauthorized
       }
 
       const body = await parseBody(request, ReplayRunActionRequestSchema)
@@ -109,9 +123,9 @@ export function createInternalReplayControllers(deps: InternalReplayControllersD
 
   async function apply({ request }: { readonly request: Request }): Promise<Response> {
     try {
-      const disabled = guardEnabled()
-      if (disabled) {
-        return disabled
+      const unauthorized = guardAuthorized(request)
+      if (unauthorized) {
+        return unauthorized
       }
 
       const body = await parseBody(request, ReplayRunActionRequestSchema)
@@ -130,9 +144,9 @@ export function createInternalReplayControllers(deps: InternalReplayControllersD
 
   async function rollback({ request }: { readonly request: Request }): Promise<Response> {
     try {
-      const disabled = guardEnabled()
-      if (disabled) {
-        return disabled
+      const unauthorized = guardAuthorized(request)
+      if (unauthorized) {
+        return unauthorized
       }
 
       const body = await parseBody(request, ReplayRunActionRequestSchema)
@@ -151,13 +165,15 @@ export function createInternalReplayControllers(deps: InternalReplayControllersD
 
   async function getRun({
     params,
+    request,
   }: {
     readonly params: Record<string, string>
+    readonly request: Request
   }): Promise<Response> {
     try {
-      const disabled = guardEnabled()
-      if (disabled) {
-        return disabled
+      const unauthorized = guardAuthorized(request)
+      if (unauthorized) {
+        return unauthorized
       }
 
       const runId = params.runId ?? ''

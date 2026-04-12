@@ -127,14 +127,31 @@ describe('useTrackingReplayController', () => {
     const harness = createHarness()
     await flushMicrotasks()
 
+    harness.controller.setAuthTokenInput('token-123')
     harness.controller.setContainerNumberInput('tgbu7416510')
     await harness.controller.lookup()
 
     expect(harness.controller.state()).toBe('ready')
     expect(harness.controller.target()?.containerNumber).toBe('TGBU7416510')
     expect(lookupInternalTrackingReplayTargetMock).toHaveBeenLastCalledWith({
+      authToken: 'token-123',
       containerNumber: 'TGBU7416510',
     })
+
+    harness.dispose()
+  })
+
+  it('requires an access token before lookup', async () => {
+    fetchInternalTrackingReplayEnabledMock.mockResolvedValue({ enabled: true })
+
+    const harness = createHarness()
+    await flushMicrotasks()
+
+    harness.controller.setContainerNumberInput('TGBU7416510')
+    await harness.controller.lookup()
+
+    expect(harness.controller.errorMessage()).toBe('Provide replay access token.')
+    expect(lookupInternalTrackingReplayTargetMock).not.toHaveBeenCalled()
 
     harness.dispose()
   })
@@ -149,6 +166,7 @@ describe('useTrackingReplayController', () => {
     const harness = createHarness()
     await flushMicrotasks()
 
+    harness.controller.setAuthTokenInput('token-123')
     harness.controller.setContainerNumberInput('TGBU7416510')
     await harness.controller.lookup()
     harness.controller.setReasonInput('  preview reason  ')
@@ -156,6 +174,7 @@ describe('useTrackingReplayController', () => {
     await harness.controller.preview()
 
     expect(previewInternalTrackingReplayMock).toHaveBeenCalledWith({
+      authToken: 'token-123',
       containerId: '11111111-1111-1111-1111-111111111111',
       reason: 'preview reason',
     })

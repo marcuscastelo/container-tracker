@@ -23,6 +23,10 @@ import { TypedFetchError } from '~/shared/api/typedFetch'
 type ReplayAction = 'lookup' | 'preview' | 'apply' | 'rollback'
 
 function toErrorMessage(error: unknown): string {
+  if (error instanceof TypedFetchError && error.status === 404 && error.message === 'Not found') {
+    return 'Replay access token is invalid or replay is unavailable.'
+  }
+
   if (error instanceof Error && error.message.length > 0) {
     return error.message
   }
@@ -35,6 +39,37 @@ function normalizeReason(value: string): string | null {
   return normalized.length > 0 ? normalized : null
 }
 
+type ReplayAvailabilityCommand = {
+  readonly setState: (value: TrackingReplayViewState) => void
+  readonly setErrorMessage: (value: string | null) => void
+  readonly setIsEnabled: (value: boolean) => void
+  readonly setIsDisabled: (value: boolean) => void
+}
+
+async function loadReplayAvailability(command: ReplayAvailabilityCommand): Promise<void> {
+  command.setState('loading')
+  command.setErrorMessage(null)
+
+  try {
+    await fetchInternalTrackingReplayEnabled()
+    command.setIsEnabled(true)
+    command.setIsDisabled(false)
+    command.setState('empty')
+  } catch (error) {
+    if (error instanceof TypedFetchError && error.status === 404) {
+      command.setIsEnabled(false)
+      command.setIsDisabled(true)
+      command.setState('empty')
+      return
+    }
+
+    command.setIsEnabled(false)
+    command.setIsDisabled(false)
+    command.setState('error')
+    command.setErrorMessage(toErrorMessage(error))
+  }
+}
+
 export type TrackingReplayController = {
   readonly state: () => TrackingReplayViewState
   readonly isEnabled: () => boolean
@@ -42,11 +77,13 @@ export type TrackingReplayController = {
   readonly target: () => TrackingReplayTargetVM | null
   readonly currentRun: () => TrackingReplayRunVM | null
   readonly diff: () => TrackingReplayDiffVM | null
+  readonly authTokenInput: () => string
   readonly containerNumberInput: () => string
   readonly reasonInput: () => string
   readonly errorMessage: () => string | null
   readonly busyAction: () => ReplayAction | null
   readonly isBusy: () => boolean
+  readonly setAuthTokenInput: (value: string) => void
   readonly setContainerNumberInput: (value: string) => void
   readonly setReasonInput: (value: string) => void
   readonly lookup: () => Promise<void>
@@ -60,6 +97,7 @@ export function useTrackingReplayController(): TrackingReplayController {
   const [isEnabled, setIsEnabled] = createSignal(false)
   const [isDisabled, setIsDisabled] = createSignal(false)
 
+  const [authTokenInput, setAuthTokenInput] = createSignal('')
   const [containerNumberInput, setContainerNumberInput] = createSignal('')
   const [reasonInput, setReasonInput] = createSignal('')
 
@@ -77,8 +115,22 @@ export function useTrackingReplayController(): TrackingReplayController {
     setDiff(null)
   }
 
-  async function refreshTargetByContainerNumber(containerNumber: string): Promise<void> {
+  function requireAuthToken(): string | null {
+    const normalizedAuthToken = authTokenInput().trim()
+    if (normalizedAuthToken.length === 0) {
+      setErrorMessage('Provide replay access token.')
+      return null
+    }
+
+    return normalizedAuthToken
+  }
+
+  async function refreshTargetByContainerNumber(
+    containerNumber: string,
+    authToken: string,
+  ): Promise<void> {
     const lookupResponse = await lookupInternalTrackingReplayTarget({
+      authToken,
       containerNumber,
     })
 
@@ -89,10 +141,15 @@ export function useTrackingReplayController(): TrackingReplayController {
 
   async function executeRunAction(command: {
     readonly action: Exclude<ReplayAction, 'lookup'>
-    readonly run: () => Promise<void>
+    readonly run: (authToken: string) => Promise<void>
   }): Promise<void> {
     if (target() === null) {
       setErrorMessage('Lookup a container before running replay actions.')
+      return
+    }
+
+    const authToken = requireAuthToken()
+    if (authToken === null) {
       return
     }
 
@@ -100,7 +157,7 @@ export function useTrackingReplayController(): TrackingReplayController {
     setErrorMessage(null)
 
     try {
-      await command.run()
+      await command.run(authToken)
     } catch (error) {
       setErrorMessage(toErrorMessage(error))
       if (state() === 'loading') {
@@ -122,11 +179,17 @@ export function useTrackingReplayController(): TrackingReplayController {
       return
     }
 
+    const authToken = requireAuthToken()
+    if (authToken === null) {
+      return
+    }
+
     setBusyAction('lookup')
     setErrorMessage(null)
 
     try {
       const lookupResponse = await lookupInternalTrackingReplayTarget({
+        authToken,
         containerNumber: normalizedContainerNumber,
       })
 
@@ -147,20 +210,21 @@ export function useTrackingReplayController(): TrackingReplayController {
   async function preview(): Promise<void> {
     await executeRunAction({
       action: 'preview',
-      run: async () => {
+      run: async (authToken) => {
         const selectedTarget = target()
         if (selectedTarget === null) {
           return
         }
 
         const run = await previewInternalTrackingReplay({
+          authToken,
           containerId: selectedTarget.containerId,
           reason: normalizeReason(reasonInput()),
         })
 
         setCurrentRun(toTrackingReplayRunVm(run))
         setDiff(toTrackingReplayDiffVm(run))
-        await refreshTargetByContainerNumber(selectedTarget.containerNumber)
+        await refreshTargetByContainerNumber(selectedTarget.containerNumber, authToken)
       },
     })
   }
@@ -168,20 +232,21 @@ export function useTrackingReplayController(): TrackingReplayController {
   async function apply(): Promise<void> {
     await executeRunAction({
       action: 'apply',
-      run: async () => {
+      run: async (authToken) => {
         const selectedTarget = target()
         if (selectedTarget === null) {
           return
         }
 
         const run = await applyInternalTrackingReplay({
+          authToken,
           containerId: selectedTarget.containerId,
           reason: normalizeReason(reasonInput()),
         })
 
         setCurrentRun(toTrackingReplayRunVm(run))
         setDiff(toTrackingReplayDiffVm(run))
-        await refreshTargetByContainerNumber(selectedTarget.containerNumber)
+        await refreshTargetByContainerNumber(selectedTarget.containerNumber, authToken)
       },
     })
   }
@@ -189,51 +254,36 @@ export function useTrackingReplayController(): TrackingReplayController {
   async function rollback(): Promise<void> {
     await executeRunAction({
       action: 'rollback',
-      run: async () => {
+      run: async (authToken) => {
         const selectedTarget = target()
         if (selectedTarget === null) {
           return
         }
 
         const rollbackResponse = await rollbackInternalTrackingReplay({
+          authToken,
           containerId: selectedTarget.containerId,
           reason: normalizeReason(reasonInput()),
         })
 
         const run = await fetchInternalTrackingReplayRun({
+          authToken,
           runId: rollbackResponse.runId,
         })
 
         setCurrentRun(toTrackingReplayRunVm(run))
         setDiff(toTrackingReplayDiffVm(run))
-        await refreshTargetByContainerNumber(selectedTarget.containerNumber)
+        await refreshTargetByContainerNumber(selectedTarget.containerNumber, authToken)
       },
     })
   }
 
-  void (async () => {
-    setState('loading')
-    setErrorMessage(null)
-
-    try {
-      await fetchInternalTrackingReplayEnabled()
-      setIsEnabled(true)
-      setIsDisabled(false)
-      setState('empty')
-    } catch (error) {
-      if (error instanceof TypedFetchError && error.status === 404) {
-        setIsEnabled(false)
-        setIsDisabled(true)
-        setState('empty')
-        return
-      }
-
-      setIsEnabled(false)
-      setIsDisabled(false)
-      setState('error')
-      setErrorMessage(toErrorMessage(error))
-    }
-  })()
+  void loadReplayAvailability({
+    setState,
+    setErrorMessage,
+    setIsEnabled,
+    setIsDisabled,
+  })
 
   return {
     state,
@@ -242,11 +292,13 @@ export function useTrackingReplayController(): TrackingReplayController {
     target,
     currentRun,
     diff,
+    authTokenInput,
     containerNumberInput,
     reasonInput,
     errorMessage,
     busyAction,
     isBusy,
+    setAuthTokenInput,
     setContainerNumberInput,
     setReasonInput,
     lookup,

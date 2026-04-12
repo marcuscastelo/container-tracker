@@ -72,6 +72,7 @@ describe('internal replay controllers', () => {
         getTrackingReplayRun: vi.fn(),
       },
       isEnabled: () => false,
+      authenticateRequest: () => false,
       resolveCodeVersion: () => null,
     })
 
@@ -111,6 +112,7 @@ describe('internal replay controllers', () => {
         getTrackingReplayRun: vi.fn(),
       },
       isEnabled: () => true,
+      authenticateRequest: () => true,
       resolveCodeVersion: () => null,
     })
 
@@ -144,6 +146,7 @@ describe('internal replay controllers', () => {
         getTrackingReplayRun: vi.fn(),
       },
       isEnabled: () => true,
+      authenticateRequest: () => true,
       resolveCodeVersion: () => 'commit-sha',
     })
 
@@ -191,6 +194,7 @@ describe('internal replay controllers', () => {
         getTrackingReplayRun: vi.fn(),
       },
       isEnabled: () => true,
+      authenticateRequest: () => true,
       resolveCodeVersion: () => null,
     })
 
@@ -228,6 +232,7 @@ describe('internal replay controllers', () => {
         getTrackingReplayRun: vi.fn(),
       },
       isEnabled: () => true,
+      authenticateRequest: () => true,
       resolveCodeVersion: () => null,
     })
 
@@ -254,6 +259,7 @@ describe('internal replay controllers', () => {
         getTrackingReplayRun: vi.fn(),
       },
       isEnabled: () => true,
+      authenticateRequest: () => true,
       resolveCodeVersion: () => null,
     })
 
@@ -274,5 +280,32 @@ describe('internal replay controllers', () => {
 
     expect(response.status).toBe(404)
     expect(payload.error).toBe('tracking_replay_container_not_found')
+  })
+
+  it('returns 404 for secured endpoints when replay auth fails', async () => {
+    const lookupTrackingReplayTarget = vi.fn()
+    const controllers = createInternalReplayControllers({
+      trackingUseCases: {
+        lookupTrackingReplayTarget,
+        previewTrackingReplay: vi.fn(),
+        applyTrackingReplay: vi.fn(),
+        rollbackTrackingReplay: vi.fn(),
+        getTrackingReplayRun: vi.fn(),
+      },
+      isEnabled: () => true,
+      authenticateRequest: () => false,
+      resolveCodeVersion: () => null,
+    })
+
+    const response = await controllers.lookup({
+      request: new Request('http://localhost/api/internal/tracking-replay/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ containerNumber: 'TGBU7416510' }),
+      }),
+    })
+
+    expect(response.status).toBe(404)
+    expect(lookupTrackingReplayTarget).not.toHaveBeenCalled()
   })
 })

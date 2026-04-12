@@ -5,9 +5,10 @@ import type { SyncTargetReadPort } from '~/capabilities/sync/application/ports/s
 import type { RefreshProcessDeps } from '~/capabilities/sync/application/usecases/refresh-process.usecase'
 import { normalizeProcessIdsScope } from '~/capabilities/sync/application/utils/normalizeProcessIdsScope'
 import { serverEnv } from '~/shared/config/server-env'
-import { HttpError } from '~/shared/errors/httpErrors'
 import { supabaseServer } from '~/shared/supabase/supabase.server'
+import { assertContainerReplayLockIsFree } from '~/shared/supabase/tracking-replay-locks'
 import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'
+import { normalizeContainerNumber } from '~/shared/utils/normalizeContainerNumber'
 
 type ProcessUseCasesDeps = {
   readonly findProcessById: (command: { readonly processId: string }) => Promise<{
@@ -89,8 +90,6 @@ const SyncStatusByContainerRowSchema = z.object({
 const SyncStatusByContainerRowsSchema = z.array(SyncStatusByContainerRowSchema)
 
 const PROCESS_SYNC_RECENT_ARCHIVE_WINDOW_DAYS = 7
-const ReplayLockActiveResponseSchema = z.boolean()
-
 function toPriority(mode: 'manual' | 'live' | 'backfill'): number {
   if (mode === 'live') return 1
   if (mode === 'backfill') return -1
@@ -101,29 +100,6 @@ function getRecentArchivedProcessCutoff(now: Date): string {
   return new Date(
     now.getTime() - PROCESS_SYNC_RECENT_ARCHIVE_WINDOW_DAYS * 24 * 60 * 60 * 1000,
   ).toISOString()
-}
-
-async function assertContainerReplayLockIsFree(containerNumber: string): Promise<void> {
-  const normalizedContainerNumber = containerNumber.toUpperCase().trim()
-  const replayLockResult = await supabaseServer.rpc(
-    'has_active_tracking_replay_lock_for_container_number',
-    {
-      p_container_number: normalizedContainerNumber,
-    },
-  )
-  const replayLockActive = ReplayLockActiveResponseSchema.parse(
-    unwrapSupabaseResultOrThrow(replayLockResult, {
-      operation: 'has_active_tracking_replay_lock_for_container_number',
-      table: 'tracking_replay_locks',
-    }),
-  )
-
-  if (replayLockActive) {
-    throw new HttpError(
-      `tracking_replay_lock_active_for_container:${normalizedContainerNumber}`,
-      409,
-    )
-  }
 }
 
 export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetReadPort {
@@ -229,7 +205,7 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
 export function createSyncQueuePort(deps: { readonly defaultTenantId: string }): SyncQueuePort {
   return {
     async enqueueContainerSyncRequest(command) {
-      const normalizedContainerNumber = command.containerNumber.toUpperCase().trim()
+      const normalizedContainerNumber = normalizeContainerNumber(command.containerNumber)
       await assertContainerReplayLockIsFree(normalizedContainerNumber)
 
       const result = await supabaseServer.rpc('enqueue_sync_request', {
@@ -379,7 +355,7 @@ export function createSyncStatusReadPort(deps: {
       const normalizedContainerNumbers = Array.from(
         new Set(
           command.containerNumbers
-            .map((containerNumber) => containerNumber.toUpperCase().trim())
+            .map((containerNumber) => normalizeContainerNumber(containerNumber))
             .filter((containerNumber) => containerNumber.length > 0),
         ),
       )
@@ -402,7 +378,7 @@ export function createSyncStatusReadPort(deps: {
 
       const rows = SyncStatusByContainerRowsSchema.parse(data)
       return rows.map((row) => ({
-        containerNumber: row.ref_value.toUpperCase().trim(),
+        containerNumber: normalizeContainerNumber(row.ref_value),
         status: row.status,
         createdAt: row.created_at,
         updatedAt: row.updated_at,

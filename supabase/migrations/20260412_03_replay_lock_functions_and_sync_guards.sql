@@ -1,6 +1,9 @@
 -- 20260412_03_replay_lock_functions_and_sync_guards
 -- Adds DB lock functions (acquire/heartbeat/release) and prevents scheduler lease on replay-locked containers.
 
+create index if not exists idx_containers_number_normalized
+  on public.containers ((upper(trim(container_number))));
+
 create or replace function public.acquire_tracking_replay_lock(
   p_container_id uuid,
   p_run_id uuid,

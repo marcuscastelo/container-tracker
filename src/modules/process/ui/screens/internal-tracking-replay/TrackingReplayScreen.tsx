@@ -49,6 +49,10 @@ function InternalReplayNotFoundView(): JSX.Element {
           <code class="mx-1 rounded bg-slate-100 px-1 py-0.5 text-micro">
             ENABLE_INTERNAL_TRACKING_REPLAY_UI=true
           </code>
+          and configure
+          <code class="mx-1 rounded bg-slate-100 px-1 py-0.5 text-micro">
+            INTERNAL_TRACKING_REPLAY_TOKEN
+          </code>
           on server environment.
         </p>
         <A class="mt-4 inline-block text-xs-ui font-medium text-blue-700 underline" href="/">
@@ -82,8 +86,10 @@ export function TrackingReplayScreen(): JSX.Element {
           </header>
 
           <ReplayTargetLookupView
+            authToken={controller.authTokenInput()}
             containerNumber={controller.containerNumberInput()}
             busy={controller.busyAction() === 'lookup'}
+            onAuthTokenInput={controller.setAuthTokenInput}
             onContainerNumberInput={controller.setContainerNumberInput}
             onLookup={controller.lookup}
           />
@@ -104,7 +110,8 @@ export function TrackingReplayScreen(): JSX.Element {
 
           <Show when={controller.state() === 'empty'}>
             <section class="rounded-xl border border-slate-200 bg-white p-4 text-xs-ui text-slate-500">
-              Lookup a container to start preview/apply/rollback operations.
+              Provide an access token and lookup a container to start preview/apply/rollback
+              operations.
             </section>
           </Show>
 
