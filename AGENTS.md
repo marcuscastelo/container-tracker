@@ -542,3 +542,25 @@ It must **not** be solved by:
 - inline `.map()`
 - top-level early returns
 - anonymous render helpers returning JSX
+
+## 23) Supabase MCP and Database Change Policy (Mandatory)
+
+Use Supabase MCP as the default path for any database-oriented task in this repo, including:
+
+- schema exploration
+- migration authoring/validation
+- local data setup/repair for tests and debugging
+- query validation and DB behavior checks
+
+Operational rules:
+
+- Agents are **forbidden** from touching production databases directly.
+- Agents must operate only on local/dev Supabase environments when executing DB actions.
+- For local DBs, agents may freely create/adjust schema, run migrations, edit data, and validate behavior.
+- All intended production-impacting changes must be represented as versioned artifacts (for example SQL migrations in-repo).
+- Production application of those versioned changes is performed by a human developer, not by agents.
+
+Safety constraints:
+
+- Never use production credentials, production URLs, or direct prod connection strings in agent-run commands.
+- If a requested DB action would require production access, stop and ask for a local/dev-safe alternative.
