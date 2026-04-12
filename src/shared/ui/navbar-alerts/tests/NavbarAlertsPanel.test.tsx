@@ -90,6 +90,7 @@ describe('NavbarAlertsPanel', () => {
     expect(html).toContain('Shanghai -> Santos')
     expect(html).toContain('MSCU1234567')
     expect(html).toContain('Transbordo detectado')
-    expect(html).toContain('Ação sugerida')
+    expect(html).toContain('Ação: Atualizar redestinação')
+    expect(html).not.toContain('Ação sugerida')
   })
 })

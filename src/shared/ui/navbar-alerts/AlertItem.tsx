@@ -1,14 +1,24 @@
 import type { JSX } from 'solid-js'
-import { For, Show } from 'solid-js'
+import { Show } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
 import type { NavbarIncidentVM } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
+import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 type AlertItemProps = {
   readonly processId: string
+  readonly processReference: string | null
+  readonly processCarrier: string | null
+  readonly processRouteSummary: string
   readonly incident: NavbarIncidentVM
   readonly onOpenProcess: (processId: string) => void
   readonly onOpenContainer: (processId: string, containerNumber: string) => void
+}
+
+function toDisplayValue(value: string | null, fallback: string): string {
+  if (value === null) return fallback
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : fallback
 }
 
 function toSeverityClasses(severity: NavbarIncidentVM['severity']): string {
@@ -54,6 +64,17 @@ function toSeverityLabel(
 export function AlertItem(props: AlertItemProps): JSX.Element {
   const { t, keys } = useTranslation()
 
+  const processReferenceLabel = () => toDisplayValue(props.processReference, props.processId)
+
+  const carrierLabel = () =>
+    toDisplayValue(
+      toCarrierDisplayLabel(props.processCarrier),
+      t(keys.header.alertsPanel.valueUnavailable),
+    )
+
+  const routeSummaryLabel = () =>
+    toDisplayValue(props.processRouteSummary, t(keys.header.alertsPanel.valueUnavailable))
+
   const occurredAtLabel = () => {
     const formattedDate = formatDateForLocale(props.incident.triggeredAt)
     const dateLabel =
@@ -61,9 +82,37 @@ export function AlertItem(props: AlertItemProps): JSX.Element {
     return t(keys.header.alertsPanel.lastEvent, { date: dateLabel })
   }
 
-  const visibleContainers = () => props.incident.containers.slice(0, 4)
-  const extraContainers = () =>
-    Math.max(0, props.incident.containers.length - visibleContainers().length)
+  const actionLabel = () => {
+    if (props.incident.action === null) return null
+    const actionText = t(props.incident.action.actionKey, props.incident.action.actionParams)
+    return t(keys.header.alertsPanel.actionLabel, {
+      action: actionText,
+    })
+  }
+
+  const affectedContainersLabel = () => {
+    if (props.incident.affectedContainerCount === 1) {
+      return t(keys.header.alertsPanel.affectedContainerSingle)
+    }
+    return t(keys.header.alertsPanel.affectedContainers, {
+      count: props.incident.affectedContainerCount,
+    })
+  }
+
+  const containersPreview = () => {
+    const visible = props.incident.containers
+      .slice(0, 3)
+      .map((container) => container.containerNumber.trim())
+      .filter((containerNumber) => containerNumber.length > 0)
+    if (visible.length === 0) {
+      return t(keys.header.alertsPanel.valueUnavailable)
+    }
+    const extra = Math.max(0, props.incident.containers.length - visible.length)
+    if (extra === 0) {
+      return visible.join(' · ')
+    }
+    return `${visible.join(' · ')} · ${t(keys.header.alertsPanel.moreContainers, { count: extra })}`
+  }
 
   return (
     <div
@@ -73,18 +122,7 @@ export function AlertItem(props: AlertItemProps): JSX.Element {
     >
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
-          <p class="text-xs-ui font-medium text-foreground truncate">
-            {t(props.incident.factMessageKey, props.incident.factMessageParams)}
-          </p>
-          <Show when={props.incident.action !== null}>
-            <p class="mt-1 text-xs-ui text-text-muted">
-              {t(
-                props.incident.action?.actionKey ?? keys.header.alertsPanel.valueUnavailable,
-                props.incident.action?.actionParams,
-              )}
-            </p>
-          </Show>
-          <p class="mt-1 text-xs-ui text-text-muted">{occurredAtLabel()}</p>
+          <p class="truncate text-sm-ui font-semibold text-foreground">{processReferenceLabel()}</p>
         </div>
         <div class="flex shrink-0 items-start gap-1.5">
           <span
@@ -104,37 +142,20 @@ export function AlertItem(props: AlertItemProps): JSX.Element {
         </div>
       </div>
 
-      <div class="mt-2 flex items-center gap-2 text-micro font-medium uppercase tracking-wide text-text-muted">
-        <span>
-          {t(keys.header.alertsPanel.affectedContainers, {
-            count: props.incident.affectedContainerCount,
-          })}
-        </span>
-      </div>
+      <p class="mt-1 truncate text-xs-ui text-text-muted">{carrierLabel()}</p>
+      <p class="mt-1 truncate text-xs-ui text-text-muted">{routeSummaryLabel()}</p>
 
-      <div class="mt-2 flex flex-wrap gap-1.5">
-        <For each={visibleContainers()}>
-          {(container) => (
-            <button
-              type="button"
-              onClick={() => props.onOpenContainer(props.processId, container.containerNumber)}
-              class="inline-flex items-center rounded-full border border-border bg-surface px-2 py-1 font-mono text-micro font-medium text-foreground transition-colors hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              {container.containerNumber}
-            </button>
-          )}
-        </For>
-        <Show when={extraContainers() > 0}>
-          <span class="inline-flex items-center rounded-full border border-border bg-surface-muted px-2 py-1 text-micro font-medium text-text-muted">
-            {t(keys.header.alertsPanel.moreContainers, { count: extraContainers() })}
-          </span>
+      <div class="mt-2.5">
+        <p class="text-xs-ui font-medium text-foreground">
+          {t(props.incident.factMessageKey, props.incident.factMessageParams)}
+        </p>
+        <Show when={props.incident.action !== null}>
+          <p class="mt-1 text-xs-ui text-text-muted">{actionLabel()}</p>
         </Show>
+        <p class="mt-1 text-xs-ui text-text-muted">{occurredAtLabel()}</p>
+        <p class="mt-1 text-xs-ui text-text-muted">{affectedContainersLabel()}</p>
+        <p class="mt-1 truncate font-mono text-micro text-text-muted">{containersPreview()}</p>
       </div>
-      <Show when={props.incident.action !== null}>
-        <span class="mt-2 inline-flex rounded border border-tone-info-border bg-tone-info-bg px-1.5 py-0.5 text-micro font-semibold text-tone-info-fg">
-          {t(keys.header.alertsPanel.actionRequired)}
-        </span>
-      </Show>
     </div>
   )
 }
