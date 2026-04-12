@@ -8,6 +8,14 @@ export const MOTION_DURATIONS_MS = {
 
 export type MotionDurationToken = keyof typeof MOTION_DURATIONS_MS
 
+export const MOTION_DURATION_CSS_VARS: Readonly<Record<MotionDurationToken, string>> = {
+  fast: '--motion-duration-fast',
+  base: '--motion-duration-base',
+  slow: '--motion-duration-slow',
+  panel: '--motion-duration-panel',
+  highlight: '--motion-duration-highlight',
+}
+
 export const MOTION_EASINGS = {
   enter: 'cubic-bezier(0.16, 1, 0.3, 1)',
   exit: 'cubic-bezier(0.4, 0, 1, 1)',

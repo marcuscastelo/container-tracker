@@ -128,14 +128,14 @@
 }
 
 .motion-copy-feedback[data-state="idle"] {
-  opacity: 0;
-  transform: translateY(var(--motion-slide-y-sm));
-  pointer-events: none;
-}
-
-.motion-copy-feedback[data-state="active"] {
   opacity: 1;
   transform: translateY(0);
+}
+
+.motion-copy-feedback[data-state="copied"] {
+  opacity: 1;
+  transform: translateY(0);
+  animation: motion-swap-in var(--motion-duration-base) var(--motion-ease-enter);
 }
 
 .motion-overlay-surface {

@@ -5,6 +5,7 @@ import {
   clearMotionTimeout,
   scheduleMotionFrame,
   scheduleMotionTimeout,
+  toMotionDurationCssValue,
   toMotionDurationMs,
 } from '~/shared/ui/motion/motion.utils'
 
@@ -14,6 +15,16 @@ type MotionCollapseProps = {
   readonly class?: string
   readonly innerClass?: string
   readonly duration?: MotionDurationToken
+}
+
+type MotionCollapseEasing = 'enter' | 'exit'
+
+export function buildMotionCollapseTransition(
+  duration: MotionDurationToken,
+  easing: MotionCollapseEasing,
+): string {
+  const durationCssValue = toMotionDurationCssValue(duration)
+  return `height ${durationCssValue} var(--motion-ease-${easing}), opacity ${durationCssValue} var(--motion-ease-${easing})`
 }
 
 export function MotionCollapse(props: MotionCollapseProps): JSX.Element {
@@ -51,8 +62,7 @@ export function MotionCollapse(props: MotionCollapseProps): JSX.Element {
           height: `${nextHeight}px`,
           opacity: '1',
           overflow: 'hidden',
-          transition:
-            'height var(--motion-duration-panel) var(--motion-ease-enter), opacity var(--motion-duration-slow) var(--motion-ease-enter)',
+          transition: buildMotionCollapseTransition(durationValue, 'enter'),
         })
 
         timeoutId = scheduleMotionTimeout(() => {
@@ -84,8 +94,7 @@ export function MotionCollapse(props: MotionCollapseProps): JSX.Element {
         height: '0px',
         opacity: '0',
         overflow: 'hidden',
-        transition:
-          'height var(--motion-duration-panel) var(--motion-ease-exit), opacity var(--motion-duration-base) var(--motion-ease-exit)',
+        transition: buildMotionCollapseTransition(durationValue, 'exit'),
       })
     })
 

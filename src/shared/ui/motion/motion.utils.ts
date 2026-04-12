@@ -1,4 +1,8 @@
-import { MOTION_DURATIONS_MS, type MotionDurationToken } from '~/shared/ui/motion/motion.tokens'
+import {
+  MOTION_DURATION_CSS_VARS,
+  MOTION_DURATIONS_MS,
+  type MotionDurationToken,
+} from '~/shared/ui/motion/motion.tokens'
 
 export function prefersReducedMotion(): boolean {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -8,12 +12,36 @@ export function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
+export function toMotionDurationCssValue(duration: MotionDurationToken): string {
+  return `var(${MOTION_DURATION_CSS_VARS[duration]})`
+}
+
+export function readMotionDurationMs(duration: MotionDurationToken): number {
+  const fallbackMs = MOTION_DURATIONS_MS[duration]
+
+  if (
+    typeof window === 'undefined' ||
+    typeof document === 'undefined' ||
+    typeof window.getComputedStyle !== 'function'
+  ) {
+    return fallbackMs
+  }
+
+  const rawValue = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue(MOTION_DURATION_CSS_VARS[duration])
+    .trim()
+
+  const parsedValue = Number.parseFloat(rawValue)
+  return Number.isFinite(parsedValue) ? parsedValue : fallbackMs
+}
+
 export function toMotionDurationMs(duration: MotionDurationToken): number {
   if (prefersReducedMotion()) {
     return 0
   }
 
-  return MOTION_DURATIONS_MS[duration]
+  return readMotionDurationMs(duration)
 }
 
 export function scheduleMotionTimeout(
