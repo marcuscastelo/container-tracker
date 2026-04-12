@@ -14,6 +14,7 @@ Regra de time (obrigatória):
 - Docker ativo
 - Node/pnpm já suportados pelo projeto
 - Supabase CLI via `npx` (scripts já usam `npx supabase ...`)
+- Perfil local de env: `cp .env.example .env` (ajuste `INSTALLER_TOKEN` quando necessário)
 
 ## Primeira subida
 
@@ -34,6 +35,8 @@ Mapeamento mínimo para o app:
 - `SUPABASE_SERVICE_ROLE_KEY` = `SERVICE_ROLE_KEY`
 - `VITE_PUBLIC_SUPABASE_URL` = `API_URL`
 - `VITE_PUBLIC_SUPABASE_ANON_KEY` = `ANON_KEY`
+- `AGENT_ENROLL_SUPABASE_URL` = `API_URL`
+- `AGENT_ENROLL_SUPABASE_ANON_KEY` = `ANON_KEY`
 
 ## Reset local reproduzível
 

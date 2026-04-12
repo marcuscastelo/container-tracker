@@ -140,7 +140,7 @@ Response `200` (example shape):
   "tenantId": "11111111-1111-4111-8111-111111111111",
   "intervalSec": 60,
   "limit": 10,
-  "supabaseUrl": "https://project.supabase.co",
+  "supabaseUrl": "http://127.0.0.1:54321",
   "supabaseAnonKey": "anon-key",
   "providers": {
     "maerskEnabled": false,
