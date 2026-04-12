@@ -72,6 +72,8 @@ pnpm supabase:stop
 ## Seed e bootstrap
 
 - `supabase/seed.sql` é intencionalmente mínimo (sem dados reais).
+- Seed local inclui token bootstrap do agent para ambiente local:
+  `INSTALLER_TOKEN=local-dev-installer-token` (hash persistido em `agent_install_tokens`).
 - Bootstrap de tabelas legadas necessárias para reset local está em migration versionada:
   `supabase/migrations/2026022401_local_bootstrap_core_tables.sql`.
 
