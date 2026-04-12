@@ -94,13 +94,17 @@ function createSummary(
     eta_display: {
       kind: 'unavailable',
     },
-    alerts_count: 0,
-    highest_alert_severity: null,
+    operational_incidents: {
+      summary: {
+        active_incidents_count: 0,
+        affected_containers_count: 0,
+        recognized_incidents_count: 0,
+      },
+      dominant: null,
+    },
     attention_severity: null,
-    dominant_alert_created_at: null,
     tracking_validation: createEmptyTrackingValidationProcessProjectionSummary(),
     tracking_validation_top_issue: null,
-    has_transshipment: false,
     last_event_at: null,
     ...overrides,
   }

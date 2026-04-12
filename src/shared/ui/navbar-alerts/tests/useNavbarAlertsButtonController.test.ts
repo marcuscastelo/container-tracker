@@ -8,7 +8,7 @@ const navigateToProcessMock = vi.hoisted(() => vi.fn())
 const navigateToProcessContainerMock = vi.hoisted(() => vi.fn())
 
 type NavbarAlertsStateSnapshot = {
-  readonly totalAlerts: number
+  readonly totalActiveIncidents: number
   readonly processes: readonly NavbarProcessAlertGroupVM[]
   readonly loading: boolean
   readonly error: string | null
@@ -21,7 +21,7 @@ const navbarAlertsState = vi.hoisted<{
   hasResolved: () => boolean
 }>(() => ({
   state: () => ({
-    totalAlerts: 0,
+    totalActiveIncidents: 0,
     processes: emptyProcesses,
     loading: false,
     error: null,
@@ -60,19 +60,32 @@ function buildProcessAlertGroup(): NavbarProcessAlertGroupVM {
     processReference: 'CA048-26',
     carrier: 'MSC',
     routeSummary: 'Shanghai -> Santos',
-    activeAlertsCount: 1,
+    activeIncidentCount: 1,
+    affectedContainerCount: 1,
     dominantSeverity: 'warning',
-    latestAlertAt: '2026-04-10T10:00:00.000Z',
-    containers: [
+    latestIncidentAt: '2026-04-10T10:00:00.000Z',
+    incidents: [
       {
-        containerId: 'container-1',
-        containerNumber: 'MSCU1234567',
-        status: 'IN_TRANSIT',
-        eta: null,
-        activeAlertsCount: 1,
-        dominantSeverity: 'warning',
-        latestAlertAt: '2026-04-10T10:00:00.000Z',
-        alerts: [],
+        incidentKey: 'TRANSSHIPMENT:1:KRPUS:MSC IRIS:MSC BIANCA SILVIA',
+        type: 'TRANSSHIPMENT',
+        severity: 'warning',
+        category: 'movement',
+        factMessageKey: 'incidents.fact.transshipmentDetected',
+        factMessageParams: {
+          port: 'KRPUS',
+          fromVessel: 'MSC IRIS',
+          toVessel: 'MSC BIANCA SILVIA',
+        },
+        action: null,
+        affectedContainerCount: 1,
+        triggeredAt: '2026-04-10T10:00:00.000Z',
+        containers: [
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            lifecycleState: 'ACTIVE',
+          },
+        ],
       },
     ],
   }
@@ -92,7 +105,7 @@ describe('useNavbarAlertsButtonController', () => {
     navigateToProcessMock.mockReset()
     navigateToProcessContainerMock.mockReset()
     navbarAlertsState.state = () => ({
-      totalAlerts: 0,
+      totalActiveIncidents: 0,
       processes: [],
       loading: false,
       error: null,
@@ -135,7 +148,7 @@ describe('useNavbarAlertsButtonController', () => {
 
   it('routes dashboard, process, and container actions through navigation helpers', () => {
     navbarAlertsState.state = () => ({
-      totalAlerts: 2,
+      totalActiveIncidents: 2,
       processes: [buildProcessAlertGroup()],
       loading: false,
       error: 'failed',
@@ -158,16 +171,16 @@ describe('useNavbarAlertsButtonController', () => {
     const secondCall = navigateToProcessContainerMock.mock.calls[1]?.[0]
 
     expect(firstCall?.navigationState).toEqual({
-      source: 'navbar-alerts',
+      source: 'navbar-incidents',
       focusSection: 'current-status',
       revealLiveStatus: true,
-      requestKey: 'navbar-alert-1',
+      requestKey: 'navbar-incident-1',
     })
     expect(secondCall?.navigationState).toEqual({
-      source: 'navbar-alerts',
+      source: 'navbar-incidents',
       focusSection: 'current-status',
       revealLiveStatus: true,
-      requestKey: 'navbar-alert-2',
+      requestKey: 'navbar-incident-2',
     })
     expect(firstCall?.state).toEqual(firstCall?.navigationState)
     expect(secondCall?.state).toEqual(secondCall?.navigationState)

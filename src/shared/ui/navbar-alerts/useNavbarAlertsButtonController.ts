@@ -15,7 +15,7 @@ export function useNavbarAlertsButtonController() {
   const [isOpen, setIsOpen] = createSignal(false)
   let containerNavigationRequestCounter = 0
 
-  const totalAlerts = () => navbarAlerts.state().totalAlerts
+  const totalActiveIncidents = () => navbarAlerts.state().totalActiveIncidents
 
   const togglePanel = () => {
     const nextOpenState = !isOpen()
@@ -51,10 +51,10 @@ export function useNavbarAlertsButtonController() {
 
     containerNavigationRequestCounter += 1
     const navigationState: ProcessContainerNavigationState = {
-      source: 'navbar-alerts',
+      source: 'navbar-incidents',
       focusSection: 'current-status',
       revealLiveStatus: true,
-      requestKey: `navbar-alert-${containerNavigationRequestCounter}`,
+      requestKey: `navbar-incident-${containerNavigationRequestCounter}`,
     }
 
     navigateToProcessContainer({
@@ -67,13 +67,13 @@ export function useNavbarAlertsButtonController() {
   }
 
   const buttonTitle = () =>
-    totalAlerts() > 0
-      ? t(keys.header.alertsActiveTooltip, { count: totalAlerts() })
+    totalActiveIncidents() > 0
+      ? t(keys.header.alertsActiveTooltip, { count: totalActiveIncidents() })
       : t(keys.header.alertsPanel.empty)
 
   return {
     isOpen,
-    totalAlerts,
+    totalActiveIncidents,
     state: navbarAlerts.state,
     togglePanel,
     closePanel,

@@ -37,6 +37,15 @@ type TransshipmentOccurrence = {
   readonly alertFingerprint: string
 }
 
+export type DerivedTransshipmentOccurrence = {
+  readonly port: string
+  readonly vesselFrom: string
+  readonly vesselTo: string
+  readonly detectedAt: string
+  readonly sourceObservationFingerprints: readonly string[]
+  readonly alertFingerprint: string
+}
+
 type MonitoringAutoResolution = {
   readonly alertId: string
   readonly reason: TrackingAlertResolvedReason
@@ -254,6 +263,20 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
     transshipmentCount: occurrences.length,
     ports,
   }
+}
+
+export function deriveTransshipmentOccurrences(
+  timeline: Timeline,
+  now: Instant = systemClock.now(),
+): readonly DerivedTransshipmentOccurrence[] {
+  return collapseTransshipmentOccurrences(findTransshipmentPairs(timeline)).map((occurrence) => ({
+    port: occurrence.port,
+    vesselFrom: occurrence.vesselFrom,
+    vesselTo: occurrence.vesselTo,
+    detectedAt: toDetectedAtIso(occurrence.loadObs.event_time, now),
+    sourceObservationFingerprints: [...occurrence.sourceObservationFingerprints],
+    alertFingerprint: occurrence.alertFingerprint,
+  }))
 }
 
 /**

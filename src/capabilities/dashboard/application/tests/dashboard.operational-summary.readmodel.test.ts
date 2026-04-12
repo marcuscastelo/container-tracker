@@ -3,7 +3,7 @@ import {
   createDashboardOperationalSummaryReadModelUseCase,
   type DashboardOperationalSummaryReadModelDeps,
 } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
-import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 type ProcessesProjection = Awaited<
@@ -12,30 +12,135 @@ type ProcessesProjection = Awaited<
   >
 >['processes']
 
-function makeAlert(
-  alertId: string,
-  processId: string,
-  containerId: string,
-  severity: TrackingActiveAlertReadModel['severity'],
-): TrackingActiveAlertReadModel {
+function toIncidentFactMessageKey(
+  type: OperationalIncidentReadModel['type'],
+):
+  | 'incidents.fact.customsHoldDetected'
+  | 'incidents.fact.transshipmentDetected'
+  | 'incidents.fact.etaMissing'
+  | 'incidents.fact.etaPassed' {
+  switch (type) {
+    case 'CUSTOMS_HOLD':
+      return 'incidents.fact.customsHoldDetected'
+    case 'TRANSSHIPMENT':
+      return 'incidents.fact.transshipmentDetected'
+    case 'ETA_MISSING':
+      return 'incidents.fact.etaMissing'
+    default:
+      return 'incidents.fact.etaPassed'
+  }
+}
+
+function toIncidentAction(
+  type: OperationalIncidentReadModel['type'],
+): NonNullable<OperationalIncidentReadModel['action']> {
+  if (type === 'CUSTOMS_HOLD') {
+    return {
+      actionKey: 'incidents.action.followUpCustoms',
+      actionParams: {},
+      actionKind: 'FOLLOW_UP_CUSTOMS',
+    }
+  }
+
   return {
-    alert_id: alertId,
-    process_id: processId,
-    container_id: containerId,
-    category: 'monitoring',
-    severity,
-    type: 'ETA_PASSED',
-    message_key: 'alerts.etaPassed',
-    message_params: {},
-    generated_at: '2026-03-03T00:00:00.000Z',
-    fingerprint: null,
-    is_active: true,
-    retroactive: false,
+    actionKey: 'incidents.action.checkEta',
+    actionParams: {},
+    actionKind: 'CHECK_ETA',
+  }
+}
+
+function makeIncident(args: {
+  readonly incidentKey: string
+  readonly containerId: string
+  readonly containerNumber: string
+  readonly category: OperationalIncidentReadModel['category']
+  readonly type: OperationalIncidentReadModel['type']
+  readonly severity: OperationalIncidentReadModel['severity']
+  readonly triggeredAt: string
+}): OperationalIncidentReadModel {
+  return {
+    incidentKey: args.incidentKey,
+    bucket: 'active',
+    category: args.category,
+    type: args.type,
+    severity: args.severity,
+    fact: {
+      messageKey: toIncidentFactMessageKey(args.type),
+      messageParams: {},
+    },
+    action: toIncidentAction(args.type),
+    scope: {
+      affectedContainerCount: 1,
+      containers: [
+        {
+          containerId: args.containerId,
+          containerNumber: args.containerNumber,
+          lifecycleState: 'ACTIVE',
+        },
+      ],
+    },
+    detectedAt: args.triggeredAt,
+    triggeredAt: args.triggeredAt,
+    triggerRefs: [
+      {
+        alertId: `${args.incidentKey}-alert`,
+        containerId: args.containerId,
+      },
+    ],
+    members: [
+      {
+        containerId: args.containerId,
+        containerNumber: args.containerNumber,
+        lifecycleState: 'ACTIVE',
+        detectedAt: args.triggeredAt,
+        records: [
+          {
+            alertId: `${args.incidentKey}-alert`,
+            lifecycleState: 'ACTIVE',
+            detectedAt: args.triggeredAt,
+            triggeredAt: args.triggeredAt,
+            ackedAt: null,
+            resolvedAt: null,
+            resolvedReason: null,
+          },
+        ],
+      },
+    ],
+  }
+}
+
+function createDeps(args: {
+  readonly processes: ProcessesProjection
+  readonly incidents: readonly OperationalIncidentReadModel[]
+}): DashboardOperationalSummaryReadModelDeps {
+  return {
+    processUseCases: {
+      listProcessesWithOperationalSummary: vi.fn(async () => ({ processes: args.processes })),
+    },
+    trackingUseCases: {
+      findContainersHotReadProjection: vi.fn(async () => ({
+        containers: [],
+        activeOperationalIncidents: {
+          summary: {
+            activeIncidentCount: args.incidents.length,
+            affectedContainerCount: new Set(
+              args.incidents.flatMap((incident) =>
+                incident.scope.containers.map((container) => container.containerId),
+              ),
+            ).size,
+            recognizedIncidentCount: 0,
+          },
+          active: args.incidents,
+          recognized: [],
+        },
+        activeAlerts: [],
+      })),
+    },
   }
 }
 
 describe('createDashboardOperationalSummaryReadModelUseCase', () => {
-  it('composes process status/eta/alerts and keeps processes without alerts visible', async () => {
+  it('composes process status and incident summaries while keeping processes without incidents visible', async () => {
     const processes: ProcessesProjection = [
       {
         pwc: {
@@ -53,6 +158,22 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         summary: {
           process_status: 'BOOKED',
           eta: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
+          operational_incidents: {
+            summary: {
+              active_incidents_count: 2,
+              affected_containers_count: 2,
+              recognized_incidents_count: 0,
+            },
+            dominant: {
+              type: 'CUSTOMS_HOLD',
+              severity: 'danger',
+              fact: {
+                messageKey: 'incidents.fact.customsHoldDetected',
+                messageParams: {},
+              },
+              triggeredAt: '2026-03-03T00:00:00.000Z',
+            },
+          },
         },
       },
       {
@@ -68,24 +189,42 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         summary: {
           process_status: 'IN_TRANSIT',
           eta: null,
+          operational_incidents: {
+            summary: {
+              active_incidents_count: 0,
+              affected_containers_count: 0,
+              recognized_incidents_count: 0,
+            },
+            dominant: null,
+          },
         },
       },
     ]
 
-    const listProcessesWithOperationalSummary = vi.fn(async () => ({ processes }))
-    const alerts: readonly TrackingActiveAlertReadModel[] = [
-      makeAlert('alert-1', 'process-1', 'container-1', 'info'),
-      makeAlert('alert-2', 'process-1', 'container-1', 'warning'),
-      makeAlert('alert-3', 'process-1', 'container-2', 'danger'),
-    ]
-    const listActiveAlertReadModel = vi.fn(async () => ({ alerts }))
+    const incidents = [
+      makeIncident({
+        incidentKey: 'CUSTOMS_HOLD:container-1',
+        containerId: 'container-1',
+        containerNumber: 'MSCU1111111',
+        category: 'customs',
+        type: 'CUSTOMS_HOLD',
+        severity: 'danger',
+        triggeredAt: '2026-03-03T00:00:00.000Z',
+      }),
+      makeIncident({
+        incidentKey: 'ETA_PASSED:container-2',
+        containerId: 'container-2',
+        containerNumber: 'MSCU2222222',
+        category: 'eta',
+        type: 'ETA_PASSED',
+        severity: 'warning',
+        triggeredAt: '2026-03-02T00:00:00.000Z',
+      }),
+    ] as const
 
-    const useCase = createDashboardOperationalSummaryReadModelUseCase({
-      processUseCases: { listProcessesWithOperationalSummary },
-      trackingUseCases: { listActiveAlertReadModel },
-    })
-
-    const result = await useCase()
+    const result = await createDashboardOperationalSummaryReadModelUseCase(
+      createDeps({ processes, incidents }),
+    )()
 
     expect(result.processes).toEqual([
       {
@@ -96,9 +235,17 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         status: 'BOOKED',
         eta: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
         dominantSeverity: 'danger',
-        dominantAlertCreatedAt: '2026-03-03T00:00:00.000Z',
-        activeAlertsCount: 3,
-        activeAlerts: alerts,
+        activeIncidentCount: 2,
+        affectedContainerCount: 2,
+        dominantIncident: {
+          type: 'CUSTOMS_HOLD',
+          severity: 'danger',
+          fact: {
+            messageKey: 'incidents.fact.customsHoldDetected',
+            messageParams: {},
+          },
+          triggeredAt: '2026-03-03T00:00:00.000Z',
+        },
       },
       {
         processId: 'process-2',
@@ -108,88 +255,31 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         status: 'IN_TRANSIT',
         eta: null,
         dominantSeverity: 'none',
-        dominantAlertCreatedAt: null,
-        activeAlertsCount: 0,
-        activeAlerts: [],
+        activeIncidentCount: 0,
+        affectedContainerCount: 0,
+        dominantIncident: null,
       },
     ])
 
     expect(result.globalAlerts).toEqual({
-      totalActiveAlerts: 3,
+      totalActiveIncidents: 2,
+      affectedContainersCount: 2,
+      recognizedIncidentsCount: 0,
       bySeverity: {
         danger: 1,
         warning: 1,
-        info: 1,
-        success: 0,
+        info: 0,
       },
       byCategory: {
-        eta: 3,
+        eta: 1,
         movement: 0,
-        customs: 0,
-        status: 0,
+        customs: 1,
         data: 0,
       },
     })
-
-    expect(result.activeAlertsPanel).toEqual([
-      {
-        process: {
-          processId: 'process-1',
-          reference: 'REF-001',
-          origin: 'Santos',
-          destination: 'Rotterdam',
-        },
-        container: {
-          containerId: 'container-1',
-          containerNumber: 'MSCU1111111',
-        },
-        category: 'eta',
-        severity: 'info',
-        type: 'monitoring',
-        description: 'ETA_PASSED',
-        generated_at: '2026-03-03T00:00:00.000Z',
-        retroactive: false,
-      },
-      {
-        process: {
-          processId: 'process-1',
-          reference: 'REF-001',
-          origin: 'Santos',
-          destination: 'Rotterdam',
-        },
-        container: {
-          containerId: 'container-1',
-          containerNumber: 'MSCU1111111',
-        },
-        category: 'eta',
-        severity: 'warning',
-        type: 'monitoring',
-        description: 'ETA_PASSED',
-        generated_at: '2026-03-03T00:00:00.000Z',
-        retroactive: false,
-      },
-      {
-        process: {
-          processId: 'process-1',
-          reference: 'REF-001',
-          origin: 'Santos',
-          destination: 'Rotterdam',
-        },
-        container: {
-          containerId: 'container-2',
-          containerNumber: 'MSCU2222222',
-        },
-        category: 'eta',
-        severity: 'danger',
-        type: 'monitoring',
-        description: 'ETA_PASSED',
-        generated_at: '2026-03-03T00:00:00.000Z',
-        retroactive: false,
-      },
-    ])
   })
 
-  it('selects dominantAlertCreatedAt from dominant severity alert', async () => {
+  it('uses dominant incident triggeredAt to expose the dominant incident in the process row', async () => {
     const processes: ProcessesProjection = [
       {
         pwc: {
@@ -204,34 +294,58 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         summary: {
           process_status: 'BOOKED',
           eta: null,
+          operational_incidents: {
+            summary: {
+              active_incidents_count: 2,
+              affected_containers_count: 1,
+              recognized_incidents_count: 0,
+            },
+            dominant: {
+              type: 'CUSTOMS_HOLD',
+              severity: 'danger',
+              fact: {
+                messageKey: 'incidents.fact.customsHoldDetected',
+                messageParams: {},
+              },
+              triggeredAt: '2026-03-03T11:00:00.000Z',
+            },
+          },
         },
       },
     ]
 
-    const listProcessesWithOperationalSummary = vi.fn(async () => ({ processes }))
-    const alerts: readonly TrackingActiveAlertReadModel[] = [
-      {
-        ...makeAlert('alert-warning', 'process-1', 'container-1', 'warning'),
-        generated_at: '2026-03-03T10:00:00.000Z',
-      },
-      {
-        ...makeAlert('alert-critical', 'process-1', 'container-1', 'danger'),
-        generated_at: '2026-03-03T11:00:00.000Z',
-      },
-    ]
-    const listActiveAlertReadModel = vi.fn(async () => ({ alerts }))
+    const incidents = [
+      makeIncident({
+        incidentKey: 'ETA_PASSED:container-1',
+        containerId: 'container-1',
+        containerNumber: 'MSCU1111111',
+        category: 'eta',
+        type: 'ETA_PASSED',
+        severity: 'warning',
+        triggeredAt: '2026-03-03T10:00:00.000Z',
+      }),
+      makeIncident({
+        incidentKey: 'CUSTOMS_HOLD:container-1',
+        containerId: 'container-1',
+        containerNumber: 'MSCU1111111',
+        category: 'customs',
+        type: 'CUSTOMS_HOLD',
+        severity: 'danger',
+        triggeredAt: '2026-03-03T11:00:00.000Z',
+      }),
+    ] as const
 
-    const useCase = createDashboardOperationalSummaryReadModelUseCase({
-      processUseCases: { listProcessesWithOperationalSummary },
-      trackingUseCases: { listActiveAlertReadModel },
-    })
-
-    const result = await useCase()
+    const result = await createDashboardOperationalSummaryReadModelUseCase(
+      createDeps({ processes, incidents }),
+    )()
 
     expect(result.processes[0]).toMatchObject({
       processId: 'process-1',
       dominantSeverity: 'danger',
-      dominantAlertCreatedAt: '2026-03-03T11:00:00.000Z',
+      dominantIncident: {
+        type: 'CUSTOMS_HOLD',
+        triggeredAt: '2026-03-03T11:00:00.000Z',
+      },
     })
   })
 })

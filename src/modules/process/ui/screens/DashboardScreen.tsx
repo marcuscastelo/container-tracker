@@ -197,14 +197,15 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       labels: {
         activeProcesses: t(keys.dashboard.kpis.activeProcesses),
         trackedContainers: t(keys.dashboard.kpis.trackedContainers),
-        processesWithAlerts: t(keys.dashboard.kpis.processesWithAlerts),
+        activeIncidents: t(keys.dashboard.kpis.activeIncidents),
+        affectedContainers: t(keys.dashboard.kpis.affectedContainers),
         lastSync: t(keys.dashboard.kpis.lastSync),
         lastSyncUnavailable: t(keys.dashboard.kpis.lastSyncUnavailable),
       },
       icons: {
         activeProcesses: CircleAlert,
         trackedContainers: Check,
-        processesWithAlerts: TriangleAlert,
+        activeIncidents: TriangleAlert,
         lastSync: RefreshCw,
       },
     })

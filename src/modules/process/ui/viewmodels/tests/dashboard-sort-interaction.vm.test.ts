@@ -28,10 +28,10 @@ function createProcess(
     readonly eta?: ProcessSummaryVM['eta']
     readonly etaMsOrNull?: number | null
     readonly lastEventAt?: ProcessSummaryVM['lastEventAt']
-    readonly alertsCount?: number
-    readonly highestAlertSeverity?: ProcessSummaryVM['highestAlertSeverity']
+    readonly activeIncidentCount?: number
+    readonly affectedContainerCount?: number
     readonly attentionSeverity?: ProcessSummaryVM['attentionSeverity']
-    readonly dominantAlertCreatedAt?: string | null
+    readonly dominantIncidentTriggeredAt?: string | null
   },
 ): ProcessSummaryVM {
   const eta = input.eta ?? null
@@ -57,17 +57,27 @@ function createProcess(
     etaDisplay,
     etaMsOrNull,
     carrier: input.carrier ?? null,
-    alertsCount: input.alertsCount ?? 0,
-    highestAlertSeverity: input.highestAlertSeverity ?? null,
-    attentionSeverity: input.attentionSeverity ?? input.highestAlertSeverity ?? null,
-    dominantAlertCreatedAt: input.dominantAlertCreatedAt ?? null,
+    activeIncidentCount: input.activeIncidentCount ?? 0,
+    affectedContainerCount: input.affectedContainerCount ?? 0,
+    recognizedIncidentCount: 0,
+    dominantIncident:
+      input.dominantIncidentTriggeredAt === undefined &&
+      (input.attentionSeverity === null || input.attentionSeverity === undefined)
+        ? null
+        : {
+            type: 'ETA_PASSED',
+            severity: input.attentionSeverity ?? 'warning',
+            factMessageKey: 'incidents.fact.etaPassed',
+            factMessageParams: {},
+            triggeredAt: input.dominantIncidentTriggeredAt ?? '2025-01-01T00:00:00.000Z',
+          },
+    attentionSeverity: input.attentionSeverity ?? null,
     trackingValidation: {
       hasIssues: false,
       highestSeverity: null,
       affectedContainerCount: 0,
       topIssue: null,
     },
-    hasTransshipment: false,
     lastEventAt: input.lastEventAt ?? null,
     syncStatus: 'idle',
     lastSyncAt: null,
@@ -211,17 +221,20 @@ describe('dashboard sort interactions by field', () => {
       createProcess({
         id: 'A',
         attentionSeverity: 'warning',
-        alertsCount: 3,
+        activeIncidentCount: 3,
+        affectedContainerCount: 2,
       }),
       createProcess({
         id: 'B',
         attentionSeverity: 'danger',
-        alertsCount: 0,
+        activeIncidentCount: 0,
+        affectedContainerCount: 0,
       }),
       createProcess({
         id: 'C',
         attentionSeverity: null,
-        alertsCount: 0,
+        activeIncidentCount: 0,
+        affectedContainerCount: 0,
       }),
     ] as const
 
@@ -244,30 +257,33 @@ describe('dashboard sort interactions by field', () => {
     expect(ascResult.map((process) => process.id)).toEqual(['B', 'C', 'A'])
   })
 
-  it('sorts created date using dominantAlertCreatedAt when present', () => {
+  it('sorts created date using dominant incident triggeredAt when present', () => {
     const baseline = [
-      // lastEventAt intentionally differs to ensure dominantAlertCreatedAt takes precedence
+      // lastEventAt intentionally differs to ensure dominant incident timing takes precedence
       createProcess({
         id: 'A',
         lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
-        dominantAlertCreatedAt: '2025-01-01T00:00:00.000Z',
+        attentionSeverity: 'warning',
+        dominantIncidentTriggeredAt: '2025-01-01T00:00:00.000Z',
       }),
       createProcess({
         id: 'B',
         lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
-        dominantAlertCreatedAt: '2025-03-01T00:00:00.000Z',
+        attentionSeverity: 'warning',
+        dominantIncidentTriggeredAt: '2025-03-01T00:00:00.000Z',
       }),
       createProcess({
         id: 'C',
         lastEventAt: temporalDtoFromCanonical('2025-02-01T00:00:00.000Z'),
-        dominantAlertCreatedAt: '2025-02-01T00:00:00.000Z',
+        attentionSeverity: 'warning',
+        dominantIncidentTriggeredAt: '2025-02-01T00:00:00.000Z',
       }),
     ] as const
 
     const descResult = sortDashboardProcesses(baseline, { field: 'createdAt', direction: 'desc' })
     const ascResult = sortDashboardProcesses(baseline, { field: 'createdAt', direction: 'asc' })
 
-    // Expect ordering driven by dominantAlertCreatedAt, not lastEventAt
+    // Expect ordering driven by dominant incident triggeredAt, not lastEventAt
     expect(descResult.map((process) => process.id)).toEqual(['B', 'C', 'A'])
     expect(ascResult.map((process) => process.id)).toEqual(['A', 'C', 'B'])
   })

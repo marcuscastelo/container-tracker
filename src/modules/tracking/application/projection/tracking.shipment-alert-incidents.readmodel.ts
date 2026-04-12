@@ -2,15 +2,19 @@ import {
   resolveAlertLifecycleState,
   type TrackingAlert,
   type TrackingAlertLifecycleState,
-  type TrackingAlertMessageKey,
   type TrackingAlertResolvedReason,
   type TrackingAlertType,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
-export type ShipmentAlertIncidentCategory = 'movement' | 'eta' | 'customs' | 'data'
-export type ShipmentAlertIncidentBucket = 'active' | 'recognized'
+export type OperationalIncidentCategory = 'movement' | 'eta' | 'customs' | 'data'
+export type OperationalIncidentBucket = 'active' | 'recognized'
+export type OperationalIncidentActionKind =
+  | 'UPDATE_REDESTINATION'
+  | 'CHECK_ETA'
+  | 'FOLLOW_UP_CUSTOMS'
+  | 'REVIEW_DATA'
 
-export type ShipmentAlertIncidentRecordReadModel = {
+export type OperationalIncidentRecordReadModel = {
   readonly alertId: string
   readonly lifecycleState: TrackingAlertLifecycleState
   readonly detectedAt: string
@@ -20,46 +24,65 @@ export type ShipmentAlertIncidentRecordReadModel = {
   readonly resolvedReason: TrackingAlertResolvedReason | null
 }
 
-export type ShipmentAlertIncidentMemberReadModel = {
+export type OperationalIncidentMemberReadModel = {
   readonly containerId: string
   readonly containerNumber: string
   readonly lifecycleState: TrackingAlertLifecycleState
   readonly detectedAt: string
-  readonly records: readonly ShipmentAlertIncidentRecordReadModel[]
-  readonly transshipmentOrder: number | null
-  readonly port: string | null
-  readonly fromVessel: string | null
-  readonly toVessel: string | null
+  readonly records: readonly OperationalIncidentRecordReadModel[]
 }
 
-export type ShipmentAlertIncidentReadModel = {
+export type OperationalIncidentReadModel = {
   readonly incidentKey: string
-  readonly bucket: ShipmentAlertIncidentBucket
-  readonly category: ShipmentAlertIncidentCategory
+  readonly bucket: OperationalIncidentBucket
+  readonly category: OperationalIncidentCategory
   readonly type: TrackingAlertType
   readonly severity: TrackingAlert['severity']
-  readonly messageKey: TrackingAlertMessageKey
-  readonly messageParams: Record<string, string | number>
+  readonly fact: {
+    readonly messageKey:
+      | 'incidents.fact.transshipmentDetected'
+      | 'incidents.fact.plannedTransshipmentDetected'
+      | 'incidents.fact.customsHoldDetected'
+      | 'incidents.fact.etaPassed'
+      | 'incidents.fact.etaMissing'
+      | 'incidents.fact.portChange'
+      | 'incidents.fact.dataInconsistent'
+    readonly messageParams: Record<string, string | number>
+  }
+  readonly action: {
+    readonly actionKey:
+      | 'incidents.action.updateRedestination'
+      | 'incidents.action.checkEta'
+      | 'incidents.action.followUpCustoms'
+      | 'incidents.action.reviewData'
+    readonly actionParams: Record<string, string | number>
+    readonly actionKind: OperationalIncidentActionKind
+  } | null
+  readonly scope: {
+    readonly affectedContainerCount: number
+    readonly containers: readonly {
+      readonly containerId: string
+      readonly containerNumber: string
+      readonly lifecycleState: TrackingAlertLifecycleState
+    }[]
+  }
   readonly detectedAt: string
   readonly triggeredAt: string
-  readonly transshipmentOrder: number | null
-  readonly port: string | null
-  readonly fromVessel: string | null
-  readonly toVessel: string | null
-  readonly affectedContainerCount: number
-  readonly activeAlertIds: readonly string[]
-  readonly ackedAlertIds: readonly string[]
-  readonly members: readonly ShipmentAlertIncidentMemberReadModel[]
+  readonly triggerRefs: readonly {
+    readonly alertId: string
+    readonly containerId: string
+  }[]
+  readonly members: readonly OperationalIncidentMemberReadModel[]
 }
 
-export type ShipmentAlertIncidentsReadModel = {
+export type OperationalIncidentsReadModel = {
   readonly summary: {
     readonly activeIncidentCount: number
     readonly affectedContainerCount: number
     readonly recognizedIncidentCount: number
   }
-  readonly active: readonly ShipmentAlertIncidentReadModel[]
-  readonly recognized: readonly ShipmentAlertIncidentReadModel[]
+  readonly active: readonly OperationalIncidentReadModel[]
+  readonly recognized: readonly OperationalIncidentReadModel[]
 }
 
 type ContainerAlertsInput = {
@@ -68,44 +91,54 @@ type ContainerAlertsInput = {
   readonly alerts: readonly TrackingAlert[]
 }
 
-type BuildShipmentAlertIncidentsReadModelCommand = {
+type BuildOperationalIncidentsReadModelCommand = {
   readonly containers: readonly ContainerAlertsInput[]
 }
 
-type PendingShipmentAlertIncidentMember = {
+type AlertMessageParamValue = string | number
+
+type PendingOperationalIncidentMember = {
   readonly incidentKey: string
-  readonly category: ShipmentAlertIncidentCategory
+  readonly category: OperationalIncidentCategory
   readonly type: TrackingAlertType
   readonly severity: TrackingAlert['severity']
-  readonly messageKey: TrackingAlertMessageKey
-  readonly messageParams: Record<string, string | number>
+  readonly fact: OperationalIncidentReadModel['fact']
+  readonly action: OperationalIncidentReadModel['action']
   readonly containerId: string
   readonly containerNumber: string
   readonly lifecycleState: TrackingAlertLifecycleState
   readonly detectedAt: string
-  readonly records: readonly ShipmentAlertIncidentRecordReadModel[]
-  readonly transshipmentOrder: number | null
-  readonly port: string | null
-  readonly fromVessel: string | null
-  readonly toVessel: string | null
   readonly triggeredAt: string
-  readonly activeAlertIds: readonly string[]
-  readonly ackedAlertIds: readonly string[]
+  readonly records: readonly OperationalIncidentRecordReadModel[]
 }
-
-type AlertMessageParamValue = string | number
 
 type TransshipmentAlert = Extract<
   TrackingAlert,
   { readonly message_key: 'alerts.transshipmentDetected' }
 >
+type PlannedTransshipmentAlert = Extract<
+  TrackingAlert,
+  { readonly message_key: 'alerts.plannedTransshipmentDetected' }
+>
 type CustomsHoldAlert = Extract<
   TrackingAlert,
   { readonly message_key: 'alerts.customsHoldDetected' }
 >
+type TransshipmentLikeAlert = TransshipmentAlert | PlannedTransshipmentAlert
 
 function isTransshipmentAlert(alert: TrackingAlert): alert is TransshipmentAlert {
   return alert.type === 'TRANSSHIPMENT' && alert.message_key === 'alerts.transshipmentDetected'
+}
+
+function isPlannedTransshipmentAlert(alert: TrackingAlert): alert is PlannedTransshipmentAlert {
+  return (
+    alert.type === 'PLANNED_TRANSSHIPMENT' &&
+    alert.message_key === 'alerts.plannedTransshipmentDetected'
+  )
+}
+
+function isTransshipmentLikeAlert(alert: TrackingAlert): alert is TransshipmentLikeAlert {
+  return isTransshipmentAlert(alert) || isPlannedTransshipmentAlert(alert)
 }
 
 function isCustomsHoldAlert(alert: TrackingAlert): alert is CustomsHoldAlert {
@@ -113,14 +146,14 @@ function isCustomsHoldAlert(alert: TrackingAlert): alert is CustomsHoldAlert {
 }
 
 function normalizeKeyPart(value: string | null | undefined): string {
-  return (value ?? '').trim().toUpperCase()
+  return (value ?? '').trim().replace(/\s+/gu, ' ').toUpperCase()
 }
 
 function toLifecycleState(alert: TrackingAlert): TrackingAlertLifecycleState {
   return resolveAlertLifecycleState(alert)
 }
 
-function toAlertRecord(alert: TrackingAlert): ShipmentAlertIncidentRecordReadModel {
+function toAlertRecord(alert: TrackingAlert): OperationalIncidentRecordReadModel {
   return {
     alertId: alert.id,
     lifecycleState: toLifecycleState(alert),
@@ -132,9 +165,9 @@ function toAlertRecord(alert: TrackingAlert): ShipmentAlertIncidentRecordReadMod
   }
 }
 
-function toRepresentativeRecords<TAlert extends TrackingAlert>(
-  alerts: readonly TAlert[],
-): readonly ShipmentAlertIncidentRecordReadModel[] {
+function toRepresentativeRecords(
+  alerts: readonly TrackingAlert[],
+): readonly OperationalIncidentRecordReadModel[] {
   return [...alerts].map(toAlertRecord).sort(compareAlertRecordsByActionTimeDesc)
 }
 
@@ -152,16 +185,17 @@ function toMessageParams(
   return mapped
 }
 
-function toIncidentCategory(type: TrackingAlertType): ShipmentAlertIncidentCategory {
+function toIncidentCategory(type: TrackingAlertType): OperationalIncidentCategory {
   switch (type) {
     case 'TRANSSHIPMENT':
+    case 'PLANNED_TRANSSHIPMENT':
+    case 'PORT_CHANGE':
       return 'movement'
     case 'CUSTOMS_HOLD':
       return 'customs'
     case 'ETA_MISSING':
     case 'ETA_PASSED':
       return 'eta'
-    case 'PORT_CHANGE':
     case 'DATA_INCONSISTENT':
       return 'data'
   }
@@ -181,8 +215,8 @@ function compareSeverity(
 }
 
 function compareAlertRecordsByActionTimeDesc(
-  left: ShipmentAlertIncidentRecordReadModel,
-  right: ShipmentAlertIncidentRecordReadModel,
+  left: OperationalIncidentRecordReadModel,
+  right: OperationalIncidentRecordReadModel,
 ): number {
   const leftActionAt = left.ackedAt ?? left.resolvedAt ?? left.triggeredAt
   const rightActionAt = right.ackedAt ?? right.resolvedAt ?? right.triggeredAt
@@ -204,72 +238,139 @@ function pickRepresentativeAlert<TAlert extends TrackingAlert>(alerts: readonly 
   })[0]
 
   if (representative === undefined) {
-    throw new Error('shipment alert incidents: representative alert missing')
+    throw new Error('operational incidents: representative alert missing')
   }
 
   return representative
 }
 
-function toMemberLifecycleState(records: readonly ShipmentAlertIncidentRecordReadModel[]) {
+function toMemberLifecycleState(records: readonly OperationalIncidentRecordReadModel[]) {
   if (records.some((record) => record.lifecycleState === 'ACTIVE')) return 'ACTIVE'
   if (records.some((record) => record.lifecycleState === 'ACKED')) return 'ACKED'
   return 'AUTO_RESOLVED'
 }
 
 function toHighestSeverity(
-  members: readonly PendingShipmentAlertIncidentMember[],
+  members: readonly PendingOperationalIncidentMember[],
 ): TrackingAlert['severity'] {
   const highest = [...members]
     .map((member) => member.severity)
     .sort((left, right) => compareSeverity(right, left))[0]
 
   if (highest === undefined) {
-    throw new Error('shipment alert incidents: severity missing')
+    throw new Error('operational incidents: severity missing')
   }
 
   return highest
 }
 
-function toEarliestDetectedAt(members: readonly PendingShipmentAlertIncidentMember[]): string {
+function toEarliestDetectedAt(members: readonly PendingOperationalIncidentMember[]): string {
   const earliest = [...members]
     .map((member) => member.detectedAt)
     .sort((left, right) => left.localeCompare(right))[0]
 
   if (earliest === undefined) {
-    throw new Error('shipment alert incidents: detectedAt missing')
+    throw new Error('operational incidents: detectedAt missing')
   }
 
   return earliest
 }
 
-function toLatestTriggeredAt(members: readonly PendingShipmentAlertIncidentMember[]): string {
+function toLatestTriggeredAt(members: readonly PendingOperationalIncidentMember[]): string {
   const latest = [...members]
     .map((member) => member.triggeredAt)
     .sort((left, right) => right.localeCompare(left))[0]
 
   if (latest === undefined) {
-    throw new Error('shipment alert incidents: triggeredAt missing')
+    throw new Error('operational incidents: triggeredAt missing')
   }
 
   return latest
 }
 
-function serializeMessageParams(
-  messageKey: TrackingAlertMessageKey,
-  messageParams: Record<string, AlertMessageParamValue>,
-): string {
-  if (messageKey === 'alerts.customsHoldDetected') {
-    return `location=${normalizeKeyPart(String(messageParams.location ?? ''))}`
-  }
+function toFactReadModel(alert: TrackingAlert): OperationalIncidentReadModel['fact'] {
+  const messageParams = toMessageParams(alert.message_params)
 
-  return ''
+  switch (alert.type) {
+    case 'TRANSSHIPMENT':
+      return {
+        messageKey: 'incidents.fact.transshipmentDetected',
+        messageParams,
+      }
+    case 'PLANNED_TRANSSHIPMENT':
+      return {
+        messageKey: 'incidents.fact.plannedTransshipmentDetected',
+        messageParams,
+      }
+    case 'ETA_PASSED':
+      return {
+        messageKey: 'incidents.fact.etaPassed',
+        messageParams,
+      }
+    case 'ETA_MISSING':
+      return {
+        messageKey: 'incidents.fact.etaMissing',
+        messageParams,
+      }
+    case 'CUSTOMS_HOLD':
+      return {
+        messageKey: 'incidents.fact.customsHoldDetected',
+        messageParams,
+      }
+    case 'PORT_CHANGE':
+      return {
+        messageKey: 'incidents.fact.portChange',
+        messageParams,
+      }
+    case 'DATA_INCONSISTENT':
+      return {
+        messageKey: 'incidents.fact.dataInconsistent',
+        messageParams,
+      }
+  }
+}
+
+function toActionReadModel(alert: TrackingAlert): OperationalIncidentReadModel['action'] {
+  const actionParams = toMessageParams(alert.message_params)
+
+  switch (alert.type) {
+    case 'TRANSSHIPMENT':
+    case 'PLANNED_TRANSSHIPMENT':
+    case 'PORT_CHANGE':
+      return {
+        actionKey: 'incidents.action.updateRedestination',
+        actionParams,
+        actionKind: 'UPDATE_REDESTINATION',
+      }
+    case 'ETA_PASSED':
+    case 'ETA_MISSING':
+      return {
+        actionKey: 'incidents.action.checkEta',
+        actionParams,
+        actionKind: 'CHECK_ETA',
+      }
+    case 'CUSTOMS_HOLD':
+      return {
+        actionKey: 'incidents.action.followUpCustoms',
+        actionParams,
+        actionKind: 'FOLLOW_UP_CUSTOMS',
+      }
+    case 'DATA_INCONSISTENT':
+      return {
+        actionKey: 'incidents.action.reviewData',
+        actionParams,
+        actionKind: 'REVIEW_DATA',
+      }
+  }
+}
+
+function serializeCustomsIncidentKey(alert: CustomsHoldAlert): string {
+  return `CUSTOMS_HOLD:location=${normalizeKeyPart(alert.message_params.location)}`
 }
 
 function toGenericIncidentKey(alert: TrackingAlert): string {
-  const params = toMessageParams(alert.message_params)
-
   if (isCustomsHoldAlert(alert)) {
-    return `${alert.type}:${serializeMessageParams(alert.message_key, params)}`
+    return serializeCustomsIncidentKey(alert)
   }
 
   if (alert.type === 'ETA_MISSING' || alert.type === 'ETA_PASSED') {
@@ -280,33 +381,28 @@ function toGenericIncidentKey(alert: TrackingAlert): string {
     return alert.type
   }
 
-  throw new Error(`shipment alert incidents: unsupported generic alert type ${alert.type}`)
+  throw new Error(`operational incidents: unsupported generic alert type ${alert.type}`)
 }
 
-function toAlertFingerprintKey(alert: TrackingAlert): string {
+function toAlertFingerprintKey(alert: TransshipmentLikeAlert): string {
   if (alert.alert_fingerprint !== null && alert.alert_fingerprint.length > 0) {
     return alert.alert_fingerprint
   }
 
-  if (isTransshipmentAlert(alert)) {
-    return [
-      normalizeKeyPart(alert.message_params.port),
-      normalizeKeyPart(alert.message_params.fromVessel),
-      normalizeKeyPart(alert.message_params.toVessel),
-    ].join('|')
-  }
-
-  return alert.id
+  return [
+    alert.type,
+    normalizeKeyPart(alert.message_params.port),
+    normalizeKeyPart(alert.message_params.fromVessel),
+    normalizeKeyPart(alert.message_params.toVessel),
+  ].join('|')
 }
 
 function buildTransshipmentOrderByFingerprint(
-  alerts: readonly TransshipmentAlert[],
+  alerts: readonly TransshipmentLikeAlert[],
 ): ReadonlyMap<string, number> {
-  const groupedByFingerprint = new Map<string, TransshipmentAlert[]>()
+  const groupedByFingerprint = new Map<string, TransshipmentLikeAlert[]>()
 
   for (const alert of alerts) {
-    if (alert.type !== 'TRANSSHIPMENT') continue
-
     const fingerprintKey = toAlertFingerprintKey(alert)
     const group = groupedByFingerprint.get(fingerprintKey)
     if (group === undefined) {
@@ -337,14 +433,14 @@ function buildTransshipmentOrderByFingerprint(
   return new Map(orderedGroups.map(([fingerprintKey], index) => [fingerprintKey, index + 1]))
 }
 
-function buildTransshipmentMembers(
+function buildTransshipmentLikeMembers(
   container: ContainerAlertsInput,
-): readonly PendingShipmentAlertIncidentMember[] {
-  const transshipmentAlerts = container.alerts.filter(isTransshipmentAlert)
+): readonly PendingOperationalIncidentMember[] {
+  const transshipmentAlerts = container.alerts.filter(isTransshipmentLikeAlert)
   if (transshipmentAlerts.length === 0) return []
 
   const orderByFingerprint = buildTransshipmentOrderByFingerprint(transshipmentAlerts)
-  const groupedAlerts = new Map<string, TransshipmentAlert[]>()
+  const groupedAlerts = new Map<string, TransshipmentLikeAlert[]>()
 
   for (const alert of transshipmentAlerts) {
     const fingerprintKey = toAlertFingerprintKey(alert)
@@ -361,48 +457,35 @@ function buildTransshipmentMembers(
     const representative = pickRepresentativeAlert(alerts)
     const records = toRepresentativeRecords(alerts)
     const lifecycleState = toMemberLifecycleState(records)
-    const transshipmentOrder = orderByFingerprint.get(fingerprintKey) ?? null
-    const port = representative.message_params.port
-    const fromVessel = representative.message_params.fromVessel
-    const toVessel = representative.message_params.toVessel
+    const transshipmentOrder = orderByFingerprint.get(fingerprintKey) ?? 0
 
     return {
       incidentKey: [
-        'TRANSSHIPMENT',
-        String(transshipmentOrder ?? 0),
-        normalizeKeyPart(port),
-        normalizeKeyPart(fromVessel),
-        normalizeKeyPart(toVessel),
+        representative.type,
+        String(transshipmentOrder),
+        normalizeKeyPart(representative.message_params.port),
+        normalizeKeyPart(representative.message_params.fromVessel),
+        normalizeKeyPart(representative.message_params.toVessel),
       ].join(':'),
-      category: 'movement',
-      type: 'TRANSSHIPMENT',
+      category: toIncidentCategory(representative.type),
+      type: representative.type,
       severity: representative.severity,
-      messageKey: representative.message_key,
-      messageParams: toMessageParams(representative.message_params),
+      fact: toFactReadModel(representative),
+      action: toActionReadModel(representative),
       containerId: container.containerId,
       containerNumber: container.containerNumber,
       lifecycleState,
       detectedAt: representative.detected_at,
-      records,
-      transshipmentOrder,
-      port,
-      fromVessel,
-      toVessel,
       triggeredAt: representative.triggered_at,
-      activeAlertIds: records
-        .filter((record) => record.lifecycleState === 'ACTIVE')
-        .map((record) => record.alertId),
-      ackedAlertIds: records
-        .filter((record) => record.lifecycleState === 'ACKED')
-        .map((record) => record.alertId),
+      records,
     }
   })
 }
 
 function buildGenericMembers(
   container: ContainerAlertsInput,
-): readonly PendingShipmentAlertIncidentMember[] {
-  const genericAlerts = container.alerts.filter((alert) => alert.type !== 'TRANSSHIPMENT')
+): readonly PendingOperationalIncidentMember[] {
+  const genericAlerts = container.alerts.filter((alert) => !isTransshipmentLikeAlert(alert))
   if (genericAlerts.length === 0) return []
 
   const groupedByIncidentKey = new Map<string, TrackingAlert[]>()
@@ -427,50 +510,40 @@ function buildGenericMembers(
       category: toIncidentCategory(representative.type),
       type: representative.type,
       severity: representative.severity,
-      messageKey: representative.message_key,
-      messageParams: toMessageParams(representative.message_params),
+      fact: toFactReadModel(representative),
+      action: toActionReadModel(representative),
       containerId: container.containerId,
       containerNumber: container.containerNumber,
       lifecycleState: toMemberLifecycleState(records),
       detectedAt: representative.detected_at,
-      records,
-      transshipmentOrder: null,
-      port: null,
-      fromVessel: null,
-      toVessel: null,
       triggeredAt: representative.triggered_at,
-      activeAlertIds: records
-        .filter((record) => record.lifecycleState === 'ACTIVE')
-        .map((record) => record.alertId),
-      ackedAlertIds: records
-        .filter((record) => record.lifecycleState === 'ACKED')
-        .map((record) => record.alertId),
+      records,
     }
   })
 }
 
 function buildPendingMembers(
-  command: BuildShipmentAlertIncidentsReadModelCommand,
-): readonly PendingShipmentAlertIncidentMember[] {
+  command: BuildOperationalIncidentsReadModelCommand,
+): readonly PendingOperationalIncidentMember[] {
   return command.containers.flatMap((container) => [
-    ...buildTransshipmentMembers(container),
+    ...buildTransshipmentLikeMembers(container),
     ...buildGenericMembers(container),
   ])
 }
 
-function toMemberBucket(member: PendingShipmentAlertIncidentMember): ShipmentAlertIncidentBucket {
+function toMemberBucket(member: PendingOperationalIncidentMember): OperationalIncidentBucket {
   return member.lifecycleState === 'ACTIVE' ? 'active' : 'recognized'
 }
 
 function toIncidentBucket(
-  members: readonly PendingShipmentAlertIncidentMember[],
-): ShipmentAlertIncidentBucket {
+  members: readonly PendingOperationalIncidentMember[],
+): OperationalIncidentBucket {
   return members.some((member) => member.lifecycleState === 'ACTIVE') ? 'active' : 'recognized'
 }
 
 function compareIncidentMembersByContainer(
-  left: PendingShipmentAlertIncidentMember,
-  right: PendingShipmentAlertIncidentMember,
+  left: PendingOperationalIncidentMember,
+  right: PendingOperationalIncidentMember,
 ): number {
   const containerCompare = left.containerNumber.localeCompare(right.containerNumber)
   if (containerCompare !== 0) return containerCompare
@@ -478,8 +551,8 @@ function compareIncidentMembersByContainer(
 }
 
 function toRepresentativeMember(
-  members: readonly PendingShipmentAlertIncidentMember[],
-): PendingShipmentAlertIncidentMember {
+  members: readonly PendingOperationalIncidentMember[],
+): PendingOperationalIncidentMember {
   const activeMembers = members.filter((member) => member.lifecycleState === 'ACTIVE')
   const pool = activeMembers.length > 0 ? activeMembers : members
   const representative = [...pool].sort((left, right) => {
@@ -489,15 +562,15 @@ function toRepresentativeMember(
   })[0]
 
   if (representative === undefined) {
-    throw new Error('shipment alert incidents: representative member missing')
+    throw new Error('operational incidents: representative member missing')
   }
 
   return representative
 }
 
 function compareIncidents(
-  left: ShipmentAlertIncidentReadModel,
-  right: ShipmentAlertIncidentReadModel,
+  left: OperationalIncidentReadModel,
+  right: OperationalIncidentReadModel,
 ): number {
   const severityCompare = compareSeverity(right.severity, left.severity)
   if (severityCompare !== 0) return severityCompare
@@ -506,11 +579,11 @@ function compareIncidents(
   return left.incidentKey.localeCompare(right.incidentKey)
 }
 
-export function buildShipmentAlertIncidentsReadModel(
-  command: BuildShipmentAlertIncidentsReadModelCommand,
-): ShipmentAlertIncidentsReadModel {
+export function buildOperationalIncidentsReadModel(
+  command: BuildOperationalIncidentsReadModelCommand,
+): OperationalIncidentsReadModel {
   const pendingMembers = buildPendingMembers(command)
-  const groupedByIncidentKey = new Map<string, PendingShipmentAlertIncidentMember[]>()
+  const groupedByIncidentKey = new Map<string, PendingOperationalIncidentMember[]>()
 
   for (const member of pendingMembers) {
     const incidentGroupKey = `${member.incidentKey}::${toMemberBucket(member)}`
@@ -523,7 +596,7 @@ export function buildShipmentAlertIncidentsReadModel(
     group.push(member)
   }
 
-  const incidents = [...groupedByIncidentKey.entries()].map(([_groupedIncidentKey, members]) => {
+  const incidents = [...groupedByIncidentKey.values()].map((members) => {
     const sortedMembers = [...members].sort(compareIncidentMembersByContainer)
     const representativeMember = toRepresentativeMember(sortedMembers)
     const bucket = toIncidentBucket(sortedMembers)
@@ -534,29 +607,42 @@ export function buildShipmentAlertIncidentsReadModel(
       category: representativeMember.category,
       type: representativeMember.type,
       severity: toHighestSeverity(sortedMembers),
-      messageKey: representativeMember.messageKey,
-      messageParams: representativeMember.messageParams,
+      fact: representativeMember.fact,
+      action: representativeMember.action,
+      scope: {
+        affectedContainerCount: sortedMembers.length,
+        containers: sortedMembers.map((member) => ({
+          containerId: member.containerId,
+          containerNumber: member.containerNumber,
+          lifecycleState: member.lifecycleState,
+        })),
+      },
       detectedAt: toEarliestDetectedAt(sortedMembers),
       triggeredAt: toLatestTriggeredAt(sortedMembers),
-      transshipmentOrder: representativeMember.transshipmentOrder,
-      port: representativeMember.port,
-      fromVessel: representativeMember.fromVessel,
-      toVessel: representativeMember.toVessel,
-      affectedContainerCount: sortedMembers.length,
-      activeAlertIds: [...new Set(sortedMembers.flatMap((member) => member.activeAlertIds))],
-      ackedAlertIds: [...new Set(sortedMembers.flatMap((member) => member.ackedAlertIds))],
+      triggerRefs: [
+        ...new Map(
+          sortedMembers.flatMap((member) =>
+            member.records.map(
+              (record) =>
+                [
+                  `${record.alertId}:${member.containerId}`,
+                  {
+                    alertId: record.alertId,
+                    containerId: member.containerId,
+                  },
+                ] as const,
+            ),
+          ),
+        ).values(),
+      ],
       members: sortedMembers.map((member) => ({
         containerId: member.containerId,
         containerNumber: member.containerNumber,
         lifecycleState: member.lifecycleState,
         detectedAt: member.detectedAt,
         records: [...member.records].sort(compareAlertRecordsByActionTimeDesc),
-        transshipmentOrder: member.transshipmentOrder,
-        port: member.port,
-        fromVessel: member.fromVessel,
-        toVessel: member.toVessel,
       })),
-    } satisfies ShipmentAlertIncidentReadModel
+    } satisfies OperationalIncidentReadModel
   })
 
   const active = incidents.filter((incident) => incident.bucket === 'active').sort(compareIncidents)
@@ -581,3 +667,12 @@ export function buildShipmentAlertIncidentsReadModel(
     recognized,
   }
 }
+
+export const buildShipmentAlertIncidentsReadModel = buildOperationalIncidentsReadModel
+
+export type ShipmentAlertIncidentCategory = OperationalIncidentCategory
+export type ShipmentAlertIncidentBucket = OperationalIncidentBucket
+export type ShipmentAlertIncidentRecordReadModel = OperationalIncidentRecordReadModel
+export type ShipmentAlertIncidentMemberReadModel = OperationalIncidentMemberReadModel
+export type ShipmentAlertIncidentReadModel = OperationalIncidentReadModel
+export type ShipmentAlertIncidentsReadModel = OperationalIncidentsReadModel

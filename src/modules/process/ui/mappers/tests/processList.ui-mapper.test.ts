@@ -55,7 +55,7 @@ function assertMapsApiResponseToProcessSummaryVMArray(): void {
   expect(first.importerName).toBe('Empresa ABC')
   expect(first.syncStatus).toBe('idle')
   expect(first.lastSyncAt).toBeNull()
-  expect(first.dominantAlertCreatedAt).toBeNull()
+  expect(first.dominantIncident).toBeNull()
 }
 
 function assertMapsProcessStatusFromApiToStatusCodeAndVariant(): void {
@@ -78,11 +78,23 @@ function assertMapsProcessStatusFromApiToStatusCodeAndVariant(): void {
         kind: 'date',
         value: temporalDtoFromCanonical('2025-06-01T00:00:00Z'),
       },
-      alerts_count: 2,
-      highest_alert_severity: 'warning',
+      operational_incidents: {
+        summary: {
+          active_incidents: 2,
+          affected_containers: 1,
+          recognized_incidents: 0,
+        },
+        dominant: {
+          type: 'TRANSSHIPMENT',
+          severity: 'warning',
+          fact: {
+            message_key: 'incidents.fact.transshipmentDetected',
+            message_params: {},
+          },
+          triggered_at: '2025-04-29T08:00:00Z',
+        },
+      },
       attention_severity: 'warning',
-      dominant_alert_created_at: '2025-04-29T08:00:00Z',
-      has_transshipment: true,
       last_event_at: temporalDtoFromCanonical('2025-05-01T00:00:00Z'),
       last_sync_status: 'DONE',
       last_sync_at: '2025-05-01T11:00:00Z',
@@ -104,11 +116,13 @@ function assertMapsProcessStatusFromApiToStatusCodeAndVariant(): void {
     value: temporalDtoFromCanonical('2025-06-01T00:00:00Z'),
   })
   expect(first.etaMsOrNull).toBe(Date.parse('2025-06-01T00:00:00Z'))
-  expect(first.alertsCount).toBe(2)
-  expect(first.highestAlertSeverity).toBe('warning')
+  expect(first.activeIncidentCount).toBe(2)
+  expect(first.affectedContainerCount).toBe(1)
+  expect(first.recognizedIncidentCount).toBe(0)
+  expect(first.dominantIncident?.severity).toBe('warning')
   expect(first.attentionSeverity).toBe('warning')
-  expect(first.dominantAlertCreatedAt).toBe('2025-04-29T08:00:00Z')
-  expect(first.hasTransshipment).toBe(true)
+  expect(first.dominantIncident?.triggeredAt).toBe('2025-04-29T08:00:00Z')
+  expect(first.dominantIncident?.type).toBe('TRANSSHIPMENT')
   expect(first.lastEventAt).toEqual(temporalDtoFromCanonical('2025-05-01T00:00:00Z'))
   expect(first.syncStatus).toBe('idle')
   expect(first.lastSyncAt).toBe('2025-05-01T11:00:00Z')
@@ -134,10 +148,10 @@ describe('toProcessSummaryVMs', () => {
       kind: 'unavailable',
     })
     expect(first.etaMsOrNull).toBeNull()
-    expect(first.alertsCount).toBe(0)
-    expect(first.highestAlertSeverity).toBeNull()
-    expect(first.dominantAlertCreatedAt).toBeNull()
-    expect(first.hasTransshipment).toBe(false)
+    expect(first.activeIncidentCount).toBe(0)
+    expect(first.affectedContainerCount).toBe(0)
+    expect(first.recognizedIncidentCount).toBe(0)
+    expect(first.dominantIncident).toBeNull()
     expect(first.lastEventAt).toBeNull()
     expect(first.syncStatus).toBe('idle')
     expect(first.lastSyncAt).toBeNull()
@@ -257,11 +271,26 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0]?.attentionSeverity).toBeNull()
   })
 
-  it('falls back to alert severity when legacy payloads do not include attention_severity', () => {
+  it('falls back to dominant incident severity when attention_severity is absent', () => {
     const result = toProcessSummaryVMs([
       makeSource({
         id: 'p-legacy-alert-severity',
-        highest_alert_severity: 'warning',
+        operational_incidents: {
+          summary: {
+            active_incidents: 1,
+            affected_containers: 1,
+            recognized_incidents: 0,
+          },
+          dominant: {
+            type: 'ETA_PASSED',
+            severity: 'warning',
+            fact: {
+              message_key: 'incidents.fact.etaPassed',
+              message_params: {},
+            },
+            triggered_at: '2025-04-29T08:00:00Z',
+          },
+        },
       }),
     ])
 

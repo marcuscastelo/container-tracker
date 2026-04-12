@@ -5,7 +5,7 @@ import { ProcessAlertGroup } from '~/shared/ui/navbar-alerts/ProcessAlertGroup'
 
 type NavbarAlertsPanelProps = {
   readonly panelId: string
-  readonly totalAlerts: number
+  readonly totalActiveIncidents: number
   readonly processes: readonly NavbarProcessAlertGroupVM[]
   readonly loading: boolean
   readonly error: string | null
@@ -18,7 +18,7 @@ type NavbarAlertsPanelProps = {
 
 type PanelHeaderProps = {
   readonly titleId: string
-  readonly totalAlerts: number
+  readonly totalActiveIncidents: number
   readonly onClose: () => void
   readonly onOpenDashboard: () => void
 }
@@ -118,7 +118,7 @@ function PanelHeader(props: PanelHeaderProps): JSX.Element {
 
       <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
         <span class="rounded border border-tone-danger-border bg-tone-danger-bg px-1.5 py-0.5 text-micro font-semibold text-tone-danger-fg">
-          {t(keys.header.alertsPanel.alertsCount, { count: props.totalAlerts })}
+          {t(keys.header.alertsPanel.alertsCount, { count: props.totalActiveIncidents })}
         </span>
         <button
           type="button"
@@ -197,7 +197,7 @@ export function NavbarAlertsPanel(props: NavbarAlertsPanelProps): JSX.Element {
       >
         <PanelHeader
           titleId={titleId()}
-          totalAlerts={props.totalAlerts}
+          totalActiveIncidents={props.totalActiveIncidents}
           onClose={props.onClose}
           onOpenDashboard={props.onOpenDashboard}
         />

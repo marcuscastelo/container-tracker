@@ -4,7 +4,8 @@ import type { DashboardKpisResponse } from '~/shared/api-schemas/dashboard.schem
 type DashboardKpiLabels = {
   readonly activeProcesses: string
   readonly trackedContainers: string
-  readonly processesWithAlerts: string
+  readonly activeIncidents: string
+  readonly affectedContainers: string
   readonly lastSync: string
   readonly lastSyncUnavailable: string
 }
@@ -16,7 +17,7 @@ type DashboardKpiUiMapperCommand = {
   readonly icons: {
     readonly activeProcesses: DashboardKpiVM['icon']
     readonly trackedContainers: DashboardKpiVM['icon']
-    readonly processesWithAlerts: DashboardKpiVM['icon']
+    readonly activeIncidents: DashboardKpiVM['icon']
     readonly lastSync: DashboardKpiVM['icon']
   }
 }
@@ -61,9 +62,13 @@ export function toDashboardKpiVMs(command: DashboardKpiUiMapperCommand): readonl
       tone: 'default',
     },
     {
-      label: command.labels.processesWithAlerts,
-      value: formatInteger(command.source.processesWithAlerts, command.locale),
-      icon: command.icons.processesWithAlerts,
+      label: command.labels.activeIncidents,
+      value: formatInteger(command.source.activeIncidents, command.locale),
+      detail: `${command.labels.affectedContainers}: ${formatInteger(
+        command.source.affectedContainers,
+        command.locale,
+      )}`,
+      icon: command.icons.activeIncidents,
       tone: 'warning',
     },
     {

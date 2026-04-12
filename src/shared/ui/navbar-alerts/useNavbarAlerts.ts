@@ -9,7 +9,7 @@ import {
 } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
 
 type NavbarAlertsState = {
-  readonly totalAlerts: number
+  readonly totalActiveIncidents: number
   readonly processes: NavbarAlertsVM['processes']
   readonly loading: boolean
   readonly error: string | null
@@ -37,7 +37,7 @@ export function toNavbarAlertsState(
   const vm = readResourceSnapshot(resource) ?? EMPTY_NAVBAR_ALERTS_VM
 
   return {
-    totalAlerts: vm.totalAlerts,
+    totalActiveIncidents: vm.totalActiveIncidents,
     processes: vm.processes,
     loading: resource.loading,
     error: resource.error ? toErrorMessage(resource.error) : null,
