@@ -7,3 +7,7 @@ overwrite = false
 [[run]]
 command = "pnpm install"
 required = true
+
+[[run]]
+command = "pnpm db:worktree:init"
+required = true

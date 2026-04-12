@@ -1,86 +1,57 @@
-# Supabase Local (Branch Local-Only)
+# Supabase Local (Local-Only)
 
-Este repositório usa **Supabase 100% local** para desenvolvimento de schema/migrations nesta fase.
+Este repositório usa Supabase **100% local** nesta fase.
 
-Regra de time (obrigatória):
+Regras obrigatórias:
 - Não usar `supabase link`.
-- Não usar `db push` remoto.
-- Não usar dashboard/projeto Supabase Cloud para evoluir schema.
-- Fonte de verdade do schema local: `supabase/migrations/*.sql` versionadas no Git.
+- Não usar `supabase db push` remoto.
+- Não usar preview/persistent branches remotas.
+- Fonte de verdade do schema: `supabase/migrations/*.sql` versionadas no Git.
 
 ## Pré-requisitos
 
 - `pnpm install`
 - Docker ativo
-- Node/pnpm já suportados pelo projeto
-- Supabase CLI via `npx` (scripts já usam `npx supabase ...`)
-- Perfil local de env: `cp .env.example .env` (ajuste `INSTALLER_TOKEN` quando necessário)
+- Node/pnpm suportados pelo projeto
+- Supabase CLI via `npx`
 
-## Primeira subida
+## Stack local
 
 ```bash
 pnpm supabase:start
 pnpm supabase:status
+pnpm supabase:stop
 ```
 
-Opcional (export em formato `.env`):
+Opcional:
 
 ```bash
 pnpm supabase:status:env
 ```
 
-Mapeamento mínimo para o app:
-
-- `SUPABASE_URL` = `API_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` = `SERVICE_ROLE_KEY`
-- `VITE_PUBLIC_SUPABASE_URL` = `API_URL`
-- `VITE_PUBLIC_SUPABASE_ANON_KEY` = `ANON_KEY`
-- `AGENT_ENROLL_SUPABASE_URL` = `API_URL`
-- `AGENT_ENROLL_SUPABASE_ANON_KEY` = `ANON_KEY`
-
-## Reset local reproduzível
-
-```bash
-pnpm supabase:reset
-```
-
-`supabase:reset` reaplica migrations versionadas e executa `supabase/seed.sql`.
-
-## Criar nova migration
-
-Fluxo SQL-first (recomendado):
+## Migrations locais
 
 ```bash
 pnpm supabase:migration:new -- nome_da_migration
-# editar o arquivo gerado em supabase/migrations/
 pnpm supabase:reset
-```
-
-Fluxo diff-first (opcional):
-
-```bash
 pnpm supabase:db:diff -- --file nome_da_migration
-pnpm supabase:reset
+pnpm supabase:gen-types
 ```
 
-## Parar stack local
+`supabase:reset` recria o DB isolado da worktree a partir do template local seedado.
+Quando houver alteração em migration/seed que deva entrar na base do reset, rode `pnpm db:template:refresh`.
 
-```bash
-pnpm supabase:stop
-```
+## Worktrees com DB isolado
 
-## Seed e bootstrap
+Para paralelismo local seguro (múltiplos agents/worktrees), use:
 
-- `supabase/seed.sql` é intencionalmente mínimo (sem dados reais).
-- Seed local inclui token bootstrap do agent para ambiente local:
-  `INSTALLER_TOKEN=local-dev-installer-token` (hash persistido em `agent_install_tokens`).
-- Bootstrap de tabelas legadas necessárias para reset local está em migration versionada:
-  `supabase/migrations/2026022401_local_bootstrap_core_tables.sql`.
+- [docs/dev/supabase-worktrees-local.md](./supabase-worktrees-local.md)
 
-## Guardrails desta fase
+Esse fluxo provisiona um DB por worktree, reutilizando a mesma stack local compartilhada.
+
+## Guardrails
 
 - Fluxo atual é **local-only**.
-- `supabase/config.toml` está com `storage.enabled = false` para manter o reset local estável neste setup.
-- Não existe promoção para QA/Prod.
-- Não existe preview branch/persistent branch remota.
-- Não existe automação de deploy de migration nesta etapa.
+- Não existe promoção automática QA/Prod.
+- Não existe deploy automático de migrations nesta etapa.
+- Push/sync remoto continuam manuais e fora do escopo do tooling local.

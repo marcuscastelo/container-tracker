@@ -12,6 +12,7 @@ dist/agent-control-ui/tools/
 marucs-src/
 .ralph-loop/
 .agent-runtime/
+.worktree-db.local.json
 .playwright-mcp/
 supabase/.temp/
 /.tmp*/

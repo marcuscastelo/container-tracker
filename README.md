@@ -115,7 +115,8 @@ pnpm run dev
 
 ## Supabase local-only
 
-Fluxo local de schema/migrations (sem remoto): [docs/dev/supabase-local.md](docs/dev/supabase-local.md)
+Fluxo local de schema/migrations (sem remoto): [docs/dev/supabase-local.md](docs/dev/supabase-local.md)  
+Fluxo de worktrees com DB isolado e stack compartilhada: [docs/dev/supabase-worktrees-local.md](docs/dev/supabase-worktrees-local.md)
 
 ---
 
