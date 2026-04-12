@@ -21,7 +21,7 @@ This document describes the operational job model built around `public.sync_requ
 | `last_error` | last operational error message |
 | `created_at` / `updated_at` | operational timestamps |
 
-Sources: `supabase/migrations/20260225_01_agent_sync_mvp.sql:18-40`, `src/modules/tracking/interface/http/agent-sync.schemas.ts:47-61`.
+Sources: `supabase/migrations/2026022501_agent_sync_mvp.sql:18-40`, `src/modules/tracking/interface/http/agent-sync.schemas.ts:47-61`.
 
 ## State Model
 
@@ -36,7 +36,7 @@ LEASED
   -> LEASED again after expiry, when lease_sync_requests() reclaims expired rows
 ```
 
-Sources: `supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:73-118`.
+Sources: `supabase/migrations/2026022501_agent_sync_mvp.sql:59-98`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:73-118`.
 
 ## Operational Retention Policy (Phase 1)
 
@@ -57,7 +57,7 @@ Future evolution (not implemented in this phase):
 
 - evaluate additional terminal statuses like `LEASE_EXPIRED` and `CANCELLED` if/when added to the enum
 
-Sources: `supabase/migrations/20260310_02_operational_tables_auto_prune.sql`.
+Sources: `supabase/migrations/2026031002_operational_tables_auto_prune.sql`.
 
 ## Where jobs are created
 
@@ -65,7 +65,7 @@ Sources: `supabase/migrations/20260310_02_operational_tables_auto_prune.sql`.
 
 | Entry point | How job is born |
 | --- | --- |
-| `pg_cron` provider-paced scheduler | cron `provider-paced-container-sync` executes `enqueue_container_sync_batch()` every 5 minutes, selecting due containers per provider with pacing limits (`supabase/migrations/20260310_03_provider_paced_sync_scheduler.sql`, `supabase/migrations/20260310_04_provider_paced_sync_scheduler_cron.sql`) |
+| `pg_cron` provider-paced scheduler | cron `provider-paced-container-sync` executes `enqueue_container_sync_batch()` every 5 minutes, selecting due containers per provider with pacing limits (`supabase/migrations/2026031003_provider_paced_sync_scheduler.sql`, `supabase/migrations/2026031004_provider_paced_sync_scheduler_cron.sql`) |
 | `POST /api/refresh` | tracking refresh controller calls `enqueue_sync_request` through bootstrap deps (`src/modules/tracking/interface/http/refresh.controllers.ts:58-69`, `src/modules/tracking/interface/http/refresh.controllers.bootstrap.ts:43-69`) |
 | `POST /api/processes/:id/refresh` | process refresh use case iterates process containers and calls the same enqueue port (`src/modules/process/interface/http/process.controllers.ts:463-490`, `src/modules/process/features/process-sync/application/usecases/refresh-process.usecase.ts:116-165`, `src/modules/process/infrastructure/bootstrap/process.bootstrap.ts:95-124`) |
 | `POST /api/processes/:id/sync` | sync use case enqueues targets before waiting on queue status (`src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:180-220`) |
@@ -73,7 +73,7 @@ Sources: `supabase/migrations/20260310_02_operational_tables_auto_prune.sql`.
 
 ### Dedupe behavior
 
-Open requests are deduplicated by a unique partial index on `(tenant_id, provider, ref_type, ref_value)` where status is `PENDING` or `LEASED`. `enqueue_sync_request()` inserts a new `PENDING` row or returns the existing open row with `is_new=false` (`supabase/migrations/20260225_02_refresh_queue_first.sql:23-117`).
+Open requests are deduplicated by a unique partial index on `(tenant_id, provider, ref_type, ref_value)` where status is `PENDING` or `LEASED`. `enqueue_sync_request()` inserts a new `PENDING` row or returns the existing open row with `is_new=false` (`supabase/migrations/2026022502_refresh_queue_first.sql:23-117`).
 
 ### Provider-paced scheduler behavior
 
@@ -89,7 +89,7 @@ Open requests are deduplicated by a unique partial index on `(tenant_id, provide
 - ranks by oldest `DONE.updated_at` (null first), then `container_number`
 - enqueues via `enqueue_sync_request()` (preserving open-row dedupe semantics)
 
-Implementation: `supabase/migrations/20260310_03_provider_paced_sync_scheduler.sql`.
+Implementation: `supabase/migrations/2026031003_provider_paced_sync_scheduler.sql`.
 
 ## Leasing Model
 
@@ -106,11 +106,11 @@ Implementation: `supabase/migrations/20260310_03_provider_paced_sync_scheduler.s
 - sets `leased_until = now + lease_minutes`
 - increments `attempts`
 
-Sources: `supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`.
+Sources: `supabase/migrations/2026022501_agent_sync_mvp.sql:59-98`.
 
 ### Lease TTL
 
-- DB function default lease time: 5 minutes (`supabase/migrations/20260225_01_agent_sync_mvp.sql:62-73`)
+- DB function default lease time: 5 minutes (`supabase/migrations/2026022501_agent_sync_mvp.sql:62-73`)
 - server config default `AGENT_LEASE_MINUTES=5` (`src/shared/config/server-env.ts:21-37`)
 
 ### Lease validation
@@ -127,17 +127,17 @@ Sources: `src/modules/tracking/interface/http/agent-sync.controllers.ts:185-197`
 
 **Not implemented in the audited code.**
 
-No lease heartbeat or renewal endpoint/function was found. The only confirmed recovery path for abandoned work is lease expiry followed by re-leasing (`supabase/migrations/20260225_01_agent_sync_mvp.sql:80-98`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:53-118`).
+No lease heartbeat or renewal endpoint/function was found. The only confirmed recovery path for abandoned work is lease expiry followed by re-leasing (`supabase/migrations/2026022501_agent_sync_mvp.sql:80-98`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:53-118`).
 
 ## Status Writers
 
 ### `PENDING`
 
-Set by `enqueue_sync_request()` on insert (`supabase/migrations/20260225_02_refresh_queue_first.sql:64-79`).
+Set by `enqueue_sync_request()` on insert (`supabase/migrations/2026022502_refresh_queue_first.sql:64-79`).
 
 ### `LEASED`
 
-Set by `lease_sync_requests()` when an agent claims work (`supabase/migrations/20260225_01_agent_sync_mvp.sql:88-96`).
+Set by `lease_sync_requests()` when an agent claims work (`supabase/migrations/2026022501_agent_sync_mvp.sql:88-96`).
 
 ### `DONE`
 
@@ -147,7 +147,7 @@ Set by `markSyncRequestDone()` after successful `saveAndProcess()` in the ingest
 
 Confirmed writers:
 
-- migration cleanup for duplicate open requests during queue-first migration (`supabase/migrations/20260225_02_refresh_queue_first.sql:5-21`)
+- migration cleanup for duplicate open requests during queue-first migration (`supabase/migrations/2026022502_refresh_queue_first.sql:5-21`)
 - `markSyncRequestFailed()` in ingest flow for container resolution/validation failures (`src/modules/tracking/interface/http/agent-sync.controllers.ts:211-229`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:97-118`)
 
 ### Delayed failure behavior
@@ -158,7 +158,7 @@ Most agent scrape/ingest errors are not explicitly marked failed by the agent ru
 
 ### What exists today
 
-- queue retry by lease expiry and reclaim (`supabase/migrations/20260225_01_agent_sync_mvp.sql:80-98`)
+- queue retry by lease expiry and reclaim (`supabase/migrations/2026022501_agent_sync_mvp.sql:80-98`)
 - process sync server polling with fixed 5-second interval and 180-second timeout (`src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:3-5`, `src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:113-150`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:4-5`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:110-147`)
 - UI refresh status polling with exponential backoff (`src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`)
 - agent enrollment/bootstrap retry with exponential backoff + jitter, but this is agent runtime bootstrap reliability, not per-sync job retry (`tools/agent/backoff.ts:1-31`, `tools/agent/agent.ts:535-596`)
@@ -174,7 +174,7 @@ Most agent scrape/ingest errors are not explicitly marked failed by the agent ru
 
 ### Operational dedupe
 
-The queue deduplicates open requests by target/provider while the row is `PENDING` or `LEASED` (`supabase/migrations/20260225_02_refresh_queue_first.sql:23-117`).
+The queue deduplicates open requests by target/provider while the row is `PENDING` or `LEASED` (`supabase/migrations/2026022502_refresh_queue_first.sql:23-117`).
 
 ### Domain idempotency
 

@@ -133,7 +133,7 @@ agent leases request
 
 ### Confirmed behavior
 
-1. `lease_sync_requests()` can lease both `PENDING` rows and expired `LEASED` rows, and increments `attempts` when it does so (`supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`).
+1. `lease_sync_requests()` can lease both `PENDING` rows and expired `LEASED` rows, and increments `attempts` when it does so (`supabase/migrations/2026022501_agent_sync_mvp.sql:59-98`).
 2. The agent currently logs most target failures and explicitly says the target will be available again after lease expiration; it does not call a dedicated "fail this target now" endpoint (`tools/agent/agent.ts:735-748`).
 3. Immediate `FAILED` state is only confirmed on the server ingest path for container-resolution problems and similar validated failures (`src/modules/tracking/interface/http/agent-sync.controllers.ts:211-229`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:97-118`).
 4. The synchronous process sync endpoints time out after 180 seconds with fixed 5-second polling (`src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:3-5`, `src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:113-150`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:4-5`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:110-147`).
@@ -175,4 +175,4 @@ sync_requests enqueue
   -> UI maps DTO -> VM
 ```
 
-Sources: `supabase/migrations/20260225_02_refresh_queue_first.sql:27-117`, `supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`, `src/modules/tracking/application/usecases/save-and-process.usecase.ts:35-60`, `src/modules/tracking/application/orchestration/pipeline.ts:70-130`, `src/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository.ts:13-25`, `src/modules/tracking/infrastructure/persistence/supabaseObservationRepository.ts:14-43`, `src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts:18-55`, `src/modules/process/interface/http/process.controllers.ts:236-315`, `src/modules/process/ui/mappers/processDetail.ui-mapper.ts:172-255`.
+Sources: `supabase/migrations/2026022502_refresh_queue_first.sql:27-117`, `supabase/migrations/2026022501_agent_sync_mvp.sql:59-98`, `src/modules/tracking/application/usecases/save-and-process.usecase.ts:35-60`, `src/modules/tracking/application/orchestration/pipeline.ts:70-130`, `src/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository.ts:13-25`, `src/modules/tracking/infrastructure/persistence/supabaseObservationRepository.ts:14-43`, `src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts:18-55`, `src/modules/process/interface/http/process.controllers.ts:236-315`, `src/modules/process/ui/mappers/processDetail.ui-mapper.ts:172-255`.

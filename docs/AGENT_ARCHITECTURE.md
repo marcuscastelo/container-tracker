@@ -48,7 +48,7 @@ Agent monitoring (monitoring/adapters)
 
 Queue / Leasing / Ingest (tracking side)
 - `src/routes/api/agent/targets.ts` -> `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts` -> `src/modules/tracking/interface/http/agent-sync.controllers.ts`
-  - `leaseSyncRequests` RPC invoked from `agent-sync.controllers.bootstrap` (see `supabaseServer.rpc('lease_sync_requests', ...)`). The RPC and table definitions live in `supabase/migrations/*.sql` (e.g. `supabase/migrations/20260226_01_agent_runtime_enrolment.sql` and `20260309_02_agents_monitoring_operational_runtime.sql`).
+  - `leaseSyncRequests` RPC invoked from `agent-sync.controllers.bootstrap` (see `supabaseServer.rpc('lease_sync_requests', ...)`). The RPC and table definitions live in `supabase/migrations/*.sql` (e.g. `supabase/migrations/2026022601_agent_runtime_enrolment.sql` and `20260309_02_agents_monitoring_operational_runtime.sql`).
   - `ingestSnapshot` in `agent-sync.controllers.ts` handles `POST /api/tracking/snapshots/ingest`, verifies lease, resolves container, calls `trackingUseCases.saveAndProcess`.
 
 Fetchers / Provider integrations
@@ -59,7 +59,7 @@ Fetchers / Provider integrations
 Persistence / DB mapping
 - `src/modules/agent/infrastructure/persistence/agent-monitoring.persistence.mappers.ts` — row <-> domain read model mappers.
 - `src/modules/agent/infrastructure/persistence/agent-monitoring.row.ts` — typed DB row helpers (Database types).
-- `supabase/migrations/*.sql` — DB schema for `tracking_agents`, `tracking_agent_activity_events`, `sync_requests`, indexes and constraints. Evidence: `supabase/migrations/20260226_01_agent_runtime_enrolment.sql`, `20260309_02_agents_monitoring_operational_runtime.sql`.
+- `supabase/migrations/*.sql` — DB schema for `tracking_agents`, `tracking_agent_activity_events`, `sync_requests`, indexes and constraints. Evidence: `supabase/migrations/2026022601_agent_runtime_enrolment.sql`, `20260309_02_agents_monitoring_operational_runtime.sql`.
 
 Observability / logging / audit
 - Enrollment audit: `agent_enrollment_audit_events` table via migrations and controller code in `agent-enroll.controllers.ts` (see `emitAuditEventSafely`).

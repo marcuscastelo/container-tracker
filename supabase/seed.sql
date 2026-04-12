@@ -1,0 +1,2 @@
+-- Local seed intentionally minimal.
+-- Current migrations/bootstrap are sufficient for local development reset.
