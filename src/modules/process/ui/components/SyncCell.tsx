@@ -110,26 +110,26 @@ function SyncCellIcon(props: { readonly state: SyncCellState }): JSX.Element {
   )
 }
 
-function SyncIssueBadge(props: {
-  readonly issue: DashboardProcessSyncIssueVM
-}): JSX.Element {
-  const badgeClass =
-    props.issue.severity === 'danger'
-      ? 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg'
-      : 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg'
-
+function SyncIssueBadge(props: { readonly issue: DashboardProcessSyncIssueVM }): JSX.Element {
   return (
-    <span
-      class={`pointer-events-none absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full border ${badgeClass}`}
-      aria-hidden="true"
+    <Show
+      when={props.issue.severity === 'danger'}
+      fallback={
+        <span
+          class="pointer-events-none absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg"
+          aria-hidden="true"
+        >
+          <CircleAlert class="h-2.5 w-2.5" strokeWidth={2} />
+        </span>
+      }
     >
-      <Show
-        when={props.issue.severity === 'danger'}
-        fallback={<CircleAlert class="h-2.5 w-2.5" strokeWidth={2} />}
+      <span
+        class="pointer-events-none absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg"
+        aria-hidden="true"
       >
         <TriangleAlert class="h-2.5 w-2.5" strokeWidth={2} />
-      </Show>
-    </span>
+      </span>
+    </Show>
   )
 }
 
@@ -220,9 +220,7 @@ export function SyncCell(props: SyncCellProps): JSX.Element {
         >
           <SyncCellIcon state={props.state} />
         </button>
-        <Show when={props.issue}>
-          {(issue) => <SyncIssueBadge issue={issue()} />}
-        </Show>
+        <Show when={props.issue}>{(issue) => <SyncIssueBadge issue={issue()} />}</Show>
       </div>
     </div>
   )

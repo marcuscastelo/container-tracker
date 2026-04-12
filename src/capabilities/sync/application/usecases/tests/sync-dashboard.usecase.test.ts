@@ -50,37 +50,37 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
     readonly mode: SyncMode
     readonly targets: readonly DashboardSyncEligibleTarget[]
   }) => {
-      if (command.targets.length === 0) {
-        return {
-          enqueuedTargets: [],
-          skippedTargets: [],
-          failedTargets: [],
-          newSyncRequestIds: [],
-        }
-      }
-
+    if (command.targets.length === 0) {
       return {
-        enqueuedTargets: [
-          {
-            processId: 'process-a',
-            processReference: 'REF-A',
-            containerNumber: 'MSCU1234567',
-            provider: 'msc' as const,
-            syncRequestId: 'sync-1',
-          },
-          {
-            processId: 'process-b',
-            processReference: 'REF-B',
-            containerNumber: 'MRKU7654321',
-            provider: 'maersk' as const,
-            syncRequestId: 'sync-2',
-          },
-        ],
+        enqueuedTargets: [],
         skippedTargets: [],
         failedTargets: [],
-        newSyncRequestIds: ['sync-1', 'sync-2'],
+        newSyncRequestIds: [],
       }
     }
+
+    return {
+      enqueuedTargets: [
+        {
+          processId: 'process-a',
+          processReference: 'REF-A',
+          containerNumber: 'MSCU1234567',
+          provider: 'msc' as const,
+          syncRequestId: 'sync-1',
+        },
+        {
+          processId: 'process-b',
+          processReference: 'REF-B',
+          containerNumber: 'MRKU7654321',
+          provider: 'maersk' as const,
+          syncRequestId: 'sync-2',
+        },
+      ],
+      skippedTargets: [],
+      failedTargets: [],
+      newSyncRequestIds: ['sync-1', 'sync-2'],
+    }
+  }
 
   const enqueue = vi.fn(enqueueImpl)
 

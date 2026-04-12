@@ -25,7 +25,9 @@ vi.mock('~/shared/localization/i18n', () => ({
   }),
 }))
 
-function buildIssue(severity: DashboardProcessSyncIssueVM['severity']): DashboardProcessSyncIssueVM {
+function buildIssue(
+  severity: DashboardProcessSyncIssueVM['severity'],
+): DashboardProcessSyncIssueVM {
   return {
     severity,
     tooltip:

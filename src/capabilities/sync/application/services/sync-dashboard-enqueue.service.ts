@@ -70,29 +70,30 @@ export function createSyncDashboardEnqueueService(deps: {
       const uniqueOutcomes = await Promise.all(
         Array.from(firstTargetByKey.entries()).map(
           async ([key, target]): Promise<readonly [string, UniqueEnqueueOutcome]> => {
-          try {
-            const enqueueResult = await deps.queuePort.enqueueContainerSyncRequest({
-              tenantId: command.tenantId,
-              mode: command.mode,
-              provider: target.provider,
-              containerNumber: target.containerNumber,
-            })
+            try {
+              const enqueueResult = await deps.queuePort.enqueueContainerSyncRequest({
+                tenantId: command.tenantId,
+                mode: command.mode,
+                provider: target.provider,
+                containerNumber: target.containerNumber,
+              })
 
-            if (!enqueueResult.isNew) {
-              return [key, { kind: 'skipped' }] as const
+              if (!enqueueResult.isNew) {
+                return [key, { kind: 'skipped' }] as const
+              }
+
+              return [
+                key,
+                {
+                  kind: 'enqueued',
+                  syncRequestId: enqueueResult.id,
+                },
+              ] as const
+            } catch {
+              return [key, { kind: 'failed' }] as const
             }
-
-            return [
-              key,
-              {
-                kind: 'enqueued',
-                syncRequestId: enqueueResult.id,
-              },
-            ] as const
-          } catch {
-            return [key, { kind: 'failed' }] as const
-          }
-        }),
+          },
+        ),
       )
 
       const outcomeByKey = new Map<string, UniqueEnqueueOutcome>(uniqueOutcomes)

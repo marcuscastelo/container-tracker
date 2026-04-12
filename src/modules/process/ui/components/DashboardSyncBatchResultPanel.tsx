@@ -47,18 +47,22 @@ function toSummaryChipClasses(kind: 'neutral' | 'success' | 'warning' | 'danger'
   return 'border-border bg-surface text-text-muted'
 }
 
-function ResultToneIcon(props: {
-  readonly tone: DashboardSyncBatchResultVM['tone']
-}): JSX.Element {
-  if (props.tone === 'danger') {
-    return <OctagonAlert class="h-5 w-5 text-tone-danger-fg" aria-hidden="true" />
-  }
-
-  if (props.tone === 'warning') {
-    return <CircleAlert class="h-5 w-5 text-tone-warning-fg" aria-hidden="true" />
-  }
-
-  return <CheckCircle2 class="h-5 w-5 text-tone-success-fg" aria-hidden="true" />
+function ResultToneIcon(props: { readonly tone: DashboardSyncBatchResultVM['tone'] }): JSX.Element {
+  return (
+    <Show
+      when={props.tone === 'danger'}
+      fallback={
+        <Show
+          when={props.tone === 'warning'}
+          fallback={<CheckCircle2 class="h-5 w-5 text-tone-success-fg" aria-hidden="true" />}
+        >
+          <CircleAlert class="h-5 w-5 text-tone-warning-fg" aria-hidden="true" />
+        </Show>
+      }
+    >
+      <OctagonAlert class="h-5 w-5 text-tone-danger-fg" aria-hidden="true" />
+    </Show>
+  )
 }
 
 function DashboardSyncBatchSection(props: DashboardSyncBatchSectionProps): JSX.Element {
@@ -125,7 +129,9 @@ export function DashboardSyncBatchResultPanel(
   })
 
   return (
-    <section class={`mb-5 rounded-2xl border p-4 shadow-sm ${toPanelToneClasses(props.result.tone)}`}>
+    <section
+      class={`mb-5 rounded-2xl border p-4 shadow-sm ${toPanelToneClasses(props.result.tone)}`}
+    >
       <div class="flex items-start justify-between gap-4">
         <div class="flex min-w-0 items-start gap-3">
           <ResultToneIcon tone={props.result.tone} />
@@ -142,7 +148,7 @@ export function DashboardSyncBatchResultPanel(
 
         <button
           type="button"
-          onClick={props.onDismiss}
+          onClick={() => props.onDismiss()}
           class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-text-muted transition-colors hover:border-border-strong hover:text-foreground"
           aria-label={t(keys.dashboard.syncBatch.panel.dismiss)}
           title={t(keys.dashboard.syncBatch.panel.dismiss)}
@@ -152,27 +158,37 @@ export function DashboardSyncBatchResultPanel(
       </div>
 
       <div class="mt-4 flex flex-wrap gap-2">
-        <span class={`rounded-full border px-3 py-1 text-xs-ui font-semibold ${toSummaryChipClasses('neutral')}`}>
+        <span
+          class={`rounded-full border px-3 py-1 text-xs-ui font-semibold ${toSummaryChipClasses('neutral')}`}
+        >
           {t(keys.dashboard.syncBatch.panel.summary.requestedProcesses, {
             count: props.result.summary.requestedProcesses,
           })}
         </span>
-        <span class={`rounded-full border px-3 py-1 text-xs-ui font-semibold ${toSummaryChipClasses('neutral')}`}>
+        <span
+          class={`rounded-full border px-3 py-1 text-xs-ui font-semibold ${toSummaryChipClasses('neutral')}`}
+        >
           {t(keys.dashboard.syncBatch.panel.summary.requestedContainers, {
             count: props.result.summary.requestedContainers,
           })}
         </span>
-        <span class={`rounded-full border px-3 py-1 text-xs-ui font-semibold ${toSummaryChipClasses('success')}`}>
+        <span
+          class={`rounded-full border px-3 py-1 text-xs-ui font-semibold ${toSummaryChipClasses('success')}`}
+        >
           {t(keys.dashboard.syncBatch.panel.summary.enqueued, {
             count: props.result.summary.enqueued,
           })}
         </span>
-        <span class={`rounded-full border px-3 py-1 text-xs-ui font-semibold ${toSummaryChipClasses('warning')}`}>
+        <span
+          class={`rounded-full border px-3 py-1 text-xs-ui font-semibold ${toSummaryChipClasses('warning')}`}
+        >
           {t(keys.dashboard.syncBatch.panel.summary.skipped, {
             count: props.result.summary.skipped,
           })}
         </span>
-        <span class={`rounded-full border px-3 py-1 text-xs-ui font-semibold ${toSummaryChipClasses('danger')}`}>
+        <span
+          class={`rounded-full border px-3 py-1 text-xs-ui font-semibold ${toSummaryChipClasses('danger')}`}
+        >
           {t(keys.dashboard.syncBatch.panel.summary.failed, {
             count: props.result.summary.failed,
           })}

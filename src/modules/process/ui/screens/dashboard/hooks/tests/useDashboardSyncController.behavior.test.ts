@@ -290,14 +290,11 @@ describe('useDashboardSyncController behavior', () => {
       },
     })
     expect(
-      harness
-        .controller
-        .processesWithSyncFeedback()
-        .map((process) => ({
-          id: process.id,
-          syncStatus: process.syncStatus,
-          issue: process.syncIssue?.severity ?? null,
-        })),
+      harness.controller.processesWithSyncFeedback().map((process) => ({
+        id: process.id,
+        syncStatus: process.syncStatus,
+        issue: process.syncIssue?.severity ?? null,
+      })),
     ).toEqual([
       {
         id: 'process-1',
@@ -319,14 +316,11 @@ describe('useDashboardSyncController behavior', () => {
     await vi.advanceTimersByTimeAsync(2_600)
 
     expect(
-      harness
-        .controller
-        .processesWithSyncFeedback()
-        .map((process) => ({
-          id: process.id,
-          syncStatus: process.syncStatus,
-          issue: process.syncIssue?.severity ?? null,
-        })),
+      harness.controller.processesWithSyncFeedback().map((process) => ({
+        id: process.id,
+        syncStatus: process.syncStatus,
+        issue: process.syncIssue?.severity ?? null,
+      })),
     ).toEqual([
       {
         id: 'process-1',
@@ -348,14 +342,11 @@ describe('useDashboardSyncController behavior', () => {
     await vi.advanceTimersByTimeAsync(27_500)
 
     expect(
-      harness
-        .controller
-        .processesWithSyncFeedback()
-        .map((process) => ({
-          id: process.id,
-          syncStatus: process.syncStatus,
-          issue: process.syncIssue?.severity ?? null,
-        })),
+      harness.controller.processesWithSyncFeedback().map((process) => ({
+        id: process.id,
+        syncStatus: process.syncStatus,
+        issue: process.syncIssue?.severity ?? null,
+      })),
     ).toEqual([
       {
         id: 'process-1',
@@ -377,12 +368,8 @@ describe('useDashboardSyncController behavior', () => {
     harness.controller.dismissDashboardSyncBatchResult()
 
     expect(harness.controller.dashboardSyncBatchResult()).toBeNull()
-    expect(
-      harness.controller.processesWithSyncFeedback()[1]?.syncIssue?.severity,
-    ).toBe('warning')
-    expect(
-      harness.controller.processesWithSyncFeedback()[2]?.syncIssue?.severity,
-    ).toBe('danger')
+    expect(harness.controller.processesWithSyncFeedback()[1]?.syncIssue?.severity).toBe('warning')
+    expect(harness.controller.processesWithSyncFeedback()[2]?.syncIssue?.severity).toBe('danger')
     harness.dispose()
   })
 
@@ -408,14 +395,11 @@ describe('useDashboardSyncController behavior', () => {
       },
     })
     expect(
-      harness
-        .controller
-        .processesWithSyncFeedback()
-        .map((process) => ({
-          id: process.id,
-          syncStatus: process.syncStatus,
-          issue: process.syncIssue?.severity ?? null,
-        })),
+      harness.controller.processesWithSyncFeedback().map((process) => ({
+        id: process.id,
+        syncStatus: process.syncStatus,
+        issue: process.syncIssue?.severity ?? null,
+      })),
     ).toEqual([
       {
         id: 'process-1',

@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import type { z } from 'zod'
 import { TypedFetchError, typedFetch } from '~/shared/api/typedFetch'
 import {
   ProcessesSyncStatusResponseSchema,

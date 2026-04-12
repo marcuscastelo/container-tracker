@@ -130,15 +130,10 @@ export function createSyncDashboardUseCase(deps: SyncDashboardDeps) {
   }
 
   function logBatchResult(result: SyncDashboardBatchResult): void {
-    const reasonHistogram = [...result.skippedTargets, ...result.failedTargets].reduce<
-      Record<string, number>
-    >((histogram, target) => {
-      const nextCount = (histogram[target.reasonCode] ?? 0) + 1
-      return {
-        ...histogram,
-        [target.reasonCode]: nextCount,
-      }
-    }, {})
+    const reasonHistogram: Record<string, number> = {}
+    for (const target of [...result.skippedTargets, ...result.failedTargets]) {
+      reasonHistogram[target.reasonCode] = (reasonHistogram[target.reasonCode] ?? 0) + 1
+    }
 
     for (const target of result.skippedTargets) {
       console.warn('[sync_dashboard_target_skipped]', {

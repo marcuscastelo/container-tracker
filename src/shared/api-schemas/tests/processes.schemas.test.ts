@@ -119,7 +119,8 @@ describe('SyncAllProcessesSuccessResponseSchema', () => {
           containerNumber: 'MRKU7654321',
           provider: 'maersk',
           reasonCode: 'DUPLICATE_OPEN_REQUEST',
-          reasonMessage: 'Target already has an open sync request or was already included in this batch.',
+          reasonMessage:
+            'Target already has an open sync request or was already included in this batch.',
         },
       ],
       failedTargets: [],

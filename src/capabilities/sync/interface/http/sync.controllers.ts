@@ -42,10 +42,7 @@ export function createSyncControllers(deps: SyncControllersDeps) {
 
       if (result.summary.enqueued === 0 && result.summary.failed > 0) {
         return jsonResponse(
-          toSyncAllProcessesBusinessErrorResponse(
-            result,
-            SYNC_DASHBOARD_FAILED_NO_ENQUEUE_ERROR,
-          ),
+          toSyncAllProcessesBusinessErrorResponse(result, SYNC_DASHBOARD_FAILED_NO_ENQUEUE_ERROR),
           422,
           SyncAllProcessesBusinessErrorResponseSchema,
         )

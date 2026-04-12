@@ -1,5 +1,3 @@
-import type { TranslationKeys } from '~/shared/localization/translationTypes'
-import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 import type { SyncAllProcessesRequestResult } from '~/modules/process/ui/api/processSync.api'
 import type {
   DashboardProcessSyncIssueVM,
@@ -8,6 +6,8 @@ import type {
   DashboardSyncBatchReasonCode,
   DashboardSyncBatchResultVM,
 } from '~/modules/process/ui/viewmodels/dashboard-sync-batch-result.vm'
+import type { TranslationKeys } from '~/shared/localization/translationTypes'
+import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
 const MAX_ROW_TOOLTIP_ITEMS = 3
 
@@ -100,19 +100,21 @@ function toRowIssueTooltip(command: {
   const failedCount = command.failedTargets.length
   const skippedCount = command.skippedTargets.length
 
-  const summaryLine =
-    failedCount > 0 && skippedCount > 0
-      ? command.t(command.keys.dashboard.syncBatch.rowIssue.mixed, {
-          failed: failedCount,
-          skipped: skippedCount,
-        })
-      : failedCount > 0
-        ? command.t(command.keys.dashboard.syncBatch.rowIssue.failedOnly, {
-            failed: failedCount,
-          })
-        : command.t(command.keys.dashboard.syncBatch.rowIssue.skippedOnly, {
-            skipped: skippedCount,
-          })
+  let summaryLine: string
+  if (failedCount > 0 && skippedCount > 0) {
+    summaryLine = command.t(command.keys.dashboard.syncBatch.rowIssue.mixed, {
+      failed: failedCount,
+      skipped: skippedCount,
+    })
+  } else if (failedCount > 0) {
+    summaryLine = command.t(command.keys.dashboard.syncBatch.rowIssue.failedOnly, {
+      failed: failedCount,
+    })
+  } else {
+    summaryLine = command.t(command.keys.dashboard.syncBatch.rowIssue.skippedOnly, {
+      skipped: skippedCount,
+    })
+  }
 
   const items = [...command.failedTargets, ...command.skippedTargets]
   const visibleLines = items.slice(0, MAX_ROW_TOOLTIP_ITEMS).map(toProblemLine)
@@ -146,9 +148,7 @@ function toIssueByProcessId(command: {
 
   for (const processId of processIds) {
     const failedTargets = command.failedTargets.filter((target) => target.processId === processId)
-    const skippedTargets = command.skippedTargets.filter(
-      (target) => target.processId === processId,
-    )
+    const skippedTargets = command.skippedTargets.filter((target) => target.processId === processId)
 
     issues[processId] = {
       severity: failedTargets.length > 0 ? 'danger' : 'warning',
@@ -196,10 +196,18 @@ export function toDashboardSyncBatchResultVm(command: {
     keys: command.keys,
   })
 
+  let tone: DashboardSyncBatchResultVM['tone']
+  if (failedTargets.length > 0) {
+    tone = 'danger'
+  } else if (skippedTargets.length > 0) {
+    tone = 'warning'
+  } else {
+    tone = 'success'
+  }
+
   return {
     httpStatus: command.source.httpStatus,
-    tone:
-      failedTargets.length > 0 ? 'danger' : skippedTargets.length > 0 ? 'warning' : 'success',
+    tone,
     isBusinessError: command.source.httpStatus === 422,
     summary: {
       requestedProcesses: command.source.payload.summary.requestedProcesses,

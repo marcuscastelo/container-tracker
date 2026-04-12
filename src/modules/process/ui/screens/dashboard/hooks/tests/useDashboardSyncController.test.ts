@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   schedulePerProcessLocalSyncExpiry,
   schedulePerProcessVisibleLocalSyncExpiry,
-} from '~/modules/process/ui/screens/dashboard/hooks/useDashboardSyncController'
+} from '~/modules/process/ui/screens/dashboard/hooks/dashboard-sync-feedback-expiry'
 
 class MockVisibilityDocument extends EventTarget {
   visibilityState: DocumentVisibilityState
