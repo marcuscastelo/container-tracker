@@ -46,11 +46,12 @@ type CreateSyncPortsDeps = {
   readonly containerUseCases: ContainerUseCasesDeps
 }
 
-const ActiveProcessIdRowSchema = z.object({
+const ActiveProcessForDashboardSyncRowSchema = z.object({
   id: z.string(),
+  reference: z.string().nullable(),
 })
 
-const ActiveProcessIdRowsSchema = z.array(ActiveProcessIdRowSchema)
+const ActiveProcessForDashboardSyncRowsSchema = z.array(ActiveProcessForDashboardSyncRowSchema)
 
 const ProcessSyncCandidateRowSchema = z.object({
   id: z.string(),
@@ -114,20 +115,28 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
       }
     },
 
-    async listActiveProcessIds() {
+    async listActiveProcessesForDashboardSync() {
       const result = await supabaseServer
         .from('processes')
-        .select('id')
+        .select('id,reference')
         .is('archived_at', null)
         .is('deleted_at', null)
 
       const data = unwrapSupabaseResultOrThrow(result, {
-        operation: 'list_active_process_ids',
+        operation: 'list_active_processes_for_dashboard_sync',
         table: 'processes',
       })
 
-      const rows = ActiveProcessIdRowsSchema.parse(data)
-      return rows.map((row) => row.id)
+      const rows = ActiveProcessForDashboardSyncRowsSchema.parse(data)
+      return rows.map((row) => ({
+        processId: row.id,
+        processReference: row.reference,
+      }))
+    },
+
+    async listActiveProcessIds() {
+      const processes = await this.listActiveProcessesForDashboardSync()
+      return processes.map((process) => process.processId)
     },
 
     async listContainersByProcessId(command) {

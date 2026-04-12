@@ -3,22 +3,24 @@ import type {
   SyncQueuePort,
   SyncRequestStatusItem,
 } from '~/capabilities/sync/application/ports/sync-queue.port'
-import type { SyncEnqueuePolicyService } from '~/capabilities/sync/application/services/sync-enqueue-policy.service'
-import type { SyncTargetResolverService } from '~/capabilities/sync/application/services/sync-target-resolver.service'
+import type { SyncDashboardEnqueueService } from '~/capabilities/sync/application/services/sync-dashboard-enqueue.service'
+import type { SyncDashboardTargetsService } from '~/capabilities/sync/application/services/sync-dashboard-targets.service'
+import type {
+  SyncDashboardBatchResult,
+  SyncDashboardFailedTarget,
+} from '~/capabilities/sync/application/usecases/sync-dashboard-batch-result'
 import { HttpError } from '~/shared/errors/httpErrors'
 import { systemClock } from '~/shared/time/clock'
 
 const DEFAULT_SYNC_TIMEOUT_MS = 180_000
 const DEFAULT_SYNC_POLL_INTERVAL_MS = 5_000
-
-type SyncDashboardResult = {
-  readonly syncedProcesses: number
-  readonly syncedContainers: number
-}
+const TERMINAL_ENQUEUE_FAILED_MESSAGE = 'Dashboard sync request failed after enqueue.'
+const TERMINAL_INFRASTRUCTURE_ERROR_MESSAGE =
+  'Dashboard sync request status could not be reconciled.'
 
 export type SyncDashboardDeps = {
-  readonly targetResolverService: SyncTargetResolverService
-  readonly enqueuePolicyService: SyncEnqueuePolicyService
+  readonly dashboardTargetsService: SyncDashboardTargetsService
+  readonly dashboardEnqueueService: SyncDashboardEnqueueService
   readonly queuePort: Pick<SyncQueuePort, 'getSyncRequestStatuses'>
   readonly nowMs?: () => number
   readonly sleep?: (delayMs: number) => Promise<void>
@@ -102,55 +104,145 @@ export function createSyncDashboardUseCase(deps: SyncDashboardDeps) {
   const timeoutMs = deps.timeoutMs ?? DEFAULT_SYNC_TIMEOUT_MS
   const pollIntervalMs = deps.pollIntervalMs ?? DEFAULT_SYNC_POLL_INTERVAL_MS
 
-  return async function execute(command: EnqueueSyncCommand): Promise<SyncDashboardResult> {
+  function toFailedTargetFromTerminalStatus(command: {
+    readonly statusItem: SyncRequestStatusItem
+    readonly enqueuedTarget: SyncDashboardBatchResult['enqueuedTargets'][number]
+  }): SyncDashboardFailedTarget {
+    if (command.statusItem.status === 'NOT_FOUND') {
+      return {
+        processId: command.enqueuedTarget.processId,
+        processReference: command.enqueuedTarget.processReference,
+        containerNumber: command.enqueuedTarget.containerNumber,
+        provider: command.enqueuedTarget.provider,
+        reasonCode: 'INFRASTRUCTURE_ERROR',
+        reasonMessage: TERMINAL_INFRASTRUCTURE_ERROR_MESSAGE,
+      }
+    }
+
+    return {
+      processId: command.enqueuedTarget.processId,
+      processReference: command.enqueuedTarget.processReference,
+      containerNumber: command.enqueuedTarget.containerNumber,
+      provider: command.enqueuedTarget.provider,
+      reasonCode: 'ENQUEUE_FAILED',
+      reasonMessage: TERMINAL_ENQUEUE_FAILED_MESSAGE,
+    }
+  }
+
+  function logBatchResult(result: SyncDashboardBatchResult): void {
+    const reasonHistogram = [...result.skippedTargets, ...result.failedTargets].reduce<
+      Record<string, number>
+    >((histogram, target) => {
+      const nextCount = (histogram[target.reasonCode] ?? 0) + 1
+      return {
+        ...histogram,
+        [target.reasonCode]: nextCount,
+      }
+    }, {})
+
+    for (const target of result.skippedTargets) {
+      console.warn('[sync_dashboard_target_skipped]', {
+        processId: target.processId,
+        processReference: target.processReference,
+        containerNumber: target.containerNumber,
+        provider: target.provider,
+        reasonCode: target.reasonCode,
+      })
+    }
+
+    for (const target of result.failedTargets) {
+      console.error('[sync_dashboard_target_failed]', {
+        processId: target.processId,
+        processReference: target.processReference,
+        containerNumber: target.containerNumber,
+        provider: target.provider,
+        reasonCode: target.reasonCode,
+      })
+    }
+
+    console.info('[sync_dashboard_batch]', {
+      requestedProcesses: result.summary.requestedProcesses,
+      requestedContainers: result.summary.requestedContainers,
+      enqueued: result.summary.enqueued,
+      skipped: result.summary.skipped,
+      failed: result.summary.failed,
+      reasonHistogram,
+    })
+  }
+
+  return async function execute(command: EnqueueSyncCommand): Promise<SyncDashboardBatchResult> {
     if (command.scope.kind !== 'dashboard') {
       throw new HttpError('invalid_sync_scope_for_dashboard', 400)
     }
 
-    const targets = await deps.targetResolverService.resolveTargets(command.scope)
-    if (targets.length === 0) {
-      return { syncedProcesses: 0, syncedContainers: 0 }
-    }
-
-    const enqueueResult = await deps.enqueuePolicyService.enqueue({
+    const resolvedTargets = await deps.dashboardTargetsService.resolveTargets()
+    const enqueueResult = await deps.dashboardEnqueueService.enqueue({
       tenantId: command.tenantId,
       mode: command.mode,
-      targets,
+      targets: resolvedTargets.eligibleTargets,
     })
 
-    if (enqueueResult.syncRequestIds.length === 0) {
-      return {
-        syncedProcesses: new Set(targets.map((target) => target.processId).filter(Boolean)).size,
-        syncedContainers: targets.length,
+    let enqueuedTargets: SyncDashboardBatchResult['enqueuedTargets'][number][] = [
+      ...enqueueResult.enqueuedTargets,
+    ]
+    const skippedTargets: SyncDashboardBatchResult['skippedTargets'][number][] = [
+      ...resolvedTargets.skippedTargets,
+      ...enqueueResult.skippedTargets,
+    ]
+    const failedTargets: SyncDashboardBatchResult['failedTargets'][number][] = [
+      ...enqueueResult.failedTargets,
+    ]
+
+    if (enqueueResult.newSyncRequestIds.length > 0) {
+      const requests = await waitForTerminalStatuses({
+        syncRequestIds: enqueueResult.newSyncRequestIds,
+        timeoutMs,
+        pollIntervalMs,
+        getSyncRequestStatuses: deps.queuePort.getSyncRequestStatuses,
+        nowMs,
+        sleep,
+      })
+
+      const failedBySyncRequestId = new Map(
+        requests
+          .filter((request) => request.status === 'FAILED' || request.status === 'NOT_FOUND')
+          .map((request) => [request.syncRequestId, request] as const),
+      )
+
+      if (failedBySyncRequestId.size > 0) {
+        const survivingTargets: SyncDashboardBatchResult['enqueuedTargets'][number][] = []
+        for (const target of enqueuedTargets) {
+          const failedRequest = failedBySyncRequestId.get(target.syncRequestId)
+          if (failedRequest === undefined) {
+            survivingTargets.push(target)
+            continue
+          }
+
+          failedTargets.push(
+            toFailedTargetFromTerminalStatus({
+              statusItem: failedRequest,
+              enqueuedTarget: target,
+            }),
+          )
+        }
+        enqueuedTargets = survivingTargets
       }
     }
 
-    const requests = await waitForTerminalStatuses({
-      syncRequestIds: enqueueResult.syncRequestIds,
-      timeoutMs,
-      pollIntervalMs,
-      getSyncRequestStatuses: deps.queuePort.getSyncRequestStatuses,
-      nowMs,
-      sleep,
-    })
-
-    const failures = requests.filter((request) => {
-      return request.status === 'FAILED' || request.status === 'NOT_FOUND'
-    })
-
-    const firstFailure = failures[0]
-    if (firstFailure !== undefined) {
-      const firstError =
-        firstFailure.lastError ??
-        `${firstFailure.status.toLowerCase()}_${firstFailure.syncRequestId}`
-      throw new HttpError(`sync_global_failed:${firstError}`, 502)
+    const result: SyncDashboardBatchResult = {
+      summary: {
+        requestedProcesses: resolvedTargets.requestedProcesses,
+        requestedContainers: resolvedTargets.requestedContainers,
+        enqueued: enqueuedTargets.length,
+        skipped: skippedTargets.length,
+        failed: failedTargets.length,
+      },
+      enqueuedTargets,
+      skippedTargets,
+      failedTargets,
     }
 
-    const syncedProcesses = new Set(targets.map((target) => target.processId).filter(Boolean)).size
-
-    return {
-      syncedProcesses,
-      syncedContainers: targets.length,
-    }
+    logBatchResult(result)
+    return result
   }
 }

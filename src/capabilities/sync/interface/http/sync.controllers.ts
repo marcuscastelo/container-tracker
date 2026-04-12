@@ -5,7 +5,8 @@ import {
 } from '~/capabilities/sync/interface/http/sync.schemas'
 import {
   toProcessRefreshResponse,
-  toSyncAllProcessesResponse,
+  toSyncAllProcessesBusinessErrorResponse,
+  toSyncAllProcessesSuccessResponse,
   toSyncContainerResponse,
   toSyncProcessResponse,
 } from '~/capabilities/sync/presenter/sync-response.presenter'
@@ -13,9 +14,12 @@ import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 import {
   ProcessRefreshResponseSchema,
-  SyncAllProcessesResponseSchema,
+  SyncAllProcessesBusinessErrorResponseSchema,
+  SyncAllProcessesSuccessResponseSchema,
   SyncProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
+
+const SYNC_DASHBOARD_FAILED_NO_ENQUEUE_ERROR = 'sync_dashboard_failed_no_targets_enqueued'
 
 type SyncControllersDeps = {
   readonly syncUseCases: Pick<
@@ -36,7 +40,22 @@ export function createSyncControllers(deps: SyncControllersDeps) {
         mode: 'manual',
       })
 
-      return jsonResponse(toSyncAllProcessesResponse(result), 200, SyncAllProcessesResponseSchema)
+      if (result.summary.enqueued === 0 && result.summary.failed > 0) {
+        return jsonResponse(
+          toSyncAllProcessesBusinessErrorResponse(
+            result,
+            SYNC_DASHBOARD_FAILED_NO_ENQUEUE_ERROR,
+          ),
+          422,
+          SyncAllProcessesBusinessErrorResponseSchema,
+        )
+      }
+
+      return jsonResponse(
+        toSyncAllProcessesSuccessResponse(result),
+        200,
+        SyncAllProcessesSuccessResponseSchema,
+      )
     } catch (err) {
       console.error('POST /api/dashboard/sync error:', err)
       return mapErrorToResponse(err)
