@@ -46,7 +46,7 @@ export function NavbarAlertsButton(): JSX.Element {
         aria-label={t(keys.header.alertsBadge, { count: controller.totalActiveIncidents() })}
         title={controller.buttonTitle()}
         class={clsx(
-          'inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs-ui font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+          'motion-focus-surface motion-interactive inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs-ui font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
           {
             'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg hover:border-tone-danger-strong':
               controller.totalActiveIncidents() > 0,

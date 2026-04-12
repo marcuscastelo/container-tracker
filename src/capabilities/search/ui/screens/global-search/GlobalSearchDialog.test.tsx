@@ -283,6 +283,7 @@ describe('GlobalSearchDialog', () => {
     )
     expect(html).toContain('suggestions:0:Sugestões de busca')
     expect(html).toContain('body:ready:false:false:1:Resultados da busca')
+    expect(html).toContain('motion-dialog-size')
     expect(html).toContain('footer:Navegar:Selecionar:Fechar')
   })
 

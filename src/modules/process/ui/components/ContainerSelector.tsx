@@ -59,8 +59,9 @@ function ContainerSelectorItem(props: {
     <button
       type="button"
       data-testid={`container-card-${props.container.id}`}
+      data-selected={props.selected ? 'true' : 'false'}
       onClick={() => props.onSelect(props.container.id)}
-      class={`w-full rounded-lg border p-3 text-left transition-colors ${cardClass()}`}
+      class={`motion-focus-surface motion-interactive w-full rounded-lg border p-3 text-left ${cardClass()}`}
     >
       <div class="truncate font-mono text-sm-ui font-semibold tracking-wide text-foreground">
         {props.container.number}

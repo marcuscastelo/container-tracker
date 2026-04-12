@@ -304,6 +304,7 @@ function renderShipmentDataView(alertIncidents: AlertIncidentsVM): string {
       activeAlerts: [],
       alertIncidents,
       busyAlertIds: new Set<string>(),
+      recentlyChangedAlertIds: new Set<string>(),
       onAcknowledgeAlert: () => undefined,
       onUnacknowledgeAlert: () => undefined,
       onOpenEdit: () => undefined,

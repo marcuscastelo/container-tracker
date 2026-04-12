@@ -48,6 +48,7 @@
     "importButton": "Importar",
     "moreActions": "Mais ações",
     "copyTrelloAction": "Copiar para Trello",
+    "copyTrelloCopied": "Copiado",
     "copyTrelloSuccess": "✓ Markdown do Trello copiado para a área de transferência",
     "copyTrelloError": "Não foi possível gerar a exportação do Trello",
     "dialog": {
@@ -407,6 +408,7 @@
       "refresh": "Atualizar",
       "refreshing": "Atualizando…",
       "copyTimeline": "Copiar timeline",
+      "copyTimelineCopied": "Copiado",
       "copyTimelineSuccess": "Timeline copiada para a área de transferência",
       "copyTimelineError": "Não foi possível copiar a timeline",
       "edit": "Editar",

@@ -21,12 +21,15 @@ import type { AlertIncidentsVM } from '~/modules/process/ui/viewmodels/alert-inc
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import type { Instant } from '~/shared/time/instant'
+import { MotionCollapse } from '~/shared/ui/motion/MotionCollapse'
+import { useSwapTransition } from '~/shared/ui/motion/useSwapTransition'
 
 type ShipmentDataViewProps = {
   readonly data: ShipmentDetailVM
   readonly activeAlerts: readonly AlertDisplayVM[]
   readonly alertIncidents: AlertIncidentsVM
   readonly busyAlertIds: ReadonlySet<string>
+  readonly recentlyChangedAlertIds: ReadonlySet<string>
   readonly onAcknowledgeAlert: (alertIds: readonly string[]) => void
   readonly onUnacknowledgeAlert: (alertIds: readonly string[]) => void
   readonly onOpenEdit: (focus?: 'reference' | 'carrier' | null | undefined) => void
@@ -45,6 +48,7 @@ type ShipmentCurrentAlertsSectionProps = Pick<
   ShipmentDataViewProps,
   | 'alertIncidents'
   | 'busyAlertIds'
+  | 'recentlyChangedAlertIds'
   | 'data'
   | 'onAcknowledgeAlert'
   | 'onUnacknowledgeAlert'
@@ -70,6 +74,7 @@ function ShipmentCurrentAlertsSection(props: ShipmentCurrentAlertsSectionProps):
           processId={props.data.id}
           alertIncidents={props.alertIncidents}
           busyAlertIds={props.busyAlertIds}
+          recentlyChangedAlertIds={props.recentlyChangedAlertIds}
           onAcknowledge={props.onAcknowledgeAlert}
           onUnacknowledge={props.onUnacknowledgeAlert}
           onSelectContainer={props.onSelectContainer}
@@ -108,7 +113,7 @@ function TrackingContainmentNotice(props: TrackingContainmentNoticeProps): JSX.E
                 href={externalTrackingUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="inline-flex items-center gap-1 rounded-md border border-tone-info-border bg-surface px-2 py-1 text-xs-ui font-medium text-tone-info-strong transition-colors hover:bg-tone-info-bg/70"
+                class="motion-focus-surface motion-interactive inline-flex items-center gap-1 rounded-md border border-tone-info-border bg-surface px-2 py-1 text-xs-ui font-medium text-tone-info-strong hover:bg-tone-info-bg/70"
               >
                 <ExternalLink class="h-3.5 w-3.5" />
                 <span>{t(keys.shipmentView.containment.openCarrierTracking)}</span>
@@ -166,8 +171,8 @@ function ShipmentTimelineRegion(props: ShipmentTimelineRegionProps): JSX.Element
             </Show>
           </ErrorBoundary>
 
-          <Show
-            when={props.trackingTimeTravel.isActive() && props.trackingTimeTravel.isDebugOpen()}
+          <MotionCollapse
+            open={props.trackingTimeTravel.isActive() && props.trackingTimeTravel.isDebugOpen()}
           >
             <TrackingTimeTravelDebugPanel
               containerNumber={container().number}
@@ -176,7 +181,7 @@ function ShipmentTimelineRegion(props: ShipmentTimelineRegionProps): JSX.Element
               debug={props.trackingTimeTravel.debugValue()}
               debugPayload={props.trackingTimeTravel.debugPayload()}
             />
-          </Show>
+          </MotionCollapse>
         </section>
       )}
     </Show>
@@ -228,12 +233,30 @@ function ShipmentSidebarRegion(props: ShipmentSidebarRegionProps): JSX.Element {
 
 export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
   const isHistoricalMode = () => props.trackingTimeTravel.isActive()
+  const selectionSwap = useSwapTransition({
+    key: () => props.selectedContainer?.id ?? null,
+  })
+  const displayedContainer = createMemo(() => {
+    if (isHistoricalMode()) {
+      return props.selectedContainer
+    }
+
+    const renderedKey = selectionSwap.renderedKey()
+    if (renderedKey === null) {
+      return props.selectedContainer
+    }
+
+    return (
+      props.data.containers.find((container) => container.id === renderedKey) ??
+      props.selectedContainer
+    )
+  })
   const shouldShowCurrentAlertsSection = () =>
     !isHistoricalMode() && props.alertIncidents.active.length > 0
   const trackingValidationDisplay = createMemo(() =>
     resolveShipmentTrackingValidationDisplay({
       shipment: props.data,
-      selectedContainerId: props.selectedContainerId,
+      selectedContainerId: displayedContainer()?.id ?? props.selectedContainerId,
       selectedSync: props.trackingTimeTravel.selectedSync(),
     }),
   )
@@ -261,14 +284,15 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
           data={props.data}
           alertIncidents={props.alertIncidents}
           busyAlertIds={props.busyAlertIds}
+          recentlyChangedAlertIds={props.recentlyChangedAlertIds}
           onAcknowledgeAlert={props.onAcknowledgeAlert}
           onUnacknowledgeAlert={props.onUnacknowledgeAlert}
           onSelectContainer={props.onSelectContainer}
         />
       </Show>
 
-      <Show when={isHistoricalMode()}>
-        <div class="sticky top-4 z-30">
+      <MotionCollapse open={isHistoricalMode()} class="sticky top-4 z-30">
+        <div>
           <TrackingTimeTravelBar
             isLoading={props.trackingTimeTravel.isLoading()}
             errorMessage={props.trackingTimeTravel.errorMessage()}
@@ -282,14 +306,14 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
             onNext={props.trackingTimeTravel.selectNext}
           />
         </div>
-      </Show>
+      </MotionCollapse>
 
       <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div class="space-y-4">
+        <div class="motion-swap-region space-y-4" data-phase={selectionSwap.phase()}>
           <section id="shipment-containers" class="scroll-mt-30">
             <ContainersPanel
               containers={trackingValidationDisplay().containers}
-              selectedId={props.selectedContainerId}
+              selectedId={displayedContainer()?.id ?? props.selectedContainerId}
               onSelect={props.onSelectContainer}
               trackingValidationMode={trackingValidationDisplay().mode}
             />
@@ -297,17 +321,19 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
 
           <ShipmentTimelineRegion
             data={props.data}
-            selectedContainer={props.selectedContainer}
+            selectedContainer={displayedContainer()}
             trackingTimeTravel={props.trackingTimeTravel}
           />
         </div>
 
-        <ShipmentSidebarRegion
-          data={props.data}
-          selectedContainer={props.selectedContainer}
-          syncNow={props.syncNow}
-          trackingTimeTravel={props.trackingTimeTravel}
-        />
+        <div class="motion-swap-region" data-phase={selectionSwap.phase()}>
+          <ShipmentSidebarRegion
+            data={props.data}
+            selectedContainer={displayedContainer()}
+            syncNow={props.syncNow}
+            trackingTimeTravel={props.trackingTimeTravel}
+          />
+        </div>
       </div>
     </div>
   )

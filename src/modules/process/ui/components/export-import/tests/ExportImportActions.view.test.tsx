@@ -12,6 +12,7 @@ const translationKeys = vi.hoisted(() => ({
   exportImport: {
     moreActions: 'More actions',
     copyTrelloAction: 'Copy Trello',
+    copyTrelloCopied: 'Copied',
     importButton: 'Import bundle',
     exportButton: 'Export bundle',
     dialog: {
@@ -90,6 +91,7 @@ type ExportImportControllerStub = {
   importSuccess: () => string | null
   showCopyTrello: () => boolean
   showImport: () => boolean
+  copyTrelloFeedback: () => boolean
   copyTrello: ReturnType<typeof vi.fn>
 }
 
@@ -129,6 +131,7 @@ const controllerState = vi.hoisted<ExportImportControllerStub>(() => ({
   importSuccess: () => null,
   showCopyTrello: () => false,
   showImport: () => false,
+  copyTrelloFeedback: () => false,
   copyTrello: vi.fn(),
 }))
 
@@ -182,6 +185,7 @@ describe('ExportImportActions view', () => {
     controllerState.importSuccess = () => null
     controllerState.showCopyTrello = () => false
     controllerState.showImport = () => false
+    controllerState.copyTrelloFeedback = () => false
   })
 
   it('renders the menu with export only and portable export controls by default', () => {
@@ -222,6 +226,7 @@ describe('ExportImportActions view', () => {
     controllerState.importError = () => 'Import validation failed'
     controllerState.importSuccess = () => 'Imported 1 processes and 2 containers'
     controllerState.showCopyTrello = () => true
+    controllerState.copyTrelloFeedback = () => true
 
     const html = renderToString(() =>
       createComponent(ExportImportActions, {
@@ -230,7 +235,7 @@ describe('ExportImportActions view', () => {
       }),
     )
 
-    expect(html).toContain('Copy Trello')
+    expect(html).toContain('Copied')
     expect(html).toContain('Include containers')
     expect(html).toContain('Include alerts')
     expect(html).toContain('Export failed')
