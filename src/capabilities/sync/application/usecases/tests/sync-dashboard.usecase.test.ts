@@ -199,6 +199,72 @@ describe('sync-dashboard.usecase', () => {
     expect(enqueue).toHaveBeenCalledTimes(1)
   })
 
+  it('logs batch results as one aggregate entry without per-target log spam', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const { deps } = createDeps({
+      dashboardTargetsService: {
+        resolveTargets: vi.fn(async () => ({
+          requestedProcesses: 2,
+          requestedContainers: 2,
+          eligibleTargets: [],
+          skippedTargets: [
+            {
+              processId: 'process-a',
+              processReference: 'REF-A',
+              containerNumber: 'MSCU1234567',
+              provider: 'hapag',
+              reasonCode: 'UNSUPPORTED_PROVIDER' as const,
+              reasonMessage: 'Provider is not supported for dashboard manual sync.',
+            },
+            {
+              processId: 'process-b',
+              processReference: 'REF-B',
+              containerNumber: 'MRKU7654321',
+              provider: 'maersk',
+              reasonCode: 'MISSING_REQUIRED_DATA' as const,
+              reasonMessage: 'Container number is missing.',
+            },
+          ],
+        })),
+      },
+      dashboardEnqueueService: {
+        enqueue: vi.fn(async () => ({
+          enqueuedTargets: [],
+          skippedTargets: [],
+          failedTargets: [
+            {
+              processId: 'process-c',
+              processReference: 'REF-C',
+              containerNumber: 'CAXU1111111',
+              provider: 'msc',
+              reasonCode: 'ENQUEUE_FAILED' as const,
+              reasonMessage: 'Dashboard sync request failed after enqueue.',
+            },
+          ],
+          newSyncRequestIds: [],
+        })),
+      },
+    })
+
+    const execute = createSyncDashboardUseCase(deps)
+    await execute({
+      tenantId: 'tenant-a',
+      scope: { kind: 'dashboard' },
+      mode: 'manual',
+    })
+
+    expect(infoSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy).not.toHaveBeenCalled()
+    expect(errorSpy).not.toHaveBeenCalled()
+
+    infoSpy.mockRestore()
+    warnSpy.mockRestore()
+    errorSpy.mockRestore()
+  })
+
   it('fails with 504 when sync requests do not reach terminal state before timeout', async () => {
     const getSyncRequestStatusesMock = vi.fn(async () => ({
       allTerminal: false,

@@ -102,6 +102,25 @@ function getRecentArchivedProcessCutoff(now: Date): string {
 }
 
 export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetReadPort {
+  const listActiveProcessesForDashboardSync = async () => {
+    const result = await supabaseServer
+      .from('processes')
+      .select('id,reference')
+      .is('archived_at', null)
+      .is('deleted_at', null)
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'list_active_processes_for_dashboard_sync',
+      table: 'processes',
+    })
+
+    const rows = ActiveProcessForDashboardSyncRowsSchema.parse(data)
+    return rows.map((row) => ({
+      processId: row.id,
+      processReference: row.reference,
+    }))
+  }
+
   return {
     async fetchProcessById(command) {
       const result = await deps.processUseCases.findProcessById({
@@ -116,26 +135,11 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
     },
 
     async listActiveProcessesForDashboardSync() {
-      const result = await supabaseServer
-        .from('processes')
-        .select('id,reference')
-        .is('archived_at', null)
-        .is('deleted_at', null)
-
-      const data = unwrapSupabaseResultOrThrow(result, {
-        operation: 'list_active_processes_for_dashboard_sync',
-        table: 'processes',
-      })
-
-      const rows = ActiveProcessForDashboardSyncRowsSchema.parse(data)
-      return rows.map((row) => ({
-        processId: row.id,
-        processReference: row.reference,
-      }))
+      return listActiveProcessesForDashboardSync()
     },
 
     async listActiveProcessIds() {
-      const processes = await this.listActiveProcessesForDashboardSync()
+      const processes = await listActiveProcessesForDashboardSync()
       return processes.map((process) => process.processId)
     },
 

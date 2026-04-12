@@ -349,6 +349,29 @@ describe('createSyncTargetReadPort', () => {
     ])
   })
 
+  it('lists active process ids without depending on method binding', async () => {
+    supabaseMock.reset([
+      { id: 'process-1', reference: 'REF-001' },
+      { id: 'process-2', reference: null },
+    ])
+
+    const port = createSyncTargetReadPort({
+      processUseCases: {
+        findProcessById: vi.fn(),
+      },
+      containerUseCases: {
+        listByProcessId: vi.fn(),
+        listByProcessIds: vi.fn(async () => ({
+          containersByProcessId: new Map(),
+        })),
+        findByNumbers: vi.fn(),
+      },
+    })
+
+    const listActiveProcessIds = port.listActiveProcessIds
+    await expect(listActiveProcessIds()).resolves.toEqual(['process-1', 'process-2'])
+  })
+
   it('maps container application results into sync target records without exposing entities', async () => {
     const port = createSyncTargetReadPort({
       processUseCases: {

@@ -135,26 +135,6 @@ export function createSyncDashboardUseCase(deps: SyncDashboardDeps) {
       reasonHistogram[target.reasonCode] = (reasonHistogram[target.reasonCode] ?? 0) + 1
     }
 
-    for (const target of result.skippedTargets) {
-      console.warn('[sync_dashboard_target_skipped]', {
-        processId: target.processId,
-        processReference: target.processReference,
-        containerNumber: target.containerNumber,
-        provider: target.provider,
-        reasonCode: target.reasonCode,
-      })
-    }
-
-    for (const target of result.failedTargets) {
-      console.error('[sync_dashboard_target_failed]', {
-        processId: target.processId,
-        processReference: target.processReference,
-        containerNumber: target.containerNumber,
-        provider: target.provider,
-        reasonCode: target.reasonCode,
-      })
-    }
-
     console.info('[sync_dashboard_batch]', {
       requestedProcesses: result.summary.requestedProcesses,
       requestedContainers: result.summary.requestedContainers,
