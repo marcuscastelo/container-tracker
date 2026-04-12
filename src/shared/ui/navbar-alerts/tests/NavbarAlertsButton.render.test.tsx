@@ -5,9 +5,9 @@ import type { NavbarProcessAlertGroupVM } from '~/shared/ui/navbar-alerts/navbar
 
 type NavbarControllerStub = {
   isOpen: () => boolean
-  totalAlerts: () => number
+  totalActiveIncidents: () => number
   state: () => {
-    totalAlerts: number
+    totalActiveIncidents: number
     processes: readonly NavbarProcessAlertGroupVM[]
     loading: boolean
     error: string | null
@@ -25,9 +25,9 @@ const emptyProcesses: readonly NavbarProcessAlertGroupVM[] = []
 
 const controllerState = vi.hoisted<NavbarControllerStub>(() => ({
   isOpen: () => false,
-  totalAlerts: () => 0,
+  totalActiveIncidents: () => 0,
   state: () => ({
-    totalAlerts: 0,
+    totalActiveIncidents: 0,
     processes: emptyProcesses,
     loading: false,
     error: null,
@@ -48,12 +48,13 @@ vi.mock('~/shared/ui/navbar-alerts/useNavbarAlertsButtonController', () => ({
 vi.mock('~/shared/ui/navbar-alerts/NavbarAlertsPanel', () => ({
   NavbarAlertsPanel: (props: {
     readonly panelId: string
-    readonly totalAlerts: number
+    readonly totalActiveIncidents: number
     readonly loading: boolean
     readonly error: string | null
   }) => (
     <div>
-      panel:{props.panelId}:{props.totalAlerts}:{String(props.loading)}:{props.error ?? 'none'}
+      panel:{props.panelId}:{props.totalActiveIncidents}:{String(props.loading)}:
+      {props.error ?? 'none'}
     </div>
   ),
 }))
@@ -67,9 +68,9 @@ function normalizeSsrHtml(html: string): string {
 describe('NavbarAlertsButton render', () => {
   beforeEach(() => {
     controllerState.isOpen = () => false
-    controllerState.totalAlerts = () => 0
+    controllerState.totalActiveIncidents = () => 0
     controllerState.state = () => ({
-      totalAlerts: 0,
+      totalActiveIncidents: 0,
       processes: emptyProcesses,
       loading: false,
       error: null,
@@ -87,9 +88,9 @@ describe('NavbarAlertsButton render', () => {
 
   it('renders the open panel state with forwarded alert data', () => {
     controllerState.isOpen = () => true
-    controllerState.totalAlerts = () => 3
+    controllerState.totalActiveIncidents = () => 3
     controllerState.state = () => ({
-      totalAlerts: 3,
+      totalActiveIncidents: 3,
       processes: [],
       loading: true,
       error: 'failed',

@@ -31,6 +31,7 @@ const ALERT_CATEGORY_MAP: Record<string, AlertCategory> = {
 
 const ALERT_TYPE_MAP: Record<string, AlertType> = {
   TRANSSHIPMENT: 'TRANSSHIPMENT',
+  PLANNED_TRANSSHIPMENT: 'PLANNED_TRANSSHIPMENT',
   CUSTOMS_HOLD: 'CUSTOMS_HOLD',
   PORT_CHANGE: 'PORT_CHANGE',
   ETA_PASSED: 'ETA_PASSED',
@@ -46,6 +47,7 @@ const ALERT_SEVERITY_MAP: Record<string, AlertSeverity> = {
 
 const ALERT_MESSAGE_KEY_MAP: Record<string, TrackingAlertMessageKey> = {
   'alerts.transshipmentDetected': 'alerts.transshipmentDetected',
+  'alerts.plannedTransshipmentDetected': 'alerts.plannedTransshipmentDetected',
   'alerts.customsHoldDetected': 'alerts.customsHoldDetected',
   'alerts.etaMissing': 'alerts.etaMissing',
   'alerts.etaPassed': 'alerts.etaPassed',
@@ -153,6 +155,17 @@ function requireAlertMessageContract(
   }
 
   if (messageKey === 'alerts.transshipmentDetected') {
+    return {
+      message_key: messageKey,
+      message_params: {
+        port: requireString(params.port, `${field}.port`),
+        fromVessel: requireString(params.fromVessel, `${field}.fromVessel`),
+        toVessel: requireString(params.toVessel, `${field}.toVessel`),
+      },
+    }
+  }
+
+  if (messageKey === 'alerts.plannedTransshipmentDetected') {
     return {
       message_key: messageKey,
       message_params: {

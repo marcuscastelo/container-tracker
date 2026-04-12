@@ -11,23 +11,28 @@
       "agents": "Agentes"
     },
     "createProcess": "Criar Processo",
-    "alertsBadge": "{{count}} Alertas",
-    "alertsLabel": "Alertas",
-    "alertsActiveTooltip": "{{count}} alertas ativos",
+    "alertsBadge": "{{count}} Incidentes",
+    "alertsLabel": "Incidentes",
+    "alertsActiveTooltip": "{{count}} incidentes ativos",
     "alertsPanel": {
-      "title": "Alertas ativos",
+      "title": "Incidentes ativos",
       "subtitle": "Processos que requerem atenção",
       "openDashboard": "Abrir dashboard",
       "openProcess": "Abrir processo",
-      "close": "Fechar painel de alertas",
-      "alertsCount": "{{count}} alertas",
+      "close": "Fechar painel de incidentes",
+      "alertsCount": "{{count}} incidentes",
+      "affectedContainerSingle": "1 container afetado",
+      "affectedContainers": "{{count}} containers afetados",
+      "moreContainers": "+{{count}}",
+      "actionRequired": "Ação sugerida",
+      "actionLabel": "Ação: {{action}}",
       "containerStatus": "Status",
       "containerEta": "ETA",
-      "lastEvent": "Último evento: {{date}}",
+      "lastEvent": "Último acionamento: {{date}}",
       "retroactive": "Retroativo",
-      "loading": "Carregando alertas...",
-      "empty": "Nenhum alerta ativo",
-      "error": "Falha ao carregar alertas",
+      "loading": "Carregando incidentes...",
+      "empty": "Nenhum incidente ativo",
+      "error": "Falha ao carregar incidentes",
       "retry": "Tentar novamente",
       "valueUnavailable": "—"
     },
@@ -146,11 +151,11 @@
       }
     },
     "alertIndicators": {
-      "title": "Alertas Operacionais",
-      "total": "Total de Alertas Ativos",
-      "loading": "Carregando indicadores de alerta...",
-      "error": "Falha ao carregar indicadores de alerta",
-      "empty": "Nenhum alerta ativo no momento.",
+      "title": "Incidentes Operacionais",
+      "total": "Total de Incidentes Ativos",
+      "loading": "Carregando indicadores de incidentes...",
+      "error": "Falha ao carregar indicadores de incidentes",
+      "empty": "Nenhum incidente ativo no momento.",
       "severity": {
         "danger": "Crítico",
         "warning": "Atenção",
@@ -176,6 +181,8 @@
       "activeProcesses": "Processos Ativos",
       "trackedContainers": "Containers Rastreáveis",
       "processesWithAlerts": "Com Alertas",
+      "activeIncidents": "Incidentes Ativos",
+      "affectedContainers": "Containers Afetados",
       "lastSync": "Último Sync",
       "lastSyncUnavailable": "—"
     },
@@ -219,14 +226,14 @@
         "all": "Todas as severidades",
         "danger": "Crítico",
         "warning": "Atenção",
-        "none": "Sem alerta"
+        "none": "Sem incidente"
       },
       "clearAll": "Limpar filtros",
       "active": "Filtros ativos",
       "removeChip": "Remover {{filter}}"
     },
     "triageSummary": {
-      "alerts": "Alertas",
+      "alerts": "Incidentes",
       "critical": "Críticos",
       "warning": "Atenção",
       "lastUpdate": "Última atualização"
@@ -244,15 +251,15 @@
         "status": "Status",
         "eta": "ETA",
         "dominantSeverity": "Severidade Dominante",
-        "dominantAlert": "Alerta Dominante",
-        "activeAlerts": "Alertas Ativos",
-        "alerts": "Alertas",
+        "dominantAlert": "Incidente Dominante",
+        "activeAlerts": "Incidentes Ativos",
+        "alerts": "Incidentes",
         "sync": "Sync"
       },
       "dominantAlertLabel": {
         "transshipment": "Transbordo detectado",
-        "alertsPresent": "{{count}} alerta(s)",
-        "noAlerts": "Sem alerta"
+        "alertsPresent": "{{count}} incidente(s)",
+        "noAlerts": "Sem incidente"
       },
       "chipOverflow": "+{{count}}",
       "age": {
@@ -263,7 +270,7 @@
         "missing": "—"
       },
       "alertTooltip": {
-        "additionalAlerts": "+{{count}} alerta(s) adicional(ais)"
+        "additionalAlerts": "+{{count}} incidente(s) adicional(is)"
       },
       "trackingValidation": {
         "chip": "Validação necessária",
@@ -277,7 +284,7 @@
         "warning": "Atenção"
       },
       "severity": {
-        "none": "Sem alerta"
+        "none": "Sem incidente"
       },
       "sync": {
         "idle": "Sincronizar processo",
@@ -325,9 +332,9 @@
       "carrier": "Armador",
       "eta": "ETA",
       "containers": "Containers",
-      "alerts": "Alertas",
+      "alerts": "Incidentes",
       "lastUpdate": "Última atualização",
-      "noAlerts": "Sem alertas",
+      "noAlerts": "Sem incidentes",
       "unknown": "Indisponível"
     },
     "shipmentInfo": {
@@ -541,10 +548,10 @@
       }
     },
     "alerts": {
-      "title": "Alertas",
-      "sectionTitle": "Alertas Operacionais",
-      "empty": "Nenhum alerta para este embarque.",
-      "activeEmpty": "Nenhum alerta ativo para este embarque.",
+      "title": "Incidentes",
+      "sectionTitle": "Incidentes Operacionais",
+      "empty": "Nenhum incidente para este embarque.",
+      "activeEmpty": "Nenhum incidente ativo para este embarque.",
       "category": {
         "eta": "eta",
         "movement": "movimentação",
@@ -598,12 +605,12 @@
         "acknowledge": "Reconhecer",
         "acknowledgeContainer": "Reconhecer para esse container",
         "acknowledgeIncident": "Reconhecer para os {{count}} containers",
-        "acknowledgeAria": "Reconhecer alerta",
+        "acknowledgeAria": "Reconhecer incidente",
         "unacknowledge": "Reativar",
-        "unacknowledgeAria": "Reativar alerta",
-        "dismissActionError": "Fechar erro de ação de alerta",
-        "errorAcknowledge": "Falha ao reconhecer alerta. Tente novamente.",
-        "errorUnacknowledge": "Falha ao reativar alerta. Tente novamente."
+        "unacknowledgeAria": "Reativar incidente",
+        "dismissActionError": "Fechar erro de ação de incidente",
+        "errorAcknowledge": "Falha ao reconhecer incidente. Tente novamente.",
+        "errorUnacknowledge": "Falha ao reativar incidente. Tente novamente."
       },
       "aging": {
         "now": "agora",
@@ -827,6 +834,23 @@
     },
     "error": {
       "failed": "Falha ao criar processo"
+    }
+  },
+  "incidents": {
+    "fact": {
+      "transshipmentDetected": "Transbordo detectado",
+      "plannedTransshipmentDetected": "Transbordo planejado detectado",
+      "customsHoldDetected": "Retenção alfandegária detectada",
+      "etaMissing": "ETA indisponível",
+      "etaPassed": "ETA expirado sem confirmação de chegada",
+      "portChange": "Alteração operacional de porto detectada",
+      "dataInconsistent": "Inconsistência operacional detectada"
+    },
+    "action": {
+      "updateRedestination": "Atualizar redestinação",
+      "checkEta": "Revisar ETA e acompanhar atualização",
+      "followUpCustoms": "Fazer follow-up com despacho e documentação",
+      "reviewData": "Revisar dados manualmente"
     }
   },
   "tracking": {

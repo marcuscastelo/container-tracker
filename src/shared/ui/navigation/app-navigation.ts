@@ -70,7 +70,7 @@ type ScheduleDashboardPrefetchCommand = {
 const MAX_VISIBLE_PREFETCH_PER_FLUSH = 10
 
 export type ProcessContainerNavigationState = {
-  readonly source: 'navbar-alerts'
+  readonly source: 'navbar-incidents'
   readonly focusSection: 'current-status'
   readonly revealLiveStatus: true
   readonly requestKey: string
@@ -224,7 +224,7 @@ export function readProcessContainerNavigationState(
   const revealLiveStatus = Reflect.get(state, 'revealLiveStatus')
   const requestKey = Reflect.get(state, 'requestKey')
 
-  if (source !== 'navbar-alerts') return null
+  if (source !== 'navbar-incidents') return null
   if (focusSection !== 'current-status') return null
   if (revealLiveStatus !== true) return null
   if (!isNonBlankString(requestKey)) return null
@@ -248,7 +248,7 @@ export function readProcessContainerNavigationStateFromSearch(
   if (!isNonBlankString(requestKey)) return null
 
   return {
-    source: 'navbar-alerts',
+    source: 'navbar-incidents',
     focusSection,
     revealLiveStatus: true,
     requestKey,

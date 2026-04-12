@@ -4,8 +4,8 @@ import {
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import {
-  buildShipmentAlertIncidentsReadModel,
-  type ShipmentAlertIncidentsReadModel,
+  buildOperationalIncidentsReadModel,
+  type OperationalIncidentsReadModel,
 } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
@@ -55,7 +55,7 @@ export type ContainerTrackingValidationProjection = TrackingValidationContainerP
 
 export type ContainersActiveAlertIncidentsProjection = {
   readonly activeAlerts: readonly TrackingAlert[]
-  readonly activeAlertIncidents: ShipmentAlertIncidentsReadModel
+  readonly activeOperationalIncidents: OperationalIncidentsReadModel
   readonly activeAlertsByContainerId: ReadonlyMap<string, readonly TrackingAlert[]>
 }
 
@@ -193,7 +193,7 @@ export function findContainersActiveAlertIncidentsProjection(command: {
   readonly activeAlerts: readonly TrackingAlert[]
 }): ContainersActiveAlertIncidentsProjection {
   const activeAlertsByContainerId = groupActiveAlertsByContainerId(command.activeAlerts)
-  const activeAlertIncidents = buildShipmentAlertIncidentsReadModel({
+  const activeOperationalIncidents = buildOperationalIncidentsReadModel({
     containers: command.containers.map((container) => ({
       containerId: container.containerId,
       containerNumber: container.containerNumber,
@@ -203,7 +203,7 @@ export function findContainersActiveAlertIncidentsProjection(command: {
 
   return {
     activeAlerts: command.activeAlerts,
-    activeAlertIncidents,
+    activeOperationalIncidents,
     activeAlertsByContainerId,
   }
 }

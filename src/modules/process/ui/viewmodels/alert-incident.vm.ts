@@ -31,6 +31,7 @@ export type AlertIncidentVM = {
   readonly category: AlertIncidentCategoryVM
   readonly type:
     | 'TRANSSHIPMENT'
+    | 'PLANNED_TRANSSHIPMENT'
     | 'CUSTOMS_HOLD'
     | 'PORT_CHANGE'
     | 'ETA_PASSED'
@@ -38,13 +39,23 @@ export type AlertIncidentVM = {
     | 'DATA_INCONSISTENT'
   readonly severity: 'info' | 'warning' | 'danger'
   readonly messageKey:
-    | 'alerts.transshipmentDetected'
-    | 'alerts.customsHoldDetected'
-    | 'alerts.etaMissing'
-    | 'alerts.etaPassed'
-    | 'alerts.portChange'
-    | 'alerts.dataInconsistent'
+    | 'incidents.fact.transshipmentDetected'
+    | 'incidents.fact.plannedTransshipmentDetected'
+    | 'incidents.fact.customsHoldDetected'
+    | 'incidents.fact.etaMissing'
+    | 'incidents.fact.etaPassed'
+    | 'incidents.fact.portChange'
+    | 'incidents.fact.dataInconsistent'
   readonly messageParams: Record<string, string | number>
+  readonly action: {
+    readonly actionKey:
+      | 'incidents.action.updateRedestination'
+      | 'incidents.action.checkEta'
+      | 'incidents.action.followUpCustoms'
+      | 'incidents.action.reviewData'
+    readonly actionParams: Record<string, string | number>
+    readonly actionKind: 'UPDATE_REDESTINATION' | 'CHECK_ETA' | 'FOLLOW_UP_CUSTOMS' | 'REVIEW_DATA'
+  } | null
   readonly detectedAtIso: string
   readonly triggeredAtIso: string
   readonly transshipmentOrder: number | null

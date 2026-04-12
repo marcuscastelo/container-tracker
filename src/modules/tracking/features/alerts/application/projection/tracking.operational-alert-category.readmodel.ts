@@ -1,6 +1,6 @@
 import type { TrackingAlertType } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
-export type TrackingOperationalAlertCategory = 'eta' | 'movement' | 'customs' | 'status' | 'data'
+export type TrackingOperationalAlertCategory = 'eta' | 'movement' | 'customs' | 'data'
 
 /**
  * Maps canonical tracking alert types to dashboard operational buckets.
@@ -14,11 +14,11 @@ export function toTrackingOperationalAlertCategory(
     case 'ETA_PASSED':
       return 'eta'
     case 'TRANSSHIPMENT':
+    case 'PLANNED_TRANSSHIPMENT':
+    case 'PORT_CHANGE':
       return 'movement'
     case 'CUSTOMS_HOLD':
       return 'customs'
-    case 'PORT_CHANGE':
-      return 'status'
     case 'DATA_INCONSISTENT':
       return 'data'
   }

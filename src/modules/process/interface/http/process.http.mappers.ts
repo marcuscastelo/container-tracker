@@ -19,17 +19,11 @@ import type { ProcessOperationalSummary } from '~/modules/process/features/opera
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type {
-  ShipmentAlertIncidentReadModel,
-  ShipmentAlertIncidentRecordReadModel,
-  ShipmentAlertIncidentsReadModel,
+  OperationalIncidentReadModel,
+  OperationalIncidentRecordReadModel,
+  OperationalIncidentsReadModel,
 } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
-import {
-  type TrackingAlertDisplayReadModel,
-  toTrackingAlertDisplayReadModels,
-} from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
-import { toTrackingAlertMessageContract } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper'
-import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { TrackingContainmentReadModel } from '~/modules/tracking/features/containment/application/projection/tracking.containment.readmodel'
 import type {
   TrackingSeriesHistory,
@@ -153,24 +147,18 @@ function toTrackingValidationAttentionSeverity(
 }
 
 function toProcessAttentionSeverity(command: {
-  readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null
+  readonly highestIncidentSeverity: 'info' | 'warning' | 'danger' | null
   readonly trackingValidation: TrackingValidationProcessSummary
 }): 'info' | 'warning' | 'danger' | null {
   const validationSeverity = toTrackingValidationAttentionSeverity(
     command.trackingValidation.highestSeverity,
   )
 
-  if (command.highestAlertSeverity === 'danger' || validationSeverity === 'danger') {
+  if (command.highestIncidentSeverity === 'danger' || validationSeverity === 'danger') {
     return 'danger'
   }
 
-  return command.highestAlertSeverity
-}
-
-type TrackingAlertRecord = TrackingAlert
-type AlertTriggeredSortItem = {
-  readonly id: string
-  readonly triggered_at: string
+  return command.highestIncidentSeverity
 }
 
 type ContainerWithTrackingResponse = {
@@ -196,17 +184,6 @@ type EtaDisplayResponse =
   | {
       readonly kind: 'delivered'
     }
-
-function resolveTrackingAlertLifecycleStateFromReadModel(
-  alert: Pick<TrackingAlertDisplayReadModel, 'lifecycle_state' | 'acked_at' | 'resolved_at'>,
-): 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED' {
-  if (alert.lifecycle_state === 'ACTIVE') return 'ACTIVE'
-  if (alert.lifecycle_state === 'ACKED') return 'ACKED'
-  if (alert.lifecycle_state === 'AUTO_RESOLVED') return 'AUTO_RESOLVED'
-  if (alert.acked_at !== null) return 'ACKED'
-  if (alert.resolved_at !== null && alert.resolved_at !== undefined) return 'AUTO_RESOLVED'
-  return 'ACTIVE'
-}
 
 function toContainerResponse(c: ProcessContainerRecord) {
   return {
@@ -260,6 +237,8 @@ export function toProcessResponseWithSummary(
   summary: ProcessOperationalSummary,
   sync: ProcessSyncSummaryReadModel,
 ) {
+  const dominantIncident = summary.operational_incidents.dominant
+
   return {
     ...processToResponseFields(pwc.process),
     containers: pwc.containers.map(toContainerResponse),
@@ -278,15 +257,49 @@ export function toProcessResponseWithSummary(
       eligible_total: summary.eta_coverage.eligible_total,
       with_eta: summary.eta_coverage.with_eta,
     },
-    alerts_count: summary.alerts_count,
-    highest_alert_severity: summary.highest_alert_severity,
     attention_severity: summary.attention_severity,
-    dominant_alert_created_at: summary.dominant_alert_created_at,
+    operational_incidents: {
+      summary: {
+        active_incidents: summary.operational_incidents.summary.active_incidents_count,
+        affected_containers: summary.operational_incidents.summary.affected_containers_count,
+        recognized_incidents: summary.operational_incidents.summary.recognized_incidents_count,
+      },
+      dominant:
+        dominantIncident === null
+          ? null
+          : {
+              incident_key: dominantIncident.incidentKey,
+              category: dominantIncident.category,
+              type: dominantIncident.type,
+              severity: dominantIncident.severity,
+              fact: {
+                message_key: dominantIncident.fact.messageKey,
+                message_params: dominantIncident.fact.messageParams,
+              },
+              action:
+                dominantIncident.action === null
+                  ? null
+                  : {
+                      action_key: dominantIncident.action.actionKey,
+                      action_params: dominantIncident.action.actionParams,
+                      action_kind: dominantIncident.action.actionKind,
+                    },
+              scope: {
+                affected_container_count: dominantIncident.scope.affectedContainerCount,
+                containers: dominantIncident.scope.containers.map((container) => ({
+                  container_id: container.containerId,
+                  container_number: container.containerNumber,
+                  lifecycle_state: container.lifecycleState,
+                })),
+              },
+              detected_at: dominantIncident.detectedAt,
+              triggered_at: dominantIncident.triggeredAt,
+            },
+    },
     tracking_validation: toProcessTrackingValidationResponse(
       summary.tracking_validation,
       summary.tracking_validation_top_issue,
     ),
-    has_transshipment: summary.has_transshipment,
     last_event_at: summary.last_event_at,
     last_sync_status: sync.lastSyncStatus,
     last_sync_at: sync.lastSyncAt,
@@ -320,27 +333,7 @@ export function toObservationResponse(obs: TrackingObservationRecord) {
   }
 }
 
-function toTrackingAlertResponse(a: TrackingAlertDisplayReadModel) {
-  const lifecycleState = resolveTrackingAlertLifecycleStateFromReadModel(a)
-  return {
-    id: a.id,
-    container_number: a.container_number,
-    category: a.category,
-    type: a.type,
-    severity: a.severity,
-    ...toTrackingAlertMessageContract(a),
-    detected_at: a.detected_at,
-    triggered_at: a.triggered_at,
-    retroactive: a.retroactive,
-    provider: a.provider,
-    lifecycle_state: lifecycleState,
-    acked_at: a.acked_at,
-    resolved_at: a.resolved_at ?? null,
-    resolved_reason: a.resolved_reason ?? null,
-  }
-}
-
-function toShipmentAlertIncidentRecordResponse(record: ShipmentAlertIncidentRecordReadModel) {
+function toOperationalIncidentRecordResponse(record: OperationalIncidentRecordReadModel) {
   return {
     alert_id: record.alertId,
     lifecycle_state: record.lifecycleState,
@@ -352,34 +345,45 @@ function toShipmentAlertIncidentRecordResponse(record: ShipmentAlertIncidentReco
   }
 }
 
-function toShipmentAlertIncidentResponse(incident: ShipmentAlertIncidentReadModel) {
+function toOperationalIncidentResponse(incident: OperationalIncidentReadModel) {
   return {
     incident_key: incident.incidentKey,
     bucket: incident.bucket,
     category: incident.category,
     type: incident.type,
     severity: incident.severity,
-    message_key: incident.messageKey,
-    message_params: incident.messageParams,
+    fact: {
+      message_key: incident.fact.messageKey,
+      message_params: incident.fact.messageParams,
+    },
+    action:
+      incident.action === null
+        ? null
+        : {
+            action_key: incident.action.actionKey,
+            action_params: incident.action.actionParams,
+            action_kind: incident.action.actionKind,
+          },
+    scope: {
+      affected_container_count: incident.scope.affectedContainerCount,
+      containers: incident.scope.containers.map((container) => ({
+        container_id: container.containerId,
+        container_number: container.containerNumber,
+        lifecycle_state: container.lifecycleState,
+      })),
+    },
     detected_at: incident.detectedAt,
     triggered_at: incident.triggeredAt,
-    transshipment_order: incident.transshipmentOrder,
-    port: incident.port,
-    from_vessel: incident.fromVessel,
-    to_vessel: incident.toVessel,
-    affected_container_count: incident.affectedContainerCount,
-    active_alert_ids: [...incident.activeAlertIds],
-    acked_alert_ids: [...incident.ackedAlertIds],
+    trigger_refs: incident.triggerRefs.map((triggerRef) => ({
+      alert_id: triggerRef.alertId,
+      container_id: triggerRef.containerId,
+    })),
     members: incident.members.map((member) => ({
       container_id: member.containerId,
       container_number: member.containerNumber,
       lifecycle_state: member.lifecycleState,
       detected_at: member.detectedAt,
-      transshipment_order: member.transshipmentOrder,
-      port: member.port,
-      from_vessel: member.fromVessel,
-      to_vessel: member.toVessel,
-      records: member.records.map(toShipmentAlertIncidentRecordResponse),
+      records: member.records.map(toOperationalIncidentRecordResponse),
     })),
   }
 }
@@ -430,15 +434,6 @@ function toTimelineItemResponse(item: TrackingTimelineItem) {
     has_series_history: item.hasSeriesHistory ?? false,
     series_history: item.seriesHistory ? toSeriesHistoryResponse(item.seriesHistory) : null,
   }
-}
-
-function compareAlertsByTriggeredAtDesc(
-  left: AlertTriggeredSortItem,
-  right: AlertTriggeredSortItem,
-): number {
-  const triggeredAtCompare = right.triggered_at.localeCompare(left.triggered_at)
-  if (triggeredAtCompare !== 0) return triggeredAtCompare
-  return right.id.localeCompare(left.id)
 }
 
 function toContainerSyncResponse(sync: ContainerSyncRecord) {
@@ -755,8 +750,7 @@ function toTrackingFreshnessToken(command: {
       readonly tracking_containment: ReturnType<typeof toContainerTrackingContainmentResponse>
     }
   >
-  readonly alerts: readonly ReturnType<typeof toTrackingAlertResponse>[]
-  readonly activeAlertIncidents: readonly ReturnType<typeof toShipmentAlertIncidentResponse>[]
+  readonly activeOperationalIncidents: readonly ReturnType<typeof toOperationalIncidentResponse>[]
   readonly processOperational: ReturnType<typeof toProcessOperationalResponse>
   readonly trackingValidation: ReturnType<typeof toProcessTrackingValidationResponse>
 }): string {
@@ -769,20 +763,11 @@ function toTrackingFreshnessToken(command: {
       tracking_containment: container.tracking_containment,
       timeline: container.timeline,
     })),
-    alerts: command.alerts.map((alert) => ({
-      id: alert.id,
-      container_number: alert.container_number,
-      severity: alert.severity,
-      type: alert.type,
-      triggered_at: alert.triggered_at,
-      lifecycle_state: alert.lifecycle_state,
-    })),
-    active_alert_incidents: command.activeAlertIncidents.map((incident) => ({
+    active_operational_incidents: command.activeOperationalIncidents.map((incident) => ({
       incident_key: incident.incident_key,
       type: incident.type,
       severity: incident.severity,
-      active_alert_ids: incident.active_alert_ids,
-      acked_alert_ids: incident.acked_alert_ids,
+      trigger_refs: incident.trigger_refs,
       triggered_at: incident.triggered_at,
     })),
     process_operational: command.processOperational,
@@ -795,8 +780,7 @@ function toTrackingFreshnessToken(command: {
 export function toProcessDetailResponse(
   pwc: ProcessWithContainers,
   containersWithTracking: readonly ContainerWithTrackingResponse[],
-  alerts: readonly TrackingAlertRecord[],
-  activeAlertIncidents: ShipmentAlertIncidentsReadModel,
+  activeOperationalIncidents: OperationalIncidentsReadModel,
   operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>,
   trackingContainmentByContainerId: ReadonlyMap<string, TrackingContainmentReadModel>,
   trackingValidationByContainerId: ReadonlyMap<string, TrackingValidationContainerSummary>,
@@ -808,7 +792,6 @@ export function toProcessDetailResponse(
     readonly containerNumber: string
     readonly topIssue: TrackingValidationDisplayIssue | null
   }[] = []
-  const containerNumberByContainerId = new Map<string, string>()
 
   const containers = containersWithTracking.map((container) => {
     const summary = operationalByContainerId.get(container.id)
@@ -830,7 +813,6 @@ export function toProcessDetailResponse(
       containerNumber: container.container_number,
       topIssue: trackingValidation.topIssue,
     })
-    containerNumberByContainerId.set(container.id, container.container_number)
 
     return {
       ...container,
@@ -844,13 +826,6 @@ export function toProcessDetailResponse(
     }
   })
 
-  const alertDisplayReadModel = toTrackingAlertDisplayReadModels(
-    alerts,
-    (containerId) => containerNumberByContainerId.get(containerId) ?? null,
-  )
-  const alertsResponse = [...alertDisplayReadModel]
-    .sort(compareAlertsByTriggeredAtDesc)
-    .map(toTrackingAlertResponse)
   const processOperational = toProcessOperationalResponse(summariesForProcess)
   const trackingValidationSummary = aggregateTrackingValidationProjection(
     validationSummariesForProcess,
@@ -862,43 +837,34 @@ export function toProcessDetailResponse(
     trackingValidationSummary,
     trackingValidationTopIssue,
   )
-  const activeAlertIncidentResponses = activeAlertIncidents.active.map(
-    toShipmentAlertIncidentResponse,
+  const activeOperationalIncidentResponses = activeOperationalIncidents.active.map(
+    toOperationalIncidentResponse,
   )
   const trackingFreshnessToken = toTrackingFreshnessToken({
     containers,
-    alerts: alertsResponse,
-    activeAlertIncidents: activeAlertIncidentResponses,
+    activeOperationalIncidents: activeOperationalIncidentResponses,
     processOperational,
     trackingValidation,
   })
+  const dominantIncidentSeverity = activeOperationalIncidents.active[0]?.severity ?? null
 
   return {
     ...processToResponseFields(pwc.process),
     tracking_freshness_token: trackingFreshnessToken,
     containers,
     containersSync: containersSync.map(toContainerSyncResponse),
-    alerts: alertsResponse,
     attention_severity: toProcessAttentionSeverity({
-      highestAlertSeverity: alertsResponse.reduce<'info' | 'warning' | 'danger' | null>(
-        (current, alert) => {
-          if (alert.severity === 'danger') return 'danger'
-          if (alert.severity === 'warning' && current !== 'danger') return 'warning'
-          if (alert.severity === 'info' && current === null) return 'info'
-          return current
-        },
-        null,
-      ),
+      highestIncidentSeverity: dominantIncidentSeverity,
       trackingValidation: trackingValidationSummary,
     }),
     tracking_validation: trackingValidation,
-    alert_incidents: {
+    operational_incidents: {
       summary: {
-        active_incidents: activeAlertIncidents.summary.activeIncidentCount,
-        affected_containers: activeAlertIncidents.summary.affectedContainerCount,
-        recognized_incidents: activeAlertIncidents.summary.recognizedIncidentCount,
+        active_incidents: activeOperationalIncidents.summary.activeIncidentCount,
+        affected_containers: activeOperationalIncidents.summary.affectedContainerCount,
+        recognized_incidents: activeOperationalIncidents.summary.recognizedIncidentCount,
       },
-      active: activeAlertIncidentResponses,
+      active: activeOperationalIncidentResponses,
     },
     process_operational: processOperational,
   }
@@ -914,15 +880,15 @@ export function toProcessSyncSnapshotResponse(command: {
   }
 }
 
-export function toRecognizedAlertIncidentsResponse(
-  alertIncidents: ShipmentAlertIncidentsReadModel,
+export function toRecognizedOperationalIncidentsResponse(
+  operationalIncidents: OperationalIncidentsReadModel,
 ) {
   return {
     summary: {
-      active_incidents: alertIncidents.summary.activeIncidentCount,
-      affected_containers: alertIncidents.summary.affectedContainerCount,
-      recognized_incidents: alertIncidents.summary.recognizedIncidentCount,
+      active_incidents: operationalIncidents.summary.activeIncidentCount,
+      affected_containers: operationalIncidents.summary.affectedContainerCount,
+      recognized_incidents: operationalIncidents.summary.recognizedIncidentCount,
     },
-    recognized: alertIncidents.recognized.map(toShipmentAlertIncidentResponse),
+    recognized: operationalIncidents.recognized.map(toOperationalIncidentResponse),
   }
 }

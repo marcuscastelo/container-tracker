@@ -16,7 +16,7 @@ import {
   findContainersOperationalSummaryProjection as findContainersOperationalSummaryProjectionUseCase,
 } from '~/modules/tracking/application/usecases/find-containers-operational-summary-projection.usecase'
 import {
-  findContainersRecognizedAlertIncidentsProjection,
+  findContainersRecognizedOperationalIncidentsProjection,
   findObservationInspectorProjection,
   findTimelineItemPredictionHistory,
 } from '~/modules/tracking/application/usecases/find-lazy-tracking-detail.usecases'
@@ -193,13 +193,13 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       return findObservationInspectorProjection(deps, command)
     },
 
-    async findContainersRecognizedAlertIncidentsProjection(command: {
+    async findContainersRecognizedOperationalIncidentsProjection(command: {
       readonly containers: readonly {
         readonly containerId: string
         readonly containerNumber: string
       }[]
     }) {
-      return findContainersRecognizedAlertIncidentsProjection(deps, command)
+      return findContainersRecognizedOperationalIncidentsProjection(deps, command)
     },
 
     /**

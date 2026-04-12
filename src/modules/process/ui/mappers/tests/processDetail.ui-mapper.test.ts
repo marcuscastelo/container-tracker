@@ -128,7 +128,15 @@ function makeProcessDetailResponse(
     tracking_validation: overrides.tracking_validation ?? makeProcessTrackingValidationResponse(),
     containers: overrides.containers ?? [],
     containersSync: overrides.containersSync ?? [],
-    alerts: overrides.alerts ?? [],
+    operational_incidents: overrides.operational_incidents ?? {
+      summary: {
+        active_incidents: 0,
+        affected_containers: 0,
+        recognized_incidents: 0,
+      },
+      active: [],
+      recognized: [],
+    },
     ...overrides,
   }
 }
@@ -195,7 +203,7 @@ describe('toShipmentDetailVM base mapping', () => {
     expect(result.processEtaDisplayVm.kind).toBe('unavailable')
     expect(result.processEtaSecondaryVm.visible).toBe(false)
     expect(result.processEtaSecondaryVm.total).toBe(1)
-    expect(Array.isArray(result.alerts)).toBe(true)
+    expect(Array.isArray(result.alertIncidents.active)).toBe(true)
   })
 
   it('maps process-level status and alerts from tracking data', () => {
@@ -230,44 +238,93 @@ describe('toShipmentDetailVM base mapping', () => {
           with_eta: 0,
         },
       },
-      alerts: [
-        {
-          id: 'alert-1',
-          container_number: 'MSCU1234567',
-          category: 'fact',
-          type: 'TRANSSHIPMENT',
-          severity: 'warning',
-          message_key: 'alerts.transshipmentDetected',
-          message_params: {
-            port: 'MAPTM02',
-            fromVessel: 'MAERSK NARMADA',
-            toVessel: 'CMA CGM LISA MARIE',
-          },
-          detected_at: new Date().toISOString(),
-          triggered_at: '2026-02-01T10:00:00.000Z',
-          retroactive: false,
-          provider: 'msc',
-          acked_at: null,
+      operational_incidents: {
+        summary: {
+          active_incidents: 1,
+          affected_containers: 1,
+          recognized_incidents: 0,
         },
-      ],
+        active: [
+          {
+            incident_key: 'TRANSSHIPMENT:proc-2:MSCU1234567',
+            category: 'movement',
+            type: 'TRANSSHIPMENT',
+            bucket: 'active',
+            severity: 'warning',
+            fact: {
+              message_key: 'incidents.fact.transshipmentDetected',
+              message_params: {
+                port: 'MAPTM02',
+                fromVessel: 'MAERSK NARMADA',
+                toVessel: 'CMA CGM LISA MARIE',
+              },
+            },
+            action: {
+              action_key: 'incidents.action.updateRedestination',
+              action_params: {
+                port: 'MAPTM02',
+              },
+              action_kind: 'UPDATE_REDESTINATION',
+            },
+            scope: {
+              affected_container_count: 1,
+              containers: [
+                {
+                  container_id: 'c2',
+                  container_number: 'MSCU1234567',
+                  lifecycle_state: 'ACTIVE',
+                },
+              ],
+            },
+            detected_at: new Date().toISOString(),
+            triggered_at: '2026-02-01T10:00:00.000Z',
+            trigger_refs: [
+              {
+                alert_id: 'alert-1',
+                container_id: 'c2',
+              },
+            ],
+            members: [
+              {
+                container_id: 'c2',
+                container_number: 'MSCU1234567',
+                lifecycle_state: 'ACTIVE',
+                detected_at: new Date().toISOString(),
+                records: [
+                  {
+                    alert_id: 'alert-1',
+                    lifecycle_state: 'ACTIVE',
+                    detected_at: new Date().toISOString(),
+                    triggered_at: '2026-02-01T10:00:00.000Z',
+                    acked_at: null,
+                    resolved_at: null,
+                    resolved_reason: null,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        recognized: [],
+      },
     })
 
     const result = toShipmentDetailVM(example)
-    const firstAlert = requireAt(result.alerts, 0)
+    const firstAlert = requireAt(result.alertIncidents.active, 0)
     expect(result.status).toBe('blue-500')
     expect(result.statusCode).toBe('IN_TRANSIT')
     expect(result.statusMicrobadge).toEqual({
       statusCode: 'DISCHARGED',
       count: 1,
     })
-    expect(result.alerts.length).toBe(1)
-    expect(firstAlert.type).toBe('transshipment')
+    expect(result.alertIncidents.active.length).toBe(1)
+    expect(firstAlert.type).toBe('TRANSSHIPMENT')
     expect(firstAlert.severity).toBe('warning')
-    expect(firstAlert.category).toBe('fact')
+    expect(firstAlert.category).toBe('movement')
     expect(firstAlert.triggeredAtIso).toBe('2026-02-01T10:00:00.000Z')
-    expect(firstAlert.ackedAtIso).toBeNull()
-    expect(firstAlert.containerNumber).toBe('MSCU1234567')
-    expect(firstAlert.messageKey).toBe('alerts.transshipmentDetected')
+    expect(firstAlert.members[0]?.records[0]?.ackedAtIso).toBeNull()
+    expect(firstAlert.members[0]?.containerNumber).toBe('MSCU1234567')
+    expect(firstAlert.messageKey).toBe('incidents.fact.transshipmentDetected')
     expect(result.processEtaDisplayVm.kind).toBe('unavailable')
   })
 })
@@ -708,7 +765,7 @@ describe('toShipmentDetailVM operational support mapping', () => {
           container_number: 'FCIU2000205',
         }),
       ],
-      alert_incidents: {
+      operational_incidents: {
         summary: {
           active_incidents: 1,
           affected_containers: 1,
@@ -721,31 +778,45 @@ describe('toShipmentDetailVM operational support mapping', () => {
             category: 'movement',
             type: 'TRANSSHIPMENT',
             severity: 'warning',
-            message_key: 'alerts.transshipmentDetected',
-            message_params: {
-              port: 'KRPUS',
-              fromVessel: 'MSC IRIS',
-              toVessel: 'MSC BIANCA SILVIA',
+            fact: {
+              message_key: 'incidents.fact.transshipmentDetected',
+              message_params: {
+                port: 'KRPUS',
+                fromVessel: 'MSC IRIS',
+                toVessel: 'MSC BIANCA SILVIA',
+              },
+            },
+            action: {
+              action_key: 'incidents.action.updateRedestination',
+              action_params: {
+                port: 'KRPUS',
+              },
+              action_kind: 'UPDATE_REDESTINATION',
+            },
+            scope: {
+              affected_container_count: 1,
+              containers: [
+                {
+                  container_id: 'container-1',
+                  container_number: 'FCIU2000205',
+                  lifecycle_state: 'ACTIVE',
+                },
+              ],
             },
             detected_at: '2026-02-28T00:00:00.000Z',
             triggered_at: '2026-03-30T10:01:00.000Z',
-            transshipment_order: 1,
-            port: 'KRPUS',
-            from_vessel: 'MSC IRIS',
-            to_vessel: 'MSC BIANCA SILVIA',
-            affected_container_count: 1,
-            active_alert_ids: ['alert-1'],
-            acked_alert_ids: [],
+            trigger_refs: [
+              {
+                alert_id: 'alert-1',
+                container_id: 'container-1',
+              },
+            ],
             members: [
               {
                 container_id: 'container-1',
                 container_number: 'FCIU2000205',
                 lifecycle_state: 'ACTIVE',
                 detected_at: '2026-02-28T00:00:00.000Z',
-                transshipment_order: 1,
-                port: 'KRPUS',
-                from_vessel: 'MSC IRIS',
-                to_vessel: 'MSC BIANCA SILVIA',
                 records: [
                   {
                     alert_id: 'alert-1',
@@ -823,28 +894,75 @@ describe('toShipmentDetailVM fallback mapping', () => {
       destination: null,
       carrier: null,
       containers: [makeContainerResponse({ id: 'c3', container_number: 'TEST1234567' })],
-      alerts: [
-        {
-          id: 'alert-acked',
-          container_number: 'TEST1234567',
-          category: 'monitoring',
-          type: 'ETA_PASSED',
-          severity: 'warning',
-          message_key: 'alerts.etaPassed',
-          message_params: {},
-          detected_at: new Date().toISOString(),
-          triggered_at: new Date().toISOString(),
-          retroactive: false,
-          provider: null,
-          acked_at: '2026-03-05T12:00:00.000Z',
+      operational_incidents: {
+        summary: {
+          active_incidents: 0,
+          affected_containers: 1,
+          recognized_incidents: 1,
         },
-      ],
+        active: [],
+        recognized: [
+          {
+            incident_key: 'ETA_PASSED:TEST1234567',
+            category: 'eta',
+            type: 'ETA_PASSED',
+            bucket: 'recognized',
+            severity: 'warning',
+            fact: {
+              message_key: 'incidents.fact.etaPassed',
+              message_params: {},
+            },
+            action: {
+              action_key: 'incidents.action.checkEta',
+              action_params: {},
+              action_kind: 'CHECK_ETA',
+            },
+            scope: {
+              affected_container_count: 1,
+              containers: [
+                {
+                  container_id: 'c3',
+                  container_number: 'TEST1234567',
+                  lifecycle_state: 'ACKED',
+                },
+              ],
+            },
+            detected_at: '2026-03-05T12:00:00.000Z',
+            triggered_at: '2026-03-05T12:00:00.000Z',
+            trigger_refs: [
+              {
+                alert_id: 'alert-acked',
+                container_id: 'c3',
+              },
+            ],
+            members: [
+              {
+                container_id: 'c3',
+                container_number: 'TEST1234567',
+                lifecycle_state: 'ACKED',
+                detected_at: '2026-03-05T12:00:00.000Z',
+                records: [
+                  {
+                    alert_id: 'alert-acked',
+                    lifecycle_state: 'ACKED',
+                    detected_at: '2026-03-05T12:00:00.000Z',
+                    triggered_at: '2026-03-05T12:00:00.000Z',
+                    acked_at: '2026-03-05T12:00:00.000Z',
+                    resolved_at: null,
+                    resolved_reason: null,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
     })
 
     const result = toShipmentDetailVM(example)
-    const firstAlert = requireAt(result.alerts, 0)
-    expect(result.alerts.length).toBe(1)
-    expect(firstAlert.ackedAtIso).toBe('2026-03-05T12:00:00.000Z')
+    const firstAlert = requireAt(result.alertIncidents.recognized, 0)
+    expect(result.alertIncidents.recognized.length).toBe(1)
+    expect(firstAlert.members[0]?.records[0]?.ackedAtIso).toBe('2026-03-05T12:00:00.000Z')
   })
 
   it('shows placeholder timeline when no observations', () => {
