@@ -18,11 +18,16 @@ function makeTransshipmentIncident(command: {
     category: 'movement',
     type: 'TRANSSHIPMENT',
     severity: 'warning',
-    messageKey: 'alerts.transshipmentDetected',
+    messageKey: 'incidents.fact.transshipmentDetected',
     messageParams: {
       port: command.port,
       fromVessel: command.fromVessel,
       toVessel: command.toVessel,
+    },
+    action: {
+      actionKey: 'incidents.action.updateRedestination',
+      actionParams: {},
+      actionKind: 'UPDATE_REDESTINATION',
     },
     detectedAtIso: '2026-02-28T00:00:00.000Z',
     triggeredAtIso: '2026-04-01T10:00:00.000Z',

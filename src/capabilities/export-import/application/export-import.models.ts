@@ -130,8 +130,9 @@ export type ReportProcessEntry = {
   readonly product: string | null
   readonly redestinationNumber: string | null
   readonly processStatus: string
-  readonly alertCount: number
-  readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null
+  readonly activeIncidentCount: number
+  readonly affectedContainerCount: number
+  readonly dominantIncidentSeverity: 'info' | 'warning' | 'danger' | null
   readonly eta: TemporalValueDto | null
   readonly lastEventAt: TemporalValueDto | null
   readonly lastSyncAt: string | null
@@ -150,7 +151,7 @@ export type OperationalSnapshotReport = {
   readonly totals: {
     readonly processCount: number
     readonly containerCount: number
-    readonly processesWithAlerts: number
+    readonly processesWithActiveIncidents: number
     readonly deliveredProcesses: number
     readonly inTransitProcesses: number
     readonly processesWithConflict: number

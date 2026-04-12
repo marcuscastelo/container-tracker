@@ -93,7 +93,7 @@ function DebugStepNavigator(props: DebugStepNavigatorProps): JSX.Element {
       <div class="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground disabled:opacity-50"
+          class="motion-focus-surface motion-interactive rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50"
           disabled={props.selectedStepIndex <= 0}
           onClick={() => props.onPrevious()}
         >
@@ -101,7 +101,7 @@ function DebugStepNavigator(props: DebugStepNavigatorProps): JSX.Element {
         </button>
         <button
           type="button"
-          class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground disabled:opacity-50"
+          class="motion-focus-surface motion-interactive rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50"
           disabled={props.selectedStepIndex >= props.debug.steps.length - 1}
           onClick={() => props.onNext()}
         >
@@ -174,7 +174,7 @@ export function TrackingTimeTravelDebugPanel(props: Props): JSX.Element {
       <div class="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground disabled:opacity-50"
+          class="motion-focus-surface motion-interactive rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50"
           disabled={!props.debugPayload || !props.debug}
           onClick={() => {
             if (!props.debugPayload || !props.debug) return

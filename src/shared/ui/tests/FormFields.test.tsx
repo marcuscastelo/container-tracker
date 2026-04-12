@@ -25,7 +25,7 @@ describe('FormInput', () => {
     expect(html).toContain('Use the exact carrier number')
     expect(html).toContain('aria-invalid="false"')
     expect(html).toContain('aria-describedby="containerNumber-description"')
-    expect(html).toContain('focus:border-control-selected-border')
+    expect(html).toContain('motion-focus-surface')
     expect(html).toContain('text-tone-danger-strong')
     expect(html).not.toContain('role="alert"')
   })
@@ -50,6 +50,7 @@ describe('FormInput', () => {
     expect(html).toContain('role="alert"')
     expect(html).toContain('Invalid number')
     expect(html).toContain('border-tone-danger-border')
+    expect(html).toContain('motion-focus-surface')
     expect(html).not.toContain('Ignored while error is visible')
   })
 })
@@ -81,6 +82,7 @@ describe('FormSelect', () => {
     expect(html).toContain('value="msc"')
     expect(html).toContain('MSC')
     expect(html).toMatch(/<select[^>]*\srequired(?=\s|>)/)
+    expect(html).toContain('motion-focus-surface')
   })
 
   it('omits placeholder and helper text when they are not provided', () => {

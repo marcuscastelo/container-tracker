@@ -395,6 +395,7 @@ function ShipmentPreview(props: {
               activeAlerts={activeAlerts()}
               alertIncidents={shipment().alertIncidents}
               busyAlertIds={new Set<string>()}
+              recentlyChangedAlertIds={new Set<string>()}
               onAcknowledgeAlert={() => {}}
               onUnacknowledgeAlert={() => {}}
               onOpenEdit={() => {}}

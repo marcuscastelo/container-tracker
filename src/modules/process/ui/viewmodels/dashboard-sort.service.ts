@@ -107,8 +107,7 @@ function compareNullableDateValues(
 }
 
 function toCreatedAtSortValue(process: ProcessSummaryVM): number | null {
-  // Prefer dominantAlertCreatedAt (alert age basis). Fall back to lastEventAt for compatibility.
-  const ts = process.dominantAlertCreatedAt ?? process.lastEventAt
+  const ts = process.dominantIncident?.triggeredAt ?? process.lastEventAt
   if (!ts) return null
   if (typeof ts === 'string') {
     return parseInstantFromIso(ts)?.toEpochMs() ?? null
@@ -136,9 +135,8 @@ const SEVERITY_RANK: Record<string, number> = {
 
 function toAlertsSortValue(process: ProcessSummaryVM): number {
   const sevRank = SEVERITY_RANK[process.attentionSeverity ?? 'none'] ?? 3
-  // Pack severity and count into a single number so higher values are sorted first:
-  // severity wins, then higher alert count wins within the same tier.
-  return sevRank * 10_000 + process.alertsCount
+  // Pack severity, incident count, and affected scope into a single number.
+  return sevRank * 1_000_000 + process.activeIncidentCount * 1_000 + process.affectedContainerCount
 }
 
 function compareBySortField(

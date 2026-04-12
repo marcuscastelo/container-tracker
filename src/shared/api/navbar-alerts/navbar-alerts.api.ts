@@ -6,7 +6,7 @@ import {
 } from '~/shared/api-schemas/dashboard.schemas'
 import { systemClock } from '~/shared/time/clock'
 
-const NAVBAR_ALERTS_SUMMARY_ENDPOINT = '/api/alerts/navbar-summary'
+const NAVBAR_ALERTS_SUMMARY_ENDPOINT = '/api/operational-incidents/navbar-summary'
 const NAVBAR_ALERTS_CACHE_TTL_MS = 15_000
 
 type NavbarAlertsCacheRecord = {

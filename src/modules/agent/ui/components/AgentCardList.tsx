@@ -65,7 +65,7 @@ function AgentCard(props: {
       <button
         type="button"
         onClick={() => props.onAgentClick(props.agent.agentId)}
-        class="w-full text-left transition-colors hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-ring/40"
+        class="motion-focus-surface motion-interactive w-full rounded-md text-left hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-ring/40"
       >
         <div class="mb-1.5 flex items-center justify-between gap-2">
           <AgentStatusBadge label={props.agent.status} tone={props.agent.statusTone} />
@@ -114,7 +114,7 @@ function AgentCard(props: {
         <button
           type="button"
           onClick={() => props.onLogsClick(props.agent.agentId)}
-          class="rounded border border-control-border bg-control-bg px-2 py-0.5 text-micro text-control-foreground hover:bg-control-bg-hover"
+          class="motion-focus-surface motion-interactive rounded border border-control-border bg-control-bg px-2 py-0.5 text-micro text-control-foreground hover:bg-control-bg-hover"
         >
           Logs
         </button>

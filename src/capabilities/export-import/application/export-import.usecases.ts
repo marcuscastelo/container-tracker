@@ -581,8 +581,10 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
           product: entry.pwc.process.product,
           redestinationNumber: entry.pwc.process.redestinationNumber,
           processStatus: entry.summary.process_status,
-          alertCount: entry.summary.alerts_count,
-          highestAlertSeverity: entry.summary.highest_alert_severity,
+          activeIncidentCount: entry.summary.operational_incidents.summary.active_incidents_count,
+          affectedContainerCount:
+            entry.summary.operational_incidents.summary.affected_containers_count,
+          dominantIncidentSeverity: entry.summary.operational_incidents.dominant?.severity ?? null,
           eta: entry.summary.eta,
           lastEventAt: entry.summary.last_event_at,
           lastSyncAt: entry.sync.lastSyncAt,
@@ -611,8 +613,9 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
       totals: {
         processCount,
         containerCount,
-        processesWithAlerts: executiveSource.filter((processEntry) => processEntry.alertCount > 0)
-          .length,
+        processesWithActiveIncidents: executiveSource.filter(
+          (processEntry) => processEntry.activeIncidentCount > 0,
+        ).length,
         deliveredProcesses: executiveSource.filter(
           (processEntry) =>
             processEntry.processStatus === 'DELIVERED' ||
@@ -632,8 +635,8 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
         }).length,
       },
       methodologicalNotes: [
-        'Status and alerts are derived backend projections at export time.',
-        'Monitoring alerts are time-dependent and reflect the export instant.',
+        'Status and operational incidents are derived backend projections at export time.',
+        'Monitoring incidents are time-dependent and reflect the export instant.',
         'Conflicts and uncertainties are intentionally preserved and not hidden.',
       ],
       processes: reportProcesses,

@@ -5,6 +5,7 @@ export type AlertDisplayVM = {
   readonly containerNumber: string
   readonly messageKey:
     | 'alerts.transshipmentDetected'
+    | 'alerts.plannedTransshipmentDetected'
     | 'alerts.customsHoldDetected'
     | 'alerts.etaMissing'
     | 'alerts.etaPassed'

@@ -4,6 +4,21 @@ import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export type DashboardProcessExceptionSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 
+export type DashboardProcessExceptionIncidentVM = {
+  readonly type:
+    | 'TRANSSHIPMENT'
+    | 'PLANNED_TRANSSHIPMENT'
+    | 'CUSTOMS_HOLD'
+    | 'PORT_CHANGE'
+    | 'ETA_PASSED'
+    | 'ETA_MISSING'
+    | 'DATA_INCONSISTENT'
+  readonly severity: 'info' | 'warning' | 'danger'
+  readonly factMessageKey: string
+  readonly factMessageParams: Record<string, string | number>
+  readonly triggeredAt: string
+}
+
 export type DashboardProcessExceptionVM = {
   readonly processId: string
   readonly reference: string | null
@@ -13,6 +28,7 @@ export type DashboardProcessExceptionVM = {
   readonly status: StatusVariant
   readonly etaCurrent: TemporalValueDto | null
   readonly dominantSeverity: DashboardProcessExceptionSeverity
-  readonly activeAlertCount: number
-  readonly dominantAlertCreatedAt: string | null
+  readonly activeIncidentCount: number
+  readonly affectedContainerCount: number
+  readonly dominantIncident: DashboardProcessExceptionIncidentVM | null
 }

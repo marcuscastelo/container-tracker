@@ -51,7 +51,7 @@ export type FindContainersHotReadProjectionCommand = {
 
 export type FindContainersHotReadProjectionResult = {
   readonly containers: readonly ContainerHotReadProjection[]
-  readonly activeAlertIncidents: ContainersActiveAlertIncidentsProjection['activeAlertIncidents']
+  readonly activeOperationalIncidents: ContainersActiveAlertIncidentsProjection['activeOperationalIncidents']
   readonly activeAlerts: readonly TrackingAlert[]
 }
 
@@ -157,7 +157,7 @@ export async function findContainersHotReadProjection(
   if (command.containers.length === 0) {
     return {
       containers: [],
-      activeAlertIncidents: {
+      activeOperationalIncidents: {
         summary: {
           activeIncidentCount: 0,
           affectedContainerCount: 0,
@@ -258,7 +258,7 @@ export async function findContainersHotReadProjection(
 
   return {
     containers,
-    activeAlertIncidents: activeAlertProjection.activeAlertIncidents,
+    activeOperationalIncidents: activeAlertProjection.activeOperationalIncidents,
     activeAlerts: activeAlertProjection.activeAlerts,
   }
 }

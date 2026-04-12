@@ -127,11 +127,16 @@ function buildActiveAlertIncidents(): AlertIncidentsVM {
         category: 'movement',
         type: 'TRANSSHIPMENT',
         severity: 'warning',
-        messageKey: 'alerts.transshipmentDetected',
+        messageKey: 'incidents.fact.transshipmentDetected',
         messageParams: {
           port: 'KRPUS',
           fromVessel: 'MSC IRIS',
           toVessel: 'MSC BIANCA SILVIA',
+        },
+        action: {
+          actionKey: 'incidents.action.updateRedestination',
+          actionParams: {},
+          actionKind: 'UPDATE_REDESTINATION',
         },
         detectedAtIso: '2026-02-28T00:00:00.000Z',
         triggeredAtIso: '2026-04-01T10:00:00.000Z',
@@ -198,11 +203,16 @@ function buildRecognizedOnlyAlertIncidents(): AlertIncidentsVM {
         category: 'movement',
         type: 'TRANSSHIPMENT',
         severity: 'warning',
-        messageKey: 'alerts.transshipmentDetected',
+        messageKey: 'incidents.fact.transshipmentDetected',
         messageParams: {
           port: 'SGSIN',
           fromVessel: 'MSC IRIS',
           toVessel: 'MSC BIANCA SILVIA',
+        },
+        action: {
+          actionKey: 'incidents.action.updateRedestination',
+          actionParams: {},
+          actionKind: 'UPDATE_REDESTINATION',
         },
         detectedAtIso: '2026-02-28T00:00:00.000Z',
         triggeredAtIso: '2026-04-01T10:00:00.000Z',
@@ -294,6 +304,7 @@ function renderShipmentDataView(alertIncidents: AlertIncidentsVM): string {
       activeAlerts: [],
       alertIncidents,
       busyAlertIds: new Set<string>(),
+      recentlyChangedAlertIds: new Set<string>(),
       onAcknowledgeAlert: () => undefined,
       onUnacknowledgeAlert: () => undefined,
       onOpenEdit: () => undefined,
@@ -315,7 +326,7 @@ describe('ShipmentDataView alerts section visibility', () => {
     const html = renderShipmentDataView(buildActiveAlertIncidents())
 
     expect(html).toContain('id="shipment-alerts"')
-    expect(html).toContain('Alertas Operacionais')
+    expect(html).toContain('Incidentes Operacionais')
   })
 
   it('hides live operational alerts section when there are no active or recognized incidents', () => {
