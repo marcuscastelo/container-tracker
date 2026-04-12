@@ -6,8 +6,8 @@ import {
   toProcessDetailResponse,
   toProcessResponse,
   toProcessResponseWithSummary,
-  toRecognizedOperationalIncidentsResponse,
   toProcessSyncSnapshotResponse,
+  toRecognizedOperationalIncidentsResponse,
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
 import {
@@ -19,8 +19,8 @@ import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 import {
   ProcessDetailResponseSchema,
-  ProcessRecognizedOperationalIncidentsResponseSchema,
   ProcessesV2ResponseSchema,
+  ProcessRecognizedOperationalIncidentsResponseSchema,
   ProcessResponseSchema,
   ProcessSyncSnapshotResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
@@ -292,9 +292,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
                   })),
                 })
 
-          const response = toRecognizedOperationalIncidentsResponse(
-            recognizedOperationalIncidents,
-          )
+          const response = toRecognizedOperationalIncidentsResponse(recognizedOperationalIncidents)
 
           return jsonResponse(response, 200, ProcessRecognizedOperationalIncidentsResponseSchema)
         } catch (err) {

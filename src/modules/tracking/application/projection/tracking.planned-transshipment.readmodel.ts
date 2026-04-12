@@ -101,7 +101,7 @@ function toPlannedOccurrenceFromBlock(
 
   const anchorObservationId = toAnchorObservationId(event)
   const anchorObservation =
-    anchorObservationId === null ? null : observationById.get(anchorObservationId) ?? null
+    anchorObservationId === null ? null : (observationById.get(anchorObservationId) ?? null)
 
   const port =
     normalizePort(anchorObservation?.location_code) ??
@@ -226,7 +226,9 @@ export function derivePlannedTransshipmentAlertTransitions(command: {
     observations: command.observations,
     now: command.now,
   })
-  const occurrenceFingerprintSet = new Set(occurrences.map((occurrence) => occurrence.alertFingerprint))
+  const occurrenceFingerprintSet = new Set(
+    occurrences.map((occurrence) => occurrence.alertFingerprint),
+  )
   const alertIdsToAutoResolve = command.existingAlerts
     .filter((alert) => alert.type === 'PLANNED_TRANSSHIPMENT')
     .filter(isActiveAlertState)

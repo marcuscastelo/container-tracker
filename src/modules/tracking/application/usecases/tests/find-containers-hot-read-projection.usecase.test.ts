@@ -198,8 +198,8 @@ describe('findContainersHotReadProjection', () => {
       topIssue: null,
     })
     expect(result.activeAlerts).toHaveLength(1)
-    expect(result.activeAlertIncidents.summary.activeIncidentCount).toBe(1)
-    expect(result.activeAlertIncidents.summary.affectedContainerCount).toBe(1)
+    expect(result.activeOperationalIncidents.summary.activeIncidentCount).toBe(1)
+    expect(result.activeOperationalIncidents.summary.affectedContainerCount).toBe(1)
   })
 
   it('aligns timeline primary and operational ETA to the latest observed expected revision', async () => {

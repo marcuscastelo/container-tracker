@@ -331,7 +331,9 @@ export function deriveAlertTransitions(
   // CRITICAL: Fact-based alerts should only trigger on ACTUAL observations
 
   // 1. Transshipment detection — one alert per confirmed DISCHARGE → LOAD vessel-change pair
-  const transshipmentOccurrences = collapseTransshipmentOccurrences(findTransshipmentPairs(timeline))
+  const transshipmentOccurrences = collapseTransshipmentOccurrences(
+    findTransshipmentPairs(timeline),
+  )
   for (const occurrence of transshipmentOccurrences) {
     // detected_at = time the LOAD onto the new vessel was confirmed
     const detectedAt = toDetectedAtIso(occurrence.loadObs.event_time, now)

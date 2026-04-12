@@ -39,6 +39,11 @@ function buildDefaultAlertIncidents(): ShipmentDetailVM['alertIncidents'] {
           fromVessel: 'MSC IRIS',
           toVessel: 'MSC BIANCA SILVIA',
         },
+        action: {
+          actionKey: 'incidents.action.updateRedestination',
+          actionParams: {},
+          actionKind: 'UPDATE_REDESTINATION',
+        },
         detectedAtIso: '2026-02-28T00:00:00.000Z',
         triggeredAtIso: '2026-04-01T10:00:00.000Z',
         transshipmentOrder: 1,
@@ -126,7 +131,7 @@ describe('useShipmentScreenResource', () => {
           type: 'transshipment',
           severity: 'warning',
           containerNumber: 'MSCU1234567',
-          messageKey: 'incidents.fact.transshipmentDetected',
+          messageKey: 'alerts.transshipmentDetected',
           messageParams: {
             port: 'KRPUS',
             fromVessel: 'MSC IRIS',
@@ -196,6 +201,11 @@ describe('useShipmentScreenResource', () => {
               port: 'KRPUS',
               fromVessel: 'MSC IRIS',
               toVessel: 'MSC BIANCA SILVIA',
+            },
+            action: {
+              actionKey: 'incidents.action.updateRedestination',
+              actionParams: {},
+              actionKind: 'UPDATE_REDESTINATION',
             },
             detectedAtIso: '2026-02-28T00:00:00.000Z',
             triggeredAtIso: '2026-04-01T10:00:00.000Z',

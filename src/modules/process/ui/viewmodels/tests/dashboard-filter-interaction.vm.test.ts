@@ -20,10 +20,21 @@ function createProcess(
     readonly carrier?: string | null
     readonly importerId?: string | null
     readonly importerName?: string | null
-    readonly highestAlertSeverity?: ProcessSummaryVM['highestAlertSeverity']
+    readonly dominantIncidentSeverity?: 'info' | 'warning' | 'danger' | null
     readonly attentionSeverity?: ProcessSummaryVM['attentionSeverity']
   },
 ): ProcessSummaryVM {
+  const dominantIncident =
+    input.dominantIncidentSeverity === undefined || input.dominantIncidentSeverity === null
+      ? null
+      : {
+          type: 'ETA_PASSED' as const,
+          severity: input.dominantIncidentSeverity,
+          factMessageKey: 'incidents.fact.etaPassed',
+          factMessageParams: {},
+          triggeredAt: '2026-01-01T00:00:00.000Z',
+        }
+
   return {
     id: input.id,
     reference: null,
@@ -44,17 +55,17 @@ function createProcess(
     },
     etaMsOrNull: null,
     carrier: input.carrier ?? null,
-    alertsCount: 0,
-    highestAlertSeverity: input.highestAlertSeverity ?? null,
-    attentionSeverity: input.attentionSeverity ?? input.highestAlertSeverity ?? null,
-    dominantAlertCreatedAt: null,
+    activeIncidentCount: 0,
+    affectedContainerCount: 0,
+    recognizedIncidentCount: 0,
+    dominantIncident,
+    attentionSeverity: input.attentionSeverity ?? input.dominantIncidentSeverity ?? null,
     trackingValidation: {
       hasIssues: false,
       highestSeverity: null,
       affectedContainerCount: 0,
       topIssue: null,
     },
-    hasTransshipment: false,
     lastEventAt: null,
     syncStatus: 'idle',
     lastSyncAt: null,
@@ -227,14 +238,14 @@ describe('dashboard filter interactions', () => {
       createProcess({
         id: 'A',
         statusCode: 'UNKNOWN',
-        highestAlertSeverity: 'warning',
+        dominantIncidentSeverity: 'warning',
         attentionSeverity: 'danger',
       }),
       createProcess({ id: 'B', statusCode: 'UNKNOWN', attentionSeverity: null }),
       createProcess({
         id: 'C',
         statusCode: 'UNKNOWN',
-        highestAlertSeverity: 'warning',
+        dominantIncidentSeverity: 'warning',
         attentionSeverity: 'warning',
       }),
       createProcess({ id: 'D', statusCode: 'UNKNOWN', attentionSeverity: null }),

@@ -58,7 +58,6 @@ describe('toShipmentDetailVM ARRIVED_AT_POD mapping', () => {
         },
       },
       containersSync: [],
-      alerts: [],
     }
 
     const result = toShipmentDetailVM(example)

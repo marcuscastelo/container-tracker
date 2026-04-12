@@ -6,7 +6,7 @@ import {
 import {
   buildOperationalIncidentsReadModel,
   type OperationalIncidentsReadModel,
-} from '~/modules/tracking/application/projection/tracking.operational-incidents.readmodel'
+} from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'

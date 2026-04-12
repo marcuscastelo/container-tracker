@@ -85,15 +85,16 @@ function toAlertIncidentVm(
     const order = Number(maybeOrder ?? '')
     return Number.isInteger(order) && order > 0 ? order : null
   })()
-  const port = typeof incident.fact.message_params.port === 'string'
-    ? incident.fact.message_params.port
-    : null
-  const fromVessel = typeof incident.fact.message_params.fromVessel === 'string'
-    ? incident.fact.message_params.fromVessel
-    : null
-  const toVessel = typeof incident.fact.message_params.toVessel === 'string'
-    ? incident.fact.message_params.toVessel
-    : null
+  const port =
+    typeof incident.fact.message_params.port === 'string' ? incident.fact.message_params.port : null
+  const fromVessel =
+    typeof incident.fact.message_params.fromVessel === 'string'
+      ? incident.fact.message_params.fromVessel
+      : null
+  const toVessel =
+    typeof incident.fact.message_params.toVessel === 'string'
+      ? incident.fact.message_params.toVessel
+      : null
   const activeAlertIds = incident.members.flatMap((member) =>
     member.records
       .filter((record) => record.lifecycle_state === 'ACTIVE')

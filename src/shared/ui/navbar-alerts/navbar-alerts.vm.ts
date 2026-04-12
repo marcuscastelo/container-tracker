@@ -9,13 +9,11 @@ export type NavbarIncidentVM = {
   readonly category: NavbarIncidentDto['category']
   readonly factMessageKey: NavbarIncidentDto['fact']['message_key']
   readonly factMessageParams: NavbarIncidentDto['fact']['message_params']
-  readonly action:
-    | {
-        readonly actionKey: NonNullable<NavbarIncidentDto['action']>['action_key']
-        readonly actionParams: NonNullable<NavbarIncidentDto['action']>['action_params']
-        readonly actionKind: NonNullable<NavbarIncidentDto['action']>['action_kind']
-      }
-    | null
+  readonly action: {
+    readonly actionKey: NonNullable<NavbarIncidentDto['action']>['action_key']
+    readonly actionParams: NonNullable<NavbarIncidentDto['action']>['action_params']
+    readonly actionKind: NonNullable<NavbarIncidentDto['action']>['action_kind']
+  } | null
   readonly affectedContainerCount: number
   readonly triggeredAt: string
   readonly containers: readonly {

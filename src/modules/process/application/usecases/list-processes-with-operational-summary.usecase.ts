@@ -11,7 +11,7 @@ import {
   toOperationalStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
-import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.operational-incidents.readmodel'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
 import {
   aggregateTrackingValidationProjection,
@@ -620,10 +620,12 @@ export function createListProcessesWithOperationalSummaryUseCase(
             last_event_at: hotRead.lastEventAt,
           } satisfies ContainerTrackingSummary
         })
-        const activeOperationalIncidents = hotReadProjection.activeOperationalIncidents.active.filter(
-          (incident) =>
-            incident.triggerRefs.some((triggerRef) => processContainerIds.has(triggerRef.containerId)),
-        )
+        const activeOperationalIncidents =
+          hotReadProjection.activeOperationalIncidents.active.filter((incident) =>
+            incident.triggerRefs.some((triggerRef) =>
+              processContainerIds.has(triggerRef.containerId),
+            ),
+          )
 
         const summary = aggregateOperationalSummary(
           process.id,

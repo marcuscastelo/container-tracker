@@ -1,8 +1,5 @@
 import { z } from 'zod'
-import {
-  AlertResponseDtoSchema,
-  TrackingValidationIssueResponseDtoSchema,
-} from '~/modules/tracking/interface/http/tracking.schemas'
+import { TrackingValidationIssueResponseDtoSchema } from '~/modules/tracking/interface/http/tracking.schemas'
 import { TemporalValueDtoSchema } from '~/shared/api-schemas/temporal.schemas'
 
 const ProcessLastSyncStatusSchema = z.enum(['DONE', 'FAILED', 'RUNNING', 'UNKNOWN'])
@@ -221,12 +218,7 @@ export const ObservationResponseSchema = z.object({
   created_at: z.string(),
 })
 
-const TrackingAlertResponseSchema = AlertResponseDtoSchema
-
-const OperationalIncidentParamsSchema = z.record(
-  z.string(),
-  z.union([z.string(), z.number()]),
-)
+const OperationalIncidentParamsSchema = z.record(z.string(), z.union([z.string(), z.number()]))
 
 const OperationalIncidentFactKeySchema = z.enum([
   'incidents.fact.transshipmentDetected',

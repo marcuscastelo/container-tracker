@@ -1,5 +1,5 @@
 import type { DashboardProcessUseCases } from '~/capabilities/dashboard/application/dashboard.processes.projection'
-import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.operational-incidents.readmodel'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
 import { systemClock } from '~/shared/time/clock'
 
@@ -51,7 +51,10 @@ export type DashboardNavbarAlertsReadModelDeps = {
   readonly trackingUseCases: DashboardNavbarTrackingUseCases
 }
 
-function toRouteSummary(origin: string | null | undefined, destination: string | null | undefined): string {
+function toRouteSummary(
+  origin: string | null | undefined,
+  destination: string | null | undefined,
+): string {
   return `${origin ?? '—'} → ${destination ?? '—'}`
 }
 
@@ -167,7 +170,8 @@ export function createDashboardNavbarAlertsReadModelUseCase(
 
     processGroups.sort((left, right) => {
       const severityRank = { none: 0, success: 1, info: 2, warning: 3, danger: 4 } as const
-      const severityCompare = severityRank[right.dominantSeverity] - severityRank[left.dominantSeverity]
+      const severityCompare =
+        severityRank[right.dominantSeverity] - severityRank[left.dominantSeverity]
       if (severityCompare !== 0) return severityCompare
       const countCompare = right.activeIncidentCount - left.activeIncidentCount
       if (countCompare !== 0) return countCompare

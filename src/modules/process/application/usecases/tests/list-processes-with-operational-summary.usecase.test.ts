@@ -172,13 +172,67 @@ function createDeps(args?: { readonly hotReadResult?: FindContainersHotReadProje
           acked_source: null,
         },
       ],
-      activeAlertIncidents: {
+      activeOperationalIncidents: {
         summary: {
-          activeIncidentCount: 0,
-          affectedContainerCount: 0,
+          activeIncidentCount: 1,
+          affectedContainerCount: 1,
           recognizedIncidentCount: 0,
         },
-        active: [],
+        active: [
+          {
+            incidentKey: 'ETA_PASSED:container-1',
+            category: 'eta',
+            type: 'ETA_PASSED',
+            bucket: 'active',
+            severity: 'danger',
+            fact: {
+              messageKey: 'incidents.fact.etaPassed',
+              messageParams: {},
+            },
+            action: {
+              actionKey: 'incidents.action.checkEta',
+              actionParams: {},
+              actionKind: 'CHECK_ETA',
+            },
+            scope: {
+              affectedContainerCount: 1,
+              containers: [
+                {
+                  containerId: 'container-1',
+                  containerNumber: 'MSCU1111111',
+                  lifecycleState: 'ACTIVE',
+                },
+              ],
+            },
+            detectedAt: '2026-03-10T12:00:00.000Z',
+            triggeredAt: '2026-03-10T12:00:00.000Z',
+            triggerRefs: [
+              {
+                alertId: 'alert-1',
+                containerId: 'container-1',
+              },
+            ],
+            members: [
+              {
+                containerId: 'container-1',
+                containerNumber: 'MSCU1111111',
+                lifecycleState: 'ACTIVE',
+                detectedAt: '2026-03-10T12:00:00.000Z',
+                records: [
+                  {
+                    alertId: 'alert-1',
+                    lifecycleState: 'ACTIVE',
+                    detectedAt: '2026-03-10T12:00:00.000Z',
+                    triggeredAt: '2026-03-10T12:00:00.000Z',
+                    ackedAt: null,
+                    resolvedAt: null,
+                    resolvedReason: null,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
         recognized: [],
       },
     } satisfies FindContainersHotReadProjectionResult
@@ -237,7 +291,12 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
     })
     expect(result.processes).toHaveLength(1)
     expect(result.processes[0]?.summary.process_status).toBe('IN_TRANSIT')
-    expect(result.processes[0]?.summary.alerts_count).toBe(1)
+    expect(result.processes[0]?.summary.operational_incidents.summary.active_incidents_count).toBe(
+      1,
+    )
+    expect(
+      result.processes[0]?.summary.operational_incidents.summary.affected_containers_count,
+    ).toBe(1)
     expect(result.processes[0]?.summary.container_count).toBe(2)
     expect(result.processes[0]?.summary.tracking_validation).toEqual({
       hasIssues: false,
@@ -313,7 +372,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
           },
         ],
         activeAlerts: [],
-        activeAlertIncidents: {
+        activeOperationalIncidents: {
           summary: {
             activeIncidentCount: 0,
             affectedContainerCount: 0,
@@ -409,7 +468,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
           },
         ],
         activeAlerts: [],
-        activeAlertIncidents: {
+        activeOperationalIncidents: {
           summary: {
             activeIncidentCount: 0,
             affectedContainerCount: 0,
@@ -487,7 +546,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
           },
         ],
         activeAlerts: [],
-        activeAlertIncidents: {
+        activeOperationalIncidents: {
           summary: {
             activeIncidentCount: 0,
             affectedContainerCount: 0,
@@ -541,7 +600,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
           },
         ],
         activeAlerts: [],
-        activeAlertIncidents: {
+        activeOperationalIncidents: {
           summary: {
             activeIncidentCount: 0,
             affectedContainerCount: 0,

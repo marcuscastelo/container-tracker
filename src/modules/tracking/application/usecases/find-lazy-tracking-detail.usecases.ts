@@ -2,7 +2,7 @@ import { suppressSupersededObservationsForProjection } from '~/modules/tracking/
 import {
   buildOperationalIncidentsReadModel,
   type OperationalIncidentsReadModel,
-} from '~/modules/tracking/application/projection/tracking.operational-incidents.readmodel'
+} from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import {
   computeFingerprint,

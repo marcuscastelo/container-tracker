@@ -24,8 +24,7 @@ function toTransshipmentParams(
 } {
   const messageParams = incident.fact.message_params
   const port = typeof messageParams.port === 'string' ? messageParams.port : null
-  const fromVessel =
-    typeof messageParams.fromVessel === 'string' ? messageParams.fromVessel : null
+  const fromVessel = typeof messageParams.fromVessel === 'string' ? messageParams.fromVessel : null
   const toVessel = typeof messageParams.toVessel === 'string' ? messageParams.toVessel : null
 
   return {
@@ -36,9 +35,7 @@ function toTransshipmentParams(
 }
 
 function toAlertIncidentRecordVm(
-  record: NonNullable<
-    OperationalIncidentsResponse
-  >['active'][number]['members'][number]['records'][number],
+  record: NonNullable<OperationalIncidentsResponse>['active'][number]['members'][number]['records'][number],
 ): AlertIncidentRecordVM {
   return {
     alertId: record.alert_id,

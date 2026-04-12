@@ -7,10 +7,8 @@ import type {
   OperationalStatus,
   ProcessAggregatedStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
-import type {
-  OperationalIncidentReadModel,
-} from '~/modules/tracking/application/projection/tracking.operational-incidents.readmodel'
 import type { TrackingLifecycleBucket } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { TrackingValidationProcessSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import type { TemporalValueDto } from '~/shared/time/dto'

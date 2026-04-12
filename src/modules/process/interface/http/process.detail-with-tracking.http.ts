@@ -1,7 +1,7 @@
 import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
 import { toContainerWithTrackingResponse } from '~/modules/process/interface/http/process.http.mappers'
-import type { OperationalIncidentsReadModel } from '~/modules/tracking/application/projection/tracking.operational-incidents.readmodel'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { OperationalIncidentsReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import {
   type ContainerSyncRecord,

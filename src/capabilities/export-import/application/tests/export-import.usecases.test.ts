@@ -33,8 +33,14 @@ function createReportProcessEntry(overrides: {
   }
   readonly summary: {
     readonly process_status: 'AWAITING_DATA' | 'IN_TRANSIT' | 'DELIVERED' | 'EMPTY_RETURNED'
-    readonly alerts_count: number
-    readonly highest_alert_severity: 'info' | 'warning' | 'danger' | null
+    readonly operational_incidents: {
+      readonly summary: {
+        readonly active_incidents_count: number
+        readonly affected_containers_count: number
+        readonly recognized_incidents_count: number
+      }
+      readonly dominant: null
+    }
     readonly eta: string | null
     readonly last_event_at: string | null
   }
@@ -66,8 +72,14 @@ function createReportProcessEntry(overrides: {
     },
     summary: {
       process_status: 'IN_TRANSIT',
-      alerts_count: 0,
-      highest_alert_severity: null,
+      operational_incidents: {
+        summary: {
+          active_incidents_count: 0,
+          affected_containers_count: 0,
+          recognized_incidents_count: 0,
+        },
+        dominant: null,
+      },
       eta: null,
       last_event_at: null,
     },

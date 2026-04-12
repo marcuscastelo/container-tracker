@@ -379,10 +379,12 @@ export async function runTrackingReplay(
           resolved_at: null,
           resolved_reason: null,
         }))
-      const createdAlerts = [...alertTransitions.newAlerts, ...plannedAlerts].map((alert, alertIndex) => ({
-        ...alert,
-        id: toReplayAlertId(++replayAlertSequence, alertIndex, alert.alert_fingerprint),
-      }))
+      const createdAlerts = [...alertTransitions.newAlerts, ...plannedAlerts].map(
+        (alert, alertIndex) => ({
+          ...alert,
+          id: toReplayAlertId(++replayAlertSequence, alertIndex, alert.alert_fingerprint),
+        }),
+      )
       alerts = applyReplayAlertTransitions(
         alerts,
         createdAlerts,

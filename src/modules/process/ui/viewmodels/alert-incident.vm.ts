@@ -47,21 +47,15 @@ export type AlertIncidentVM = {
     | 'incidents.fact.portChange'
     | 'incidents.fact.dataInconsistent'
   readonly messageParams: Record<string, string | number>
-  readonly action:
-    | {
-        readonly actionKey:
-          | 'incidents.action.updateRedestination'
-          | 'incidents.action.checkEta'
-          | 'incidents.action.followUpCustoms'
-          | 'incidents.action.reviewData'
-        readonly actionParams: Record<string, string | number>
-        readonly actionKind:
-          | 'UPDATE_REDESTINATION'
-          | 'CHECK_ETA'
-          | 'FOLLOW_UP_CUSTOMS'
-          | 'REVIEW_DATA'
-      }
-    | null
+  readonly action: {
+    readonly actionKey:
+      | 'incidents.action.updateRedestination'
+      | 'incidents.action.checkEta'
+      | 'incidents.action.followUpCustoms'
+      | 'incidents.action.reviewData'
+    readonly actionParams: Record<string, string | number>
+    readonly actionKind: 'UPDATE_REDESTINATION' | 'CHECK_ETA' | 'FOLLOW_UP_CUSTOMS' | 'REVIEW_DATA'
+  } | null
   readonly detectedAtIso: string
   readonly triggeredAtIso: string
   readonly transshipmentOrder: number | null

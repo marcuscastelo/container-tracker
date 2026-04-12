@@ -62,7 +62,8 @@ export function AlertItem(props: AlertItemProps): JSX.Element {
   }
 
   const visibleContainers = () => props.incident.containers.slice(0, 4)
-  const extraContainers = () => Math.max(0, props.incident.containers.length - visibleContainers().length)
+  const extraContainers = () =>
+    Math.max(0, props.incident.containers.length - visibleContainers().length)
 
   return (
     <div
@@ -77,7 +78,10 @@ export function AlertItem(props: AlertItemProps): JSX.Element {
           </p>
           <Show when={props.incident.action !== null}>
             <p class="mt-1 text-xs-ui text-text-muted">
-              {t(props.incident.action?.actionKey ?? keys.header.alertsPanel.valueUnavailable, props.incident.action?.actionParams)}
+              {t(
+                props.incident.action?.actionKey ?? keys.header.alertsPanel.valueUnavailable,
+                props.incident.action?.actionParams,
+              )}
             </p>
           </Show>
           <p class="mt-1 text-xs-ui text-text-muted">{occurredAtLabel()}</p>

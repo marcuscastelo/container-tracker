@@ -619,18 +619,22 @@ export function buildOperationalIncidentsReadModel(
       },
       detectedAt: toEarliestDetectedAt(sortedMembers),
       triggeredAt: toLatestTriggeredAt(sortedMembers),
-      triggerRefs: [...new Map(
-        sortedMembers
-          .flatMap((member) =>
-            member.records.map((record) => [
-              `${record.alertId}:${member.containerId}`,
-              {
-                alertId: record.alertId,
-                containerId: member.containerId,
-              },
-            ] as const),
+      triggerRefs: [
+        ...new Map(
+          sortedMembers.flatMap((member) =>
+            member.records.map(
+              (record) =>
+                [
+                  `${record.alertId}:${member.containerId}`,
+                  {
+                    alertId: record.alertId,
+                    containerId: member.containerId,
+                  },
+                ] as const,
+            ),
           ),
-      ).values()],
+        ).values(),
+      ],
       members: sortedMembers.map((member) => ({
         containerId: member.containerId,
         containerNumber: member.containerNumber,

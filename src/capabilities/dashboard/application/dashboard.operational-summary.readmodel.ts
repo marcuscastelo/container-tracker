@@ -2,13 +2,12 @@ import type {
   DashboardProcessUseCases,
   DashboardProcessWithOperationalSummaryProjection,
 } from '~/capabilities/dashboard/application/dashboard.processes.projection'
-import type {
-  OperationalIncidentReadModel,
-} from '~/modules/tracking/application/projection/tracking.operational-incidents.readmodel'
-import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
 import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
-import type { TemporalValueDto } from '~/shared/time/dto'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
+import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
 import { systemClock } from '~/shared/time/clock'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 type DashboardDominantSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 
@@ -80,6 +79,98 @@ function normalizeDashboardSeverity(
   if (severity === 'warning') return 'warning'
   if (severity === 'info') return 'info'
   return 'none'
+}
+
+function toIncidentSeverityRank(severity: OperationalIncidentReadModel['severity']): number {
+  if (severity === 'danger') return 3
+  if (severity === 'warning') return 2
+  return 1
+}
+
+function compareIncidentTriggeredAtDesc(
+  left: OperationalIncidentReadModel,
+  right: OperationalIncidentReadModel,
+): number {
+  const leftTimestamp = parseInstantFromIso(left.triggeredAt)?.toEpochMs()
+  const rightTimestamp = parseInstantFromIso(right.triggeredAt)?.toEpochMs()
+
+  if (leftTimestamp !== undefined && rightTimestamp !== undefined) {
+    if (leftTimestamp !== rightTimestamp) return rightTimestamp - leftTimestamp
+  } else if (leftTimestamp !== undefined && rightTimestamp === undefined) {
+    return -1
+  } else if (leftTimestamp === undefined && rightTimestamp !== undefined) {
+    return 1
+  }
+
+  if (left.triggeredAt === right.triggeredAt) return 0
+  return right.triggeredAt.localeCompare(left.triggeredAt)
+}
+
+function pickDominantIncident(
+  incidents: readonly OperationalIncidentReadModel[],
+): OperationalIncidentReadModel | null {
+  let dominant: OperationalIncidentReadModel | null = null
+
+  for (const incident of incidents) {
+    if (dominant === null) {
+      dominant = incident
+      continue
+    }
+
+    const severityDiff =
+      toIncidentSeverityRank(incident.severity) - toIncidentSeverityRank(dominant.severity)
+    if (severityDiff > 0) {
+      dominant = incident
+      continue
+    }
+    if (severityDiff < 0) {
+      continue
+    }
+
+    if (compareIncidentTriggeredAtDesc(incident, dominant) < 0) {
+      dominant = incident
+    }
+  }
+
+  return dominant
+}
+
+function summarizeProcessActiveIncidents(incidents: readonly OperationalIncidentReadModel[]): {
+  readonly dominantSeverity: DashboardDominantSeverity
+  readonly activeIncidentCount: number
+  readonly affectedContainerCount: number
+  readonly dominantIncident: DashboardDominantIncidentReadModel | null
+} {
+  if (incidents.length === 0) {
+    return {
+      dominantSeverity: 'none',
+      activeIncidentCount: 0,
+      affectedContainerCount: 0,
+      dominantIncident: null,
+    }
+  }
+
+  const affectedContainerCount = new Set(
+    incidents.flatMap((incident) =>
+      incident.scope.containers.map((container) => container.containerId),
+    ),
+  ).size
+  const dominant = pickDominantIncident(incidents)
+
+  return {
+    dominantSeverity: normalizeDashboardSeverity(dominant?.severity ?? null),
+    activeIncidentCount: incidents.length,
+    affectedContainerCount,
+    dominantIncident:
+      dominant === null
+        ? null
+        : {
+            type: dominant.type,
+            severity: dominant.severity,
+            fact: dominant.fact,
+            triggeredAt: dominant.triggeredAt,
+          },
+  }
 }
 
 function groupIncidentsByProcessId(command: {
@@ -168,7 +259,9 @@ function summarizeGlobalActiveIncidents(
   incidents: readonly OperationalIncidentReadModel[],
 ): DashboardGlobalAlertsSummaryReadModel {
   const affectedContainerIds = new Set(
-    incidents.flatMap((incident) => incident.scope.containers.map((container) => container.containerId)),
+    incidents.flatMap((incident) =>
+      incident.scope.containers.map((container) => container.containerId),
+    ),
   )
 
   return {
@@ -182,9 +275,29 @@ function summarizeGlobalActiveIncidents(
 
 function toDashboardProcessReadModel(
   process: DashboardProcessWithOperationalSummaryProjection,
+  processActiveIncidents: readonly OperationalIncidentReadModel[],
 ): DashboardOperationalProcessReadModel {
   const summary = process.summary
-  const dominantIncident = summary.operational_incidents?.dominant ?? null
+  const summaryDominantIncident = summary.operational_incidents?.dominant ?? null
+  const derivedIncidentSummary = summarizeProcessActiveIncidents(processActiveIncidents)
+  const incidentSummary =
+    processActiveIncidents.length === 0
+      ? {
+          dominantSeverity: normalizeDashboardSeverity(summaryDominantIncident?.severity ?? null),
+          activeIncidentCount: summary.operational_incidents?.summary.active_incidents_count ?? 0,
+          affectedContainerCount:
+            summary.operational_incidents?.summary.affected_containers_count ?? 0,
+          dominantIncident:
+            summaryDominantIncident === null
+              ? null
+              : {
+                  type: summaryDominantIncident.type,
+                  severity: summaryDominantIncident.severity,
+                  fact: summaryDominantIncident.fact,
+                  triggeredAt: summaryDominantIncident.triggeredAt,
+                },
+        }
+      : derivedIncidentSummary
 
   return {
     processId: process.pwc.process.id,
@@ -193,18 +306,10 @@ function toDashboardProcessReadModel(
     destination: process.pwc.process.destination ?? null,
     status: summary.process_status ?? 'UNKNOWN',
     eta: summary.eta ?? null,
-    dominantSeverity: normalizeDashboardSeverity(dominantIncident?.severity ?? null),
-    activeIncidentCount: summary.operational_incidents?.summary.active_incidents_count ?? 0,
-    affectedContainerCount: summary.operational_incidents?.summary.affected_containers_count ?? 0,
-    dominantIncident:
-      dominantIncident === null
-        ? null
-        : {
-            type: dominantIncident.type,
-            severity: dominantIncident.severity,
-            fact: dominantIncident.fact,
-            triggeredAt: dominantIncident.triggeredAt,
-          },
+    dominantSeverity: incidentSummary.dominantSeverity,
+    activeIncidentCount: incidentSummary.activeIncidentCount,
+    affectedContainerCount: incidentSummary.affectedContainerCount,
+    dominantIncident: incidentSummary.dominantIncident,
   }
 }
 
@@ -244,17 +349,15 @@ export function createDashboardOperationalSummaryReadModelUseCase(
       processes,
     })
 
-    const processReadModels = processes.map((process) => {
-      const incidentCount = groupedIncidents.get(process.pwc.process.id)?.length ?? 0
-      const base = toDashboardProcessReadModel(process)
-      return incidentCount === base.activeIncidentCount
-        ? base
-        : { ...base, activeIncidentCount: incidentCount }
-    })
+    const processReadModels = processes.map((process) =>
+      toDashboardProcessReadModel(process, groupedIncidents.get(process.pwc.process.id) ?? []),
+    )
 
     return {
       processes: processReadModels,
-      globalAlerts: summarizeGlobalActiveIncidents(hotReadProjection.activeOperationalIncidents.active),
+      globalAlerts: summarizeGlobalActiveIncidents(
+        hotReadProjection.activeOperationalIncidents.active,
+      ),
     }
   }
 }

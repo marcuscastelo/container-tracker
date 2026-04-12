@@ -17,12 +17,12 @@ import {
 import { toOperationalStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
+import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type {
   OperationalIncidentReadModel,
   OperationalIncidentRecordReadModel,
   OperationalIncidentsReadModel,
-} from '~/modules/tracking/application/projection/tracking.operational-incidents.readmodel'
-import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+} from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import type { TrackingContainmentReadModel } from '~/modules/tracking/features/containment/application/projection/tracking.containment.readmodel'
 import type {
@@ -846,8 +846,7 @@ export function toProcessDetailResponse(
     processOperational,
     trackingValidation,
   })
-  const dominantIncidentSeverity =
-    activeOperationalIncidents.active[0]?.severity ?? null
+  const dominantIncidentSeverity = activeOperationalIncidents.active[0]?.severity ?? null
 
   return {
     ...processToResponseFields(pwc.process),

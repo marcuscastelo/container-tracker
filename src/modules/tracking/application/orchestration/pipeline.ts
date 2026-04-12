@@ -9,17 +9,17 @@ import {
   noopTrackingValidationLifecycleRepository,
   type TrackingValidationLifecycleRepository,
 } from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
+import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import {
   derivePlannedTransshipmentAlertTransitions,
   toTransshipmentSemanticKey,
 } from '~/modules/tracking/application/projection/tracking.planned-transshipment.readmodel'
-import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import {
   deriveAlertTransitions,
-  deriveTransshipmentOccurrences,
   deriveTransshipment,
+  deriveTransshipmentOccurrences,
 } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type {
   NewTrackingAlert,
@@ -194,7 +194,9 @@ async function derivePipelineState(command: {
       command.isBackfill,
       derivationNow,
     )
-    const projectionObservations = suppressSupersededObservationsForProjection(command.allObservations)
+    const projectionObservations = suppressSupersededObservationsForProjection(
+      command.allObservations,
+    )
     const timelineItems = deriveTimelineWithSeriesReadModel(
       toTrackingObservationProjections(projectionObservations),
       derivationNow,
