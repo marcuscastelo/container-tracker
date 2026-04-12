@@ -49,6 +49,15 @@ type AgentEnrollAuditEvent = {
   readonly reason: string | null
 }
 
+type AgentEnrollUnauthorizedReason =
+  | 'missing_authorization_header'
+  | 'invalid_authorization_scheme'
+  | 'missing_bearer_token'
+  | 'installer_token_not_found'
+  | 'installer_token_hash_mismatch'
+  | 'installer_token_revoked'
+  | 'installer_token_expired'
+
 export type AgentEnrollControllersDeps = {
   readonly findInstallerTokenByHash: (command: {
     readonly tokenHash: string
@@ -87,15 +96,35 @@ export type AgentEnrollControllersDeps = {
   readonly generateAgentToken?: () => string
 }
 
-type AgentAuthResult = {
+type AgentAuthSuccess = {
+  readonly ok: true
   readonly tenantId: string
 }
 
-function getBearerToken(authorization: string | null): string | null {
-  if (!authorization) return null
+type AgentAuthFailure = {
+  readonly ok: false
+  readonly reason: AgentEnrollUnauthorizedReason
+}
+
+type AgentAuthResult = AgentAuthSuccess | AgentAuthFailure
+
+function parseBearerToken(
+  authorization: string | null,
+): { readonly ok: true; readonly token: string } | AgentAuthFailure {
+  if (!authorization) {
+    return { ok: false, reason: 'missing_authorization_header' }
+  }
+
   const [scheme, token] = authorization.trim().split(/\s+/u)
-  if (scheme !== 'Bearer' || !token) return null
-  return token
+  if (scheme !== 'Bearer') {
+    return { ok: false, reason: 'invalid_authorization_scheme' }
+  }
+
+  if (!token || token.length === 0) {
+    return { ok: false, reason: 'missing_bearer_token' }
+  }
+
+  return { ok: true, token }
 }
 
 function sha256Hex(value: string): string {
@@ -199,31 +228,45 @@ async function recordAgentActivitySafely(
 
 async function ensureInstallerAuth(
   deps: AgentEnrollControllersDeps,
-  bearerToken: string | null,
-): Promise<AgentAuthResult | null> {
-  if (!bearerToken || bearerToken.length === 0) {
-    return null
+  authorization: string | null,
+): Promise<AgentAuthResult> {
+  const bearerTokenResult = parseBearerToken(authorization)
+  if (!bearerTokenResult.ok) {
+    return bearerTokenResult
   }
 
-  const tokenHash = sha256Hex(bearerToken)
+  const tokenHash = sha256Hex(bearerTokenResult.token)
   const tokenRecord = await deps.findInstallerTokenByHash({ tokenHash })
   if (!tokenRecord) {
-    return null
+    return {
+      ok: false,
+      reason: 'installer_token_not_found',
+    }
   }
 
   if (!safeEqualSha256Hash(tokenRecord.tokenHash, tokenHash)) {
-    return null
+    return {
+      ok: false,
+      reason: 'installer_token_hash_mismatch',
+    }
   }
 
   if (tokenRecord.revokedAt !== null) {
-    return null
+    return {
+      ok: false,
+      reason: 'installer_token_revoked',
+    }
   }
 
   if (isExpired(tokenRecord.expiresAt)) {
-    return null
+    return {
+      ok: false,
+      reason: 'installer_token_expired',
+    }
   }
 
   return {
+    ok: true,
     tenantId: tokenRecord.tenantId,
   }
 }
@@ -233,7 +276,7 @@ export function createAgentEnrollControllers(deps: AgentEnrollControllersDeps) {
 
   async function enroll({ request }: { request: Request }): Promise<Response> {
     const ipAddress = getClientIp(request)
-    const bearerToken = getBearerToken(request.headers.get('authorization'))
+    const authorization = request.headers.get('authorization')
     const rawBody: unknown = await request.json().catch(() => ({}))
     const parsedBody = AgentEnrollRequestSchema.safeParse(rawBody)
 
@@ -266,8 +309,8 @@ export function createAgentEnrollControllers(deps: AgentEnrollControllersDeps) {
     }
 
     try {
-      const installerAuth = await ensureInstallerAuth(deps, bearerToken)
-      if (!installerAuth) {
+      const installerAuth = await ensureInstallerAuth(deps, authorization)
+      if (!installerAuth.ok) {
         await emitAuditEventSafely(deps, {
           eventType: 'ENROLL_FAILURE',
           statusCode: 401,
@@ -275,9 +318,9 @@ export function createAgentEnrollControllers(deps: AgentEnrollControllersDeps) {
           machineFingerprint: requestBody.machineFingerprint,
           hostname: requestBody.hostname,
           ipAddress,
-          reason: 'unauthorized',
+          reason: installerAuth.reason,
         })
-        return jsonResponse({ error: 'Unauthorized' }, 401)
+        return jsonResponse({ error: 'Unauthorized', reason: installerAuth.reason }, 401)
       }
 
       await emitAuditEventSafely(deps, {
