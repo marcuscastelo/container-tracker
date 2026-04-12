@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 type ProcessSyncCandidateRow = {
   readonly id: string
-  readonly archived_at: string | null
+  readonly archived_at?: string | null
+  readonly reference?: string | null
 }
 
 type QueryOperation = {
@@ -142,6 +143,7 @@ describe('createSyncStatusReadPort', () => {
     const port = createSyncStatusReadPort({
       targetReadPort: {
         fetchProcessById: vi.fn(),
+        listActiveProcessesForDashboardSync: vi.fn(),
         listActiveProcessIds: vi.fn(),
         listContainersByProcessId: vi.fn(),
         listContainersByProcessIds: vi.fn(),
@@ -173,6 +175,7 @@ describe('createSyncStatusReadPort', () => {
     const port = createSyncStatusReadPort({
       targetReadPort: {
         fetchProcessById: vi.fn(),
+        listActiveProcessesForDashboardSync: vi.fn(),
         listActiveProcessIds: vi.fn(),
         listContainersByProcessId: vi.fn(),
         listContainersByProcessIds: vi.fn(),
@@ -204,6 +207,7 @@ describe('createSyncStatusReadPort', () => {
     const port = createSyncStatusReadPort({
       targetReadPort: {
         fetchProcessById: vi.fn(),
+        listActiveProcessesForDashboardSync: vi.fn(),
         listActiveProcessIds: vi.fn(),
         listContainersByProcessId: vi.fn(),
         listContainersByProcessIds: vi.fn(),
@@ -318,6 +322,56 @@ describe('createSyncStatusReadPort', () => {
 })
 
 describe('createSyncTargetReadPort', () => {
+  it('lists active dashboard sync processes with process references', async () => {
+    supabaseMock.reset([
+      { id: 'process-1', reference: 'REF-001' },
+      { id: 'process-2', reference: null },
+    ])
+
+    const port = createSyncTargetReadPort({
+      processUseCases: {
+        findProcessById: vi.fn(),
+      },
+      containerUseCases: {
+        listByProcessId: vi.fn(),
+        listByProcessIds: vi.fn(async () => ({
+          containersByProcessId: new Map(),
+        })),
+        findByNumbers: vi.fn(),
+      },
+    })
+
+    const result = await port.listActiveProcessesForDashboardSync()
+
+    expect(result).toEqual([
+      { processId: 'process-1', processReference: 'REF-001' },
+      { processId: 'process-2', processReference: null },
+    ])
+  })
+
+  it('lists active process ids without depending on method binding', async () => {
+    supabaseMock.reset([
+      { id: 'process-1', reference: 'REF-001' },
+      { id: 'process-2', reference: null },
+    ])
+
+    const port = createSyncTargetReadPort({
+      processUseCases: {
+        findProcessById: vi.fn(),
+      },
+      containerUseCases: {
+        listByProcessId: vi.fn(),
+        listByProcessIds: vi.fn(async () => ({
+          containersByProcessId: new Map(),
+        })),
+        findByNumbers: vi.fn(),
+      },
+    })
+
+    const listActiveProcessIds = port.listActiveProcessIds
+    await expect(listActiveProcessIds()).resolves.toEqual(['process-1', 'process-2'])
+  })
+
   it('maps container application results into sync target records without exposing entities', async () => {
     const port = createSyncTargetReadPort({
       processUseCases: {
@@ -370,6 +424,7 @@ describe('createRefreshProcessDeps', () => {
     const deps = createRefreshProcessDeps({
       targetReadPort: {
         fetchProcessById: vi.fn(),
+        listActiveProcessesForDashboardSync: vi.fn(),
         listActiveProcessIds: vi.fn(),
         listContainersByProcessId: vi.fn(),
         listContainersByProcessIds: vi.fn(),

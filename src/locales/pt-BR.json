@@ -107,6 +107,44 @@
       "syncing": "Sincronizando...",
       "syncFailed": "A última sincronização falhou"
     },
+    "syncBatch": {
+      "panel": {
+        "title": "Resultado do Sync All",
+        "subtitle": "O dashboard foi reconciliado com o snapshot mais recente do servidor.",
+        "headlineSuccess": "Todos os targets elegíveis foram enfileirados.",
+        "headlinePartial": "O lote foi processado com resultado parcial.",
+        "headlineNoEnqueue": "Nenhum target foi enfileirado neste lote.",
+        "dismiss": "Dispensar resultado do Sync All",
+        "showAll": "Mostrar +{{count}}",
+        "showLess": "Mostrar menos",
+        "sections": {
+          "failed": "Falhas localizadas",
+          "skipped": "Ignorados explicitamente"
+        },
+        "summary": {
+          "requestedProcesses": "{{count}} processo(s) solicitados",
+          "requestedContainers": "{{count}} container(s) avaliados",
+          "enqueued": "{{count}} enfileirado(s)",
+          "skipped": "{{count}} ignorado(s)",
+          "failed": "{{count}} falha(s)"
+        }
+      },
+      "reasonCodes": {
+        "unsupportedProvider": "Provider não suportado",
+        "duplicateOpenRequest": "Sync já aberto ou duplicado no lote",
+        "missingRequiredData": "Dados obrigatórios ausentes",
+        "ineligibleTarget": "Target inelegível",
+        "enqueueFailed": "Falha ao enfileirar sync",
+        "infrastructureError": "Falha de infraestrutura ao reconciliar sync",
+        "unexpectedError": "Erro inesperado"
+      },
+      "rowIssue": {
+        "failedOnly": "{{failed}} falha(s) no último Sync All",
+        "skippedOnly": "{{skipped}} item(ns) ignorado(s) no último Sync All",
+        "mixed": "{{failed}} falha(s) e {{skipped}} item(ns) ignorado(s) no último Sync All",
+        "additionalItems": "+{{count}} item(ns)"
+      }
+    },
     "alertIndicators": {
       "title": "Alertas Operacionais",
       "total": "Total de Alertas Ativos",

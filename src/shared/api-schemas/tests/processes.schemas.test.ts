@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { TrackingPredictionHistoryResponseSchema } from '~/shared/api-schemas/processes.schemas'
+import {
+  SyncAllProcessesSuccessResponseSchema,
+  TrackingPredictionHistoryResponseSchema,
+} from '~/shared/api-schemas/processes.schemas'
 
 function expectObservedAtListIssue(result: {
   readonly success: boolean
@@ -86,5 +89,61 @@ describe('TrackingPredictionHistoryResponseSchema', () => {
     })
 
     expectObservedAtListIssue(result)
+  })
+})
+
+describe('SyncAllProcessesSuccessResponseSchema', () => {
+  it('rejects mismatched requestedContainers counts', () => {
+    const result = SyncAllProcessesSuccessResponseSchema.safeParse({
+      ok: true,
+      summary: {
+        requestedProcesses: 1,
+        requestedContainers: 3,
+        enqueued: 1,
+        skipped: 1,
+        failed: 0,
+      },
+      enqueuedTargets: [
+        {
+          processId: 'process-1',
+          processReference: 'REF-1',
+          containerNumber: 'MSCU1234567',
+          provider: 'msc',
+          syncRequestId: 'sync-1',
+        },
+      ],
+      skippedTargets: [
+        {
+          processId: 'process-1',
+          processReference: 'REF-1',
+          containerNumber: 'MRKU7654321',
+          provider: 'maersk',
+          reasonCode: 'DUPLICATE_OPEN_REQUEST',
+          reasonMessage:
+            'Target already has an open sync request or was already included in this batch.',
+        },
+      ],
+      failedTargets: [],
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects summary counts that do not match target array lengths', () => {
+    const result = SyncAllProcessesSuccessResponseSchema.safeParse({
+      ok: true,
+      summary: {
+        requestedProcesses: 1,
+        requestedContainers: 1,
+        enqueued: 0,
+        skipped: 0,
+        failed: 1,
+      },
+      enqueuedTargets: [],
+      skippedTargets: [],
+      failedTargets: [],
+    })
+
+    expect(result.success).toBe(false)
   })
 })
