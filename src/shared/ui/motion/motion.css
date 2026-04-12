@@ -84,6 +84,11 @@
   transform: scale(1);
 }
 
+.motion-dialog-size {
+  transition: height var(--motion-duration-panel) var(--motion-ease-enter);
+  will-change: height;
+}
+
 .motion-swap-region {
   transition:
     opacity var(--motion-duration-base) var(--motion-ease-enter),
@@ -178,6 +183,7 @@
   .motion-dropdown-panel,
   .motion-dialog-overlay,
   .motion-dialog-panel,
+  .motion-dialog-size,
   .motion-swap-region,
   .motion-highlight,
   .motion-copy-feedback,

@@ -73,7 +73,7 @@ function HeaderBrand(props: {
       onPointerEnter={() => props.onDashboardIntent?.()}
       onFocusIn={() => props.onDashboardIntent?.()}
       onPointerDown={() => props.onDashboardIntent?.()}
-      class="flex min-w-0 items-center gap-3 text-primary"
+      class="motion-focus-surface flex min-w-0 items-center gap-3 rounded-md text-primary transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       aria-label={BRANDING.displayTitle}
     >
       <span class="relative block h-10 w-10 shrink-0 overflow-hidden">

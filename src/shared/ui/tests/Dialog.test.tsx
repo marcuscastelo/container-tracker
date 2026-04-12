@@ -61,6 +61,7 @@ describe('Dialog', () => {
     expect(html).toContain('aria-label="Close dialog"')
     expect(html).toContain('max-w-2xl')
     expect(html).toContain('motion-dialog-panel')
+    expect(html).toContain('motion-dialog-size')
     expect(html).toContain('motion-dialog-overlay')
   })
 

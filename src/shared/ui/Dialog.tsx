@@ -4,6 +4,7 @@ import { Portal } from 'solid-js/web'
 import { useTranslation } from '~/shared/localization/i18n'
 import {
   clearMotionTimeout,
+  prefersReducedMotion,
   scheduleMotionFrame,
   scheduleMotionTimeout,
 } from '~/shared/ui/motion/motion.utils'
@@ -71,11 +72,108 @@ function DialogHeader(props: HeaderProps): JSX.Element {
   )
 }
 
+type PanelSurfaceProps = {
+  readonly widthClass: string
+  readonly panelState: 'open' | 'closed'
+  readonly title: string
+  readonly description: string | undefined
+  readonly closeLabel: string
+  readonly onClose: () => void
+  readonly children: JSX.Element
+  readonly contentShellStyle: Record<string, string>
+  readonly shouldUseInitialSizeStyle: boolean
+  readonly onContentShellRef: (element: HTMLDivElement) => void
+  readonly onContentMeasureRef: (element: HTMLDivElement) => void
+}
+
+function DialogPanelSurface(props: PanelSurfaceProps): JSX.Element {
+  return (
+    <div
+      data-state={props.panelState}
+      class={`motion-dialog-panel relative w-full ${props.widthClass} rounded-lg border border-border bg-popover text-popover-foreground shadow-xl`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dialog-title"
+    >
+      <div
+        ref={props.onContentShellRef}
+        class="motion-dialog-size"
+        style={props.shouldUseInitialSizeStyle ? {} : props.contentShellStyle}
+      >
+        <div ref={props.onContentMeasureRef}>
+          <DialogHeader
+            title={props.title}
+            description={props.description}
+            closeLabel={props.closeLabel}
+            onClose={props.onClose}
+          />
+          <div class="px-6 py-4">{props.children}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Dialog(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   const [isRendered, setIsRendered] = createSignal(false)
   const [visualState, setVisualState] = createSignal<'open' | 'closed'>('closed')
+  const [contentShellStyle, setContentShellStyle] = createSignal<Record<string, string>>({})
   let closeTimeoutId: number | null = null
+  let sizeSettleTimeoutId: number | null = null
+  let resizeObserver: ResizeObserver | null = null
+  let contentHeight = 0
+  let contentShellRef: HTMLDivElement | undefined
+  let contentMeasureRef: HTMLDivElement | undefined
+
+  const clearSizeMotion = (): void => {
+    clearMotionTimeout(sizeSettleTimeoutId)
+    sizeSettleTimeoutId = null
+  }
+
+  const resetSizeTracking = (): void => {
+    resizeObserver?.disconnect()
+    resizeObserver = null
+    clearSizeMotion()
+    contentHeight = 0
+    setContentShellStyle({})
+  }
+
+  const syncDialogHeight = (): void => {
+    if (
+      typeof window === 'undefined' ||
+      contentShellRef === undefined ||
+      contentMeasureRef === undefined
+    ) {
+      return
+    }
+
+    if (prefersReducedMotion()) {
+      contentHeight = 0
+      setContentShellStyle({})
+      return
+    }
+
+    const nextHeight = Math.ceil(contentMeasureRef.getBoundingClientRect().height)
+    if (nextHeight <= 0 || nextHeight === contentHeight) {
+      return
+    }
+
+    contentHeight = nextHeight
+    setContentShellStyle({
+      height: `${nextHeight}px`,
+      overflow: 'clip',
+    })
+
+    clearSizeMotion()
+    sizeSettleTimeoutId = scheduleMotionTimeout(() => {
+      sizeSettleTimeoutId = null
+      setContentShellStyle({
+        height: `${contentHeight}px`,
+        overflow: 'visible',
+      })
+    }, 'panel')
+  }
 
   createEffect(() => {
     if (props.open) {
@@ -105,6 +203,32 @@ export function Dialog(props: Props): JSX.Element {
   })
 
   createEffect(() => {
+    if (!isRendered()) {
+      resetSizeTracking()
+      return
+    }
+
+    scheduleMotionFrame(() => {
+      syncDialogHeight()
+    })
+
+    if (typeof ResizeObserver !== 'function' || contentMeasureRef === undefined) {
+      return
+    }
+
+    resizeObserver?.disconnect()
+    resizeObserver = new ResizeObserver(() => {
+      syncDialogHeight()
+    })
+    resizeObserver.observe(contentMeasureRef)
+
+    onCleanup(() => {
+      resizeObserver?.disconnect()
+      resizeObserver = null
+    })
+  })
+
+  createEffect(() => {
     if (!isRendered()) return
 
     const handleEscape = (e: KeyboardEvent) => {
@@ -124,6 +248,7 @@ export function Dialog(props: Props): JSX.Element {
 
   onCleanup(() => {
     clearMotionTimeout(closeTimeoutId)
+    resetSizeTracking()
   })
 
   const widthClass = () => maxWidthClasses[props.maxWidth ?? 'lg']
@@ -139,21 +264,23 @@ export function Dialog(props: Props): JSX.Element {
             aria-hidden="true"
           />
           <div class="flex min-h-full items-start justify-center p-4 pt-16 sm:pt-24">
-            <div
-              data-state={props.open && !isRendered() ? 'open' : visualState()}
-              class={`motion-dialog-panel relative w-full ${widthClass()} rounded-lg border border-border bg-popover text-popover-foreground shadow-xl`}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="dialog-title"
-            >
-              <DialogHeader
-                title={props.title}
-                description={props.description}
-                closeLabel={t(keys.dialog.close)}
-                onClose={props.onClose}
-              />
-              <div class="px-6 py-4">{props.children}</div>
-            </div>
+            <DialogPanelSurface
+              widthClass={widthClass()}
+              panelState={props.open && !isRendered() ? 'open' : visualState()}
+              title={props.title}
+              description={props.description}
+              closeLabel={t(keys.dialog.close)}
+              onClose={props.onClose}
+              children={props.children}
+              contentShellStyle={contentShellStyle()}
+              shouldUseInitialSizeStyle={props.open && !isRendered()}
+              onContentShellRef={(element) => {
+                contentShellRef = element
+              }}
+              onContentMeasureRef={(element) => {
+                contentMeasureRef = element
+              }}
+            />
           </div>
         </div>
       </Portal>

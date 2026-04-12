@@ -80,6 +80,15 @@
   animation: dashboard-skeleton-shimmer 1.35s ease-in-out infinite;
 }
 
+@layer base {
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  summary {
+    cursor: pointer;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html.theme-transitioning,
   html.theme-transitioning body {
