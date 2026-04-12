@@ -164,6 +164,7 @@ async function derivePipelineState(command: {
   readonly allObservations: readonly Observation[]
   readonly isBackfill: boolean
   readonly allowAlertMutations: boolean
+  readonly referenceNow: Instant
 }) {
   const timeline = deriveTimeline(
     command.containerId,
@@ -183,6 +184,7 @@ async function derivePipelineState(command: {
       status,
       existingAlerts,
       command.isBackfill,
+      command.referenceNow,
     )
     const newAlertDescriptors: readonly NewTrackingAlert[] = alertTransitions.newAlerts
 
@@ -202,7 +204,7 @@ async function derivePipelineState(command: {
         }
       }
 
-      const resolvedAt = systemClock.now().toIsoString()
+      const resolvedAt = command.referenceNow.toIsoString()
       for (const [reason, alertIds] of idsByReason) {
         if (reason === 'condition_cleared' || reason === 'terminal_state') {
           await command.deps.trackingAlertRepository.autoResolveMany({
@@ -327,6 +329,7 @@ export async function processSnapshot(
   containerNumber: string,
   deps: PipelineDeps,
   isBackfill: boolean = false,
+  referenceNow: Instant = systemClock.now(),
 ): Promise<PipelineResult> {
   // Step 1: Snapshot is already persisted by the caller (or we persist it here)
   // The snapshot should already have an id at this point.
@@ -349,6 +352,7 @@ export async function processSnapshot(
       allObservations,
       isBackfill,
       allowAlertMutations: false,
+      referenceNow,
     })
     const trackingValidationLifecycleRepository =
       deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
@@ -425,6 +429,7 @@ export async function processSnapshot(
       allObservations: existingObservations,
       isBackfill,
       allowAlertMutations: false,
+      referenceNow,
     })
     const trackingValidationLifecycleRepository =
       deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
@@ -477,6 +482,7 @@ export async function processSnapshot(
     allObservations,
     isBackfill,
     allowAlertMutations: true,
+    referenceNow,
   })
   const trackingValidationLifecycleRepository =
     deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository

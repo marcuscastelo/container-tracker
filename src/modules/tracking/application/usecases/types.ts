@@ -4,6 +4,8 @@ import type { ObservationRepository } from '~/modules/tracking/application/ports
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
 import type { SyncMetadataRepository } from '~/modules/tracking/application/ports/tracking.sync-metadata.repository'
 import type { TrackingValidationLifecycleRepository } from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
+import type { TrackingReplayAdminRepository } from '~/modules/tracking/features/replay/application/ports/tracking-replay-admin.repository'
+import type { TrackingReplayLockRepository } from '~/modules/tracking/features/replay/application/ports/tracking-replay-lock.repository'
 
 /**
  * Shared dependency type for all tracking use cases.
@@ -18,4 +20,6 @@ export type TrackingUseCasesDeps = {
   readonly syncMetadataRepository: SyncMetadataRepository
   readonly trackingContainmentRepository?: TrackingContainmentRepository
   readonly trackingValidationLifecycleRepository?: TrackingValidationLifecycleRepository
+  readonly replayAdminRepository?: TrackingReplayAdminRepository
+  readonly replayLockRepository?: TrackingReplayLockRepository
 }

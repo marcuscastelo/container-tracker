@@ -52,6 +52,7 @@ function makeObservationRow(
     confidence: 'high',
     provider: 'maersk',
     created_from_snapshot_id: 'snapshot-1',
+    derivation_generation_id: 'generation-1',
     carrier_label: null,
     raw_event_time: null,
     created_at: createdAt,
@@ -70,7 +71,7 @@ describe('supabaseObservationRepository', () => {
 
     const observations = await supabaseObservationRepository.findAllByContainerId('container-1')
 
-    expect(mocks.from).toHaveBeenCalledWith('container_observations')
+    expect(mocks.from).toHaveBeenCalledWith('active_container_observations')
     expect(observations.map((observation) => observation.id)).toEqual([
       'obs-actual',
       'obs-expected',

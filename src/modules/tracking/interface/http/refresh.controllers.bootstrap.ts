@@ -11,6 +11,7 @@ import {
   type RefreshControllers,
 } from '~/modules/tracking/interface/http/refresh.controllers'
 import { serverEnv } from '~/shared/config/server-env'
+import { HttpError } from '~/shared/errors/httpErrors'
 import { supabaseServer } from '~/shared/supabase/supabase.server'
 import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'
 
@@ -33,6 +34,31 @@ const RefreshStatusRowSchema = z.object({
 })
 
 const RefreshStatusRowsSchema = z.array(RefreshStatusRowSchema)
+const ReplayLockActiveResponseSchema = z.boolean()
+
+async function assertContainerReplayLockIsFree(containerNumber: string): Promise<void> {
+  const normalizedContainerNumber = containerNumber.toUpperCase().trim()
+  const replayLockResult = await supabaseServer.rpc(
+    'has_active_tracking_replay_lock_for_container_number',
+    {
+      p_container_number: normalizedContainerNumber,
+    },
+  )
+
+  const replayLockActive = ReplayLockActiveResponseSchema.parse(
+    unwrapSupabaseResultOrThrow(replayLockResult, {
+      operation: 'has_active_tracking_replay_lock_for_container_number',
+      table: 'tracking_replay_locks',
+    }),
+  )
+
+  if (replayLockActive) {
+    throw new HttpError(
+      `tracking_replay_lock_active_for_container:${normalizedContainerNumber}`,
+      409,
+    )
+  }
+}
 
 type RefreshControllersBootstrapOverrides = Partial<{
   readonly refreshRestDeps: RefreshRestContainerDeps
@@ -47,6 +73,8 @@ export function bootstrapRefreshControllers(
     containerCarrierMutation: containerUseCases,
     enqueueSyncRequest: {
       async enqueueSyncRequest(command) {
+        await assertContainerReplayLockIsFree(command.refValue)
+
         const result = await supabaseServer.rpc('enqueue_sync_request', {
           p_tenant_id: serverEnv.SYNC_DEFAULT_TENANT_ID,
           p_provider: command.provider,

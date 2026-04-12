@@ -16,10 +16,11 @@ import {
   unwrapSupabaseSingleOrNull,
 } from '~/shared/supabase/unwrapSupabaseResult'
 
-const TABLE = 'container_observations' as const
+const WRITE_TABLE = 'container_observations' as const
+const READ_TABLE = 'active_container_observations' as const
 const CONTAINERS_TABLE = 'containers' as const
 const OBSERVATION_DOMAIN_SELECT =
-  'id,fingerprint,container_id,container_number,type,temporal_kind,event_time_instant,event_date,event_time_local,event_time_zone,event_time,event_time_type,location_code,location_display,vessel_name,voyage,is_empty,confidence,provider,created_from_snapshot_id,carrier_label,raw_event_time,event_time_source,created_at,retroactive'
+  'id,fingerprint,container_id,container_number,type,temporal_kind,event_time_instant,event_date,event_time_local,event_time_zone,event_time,event_time_type,location_code,location_display,vessel_name,voyage,is_empty,confidence,provider,created_from_snapshot_id,carrier_label,raw_event_time,event_time_source,created_at,retroactive,derivation_generation_id'
 
 function compareObservationChronology(left: Observation, right: Observation): number {
   const chronologyCompare = compareObservationsChronologically(left, right)
@@ -35,21 +36,21 @@ export const supabaseObservationRepository: ObservationRepository = {
     if (observations.length === 0) return []
     const rows = observations.map(observationToInsertRow)
 
-    const result = await supabase.from(TABLE).insert(rows).select(OBSERVATION_DOMAIN_SELECT)
+    const result = await supabase.from(WRITE_TABLE).insert(rows).select(OBSERVATION_DOMAIN_SELECT)
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'insertMany',
-      table: TABLE,
+      table: WRITE_TABLE,
     })
 
     return (data ?? []).map(observationRowToDomain)
   },
   async findAllByContainerId(containerId: string): Promise<readonly Observation[]> {
     const result = await measureAuditedReadQuery({
-      table: TABLE,
+      table: READ_TABLE,
       operation: 'findAllByContainerId',
       query: () =>
         supabase
-          .from(TABLE)
+          .from(READ_TABLE)
           .select(OBSERVATION_DOMAIN_SELECT)
           .eq('container_id', containerId)
           .order('created_at', { ascending: true })
@@ -59,7 +60,7 @@ export const supabaseObservationRepository: ObservationRepository = {
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findAllByContainerId',
-      table: TABLE,
+      table: READ_TABLE,
     })
 
     return (data ?? []).map(observationRowToDomain).sort(compareObservationChronology)
@@ -70,11 +71,11 @@ export const supabaseObservationRepository: ObservationRepository = {
 
     const uniqueContainerIds = Array.from(new Set(containerIds))
     const result = await measureAuditedReadQuery({
-      table: TABLE,
+      table: READ_TABLE,
       operation: 'findAllByContainerIds',
       query: () =>
         supabase
-          .from(TABLE)
+          .from(READ_TABLE)
           .select(OBSERVATION_DOMAIN_SELECT)
           .in('container_id', uniqueContainerIds)
           .order('container_id', { ascending: true })
@@ -85,7 +86,7 @@ export const supabaseObservationRepository: ObservationRepository = {
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findAllByContainerIds',
-      table: TABLE,
+      table: READ_TABLE,
     })
 
     return [...(data ?? [])].map(observationRowToDomain).sort((left, right) => {
@@ -97,11 +98,11 @@ export const supabaseObservationRepository: ObservationRepository = {
 
   async findById(containerId: string, observationId: string): Promise<Observation | null> {
     const result = await measureAuditedReadQuery({
-      table: TABLE,
+      table: READ_TABLE,
       operation: 'findById',
       query: () =>
         supabase
-          .from(TABLE)
+          .from(READ_TABLE)
           .select(OBSERVATION_DOMAIN_SELECT)
           .eq('container_id', containerId)
           .eq('id', observationId)
@@ -111,17 +112,20 @@ export const supabaseObservationRepository: ObservationRepository = {
 
     const row = unwrapSupabaseSingleOrNull(result, {
       operation: 'findById',
-      table: TABLE,
+      table: READ_TABLE,
     })
 
     return row === null ? null : observationRowToDomain(row)
   },
 
   async findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>> {
-    const result = await supabase.from(TABLE).select('fingerprint').eq('container_id', containerId)
+    const result = await supabase
+      .from(READ_TABLE)
+      .select('fingerprint')
+      .eq('container_id', containerId)
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findFingerprintsByContainerId',
-      table: TABLE,
+      table: READ_TABLE,
     })
 
     const fingerprints = new Set<string>()
@@ -133,11 +137,11 @@ export const supabaseObservationRepository: ObservationRepository = {
 
   async listSearchObservations(): Promise<readonly TrackingSearchObservationProjection[]> {
     const observationsResult = await measureAuditedReadQuery({
-      table: TABLE,
+      table: READ_TABLE,
       operation: 'listSearchObservations.observations',
       query: () =>
         supabase
-          .from(TABLE)
+          .from(READ_TABLE)
           .select(OBSERVATION_DOMAIN_SELECT)
           .order('container_id', { ascending: true })
           .order('created_at', { ascending: true })
@@ -148,7 +152,7 @@ export const supabaseObservationRepository: ObservationRepository = {
     const observationRows =
       unwrapSupabaseResultOrThrow(observationsResult, {
         operation: 'listSearchObservations.observations',
-        table: TABLE,
+        table: READ_TABLE,
       }) ?? []
 
     if (observationRows.length === 0) {

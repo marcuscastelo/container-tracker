@@ -51,6 +51,7 @@ function createDeps(overrides: Partial<AgentSyncControllersDeps> = {}): AgentSyn
         carrierCode: 'msc',
       },
     ]),
+    hasActiveReplayLockForContainerNumber: vi.fn(async () => false),
     saveAndProcess: vi.fn(async () => ({
       snapshotId: SNAPSHOT_ID,
       newObservationsCount: NEW_OBSERVATIONS_COUNT,
@@ -300,6 +301,44 @@ describe('agent sync controllers', () => {
       syncRequestId: SYNC_REQUEST_ID,
       agentId: AGENT_ID,
     })
+  })
+
+  it('marks sync request as failed and returns 409 when replay lock is active for the container', async () => {
+    const deps = createDeps({
+      hasActiveReplayLockForContainerNumber: vi.fn(async () => true),
+    })
+    const controllers = createAgentSyncControllers(deps)
+
+    const request = new Request('http://localhost/api/tracking/snapshots/ingest', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer token-123',
+        'x-agent-id': 'agent-1',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tenant_id: TENANT_ID,
+        provider: 'msc',
+        ref: { type: 'container', value: 'MSCU1234567' },
+        observed_at: '2026-02-25T10:01:00.000Z',
+        raw: { ok: true },
+        meta: { agent_version: 'mvp-0.1' },
+        sync_request_id: SYNC_REQUEST_ID,
+      }),
+    })
+
+    const response = await controllers.ingestSnapshot({ request })
+    const body = await response.json()
+
+    expect(response.status).toBe(409)
+    expect(body.error).toBe('tracking_replay_lock_active_for_container:MSCU1234567')
+    expect(deps.markSyncRequestFailed).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      syncRequestId: SYNC_REQUEST_ID,
+      agentId: AGENT_ID,
+      errorMessage: 'tracking_replay_lock_active_for_container:MSCU1234567',
+    })
+    expect(deps.saveAndProcess).not.toHaveBeenCalled()
   })
 
   it('returns 403 when token tenant does not match ingest payload tenant_id', async () => {
