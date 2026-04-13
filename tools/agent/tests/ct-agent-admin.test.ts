@@ -283,6 +283,8 @@ describe('ct-agent-admin CLI', () => {
 
   it('returns backend update JSON for set-backend-url', async () => {
     const outputs: string[] = []
+    const publicStateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-agent-admin-backend-state-'))
+    process.env.AGENT_PUBLIC_STATE_DIR = publicStateDir
 
     const exitCode = await runCtAgentAdmin({
       argv: ['node', 'ct-agent-admin', 'set-backend-url', '{"backendUrl":"https://next.test"}'],
@@ -299,5 +301,9 @@ describe('ct-agent-admin CLI', () => {
     expect(exitCode).toBe(EXIT_OK)
     expect(outputs.join('\n')).toContain('"message": "backend changed"')
     expect(outputs.join('\n')).toContain('"backendUrl": "https://backend.changed.local"')
+
+    const backendStatePath = path.join(publicStateDir, 'control-ui-backend-state.json')
+    const backendStateRaw = fs.readFileSync(backendStatePath, 'utf8')
+    expect(backendStateRaw).toContain('"backendUrl": "https://backend.changed.local"')
   })
 })

@@ -98,4 +98,37 @@ restart_tray_for_current_session
     expect(fs.readFileSync(killCapturePath, 'utf8')).toContain('111')
     expect(fs.readFileSync(killCapturePath, 'utf8')).not.toContain('222')
   })
+
+  it('falls back to castro-aduaneira backend URL when no BACKEND_URL is provided', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rebuild-restart-linux-default-url-'))
+    const envFilePath = path.join(tempDir, '.env')
+    fs.writeFileSync(envFilePath, '\n', 'utf8')
+
+    const result = spawnSync(
+      'bash',
+      [
+        '-lc',
+        `source "$SCRIPT_PATH"
+backend_url="$(first_non_empty \
+  "$(read_env_value "$PROJECT_ENV_PATH" BACKEND_URL AGENT_BACKEND_URL || true)" \
+  "\${AGENT_BACKEND_URL:-}" \
+  "\${BACKEND_URL:-}" \
+  "$default_backend_url")"
+printf '%s' "$backend_url"
+`,
+      ],
+      {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PROJECT_ENV_PATH: envFilePath,
+          SCRIPT_PATH: scriptPath,
+        },
+      },
+    )
+
+    expect(result.status).toBe(0)
+    expect(result.stdout.trim()).toBe('https://castro-aduaneira.vercel.app/')
+  })
 })

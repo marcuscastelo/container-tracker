@@ -48,6 +48,8 @@ const EditableConfigKeySchema = z.enum([
 ])
 
 const EDITABLE_CONFIG_KEYS = EditableConfigKeySchema.options
+const REMOTE_CONTROL_CACHE_MAX_AGE_MS = 15 * 60 * 1000
+const INFRA_CONFIG_CACHE_MAX_AGE_MS = 15 * 60 * 1000
 
 type ControlSyncResult = {
   readonly baseConfig: ControlRuntimeConfig
@@ -304,6 +306,15 @@ function readInfraConfigCache(layout: AgentPathLayout) {
 
 function writeInfraConfigCache(layout: AgentPathLayout, value: unknown): void {
   writeJsonFile(layout.infraConfigPath, AgentInfraConfigCacheSchema, value)
+}
+
+function isRecentCache(fetchedAt: string, maxAgeMs: number): boolean {
+  const parsed = new Date(fetchedAt).getTime()
+  if (Number.isNaN(parsed)) {
+    return false
+  }
+
+  return Date.now() - parsed <= maxAgeMs
 }
 
 function appendAuditEvent(layout: AgentPathLayout, value: unknown): void {
@@ -685,7 +696,15 @@ export async function syncAgentControlState(command: {
 }): Promise<ControlSyncResult> {
   const baseConfig = ensureBaseRuntimeConfig(command.layout, command.currentConfig)
 
-  let remoteState = readRemoteControlCache(command.layout)?.state ?? defaultRemoteControlState()
+  const remoteControlCache = readRemoteControlCache(command.layout)
+  let remoteState = defaultRemoteControlState()
+  if (
+    remoteControlCache &&
+    isRecentCache(remoteControlCache.fetchedAt, REMOTE_CONTROL_CACHE_MAX_AGE_MS)
+  ) {
+    remoteState = remoteControlCache.state
+  }
+
   if (command.forceRemoteFetch !== false) {
     try {
       const fetchedRemoteState = await fetchRemoteControlState(command.currentConfig)
@@ -699,7 +718,11 @@ export async function syncAgentControlState(command: {
     }
   }
 
-  let infraConfig = readInfraConfigCache(command.layout)?.config ?? null
+  const infraConfigCache = readInfraConfigCache(command.layout)
+  let infraConfig =
+    infraConfigCache && isRecentCache(infraConfigCache.fetchedAt, INFRA_CONFIG_CACHE_MAX_AGE_MS)
+      ? infraConfigCache.config
+      : null
   let infraSource: 'REMOTE' | 'FALLBACK' = 'FALLBACK'
   if (command.forceRemoteFetch !== false) {
     try {

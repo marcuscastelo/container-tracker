@@ -204,4 +204,73 @@ describe('installed Linux control service', () => {
       `Waiting for the supervisor to publish the canonical control snapshot at ${path.join(publicDir, 'control-ui-state.json')}`,
     )
   })
+
+  it('prefers standalone backend-state artifact over embedded state in control-ui-state.json', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-ui-installed-data-'))
+    const publicDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-ui-installed-run-'))
+    process.env.AGENT_DATA_DIR = dataDir
+    process.env.AGENT_PUBLIC_STATE_DIR = publicDir
+
+    const snapshot = createSnapshot()
+    fs.writeFileSync(
+      path.join(publicDir, 'control-ui-state.json'),
+      `${JSON.stringify(
+        {
+          snapshot,
+          releaseInventory: { releases: [] },
+          paths: {
+            dataDir,
+            configPath: path.join(dataDir, 'config.env'),
+            releasesDir: path.join(dataDir, 'releases'),
+            logsDir: path.join(dataDir, 'logs'),
+            releaseStatePath: path.join(dataDir, 'release-state.json'),
+            runtimeHealthPath: path.join(dataDir, 'runtime-health.json'),
+            supervisorControlPath: path.join(dataDir, 'supervisor-control.json'),
+            controlOverridesPath: path.join(dataDir, 'control-overrides.local.json'),
+            controlRemoteCachePath: path.join(dataDir, 'control-remote-cache.json'),
+            infraConfigPath: path.join(dataDir, 'infra-config.json'),
+            auditLogPath: path.join(dataDir, 'agent-control-audit.ndjson'),
+          },
+          backendState: {
+            backendUrl: 'http://localhost:3000',
+            source: 'RUNTIME_CONFIG',
+            status: 'ENROLLED',
+            runtimeConfigAvailable: true,
+            bootstrapConfigAvailable: true,
+            installerTokenAvailable: true,
+            publicStateAvailable: true,
+            warnings: [],
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    )
+
+    fs.writeFileSync(
+      path.join(publicDir, 'control-ui-backend-state.json'),
+      `${JSON.stringify(
+        {
+          backendUrl: 'https://castro-aduaneira.vercel.app',
+          source: 'BOOTSTRAP',
+          status: 'BOOTSTRAP_ONLY',
+          runtimeConfigAvailable: false,
+          bootstrapConfigAvailable: true,
+          installerTokenAvailable: true,
+          publicStateAvailable: false,
+          warnings: [],
+        },
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    )
+
+    const service = createInstalledLinuxControlService()
+    const backendState = await service.getBackendState()
+
+    expect(backendState.backendUrl).toBe('https://castro-aduaneira.vercel.app')
+    expect(backendState.source).toBe('BOOTSTRAP')
+  })
 })

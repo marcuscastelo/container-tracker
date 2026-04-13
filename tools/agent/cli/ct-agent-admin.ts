@@ -286,6 +286,15 @@ export async function runCtAgentAdmin(command: {
       const result = AgentControlBackendUpdateResultSchema.parse(
         await service.setBackendUrl(input.backendUrl),
       )
+      const publicStateAvailable =
+        readAgentControlPublicState(resolveAgentPublicStatePath()) !== null
+      writeAgentControlPublicBackendState({
+        filePath: resolveAgentPublicBackendStatePath(),
+        state: AgentControlBackendStateSchema.parse({
+          ...result.state,
+          publicStateAvailable,
+        }),
+      })
       print(JSON.stringify(result, null, 2))
       return EXIT_OK
     }

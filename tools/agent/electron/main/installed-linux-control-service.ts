@@ -143,14 +143,14 @@ function buildInstalledLinuxDebugPaths(): AgentControlPaths {
 export function createInstalledLinuxControlService() {
   return {
     async getBackendState(): Promise<AgentControlBackendState> {
-      const publicState = readPublicState()
-      if (publicState?.backendState) {
-        return publicState.backendState
-      }
-
       const publicBackendState = readPublicBackendState()
       if (publicBackendState) {
         return publicBackendState
+      }
+
+      const publicState = readPublicState()
+      if (publicState?.backendState) {
+        return publicState.backendState
       }
 
       return AgentControlBackendStateSchema.parse({

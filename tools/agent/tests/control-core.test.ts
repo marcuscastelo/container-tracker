@@ -104,6 +104,10 @@ function writeReleaseEntrypoint(layout: AgentPathLayout, version: string): void 
   fs.writeFileSync(path.join(releaseDir, 'agent.js'), "console.log('ok')\n", 'utf8')
 }
 
+function recentFetchedAt(): string {
+  return new Date().toISOString()
+}
+
 describe('agent control core', () => {
   it('resolves effective state with remote precedence and cached infra fallback', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-control-core-'))
@@ -125,7 +129,7 @@ describe('agent control core', () => {
     writeJson(
       layout.controlRemoteCachePath,
       AgentControlRemoteCacheSchema.parse({
-        fetchedAt: '2026-04-04T12:00:00.000Z',
+        fetchedAt: recentFetchedAt(),
         state: {
           policy: {
             desiredVersion: '3.0.0',
@@ -141,7 +145,7 @@ describe('agent control core', () => {
     writeJson(
       layout.infraConfigPath,
       AgentInfraConfigCacheSchema.parse({
-        fetchedAt: '2026-04-04T12:00:00.000Z',
+        fetchedAt: recentFetchedAt(),
         config: {
           supabaseUrl: 'https://infra-cache.test.local',
           supabaseAnonKey: 'anon-cache',
@@ -194,7 +198,7 @@ describe('agent control core', () => {
     writeJson(
       layout.controlRemoteCachePath,
       AgentControlRemoteCacheSchema.parse({
-        fetchedAt: '2026-04-04T12:00:00.000Z',
+        fetchedAt: recentFetchedAt(),
         state: {
           policy: {
             desiredVersion: null,
@@ -258,7 +262,7 @@ describe('agent control core', () => {
     writeJson(
       layout.infraConfigPath,
       AgentInfraConfigCacheSchema.parse({
-        fetchedAt: '2026-04-04T12:00:00.000Z',
+        fetchedAt: recentFetchedAt(),
         config: {
           supabaseUrl: 'https://infra-cache.test.local',
           supabaseAnonKey: 'anon-cache',
@@ -337,7 +341,7 @@ describe('agent control core', () => {
     writeJson(
       layout.controlRemoteCachePath,
       AgentControlRemoteCacheSchema.parse({
-        fetchedAt: '2026-04-04T12:00:00.000Z',
+        fetchedAt: recentFetchedAt(),
         state: {
           policy: {
             desiredVersion: null,
@@ -436,6 +440,110 @@ describe('agent control core', () => {
     expect(restartCalls).toBe(1)
     expect(result.state.backendUrl).toBe('https://backend.changed.local')
     expect(result.state.source).toBe('BOOTSTRAP')
+    expect(fs.readFileSync(layout.bootstrapPath, 'utf8')).toContain(
+      'BACKEND_URL=https://backend.changed.local',
+    )
+  })
+
+  it('ignores stale remote policy cache so local channel override can take effect', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-control-remote-cache-stale-'))
+    const layout = createLayout(tempDir)
+    const config = createControlRuntimeConfig()
+
+    writeJson(
+      layout.controlOverridesPath,
+      LocalOverrideStateSchema.parse({
+        updatesPaused: null,
+        channel: 'canary',
+        blockedVersions: [],
+        editableConfig: {},
+      }),
+    )
+
+    writeJson(
+      layout.controlRemoteCachePath,
+      AgentControlRemoteCacheSchema.parse({
+        fetchedAt: '2000-01-01T00:00:00.000Z',
+        state: {
+          policy: {
+            desiredVersion: null,
+            updateChannel: 'stable',
+            updatesPaused: false,
+            blockedVersions: [],
+            restartRequestedAt: null,
+          },
+          commands: [],
+        },
+      }),
+    )
+
+    const result = await syncAgentControlState({
+      layout,
+      currentConfig: config,
+      forceRemoteFetch: false,
+    })
+
+    expect(result.snapshot.updates.channel.value).toBe('canary')
+    expect(result.snapshot.updates.channel.source).toBe('LOCAL')
+  })
+
+  it('updates bootstrap backend URL without materializing config.env when only base config exists', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-control-backend-base-only-'))
+    const layout = createLayout(tempDir)
+    writeJson(layout.baseRuntimeConfigPath, createControlRuntimeConfig())
+    writeJson(
+      layout.controlRemoteCachePath,
+      AgentControlRemoteCacheSchema.parse({
+        fetchedAt: recentFetchedAt(),
+        state: {
+          policy: {
+            desiredVersion: null,
+            updateChannel: 'stable',
+            updatesPaused: false,
+            blockedVersions: [],
+            restartRequestedAt: null,
+          },
+          commands: [],
+        },
+      }),
+    )
+    writeJson(
+      layout.infraConfigPath,
+      AgentInfraConfigCacheSchema.parse({
+        fetchedAt: recentFetchedAt(),
+        config: {
+          supabaseUrl: 'https://infra-cache.test.local',
+          supabaseAnonKey: 'anon-cache',
+        },
+      }),
+    )
+    fs.writeFileSync(
+      layout.bootstrapPath,
+      ['BACKEND_URL=http://localhost:3000/', 'INSTALLER_TOKEN=installer-token-test', ''].join('\n'),
+      'utf8',
+    )
+
+    let restartCalls = 0
+    const service = createAgentControlLocalService({
+      layout,
+      adapter: {
+        key: 'linux',
+        async startAgent() {},
+        async stopAgent() {},
+        async restartAgent() {
+          restartCalls += 1
+        },
+      },
+    })
+
+    const result = await service.setBackendUrl('https://backend.changed.local/')
+
+    expect(restartCalls).toBe(1)
+    expect(result.state.backendUrl).toBe('https://backend.changed.local')
+    expect(result.state.source).toBe('BOOTSTRAP')
+    expect(fs.existsSync(layout.configPath)).toBe(false)
+    expect(fs.existsSync(layout.controlRemoteCachePath)).toBe(false)
+    expect(fs.existsSync(layout.infraConfigPath)).toBe(false)
     expect(fs.readFileSync(layout.bootstrapPath, 'utf8')).toContain(
       'BACKEND_URL=https://backend.changed.local',
     )

@@ -34,7 +34,10 @@ import {
   rollbackRelease as rollbackReleaseState,
 } from '@tools/agent/release-manager'
 import { readReleaseState, writeReleaseState } from '@tools/agent/release-state'
-import { resolveAgentPublicStatePath } from '@tools/agent/runtime/paths'
+import {
+  resolveAgentPublicBackendStatePath,
+  resolveAgentPublicStatePath,
+} from '@tools/agent/runtime/paths'
 import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import { writeSupervisorControl } from '@tools/agent/supervisor-control'
 import type { z } from 'zod/v4'
@@ -180,45 +183,73 @@ function hasInstallerToken(filePath: string): boolean {
   return installerToken !== null && installerToken !== '[REDACTED]'
 }
 
-function upsertEnvFileValue(filePath: string, key: string, value: string): boolean {
-  if (!fs.existsSync(filePath)) {
-    return false
+function upsertEnvFileValue(command: {
+  readonly filePath: string
+  readonly key: string
+  readonly value: string
+  readonly createIfMissing?: boolean
+}): boolean {
+  if (!fs.existsSync(command.filePath)) {
+    if (command.createIfMissing !== true) {
+      return false
+    }
+
+    writeFileAtomic(command.filePath, `${command.key}=${command.value}\n`)
+    return true
   }
 
-  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/u)
+  const lines = fs.readFileSync(command.filePath, 'utf8').split(/\r?\n/u)
   let replaced = false
   const nextLines = lines.map((line) => {
     const parsed = parseEnvLine(line)
-    if (!parsed || parsed.key !== key) {
+    if (!parsed || parsed.key !== command.key) {
       return line
     }
 
     replaced = true
-    return `${key}=${value}`
+    return `${command.key}=${command.value}`
   })
 
   if (!replaced) {
     const insertionIndex = nextLines.at(-1) === '' ? nextLines.length - 1 : nextLines.length
-    nextLines.splice(insertionIndex, 0, `${key}=${value}`)
+    nextLines.splice(insertionIndex, 0, `${command.key}=${command.value}`)
   }
 
-  writeFileAtomic(filePath, `${nextLines.join('\n')}\n`)
+  writeFileAtomic(command.filePath, `${nextLines.join('\n')}\n`)
   return true
 }
 
-function clearPublicStateFile(): void {
+function clearPublicStateFiles(): void {
   try {
     fs.rmSync(resolveAgentPublicStatePath(), { force: true })
   } catch {
     // Ignore stale public state cleanup failures.
   }
+
+  try {
+    fs.rmSync(resolveAgentPublicBackendStatePath(), { force: true })
+  } catch {
+    // Ignore stale public backend-state cleanup failures.
+  }
+}
+
+function invalidateRemoteCaches(layout: AgentPathLayout): void {
+  for (const cachePath of [layout.controlRemoteCachePath, layout.infraConfigPath]) {
+    try {
+      fs.rmSync(cachePath, { force: true })
+    } catch {
+      // Ignore cache cleanup failures and keep command best-effort.
+    }
+  }
 }
 
 export function readAgentControlBackendState(layout: AgentPathLayout) {
   const publicStateAvailable = readAgentControlPublicState(resolveAgentPublicStatePath()) !== null
+  const runtimeConfigMaterialized = fs.existsSync(layout.configPath)
+  const baseRuntimeConfigAvailable = fs.existsSync(layout.baseRuntimeConfigPath)
   const runtimeConfigAvailable =
     readCurrentControlRuntimeConfig(layout) !== null &&
-    (fs.existsSync(layout.configPath) || fs.existsSync(layout.baseRuntimeConfigPath))
+    (runtimeConfigMaterialized || baseRuntimeConfigAvailable)
   const currentConfig = readCurrentControlRuntimeConfig(layout)
   const bootstrapConfigAvailable = fs.existsSync(layout.bootstrapPath)
   const consumedBootstrapAvailable = fs.existsSync(layout.consumedBootstrapPath)
@@ -229,15 +260,18 @@ export function readAgentControlBackendState(layout: AgentPathLayout) {
   let backendUrl: string | null = null
   let source: z.infer<typeof AgentControlBackendStateSchema>['source'] = 'NONE'
 
-  if (currentConfig) {
+  if (currentConfig && runtimeConfigMaterialized) {
     backendUrl = currentConfig.BACKEND_URL
-    source = fs.existsSync(layout.configPath) ? 'RUNTIME_CONFIG' : 'BASE_RUNTIME_CONFIG'
+    source = 'RUNTIME_CONFIG'
   } else if (bootstrapBackendUrl) {
     backendUrl = bootstrapBackendUrl
     source = 'BOOTSTRAP'
   } else if (consumedBootstrapBackendUrl) {
     backendUrl = consumedBootstrapBackendUrl
     source = 'CONSUMED_BOOTSTRAP'
+  } else if (currentConfig) {
+    backendUrl = currentConfig.BACKEND_URL
+    source = 'BASE_RUNTIME_CONFIG'
   }
 
   let status: z.infer<typeof AgentControlBackendStateSchema>['status'] = 'UNCONFIGURED'
@@ -423,6 +457,7 @@ export function createAgentControlLocalService(
     async setBackendUrl(backendUrl) {
       const normalizedBackendUrl = normalizeBackendUrl(backendUrl)
       const currentConfig = readCurrentControlRuntimeConfig(deps.layout)
+      const runtimeConfigMaterialized = fs.existsSync(deps.layout.configPath)
       let updated = false
 
       if (currentConfig) {
@@ -430,18 +465,31 @@ export function createAgentControlLocalService(
           ...currentConfig,
           BACKEND_URL: normalizedBackendUrl,
         })
-        writeFileAtomic(deps.layout.configPath, serializeRuntimeConfig(nextConfig))
         writeFileAtomic(
           deps.layout.baseRuntimeConfigPath,
           `${JSON.stringify(nextConfig, null, 2)}\n`,
         )
+        if (runtimeConfigMaterialized) {
+          writeFileAtomic(deps.layout.configPath, serializeRuntimeConfig(nextConfig))
+        }
         updated = true
       }
 
-      if (upsertEnvFileValue(deps.layout.bootstrapPath, 'BACKEND_URL', normalizedBackendUrl)) {
+      if (
+        upsertEnvFileValue({
+          filePath: deps.layout.bootstrapPath,
+          key: 'BACKEND_URL',
+          value: normalizedBackendUrl,
+          createIfMissing: !runtimeConfigMaterialized,
+        })
+      ) {
         updated = true
       } else if (
-        upsertEnvFileValue(deps.layout.consumedBootstrapPath, 'BACKEND_URL', normalizedBackendUrl)
+        upsertEnvFileValue({
+          filePath: deps.layout.consumedBootstrapPath,
+          key: 'BACKEND_URL',
+          value: normalizedBackendUrl,
+        })
       ) {
         updated = true
       }
@@ -452,7 +500,8 @@ export function createAgentControlLocalService(
         )
       }
 
-      clearPublicStateFile()
+      invalidateRemoteCaches(deps.layout)
+      clearPublicStateFiles()
       recordOperationalEvent(deps.layout, {
         type: 'CONFIG_UPDATED',
         occurredAt: new Date().toISOString(),
