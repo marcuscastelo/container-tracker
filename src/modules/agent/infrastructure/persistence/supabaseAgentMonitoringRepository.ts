@@ -27,6 +27,11 @@ function looksLikeUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value)
 }
 
+function toUniqueNormalizedVersions(values: readonly string[]): string[] {
+  const normalized = values.map((value) => value.trim()).filter((value) => value.length > 0)
+  return [...new Set(normalized)]
+}
+
 export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
   async listAgentsForTenant({ tenantId, search, capability }) {
     let query = supabaseServer
@@ -308,6 +313,59 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
     return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
   },
 
+  async updateAgentRemotePolicy({
+    tenantId,
+    agentId,
+    updatesPaused,
+    updateChannel,
+    blockedVersions,
+    desiredVersion,
+  }) {
+    const patch = {
+      ...(updatesPaused === undefined ? {} : { remote_updates_paused: updatesPaused }),
+      ...(updateChannel === undefined ? {} : { update_channel: updateChannel }),
+      ...(blockedVersions === undefined
+        ? {}
+        : { remote_blocked_versions: toUniqueNormalizedVersions(blockedVersions) }),
+      ...(desiredVersion === undefined ? {} : { desired_version: desiredVersion }),
+    }
+
+    if (Object.keys(patch).length === 0) {
+      const currentResult = await supabaseServer
+        .from('tracking_agents')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('id', agentId)
+        .is('revoked_at', null)
+        .maybeSingle()
+
+      const currentRow = unwrapSupabaseSingleOrNull(currentResult, {
+        operation: 'updateAgentRemotePolicy/current',
+        table: 'tracking_agents',
+      })
+
+      if (!currentRow) return null
+      return agentMonitoringPersistenceMappers.fromTrackingAgentRow(currentRow)
+    }
+
+    const result = await supabaseServer
+      .from('tracking_agents')
+      .update(patch)
+      .eq('id', agentId)
+      .eq('tenant_id', tenantId)
+      .is('revoked_at', null)
+      .select('*')
+      .maybeSingle()
+
+    const row = unwrapSupabaseSingleOrNull(result, {
+      operation: 'updateAgentRemotePolicy',
+      table: 'tracking_agents',
+    })
+
+    if (!row) return null
+    return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
+  },
+
   async requestAgentRestart({ tenantId, agentId, requestedAt }) {
     const result = await supabaseServer
       .from('tracking_agents')
@@ -342,6 +400,46 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
 
     unwrapSupabaseResultOrThrow(commandResult, {
       operation: 'requestAgentRestart/agent_control_commands',
+      table: 'agent_control_commands',
+    })
+
+    return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
+  },
+
+  async requestAgentReset({ tenantId, agentId, requestedAt }) {
+    const result = await supabaseServer
+      .from('tracking_agents')
+      .update({
+        restart_requested_at: requestedAt,
+        updater_state: 'draining',
+      })
+      .eq('id', agentId)
+      .eq('tenant_id', tenantId)
+      .is('revoked_at', null)
+      .select('*')
+      .maybeSingle()
+
+    const row = unwrapSupabaseSingleOrNull(result, {
+      operation: 'requestAgentReset',
+      table: 'tracking_agents',
+    })
+
+    if (!row) return null
+
+    const commandResult = await supabaseServer
+      .from('agent_control_commands')
+      .insert({
+        tenant_id: tenantId,
+        agent_id: agentId,
+        command_type: 'RESET_AGENT',
+        requested_at: requestedAt,
+        payload: {},
+        requested_by: 'control-plane',
+      })
+      .select('id')
+
+    unwrapSupabaseResultOrThrow(commandResult, {
+      operation: 'requestAgentReset/agent_control_commands',
       table: 'agent_control_commands',
     })
 

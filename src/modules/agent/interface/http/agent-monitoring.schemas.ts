@@ -68,6 +68,7 @@ const AgentActivityTypeSchema = z.enum([
 const AgentActivitySeveritySchema = z.enum(['info', 'warning', 'danger', 'success'])
 const AgentLogChannelSchema = z.enum(['stdout', 'stderr'])
 const AgentLogChannelQuerySchema = z.enum(['stdout', 'stderr', 'both'])
+const AgentControlCommandTypeSchema = z.enum(['RESET_AGENT', 'RESTART_AGENT'])
 
 const AgentListSortFieldSchema = z.enum([
   'status',
@@ -244,6 +245,59 @@ export const AgentLogIngestResponseSchema = z.object({
 export const AgentRequestUpdateBodySchema = z.object({
   desired_version: z.string().trim().min(1),
   update_channel: z.string().trim().min(1).default('stable'),
+  reason: z.string().trim().min(1),
+})
+
+export const AgentRequestRestartBodySchema = z.object({
+  reason: z.string().trim().min(1),
+})
+
+export const AgentRequestResetBodySchema = z.object({
+  reason: z.string().trim().min(1),
+})
+
+export const AgentControlStateResponseSchema = z.object({
+  policy: z.object({
+    desiredVersion: z.string().nullable(),
+    updateChannel: z.string().nullable(),
+    updatesPaused: z.boolean(),
+    blockedVersions: z.array(z.string().min(1)),
+    restartRequestedAt: z.string().datetime({ offset: true }).nullable(),
+  }),
+  commands: z.array(
+    z.object({
+      id: z.string().uuid(),
+      type: AgentControlCommandTypeSchema,
+      payload: z.record(z.string(), z.unknown()),
+      requestedAt: z.string().datetime({ offset: true }),
+    }),
+  ),
+})
+
+export const AgentRemotePolicyPatchBodySchema = z
+  .object({
+    updates_paused: z.boolean().optional(),
+    update_channel: z.string().trim().min(1).optional(),
+    blocked_versions: z.array(z.string().trim().min(1)).optional(),
+    desired_version: z.string().trim().min(1).nullable().optional(),
+    reason: z.string().trim().min(1),
+  })
+  .refine(
+    (value) =>
+      value.updates_paused !== undefined ||
+      value.update_channel !== undefined ||
+      value.blocked_versions !== undefined ||
+      value.desired_version !== undefined,
+    {
+      message:
+        'At least one of updates_paused, update_channel, blocked_versions or desired_version must be provided',
+    },
+  )
+
+export const AgentRemotePolicyOperationResponseSchema = z.object({
+  ok: z.literal(true),
+  agentId: z.string().uuid(),
+  requestedAt: z.string().datetime({ offset: true }),
 })
 
 export const AgentRequestOperationResponseSchema = z.object({
