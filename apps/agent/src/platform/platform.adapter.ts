@@ -1,4 +1,8 @@
 import process from 'node:process'
+import type {
+  PlatformAdapter as ContractPlatformAdapter,
+  PlatformProcessHandle,
+} from '@agent/core/contracts/platform.contract'
 
 // biome-ignore lint/style/noRestrictedImports: Platform runtime needs direct relative imports for portable release bundles.
 import { linuxPlatformAdapter } from './linux.adapter.ts'
@@ -37,6 +41,50 @@ export function resolvePlatformAdapter(command?: {
   }
 
   return linuxPlatformAdapter
+}
+
+export function resolvePlatformContractAdapter(command?: {
+  readonly platform?: NodeJS.Platform
+  readonly arch?: string
+}): ContractPlatformAdapter {
+  const legacyAdapter = resolvePlatformAdapter(command)
+
+  return {
+    key: legacyAdapter.key,
+    resolvePaths: (input) => legacyAdapter.resolvePaths(input),
+    startRuntime: (input): PlatformProcessHandle => {
+      const child = legacyAdapter.startRuntime({
+        scriptPath: input.scriptPath,
+        execArgv: input.execArgv,
+        env: input.env,
+        stdio: input.stdio,
+      })
+
+      return {
+        pid: child.pid,
+        child,
+      }
+    },
+    stopRuntime: (input) => {
+      legacyAdapter.stopRuntime({ child: input.handle.child })
+    },
+    restartRuntime: (input): PlatformProcessHandle => {
+      const child = legacyAdapter.restartRuntime({
+        child: input.handle.child,
+        next: {
+          scriptPath: input.next.scriptPath,
+          execArgv: input.next.execArgv,
+          env: input.next.env,
+          stdio: input.next.stdio,
+        },
+      })
+
+      return {
+        pid: child.pid,
+        child,
+      }
+    },
+  }
 }
 
 // biome-ignore lint/style/noRestrictedImports: Platform runtime needs direct relative imports for portable release bundles.

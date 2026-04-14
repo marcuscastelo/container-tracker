@@ -1,46 +1,13 @@
 import fs from 'node:fs'
-import path from 'node:path'
-import process from 'node:process'
-import { z } from 'zod/v4'
-
-const activationStateSchema = z.enum(['idle', 'pending', 'verifying', 'rolled_back', 'blocked'])
-
-const releaseFailureEntrySchema = z.object({
-  version: z.string().min(1),
-  occurred_at: z.string().datetime({ offset: true }),
-})
-
-const activationFailuresSchema = z.record(z.string().min(1), z.number().int().min(0)).default({})
-
-const releaseStateSchema = z.object({
-  current_version: z.string().min(1),
-  previous_version: z.string().min(1).nullable(),
-  last_known_good_version: z.string().min(1),
-  target_version: z.string().min(1).nullable(),
-  activation_state: activationStateSchema,
-  failure_count: z.number().int().min(0),
-  last_update_attempt: z.string().datetime({ offset: true }).nullable(),
-  blocked_versions: z.array(z.string().min(1)).default([]),
-  automatic_updates_blocked: z.boolean().default(false),
-  recent_failures: z.array(releaseFailureEntrySchema).default([]),
-  activation_failures: activationFailuresSchema,
-  last_error: z.string().nullable().default(null),
-})
-
-export type ReleaseFailureEntry = z.infer<typeof releaseFailureEntrySchema>
-
-export type ReleaseState = z.infer<typeof releaseStateSchema>
+import type {
+  ReleaseFailureEntry,
+  ReleaseState,
+} from '@agent/core/contracts/release-state.contract'
+import { writeFileAtomic } from '@agent/state/file-io'
+import { serializeReleaseState, toReleaseState } from '@agent/state/release-state.mapper'
 
 export type ActivationState = ReleaseState['activation_state']
-
-function writeFileAtomic(filePath: string, content: string): void {
-  const parentDir = path.dirname(filePath)
-  fs.mkdirSync(parentDir, { recursive: true })
-
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
-  fs.writeFileSync(tempPath, content, 'utf8')
-  fs.renameSync(tempPath, filePath)
-}
+export type { ReleaseState } from '@agent/core/contracts/release-state.contract'
 
 export function createInitialReleaseState(currentVersion: string): ReleaseState {
   return {
@@ -79,18 +46,23 @@ function migrateReleaseState(state: ReleaseState): ReleaseState {
 }
 
 function parseRawState(raw: string, fallbackVersion: string): ReleaseState {
-  const parsedJson: unknown = JSON.parse(raw)
-  const parsedState = releaseStateSchema.safeParse(parsedJson)
-  if (parsedState.success) {
-    return migrateReleaseState(parsedState.data)
+  let parsedJson: unknown
+
+  try {
+    parsedJson = JSON.parse(raw)
+  } catch {
+    return createInitialReleaseState(fallbackVersion)
   }
 
-  return createInitialReleaseState(fallbackVersion)
+  try {
+    return migrateReleaseState(toReleaseState(parsedJson))
+  } catch {
+    return createInitialReleaseState(fallbackVersion)
+  }
 }
 
 export function writeReleaseState(filePath: string, state: ReleaseState): void {
-  const normalized = releaseStateSchema.parse(state)
-  writeFileAtomic(filePath, `${JSON.stringify(normalized, null, 2)}\n`)
+  writeFileAtomic(filePath, serializeReleaseState(state))
 }
 
 export function readReleaseState(filePath: string, fallbackVersion: string): ReleaseState {
@@ -138,10 +110,16 @@ export function withRecordedFailure(command: {
     if (Number.isNaN(occurredAtMs)) {
       return false
     }
+
     return occurredAtMs >= windowStartMs
   })
 
-  const failures = [...inWindow, { version: command.version, occurred_at: command.nowIso }]
+  const failureEntry: ReleaseFailureEntry = {
+    version: command.version,
+    occurred_at: command.nowIso,
+  }
+
+  const failures = [...inWindow, failureEntry]
   const failuresForVersion = failures.filter((entry) => entry.version === command.version).length
   const crashLoopDetected = failuresForVersion >= command.crashLoopThreshold
   const currentActivationFailures = command.state.activation_failures[command.version] ?? 0

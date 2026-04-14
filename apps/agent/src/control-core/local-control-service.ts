@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import process from 'node:process'
+import { readAgentEnvFileValues } from '@agent/config/agent-config.mapper'
 import {
   type ControlRuntimeConfig,
   ControlRuntimeConfigSchema,
@@ -39,6 +39,7 @@ import {
   resolveAgentPublicStatePath,
 } from '@agent/runtime/paths'
 import type { AgentPathLayout } from '@agent/runtime-paths'
+import { writeFileAtomic } from '@agent/state/file-io'
 import { writeSupervisorControl } from '@agent/supervisor-control'
 import type { z } from 'zod/v4'
 
@@ -95,15 +96,6 @@ function resolveLocalControlAdapter(): AgentPlatformControlAdapter {
   return resolvePlatformAdapter().control
 }
 
-function writeFileAtomic(filePath: string, content: string): void {
-  const parentDir = path.dirname(filePath)
-  fs.mkdirSync(parentDir, { recursive: true })
-
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
-  fs.writeFileSync(tempPath, content, 'utf8')
-  fs.renameSync(tempPath, filePath)
-}
-
 function normalizeOptionalString(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
     return null
@@ -113,42 +105,6 @@ function normalizeOptionalString(value: string | null | undefined): string | nul
   return normalized.length > 0 ? normalized : null
 }
 
-function parseEnvLine(line: string): { readonly key: string; readonly value: string } | null {
-  const trimmed = line.trim()
-  if (trimmed.length === 0 || trimmed.startsWith('#')) {
-    return null
-  }
-
-  const separatorIndex = trimmed.indexOf('=')
-  if (separatorIndex <= 0) {
-    return null
-  }
-
-  return {
-    key: trimmed.slice(0, separatorIndex).trim(),
-    value: trimmed.slice(separatorIndex + 1).trim(),
-  }
-}
-
-function readEnvFileValues(filePath: string): Map<string, string> | null {
-  if (!fs.existsSync(filePath)) {
-    return null
-  }
-
-  const values = new Map<string, string>()
-  const raw = fs.readFileSync(filePath, 'utf8')
-  for (const line of raw.split(/\r?\n/u)) {
-    const parsed = parseEnvLine(line)
-    if (!parsed) {
-      continue
-    }
-
-    values.set(parsed.key, parsed.value)
-  }
-
-  return values
-}
-
 function normalizeBackendUrl(value: string): string {
   const trimmed = value.trim()
   const url = new URL(trimmed)
@@ -156,7 +112,7 @@ function normalizeBackendUrl(value: string): string {
 }
 
 function readBackendUrlFromEnvFile(filePath: string): string | null {
-  const values = readEnvFileValues(filePath)
+  const values = readAgentEnvFileValues(filePath)
   if (!values) {
     return null
   }
@@ -174,7 +130,7 @@ function readBackendUrlFromEnvFile(filePath: string): string | null {
 }
 
 function hasInstallerToken(filePath: string): boolean {
-  const values = readEnvFileValues(filePath)
+  const values = readAgentEnvFileValues(filePath)
   if (!values) {
     return false
   }
@@ -201,8 +157,8 @@ function upsertEnvFileValue(command: {
   const lines = fs.readFileSync(command.filePath, 'utf8').split(/\r?\n/u)
   let replaced = false
   const nextLines = lines.map((line) => {
-    const parsed = parseEnvLine(line)
-    if (!parsed || parsed.key !== command.key) {
+    const parsed = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/u)
+    if (!parsed || parsed[1] !== command.key) {
       return line
     }
 

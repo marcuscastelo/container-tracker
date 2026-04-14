@@ -1,6 +1,5 @@
 import fs from 'node:fs'
-import path from 'node:path'
-import process from 'node:process'
+import { writeFileAtomic } from '@agent/state/file-io'
 import { z } from 'zod/v4'
 
 const activityEventSchema = z.object({
@@ -40,15 +39,6 @@ const activityEventSchema = z.object({
 const activityEventListSchema = z.array(activityEventSchema)
 
 export type PendingActivityEvent = z.infer<typeof activityEventSchema>
-
-function writeFileAtomic(filePath: string, content: string): void {
-  const parentDir = path.dirname(filePath)
-  fs.mkdirSync(parentDir, { recursive: true })
-
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
-  fs.writeFileSync(tempPath, content, 'utf8')
-  fs.renameSync(tempPath, filePath)
-}
 
 function readEvents(filePath: string): readonly PendingActivityEvent[] {
   if (!fs.existsSync(filePath)) {

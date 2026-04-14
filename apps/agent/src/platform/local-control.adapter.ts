@@ -19,9 +19,7 @@ function toErrorMessage(error: unknown): string {
   return String(error)
 }
 
-function isExecFileFailure(
-  value: unknown,
-): value is {
+function isExecFileFailure(value: unknown): value is {
   readonly killed?: boolean
   readonly signal?: NodeJS.Signals | null
   readonly code?: string | number | null
@@ -61,22 +59,24 @@ function runCommand(
         timeout: timeoutMs,
       },
       (error, stdout, stderr) => {
-      if (error) {
-        const baseDetail = stderr.trim() || stdout.trim() || toErrorMessage(error)
-        if (isExecFileFailure(error) && error.killed === true && error.signal === 'SIGTERM') {
-          reject(new Error(`Command timed out after ${timeoutMs}ms: ${command} ${args.join(' ')}`))
+        if (error) {
+          const baseDetail = stderr.trim() || stdout.trim() || toErrorMessage(error)
+          if (isExecFileFailure(error) && error.killed === true && error.signal === 'SIGTERM') {
+            reject(
+              new Error(`Command timed out after ${timeoutMs}ms: ${command} ${args.join(' ')}`),
+            )
+            return
+          }
+
+          const detail = `${command} ${args.join(' ')} failed: ${baseDetail}`
+          reject(new Error(detail))
           return
         }
 
-        const detail = `${command} ${args.join(' ')} failed: ${baseDetail}`
-        reject(new Error(detail))
-        return
-      }
-
-      resolve({
-        stdout,
-        stderr,
-      })
+        resolve({
+          stdout,
+          stderr,
+        })
       },
     )
   })

@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import process from 'node:process'
 import { z } from 'zod/v4'
 // biome-ignore lint/style/noRestrictedImports: Shared updater runtime resolves direct .ts imports in release artifacts.
 import type { AgentPlatformKey } from './platform/platform.adapter.ts'
@@ -16,6 +15,8 @@ import type { ReleaseState } from './release-state.ts'
 import { hasBlockedVersion } from './release-state.ts'
 // biome-ignore lint/style/noRestrictedImports: Shared updater runtime resolves direct .ts imports in release artifacts.
 import type { AgentPathLayout } from './runtime-paths.ts'
+// biome-ignore lint/style/noRestrictedImports: Shared updater runtime resolves direct .ts imports in release artifacts.
+import { writeFileAtomic } from './state/file-io.ts'
 
 const CHECKSUM_PATTERN = /^[a-f0-9]{64}$/iu
 
@@ -212,13 +213,6 @@ export async function fetchUpdateManifest(
 
 function computeSha256(buffer: Buffer): string {
   return createHash('sha256').update(buffer).digest('hex')
-}
-
-function writeFileAtomic(filePath: string, content: Buffer | string): void {
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
-  fs.mkdirSync(path.dirname(filePath), { recursive: true })
-  fs.writeFileSync(tempPath, content)
-  fs.renameSync(tempPath, filePath)
 }
 
 function removeReleaseDirectoryIfPresent(releaseDir: string): void {

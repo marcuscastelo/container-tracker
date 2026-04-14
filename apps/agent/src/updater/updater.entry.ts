@@ -1,8 +1,13 @@
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import {
+  loadRawAgentEnvFromFile,
+  parseAgentConfig,
+  validateAgentConfig,
+} from '@agent/config/agent-config.mapper'
+import { BoundaryValidationError } from '@agent/core/errors/boundary-validation.error'
 
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { refreshAgentControlPublicLogs } from '../control-core/public-control-files.ts'
@@ -56,65 +61,30 @@ function resolveLogPath(layout: AgentPathLayout): string {
   return path.join(layout.logsDir, 'updater.log')
 }
 
-function unquoteValue(value: string): string {
-  if (value.length < 2) return value
-  const first = value.at(0)
-  const last = value.at(-1)
-  if (!first || !last) return value
-
-  if ((first === "'" && last === "'") || (first === '"' && last === '"')) {
-    return value.slice(1, -1)
-  }
-
-  return value
-}
-
-function parseEnvLine(line: string): { readonly key: string; readonly value: string } | null {
-  const trimmed = line.trim()
-  if (trimmed.length === 0 || trimmed.startsWith('#')) return null
-
-  const separatorIndex = trimmed.indexOf('=')
-  if (separatorIndex <= 0) return null
-
-  const key = trimmed.slice(0, separatorIndex).trim()
-  const rawValue = trimmed.slice(separatorIndex + 1).trim()
-  if (key.length === 0) return null
-
-  return {
-    key,
-    value: unquoteValue(rawValue),
-  }
-}
-
 function readConfigFromEnvFile(filePath: string): {
   readonly backendUrl: string
   readonly agentToken: string
   readonly agentId: string
 } {
-  if (!fs.existsSync(filePath)) {
+  const raw = loadRawAgentEnvFromFile(filePath)
+  if (!raw) {
     throw new Error(`DOTENV_PATH file not found: ${filePath}`)
   }
 
-  const raw = fs.readFileSync(filePath, 'utf8')
-  const values = new Map<string, string>()
-  for (const line of raw.split(/\r?\n/u)) {
-    const parsed = parseEnvLine(line)
-    if (!parsed) continue
-    values.set(parsed.key, parsed.value)
-  }
+  try {
+    const parsed = parseAgentConfig(raw)
+    const config = validateAgentConfig(parsed)
+    return {
+      backendUrl: config.BACKEND_URL,
+      agentToken: config.AGENT_TOKEN,
+      agentId: config.AGENT_ID,
+    }
+  } catch (error) {
+    if (error instanceof BoundaryValidationError) {
+      throw new Error(`config.env invalid for updater execution: ${error.details}`)
+    }
 
-  const backendUrl = values.get('BACKEND_URL')?.trim() ?? ''
-  const agentToken = values.get('AGENT_TOKEN')?.trim() ?? ''
-  const agentId = values.get('AGENT_ID')?.trim() ?? os.hostname()
-
-  if (backendUrl.length === 0 || agentToken.length === 0) {
-    throw new Error('config.env must define BACKEND_URL and AGENT_TOKEN for updater execution')
-  }
-
-  return {
-    backendUrl: backendUrl.replace(/\/+$/u, ''),
-    agentToken,
-    agentId: agentId.length > 0 ? agentId : os.hostname(),
+    throw error
   }
 }
 

@@ -1,6 +1,5 @@
 import fs from 'node:fs'
-import path from 'node:path'
-import process from 'node:process'
+import { readJsonFileWithSchema, writeFileAtomic } from '@agent/state/file-io'
 import { z } from 'zod/v4'
 
 const supervisorControlSchema = z.object({
@@ -10,15 +9,6 @@ const supervisorControlSchema = z.object({
 })
 
 export type SupervisorControl = z.infer<typeof supervisorControlSchema>
-
-function writeFileAtomic(filePath: string, content: string): void {
-  const parentDir = path.dirname(filePath)
-  fs.mkdirSync(parentDir, { recursive: true })
-
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
-  fs.writeFileSync(tempPath, content, 'utf8')
-  fs.renameSync(tempPath, filePath)
-}
 
 export function writeSupervisorControl(filePath: string, value: SupervisorControl): void {
   const normalized = supervisorControlSchema.parse(value)
@@ -30,18 +20,7 @@ export function readSupervisorControl(filePath: string): SupervisorControl | nul
     return null
   }
 
-  try {
-    const raw = fs.readFileSync(filePath, 'utf8')
-    const parsed: unknown = JSON.parse(raw)
-    const normalized = supervisorControlSchema.safeParse(parsed)
-    if (!normalized.success) {
-      return null
-    }
-
-    return normalized.data
-  } catch {
-    return null
-  }
+  return readJsonFileWithSchema(filePath, supervisorControlSchema)
 }
 
 export function clearSupervisorControl(filePath: string): void {

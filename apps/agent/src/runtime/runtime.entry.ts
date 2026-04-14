@@ -5,12 +5,40 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import {
+  loadRawAgentEnvFromFile,
+  parseAgentConfig,
+  parseBootstrapConfig,
+  serializeAgentConfig,
+  serializeBootstrapConfig,
+  validateAgentConfig,
+} from '@agent/config/agent-config.mapper'
+import {
   acknowledgeRemoteCommand,
   applyRemoteCommand,
   type ControlRuntimeConfig,
   syncAgentControlState,
 } from '@agent/control-core/agent-control-core'
 import { publishAgentControlPublicSnapshot } from '@agent/control-core/public-control-files'
+import {
+  type ValidatedAgentConfig,
+  ValidatedAgentConfigSchema,
+  type ValidatedBootstrapConfig,
+} from '@agent/core/contracts/agent-config.contract'
+import {
+  type AgentSyncJob,
+  BackendSyncTargetsResponseDTOSchema,
+  IngestAcceptedResponseSchema,
+  IngestFailedResponseSchema,
+} from '@agent/core/contracts/sync-job.contract'
+import { BoundaryValidationError } from '@agent/core/errors/boundary-validation.error'
+import { toHeartbeatPayload } from '@agent/observability/observability.mapper'
+import { writeFileAtomic } from '@agent/state/file-io'
+import {
+  toAgentSyncJob,
+  toBackendSyncAck,
+  toBackendSyncFailure,
+  toProviderInput,
+} from '@agent/sync/sync-job.mapper'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod/v4'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
@@ -58,36 +86,6 @@ import { EXIT_FATAL, EXIT_UPDATE_RESTART } from './lifecycle-exit-codes.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime keeps Linux public-state path resolution local to runtime helpers.
 import { resolveAgentPublicBackendStatePath, resolveAgentPublicStatePath } from './paths.ts'
 
-function unquoteValue(value: string): string {
-  if (value.length < 2) return value
-  const first = value.at(0)
-  const last = value.at(-1)
-  if (!first || !last) return value
-
-  if ((first === "'" && last === "'") || (first === '"' && last === '"')) {
-    return value.slice(1, -1)
-  }
-
-  return value
-}
-
-function parseEnvLine(line: string): { readonly key: string; readonly value: string } | null {
-  const trimmed = line.trim()
-  if (trimmed.length === 0 || trimmed.startsWith('#')) return null
-
-  const separatorIndex = trimmed.indexOf('=')
-  if (separatorIndex <= 0) return null
-
-  const key = trimmed.slice(0, separatorIndex).trim()
-  const value = trimmed.slice(separatorIndex + 1).trim()
-  if (key.length === 0) return null
-
-  return {
-    key,
-    value: unquoteValue(value),
-  }
-}
-
 function normalizeOptionalEnv(value: string | undefined): string | undefined {
   if (typeof value !== 'string') return undefined
   const normalized = value.trim()
@@ -100,15 +98,6 @@ function normalizeOptionalText(value: string | null | undefined): string | null 
   const normalized = value.trim()
   if (normalized.length === 0) return null
   return normalized
-}
-
-function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean {
-  const normalized = normalizeOptionalEnv(value)?.toLowerCase()
-  if (!normalized) return fallback
-
-  if (normalized === '1' || normalized === 'true') return true
-  if (normalized === '0' || normalized === 'false') return false
-  return fallback
 }
 
 function sanitizeText(value: string, secrets: readonly string[]): string {
@@ -169,77 +158,8 @@ function sleep(ms: number): Promise<void> {
   })
 }
 
-function loadEnvFile(filePath: string): {
-  readonly values: Map<string, string>
-  readonly raw: string
-} {
-  const raw = fs.readFileSync(filePath, 'utf8')
-  const values = new Map<string, string>()
-
-  for (const line of raw.split(/\r?\n/u)) {
-    const parsed = parseEnvLine(line)
-    if (!parsed) continue
-    values.set(parsed.key, parsed.value)
-  }
-
-  return {
-    values,
-    raw,
-  }
-}
-
-function getEnvValue(key: string, fromFile: ReadonlyMap<string, string>): string | undefined {
-  return normalizeOptionalEnv(process.env[key]) ?? normalizeOptionalEnv(fromFile.get(key))
-}
-
-const runtimeConfigSchema = z.object({
-  BACKEND_URL: z
-    .string()
-    .url()
-    .transform((value) => value.replace(/\/+$/u, '')),
-  SUPABASE_URL: z.string().url().optional(),
-  SUPABASE_ANON_KEY: z.string().min(1).optional(),
-  AGENT_TOKEN: z.string().min(1),
-  TENANT_ID: z.string().uuid(),
-  AGENT_ID: z.string().min(1).default(os.hostname()),
-  INTERVAL_SEC: z.coerce.number().int().positive().default(60),
-  LIMIT: z.coerce.number().int().min(1).max(100).default(10),
-  MAERSK_ENABLED: z.boolean().default(false),
-  MAERSK_HEADLESS: z.boolean().default(true),
-  MAERSK_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
-  MAERSK_USER_DATA_DIR: z.string().min(1).optional(),
-  AGENT_UPDATE_MANIFEST_CHANNEL: z
-    .string()
-    .trim()
-    .min(1)
-    .default('stable')
-    .transform((value) => value.toLowerCase()),
-})
-
-type RuntimeConfig = z.infer<typeof runtimeConfigSchema>
-
-const bootstrapConfigSchema = z.object({
-  BACKEND_URL: z
-    .string()
-    .url()
-    .transform((value) => value.replace(/\/+$/u, '')),
-  INSTALLER_TOKEN: z.string().min(1),
-  AGENT_ID: z.string().min(1).default(os.hostname()),
-  INTERVAL_SEC: z.coerce.number().int().positive().default(60),
-  LIMIT: z.coerce.number().int().min(1).max(100).default(10),
-  MAERSK_ENABLED: z.boolean().default(false),
-  MAERSK_HEADLESS: z.boolean().default(true),
-  MAERSK_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
-  MAERSK_USER_DATA_DIR: z.string().min(1).optional(),
-  AGENT_UPDATE_MANIFEST_CHANNEL: z
-    .string()
-    .trim()
-    .min(1)
-    .default('stable')
-    .transform((value) => value.toLowerCase()),
-})
-
-type BootstrapConfig = z.infer<typeof bootstrapConfigSchema>
+type RuntimeConfig = ValidatedAgentConfig
+type BootstrapConfig = ValidatedBootstrapConfig
 
 function toControlRuntimeConfig(config: RuntimeConfig): ControlRuntimeConfig {
   return {
@@ -260,10 +180,10 @@ function toControlRuntimeConfig(config: RuntimeConfig): ControlRuntimeConfig {
 }
 
 function toRuntimeConfigFromControlConfig(config: ControlRuntimeConfig): RuntimeConfig {
-  return runtimeConfigSchema.parse({
+  return ValidatedAgentConfigSchema.parse({
     BACKEND_URL: config.BACKEND_URL,
-    SUPABASE_URL: config.SUPABASE_URL ?? undefined,
-    SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY ?? undefined,
+    SUPABASE_URL: config.SUPABASE_URL,
+    SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY,
     AGENT_TOKEN: config.AGENT_TOKEN,
     TENANT_ID: config.TENANT_ID,
     AGENT_ID: config.AGENT_ID,
@@ -272,7 +192,7 @@ function toRuntimeConfigFromControlConfig(config: ControlRuntimeConfig): Runtime
     MAERSK_ENABLED: config.MAERSK_ENABLED,
     MAERSK_HEADLESS: config.MAERSK_HEADLESS,
     MAERSK_TIMEOUT_MS: config.MAERSK_TIMEOUT_MS,
-    MAERSK_USER_DATA_DIR: config.MAERSK_USER_DATA_DIR ?? undefined,
+    MAERSK_USER_DATA_DIR: config.MAERSK_USER_DATA_DIR,
     AGENT_UPDATE_MANIFEST_CHANNEL: config.AGENT_UPDATE_MANIFEST_CHANNEL,
   })
 }
@@ -341,68 +261,7 @@ const packageJsonSchema = z.object({
   version: z.string().min(1),
 })
 
-const PLACEHOLDER_BACKEND_HOST = 'your-backend.example.com'
-const PLACEHOLDER_SUPABASE_HOST = 'your-project.supabase.co'
-const PLACEHOLDER_TOKEN_FRAGMENT = 'replace-with-'
-const PLACEHOLDER_TENANT_ID = '00000000-0000-4000-8000-000000000000'
 const UPDATE_CHECK_INTERVAL_MS = 60_000
-
-function resolveUrlHost(value: string): string | null {
-  try {
-    return new URL(value).hostname.toLowerCase()
-  } catch {
-    return null
-  }
-}
-
-function containsPlaceholderToken(value: string | undefined): boolean {
-  const normalized = normalizeOptionalEnv(value)?.toLowerCase()
-  if (!normalized) return false
-  return normalized.includes(PLACEHOLDER_TOKEN_FRAGMENT)
-}
-
-function detectRuntimePlaceholderKeys(config: RuntimeConfig): readonly string[] {
-  const keys: string[] = []
-
-  if (resolveUrlHost(config.BACKEND_URL) === PLACEHOLDER_BACKEND_HOST) {
-    keys.push('BACKEND_URL')
-  }
-
-  if (
-    typeof config.SUPABASE_URL === 'string' &&
-    resolveUrlHost(config.SUPABASE_URL) === PLACEHOLDER_SUPABASE_HOST
-  ) {
-    keys.push('SUPABASE_URL')
-  }
-
-  if (containsPlaceholderToken(config.AGENT_TOKEN)) {
-    keys.push('AGENT_TOKEN')
-  }
-
-  if (containsPlaceholderToken(config.SUPABASE_ANON_KEY)) {
-    keys.push('SUPABASE_ANON_KEY')
-  }
-
-  if (config.TENANT_ID === PLACEHOLDER_TENANT_ID) {
-    keys.push('TENANT_ID')
-  }
-
-  return keys
-}
-
-function detectBootstrapPlaceholderKeys(config: BootstrapConfig): readonly string[] {
-  const keys: string[] = []
-
-  if (resolveUrlHost(config.BACKEND_URL) === PLACEHOLDER_BACKEND_HOST) {
-    keys.push('BACKEND_URL')
-  }
-
-  if (containsPlaceholderToken(config.INSTALLER_TOKEN)) {
-    keys.push('INSTALLER_TOKEN')
-  }
-
-  return keys
-}
 
 type PathLayout = {
   readonly dataDir: string
@@ -412,77 +271,36 @@ type PathLayout = {
 }
 
 function parseRuntimeConfigFromFile(filePath: string): RuntimeConfig | null {
-  if (!fs.existsSync(filePath)) return null
+  const raw = loadRawAgentEnvFromFile(filePath)
+  if (!raw) return null
 
-  const loaded = loadEnvFile(filePath)
-  const parsed = runtimeConfigSchema.safeParse({
-    BACKEND_URL: getEnvValue('BACKEND_URL', loaded.values),
-    SUPABASE_URL: getEnvValue('SUPABASE_URL', loaded.values),
-    SUPABASE_ANON_KEY: getEnvValue('SUPABASE_ANON_KEY', loaded.values),
-    AGENT_TOKEN: getEnvValue('AGENT_TOKEN', loaded.values),
-    TENANT_ID: getEnvValue('TENANT_ID', loaded.values),
-    AGENT_ID: getEnvValue('AGENT_ID', loaded.values),
-    INTERVAL_SEC: getEnvValue('INTERVAL_SEC', loaded.values),
-    LIMIT: getEnvValue('LIMIT', loaded.values),
-    MAERSK_ENABLED: parseBooleanFlag(getEnvValue('MAERSK_ENABLED', loaded.values), false),
-    MAERSK_HEADLESS: parseBooleanFlag(getEnvValue('MAERSK_HEADLESS', loaded.values), true),
-    MAERSK_TIMEOUT_MS: getEnvValue('MAERSK_TIMEOUT_MS', loaded.values),
-    MAERSK_USER_DATA_DIR: getEnvValue('MAERSK_USER_DATA_DIR', loaded.values),
-    AGENT_UPDATE_MANIFEST_CHANNEL: getEnvValue('AGENT_UPDATE_MANIFEST_CHANNEL', loaded.values),
-  })
+  try {
+    const parsed = parseAgentConfig(raw)
+    return validateAgentConfig(parsed)
+  } catch (error) {
+    if (error instanceof BoundaryValidationError) {
+      console.warn(`[agent] config.env is invalid, switching to bootstrap mode: ${error.details}`)
+      return null
+    }
 
-  if (!parsed.success) {
     console.warn(
-      `[agent] config.env is invalid, switching to bootstrap mode: ${parsed.error.message}`,
+      `[agent] config.env is invalid, switching to bootstrap mode: ${toErrorMessage(error)}`,
     )
     return null
   }
-
-  const placeholderKeys = detectRuntimePlaceholderKeys(parsed.data)
-  if (placeholderKeys.length > 0) {
-    console.warn(
-      `[agent] config.env contains placeholder values (${placeholderKeys.join(', ')}), switching to bootstrap mode`,
-    )
-    return null
-  }
-
-  return parsed.data
 }
 
 function parseBootstrapConfigFromFile(filePath: string): {
   readonly config: BootstrapConfig
   readonly raw: string
 } | null {
-  if (!fs.existsSync(filePath)) return null
+  const raw = loadRawAgentEnvFromFile(filePath)
+  if (!raw) return null
 
-  const loaded = loadEnvFile(filePath)
-  const parsed = bootstrapConfigSchema.safeParse({
-    BACKEND_URL: getEnvValue('BACKEND_URL', loaded.values),
-    INSTALLER_TOKEN: getEnvValue('INSTALLER_TOKEN', loaded.values),
-    AGENT_ID: getEnvValue('AGENT_ID', loaded.values),
-    INTERVAL_SEC: getEnvValue('INTERVAL_SEC', loaded.values),
-    LIMIT: getEnvValue('LIMIT', loaded.values),
-    MAERSK_ENABLED: parseBooleanFlag(getEnvValue('MAERSK_ENABLED', loaded.values), false),
-    MAERSK_HEADLESS: parseBooleanFlag(getEnvValue('MAERSK_HEADLESS', loaded.values), true),
-    MAERSK_TIMEOUT_MS: getEnvValue('MAERSK_TIMEOUT_MS', loaded.values),
-    MAERSK_USER_DATA_DIR: getEnvValue('MAERSK_USER_DATA_DIR', loaded.values),
-    AGENT_UPDATE_MANIFEST_CHANNEL: getEnvValue('AGENT_UPDATE_MANIFEST_CHANNEL', loaded.values),
-  })
-
-  if (!parsed.success) {
-    throw new Error(`invalid bootstrap.env: ${parsed.error.message}`)
-  }
-
-  const placeholderKeys = detectBootstrapPlaceholderKeys(parsed.data)
-  if (placeholderKeys.length > 0) {
-    throw new Error(
-      `invalid bootstrap.env: placeholder values detected in ${placeholderKeys.join(', ')}`,
-    )
-  }
-
+  const parsed = parseAgentConfig(raw)
   return {
-    config: parsed.data,
-    raw: loaded.raw,
+    config: parseBootstrapConfig(parsed),
+    raw: raw.raw,
   }
 }
 
@@ -560,10 +378,10 @@ function toRuntimeConfig(command: {
   readonly bootstrapConfig: BootstrapConfig
   readonly enrollResponse: EnrollResponse
 }): RuntimeConfig {
-  return runtimeConfigSchema.parse({
+  return ValidatedAgentConfigSchema.parse({
     BACKEND_URL: command.bootstrapConfig.BACKEND_URL,
-    SUPABASE_URL: command.enrollResponse.supabaseUrl,
-    SUPABASE_ANON_KEY: command.enrollResponse.supabaseAnonKey,
+    SUPABASE_URL: command.enrollResponse.supabaseUrl ?? null,
+    SUPABASE_ANON_KEY: command.enrollResponse.supabaseAnonKey ?? null,
     AGENT_TOKEN: command.enrollResponse.agentToken,
     TENANT_ID: command.enrollResponse.tenantId,
     AGENT_ID: command.bootstrapConfig.AGENT_ID,
@@ -572,65 +390,13 @@ function toRuntimeConfig(command: {
     MAERSK_ENABLED: command.enrollResponse.providers.maerskEnabled,
     MAERSK_HEADLESS: command.enrollResponse.providers.maerskHeadless,
     MAERSK_TIMEOUT_MS: command.enrollResponse.providers.maerskTimeoutMs,
-    MAERSK_USER_DATA_DIR: command.enrollResponse.providers.maerskUserDataDir,
+    MAERSK_USER_DATA_DIR: command.enrollResponse.providers.maerskUserDataDir ?? null,
     AGENT_UPDATE_MANIFEST_CHANNEL: command.bootstrapConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
   })
 }
 
-function serializeRuntimeConfig(config: RuntimeConfig): string {
-  const lines = [
-    '# Generated by runtime enrollment',
-    `BACKEND_URL=${config.BACKEND_URL}`,
-    `TENANT_ID=${config.TENANT_ID}`,
-    `AGENT_TOKEN=${config.AGENT_TOKEN}`,
-    `AGENT_ID=${config.AGENT_ID}`,
-    `INTERVAL_SEC=${config.INTERVAL_SEC}`,
-    `LIMIT=${config.LIMIT}`,
-    `MAERSK_ENABLED=${config.MAERSK_ENABLED ? 'true' : 'false'}`,
-    `MAERSK_HEADLESS=${config.MAERSK_HEADLESS ? 'true' : 'false'}`,
-    `MAERSK_TIMEOUT_MS=${config.MAERSK_TIMEOUT_MS}`,
-    `MAERSK_USER_DATA_DIR=${config.MAERSK_USER_DATA_DIR ?? ''}`,
-    `AGENT_UPDATE_MANIFEST_CHANNEL=${config.AGENT_UPDATE_MANIFEST_CHANNEL}`,
-  ]
-
-  if (config.SUPABASE_URL) {
-    lines.push(`SUPABASE_URL=${config.SUPABASE_URL}`)
-  }
-  if (config.SUPABASE_ANON_KEY) {
-    lines.push(`SUPABASE_ANON_KEY=${config.SUPABASE_ANON_KEY}`)
-  }
-
-  return `${lines.join('\n')}\n`
-}
-
-function serializeConsumedBootstrap(bootstrapConfig: BootstrapConfig): string {
-  return [
-    '# Bootstrap consumed by runtime enrollment',
-    `BACKEND_URL=${bootstrapConfig.BACKEND_URL}`,
-    'INSTALLER_TOKEN=[REDACTED]',
-    `AGENT_ID=${bootstrapConfig.AGENT_ID}`,
-    `INTERVAL_SEC=${bootstrapConfig.INTERVAL_SEC}`,
-    `LIMIT=${bootstrapConfig.LIMIT}`,
-    `MAERSK_ENABLED=${bootstrapConfig.MAERSK_ENABLED ? 'true' : 'false'}`,
-    `MAERSK_HEADLESS=${bootstrapConfig.MAERSK_HEADLESS ? 'true' : 'false'}`,
-    `MAERSK_TIMEOUT_MS=${bootstrapConfig.MAERSK_TIMEOUT_MS}`,
-    `MAERSK_USER_DATA_DIR=${bootstrapConfig.MAERSK_USER_DATA_DIR ?? ''}`,
-    `AGENT_UPDATE_MANIFEST_CHANNEL=${bootstrapConfig.AGENT_UPDATE_MANIFEST_CHANNEL}`,
-    '',
-  ].join('\n')
-}
-
-function writeFileAtomic(filePath: string, content: string): void {
-  const parentDir = path.dirname(filePath)
-  fs.mkdirSync(parentDir, { recursive: true })
-
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
-  fs.writeFileSync(tempPath, content, 'utf8')
-  fs.renameSync(tempPath, filePath)
-}
-
 function persistConfigFile(configPath: string, config: RuntimeConfig): void {
-  writeFileAtomic(configPath, serializeRuntimeConfig(config))
+  writeFileAtomic(configPath, serializeAgentConfig(config))
 }
 
 function consumeBootstrapFile(command: {
@@ -644,7 +410,10 @@ function consumeBootstrapFile(command: {
   ])
   const safeContent =
     consumedContent === command.bootstrapRaw
-      ? serializeConsumedBootstrap(command.bootstrapConfig)
+      ? serializeBootstrapConfig({
+          config: command.bootstrapConfig,
+          redactInstallerToken: true,
+        })
       : consumedContent
 
   writeFileAtomic(command.consumedBootstrapPath, safeContent)
@@ -714,110 +483,18 @@ async function resolveRuntimeConfigWithBootstrap(paths: PathLayout): Promise<Run
   }
 }
 
-const AgentTargetSchema = z.object({
-  sync_request_id: z.string().uuid(),
-  provider: z.enum(['maersk', 'msc', 'cmacgm', 'pil', 'one']),
-  ref_type: z.literal('container'),
-  ref: z.string().min(1),
-})
-
-type AgentTarget = z.infer<typeof AgentTargetSchema>
-
-const TargetsResponseSchema = z.object({
-  targets: z.array(AgentTargetSchema),
-  leased_until: z.string().nullable(),
-  queue_lag_seconds: z.number().int().min(0).nullable(),
-})
-
-const IngestAcceptedResponseSchema = z.object({
-  ok: z.literal(true),
-  snapshot_id: z.string().uuid(),
-  new_observations_count: z.number().int().min(0).optional(),
-  new_alerts_count: z.number().int().min(0).optional(),
-})
-
-const IngestFailedResponseSchema = z.object({
-  error: z.string().min(1),
-  snapshot_id: z.string().uuid().optional(),
-})
-
 const HeartbeatAckResponseSchema = z.object({
   ok: z.literal(true).optional(),
   updatedAt: z.string().datetime({ offset: true }).optional(),
   updated_at: z.string().datetime({ offset: true }).optional(),
 })
 
-type TargetsResponse = z.infer<typeof TargetsResponseSchema>
+type AgentTarget = AgentSyncJob
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return isRecord(value) ? value : null
-}
-
-function unwrapResponsePayload(payload: unknown): unknown {
-  const record = asRecord(payload)
-  if (!record) return payload
-
-  const data = asRecord(record.data)
-  if (data) return data
-
-  const result = asRecord(record.result)
-  if (result) return result
-
-  return payload
-}
-
-function toNullableString(value: unknown): string | null {
-  return typeof value === 'string' ? value : null
-}
-
-function toNullableInt(value: unknown): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null
-  return Math.max(0, Math.trunc(value))
-}
-
-function normalizeTargetItem(item: unknown): unknown {
-  const raw = asRecord(item)
-  if (!raw) return item
-
-  return {
-    sync_request_id: raw.sync_request_id ?? raw.syncRequestId ?? raw.id,
-    provider: raw.provider,
-    ref_type: raw.ref_type ?? raw.refType ?? 'container',
-    ref: raw.ref ?? raw.ref_value ?? raw.refValue ?? raw.container_number ?? raw.containerNumber,
-  }
-}
-
-function normalizeTargetsResponsePayload(payload: unknown): unknown {
-  const candidate = asRecord(unwrapResponsePayload(payload))
-  if (!candidate) return payload
-
-  let rawTargets: readonly unknown[] = []
-  if (Array.isArray(candidate.targets)) {
-    rawTargets = candidate.targets
-  } else if (Array.isArray(candidate.items)) {
-    rawTargets = candidate.items
-  }
-
-  return {
-    targets: rawTargets.map((item) => normalizeTargetItem(item)),
-    leased_until:
-      toNullableString(candidate.leased_until) ??
-      toNullableString(candidate.lease_until) ??
-      toNullableString(candidate.leaseUntil) ??
-      null,
-    queue_lag_seconds:
-      toNullableInt(candidate.queue_lag_seconds) ??
-      toNullableInt(candidate.queueLagSeconds) ??
-      null,
-  }
-}
-
-function normalizeHeartbeatAckPayload(payload: unknown): unknown {
-  return unwrapResponsePayload(payload)
+type TargetsResponse = {
+  readonly targets: readonly AgentTarget[]
+  readonly leasedUntil: string | null
+  readonly queueLagSeconds: number | null
 }
 
 type AgentRealtimeState = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CONNECTING' | 'DISCONNECTED' | 'UNKNOWN'
@@ -912,7 +589,9 @@ function buildHeaders(config: RuntimeConfig, contentType: boolean): Headers {
   return headers
 }
 
-function resolveAgentCapabilities(config: RuntimeConfig): readonly string[] {
+function resolveAgentCapabilities(
+  config: RuntimeConfig,
+): Array<'maersk' | 'msc' | 'cmacgm' | 'pil' | 'one'> {
   if (config.MAERSK_ENABLED) return ['msc', 'cmacgm', 'pil', 'one', 'maersk']
   return ['msc', 'cmacgm', 'pil', 'one']
 }
@@ -924,39 +603,41 @@ async function sendHeartbeat(command: {
   readonly activity: readonly AgentRuntimeActivity[]
   readonly occurredAt: string
 }): Promise<string> {
+  const payload = toHeartbeatPayload({
+    tenant_id: command.config.TENANT_ID,
+    hostname: os.hostname(),
+    agent_version: command.agentVersion,
+    current_version: command.agentVersion,
+    desired_version: command.state.desiredVersion,
+    update_channel: command.config.AGENT_UPDATE_MANIFEST_CHANNEL,
+    update_ready_version: command.state.updateReadyVersion,
+    restart_requested_at: command.state.restartRequestedAt,
+    realtime_state: command.state.realtimeState,
+    processing_state: command.state.processingState,
+    lease_health: command.state.leaseHealth,
+    boot_status: command.state.bootStatus,
+    update_state: command.state.updateState,
+    updater_last_checked_at: command.state.updaterLastCheckedAt,
+    active_jobs: command.state.activeJobs,
+    capabilities: resolveAgentCapabilities(command.config),
+    logs_supported: true,
+    interval_sec: command.config.INTERVAL_SEC,
+    queue_lag_seconds: command.state.queueLagSeconds,
+    last_error: command.state.lastError,
+    occurred_at: command.occurredAt,
+    activity: command.activity.map((event) => ({
+      type: event.type,
+      message: event.message,
+      severity: event.severity,
+      metadata: event.metadata ?? {},
+      occurred_at: event.occurredAt ?? null,
+    })),
+  })
+
   const response = await fetch(`${command.config.BACKEND_URL}/api/agent/heartbeat`, {
     method: 'POST',
     headers: buildHeaders(command.config, true),
-    body: JSON.stringify({
-      tenant_id: command.config.TENANT_ID,
-      hostname: os.hostname(),
-      agent_version: command.agentVersion,
-      current_version: command.agentVersion,
-      desired_version: command.state.desiredVersion,
-      update_channel: command.config.AGENT_UPDATE_MANIFEST_CHANNEL,
-      update_ready_version: command.state.updateReadyVersion,
-      restart_requested_at: command.state.restartRequestedAt,
-      realtime_state: command.state.realtimeState,
-      processing_state: command.state.processingState,
-      lease_health: command.state.leaseHealth,
-      boot_status: command.state.bootStatus,
-      update_state: command.state.updateState,
-      updater_last_checked_at: command.state.updaterLastCheckedAt,
-      active_jobs: command.state.activeJobs,
-      capabilities: resolveAgentCapabilities(command.config),
-      logs_supported: true,
-      interval_sec: command.config.INTERVAL_SEC,
-      queue_lag_seconds: command.state.queueLagSeconds,
-      last_error: command.state.lastError,
-      occurred_at: command.occurredAt,
-      activity: command.activity.map((event) => ({
-        type: event.type,
-        message: event.message,
-        severity: event.severity,
-        metadata: event.metadata ?? {},
-        occurred_at: event.occurredAt,
-      })),
-    }),
+    body: JSON.stringify(payload),
   })
 
   if (!response.ok) {
@@ -964,8 +645,8 @@ async function sendHeartbeat(command: {
     throw new Error(`heartbeat failed (${response.status}): ${details}`)
   }
 
-  const payload: unknown = await response.json().catch(() => ({}))
-  const parsed = HeartbeatAckResponseSchema.safeParse(normalizeHeartbeatAckPayload(payload))
+  const responsePayload: unknown = await response.json().catch(() => ({}))
+  const parsed = HeartbeatAckResponseSchema.safeParse(responsePayload)
   if (!parsed.success) {
     throw new Error(`invalid heartbeat response: ${parsed.error.message}`)
   }
@@ -1101,12 +782,16 @@ async function fetchTargets(
   }
 
   const payload: unknown = await response.json().catch(() => ({}))
-  const parsed = TargetsResponseSchema.safeParse(normalizeTargetsResponsePayload(payload))
+  const parsed = BackendSyncTargetsResponseDTOSchema.safeParse(payload)
   if (!parsed.success) {
     throw new Error(`invalid targets response: ${parsed.error.message}`)
   }
 
-  return parsed.data
+  return {
+    targets: parsed.data.targets.map((target) => toAgentSyncJob(target)),
+    leasedUntil: parsed.data.leased_until,
+    queueLagSeconds: parsed.data.queue_lag_seconds,
+  }
 }
 
 const maerskCaptureService = createMaerskCaptureService()
@@ -1121,8 +806,10 @@ async function performScrapeTarget(
   config: RuntimeConfig,
   target: AgentTarget,
 ): Promise<ScrapeResult> {
-  if (target.provider === 'msc') {
-    const result = await fetchMscStatus(target.ref)
+  const providerInput = toProviderInput(target)
+
+  if (providerInput.provider === 'msc') {
+    const result = await fetchMscStatus(providerInput.ref)
     return {
       raw: result.payload,
       observedAt: result.fetchedAt,
@@ -1130,8 +817,8 @@ async function performScrapeTarget(
     }
   }
 
-  if (target.provider === 'cmacgm') {
-    const result = await fetchCmaCgmStatus(target.ref)
+  if (providerInput.provider === 'cmacgm') {
+    const result = await fetchCmaCgmStatus(providerInput.ref)
     return {
       raw: result.payload,
       observedAt: result.fetchedAt,
@@ -1139,8 +826,8 @@ async function performScrapeTarget(
     }
   }
 
-  if (target.provider === 'pil') {
-    const result = await fetchPilStatus(target.ref)
+  if (providerInput.provider === 'pil') {
+    const result = await fetchPilStatus(providerInput.ref)
     return {
       raw: result.payload,
       observedAt: result.fetchedAt,
@@ -1148,8 +835,8 @@ async function performScrapeTarget(
     }
   }
 
-  if (target.provider === 'one') {
-    const result = await fetchOneStatus(target.ref)
+  if (providerInput.provider === 'one') {
+    const result = await fetchOneStatus(providerInput.ref)
     return {
       raw: result.payload,
       observedAt: result.fetchedAt,
@@ -1162,7 +849,7 @@ async function performScrapeTarget(
   }
 
   const result = await maerskCaptureService.capture({
-    container: target.ref,
+    container: providerInput.ref,
     headless: config.MAERSK_HEADLESS,
     hold: false,
     timeoutMs: config.MAERSK_TIMEOUT_MS,
@@ -1198,7 +885,12 @@ async function ingestSnapshot(
   scrape: ScrapeResult,
   agentVersion: string,
 ): Promise<
-  | { readonly kind: 'accepted'; readonly snapshotId: string }
+  | {
+      readonly kind: 'accepted'
+      readonly snapshotId: string
+      readonly newObservationsCount: number | null
+      readonly newAlertsCount: number | null
+    }
   | { readonly kind: 'failed'; readonly errorMessage: string; readonly snapshotId?: string }
   | { readonly kind: 'lease_conflict' }
 > {
@@ -1219,13 +911,13 @@ async function ingestSnapshot(
         agent_version: agentVersion,
         host: config.AGENT_ID,
       },
-      sync_request_id: target.sync_request_id,
+      sync_request_id: target.syncRequestId,
     }),
   })
 
   if (response.status === 409) {
     const body = await response.json().catch(() => ({}))
-    console.warn(`[agent] lease conflict for ${target.sync_request_id}:`, body)
+    console.warn(`[agent] lease conflict for ${target.syncRequestId}:`, body)
     return { kind: 'lease_conflict' }
   }
 
@@ -1270,7 +962,12 @@ async function ingestSnapshot(
       : ` (${newObservationsCount} new observation${newObservationsCount === 1 ? '' : 's'}${newAlertsCount === undefined ? '' : `, ${newAlertsCount} new alert${newAlertsCount === 1 ? '' : 's'}`})`
 
   console.log(`[agent] ingested ${target.ref} -> snapshot ${parsed.data.snapshot_id}${summary}`)
-  return { kind: 'accepted', snapshotId: parsed.data.snapshot_id }
+  return {
+    kind: 'accepted',
+    snapshotId: parsed.data.snapshot_id,
+    newObservationsCount: parsed.data.new_observations_count ?? null,
+    newAlertsCount: parsed.data.new_alerts_count ?? null,
+  }
 }
 
 type ProcessTargetResult =
@@ -1278,6 +975,7 @@ type ProcessTargetResult =
       readonly kind: 'success'
       readonly durationMs: number
       readonly snapshotId: string
+      readonly backendAck: ReturnType<typeof toBackendSyncAck>
     }
   | {
       readonly kind: 'lease_conflict'
@@ -1289,6 +987,7 @@ type ProcessTargetResult =
       readonly durationMs: number
       readonly errorMessage: string
       readonly snapshotId?: string
+      readonly backendFailure: ReturnType<typeof toBackendSyncFailure>
     }
 
 async function processTarget(
@@ -1306,35 +1005,59 @@ async function processTarget(
       return {
         kind: 'lease_conflict',
         durationMs: Math.max(0, Date.now() - startedAtMs),
-        errorMessage: `Lease conflict for ${target.sync_request_id}`,
+        errorMessage: `Lease conflict for ${target.syncRequestId}`,
       }
     }
 
     if (ingestResult.kind === 'failed') {
+      const backendFailure = toBackendSyncFailure({
+        job: target,
+        errorMessage: ingestResult.errorMessage,
+        occurredAt: new Date().toISOString(),
+        snapshotId: ingestResult.snapshotId ?? null,
+      })
       return {
         kind: 'failed',
         durationMs: Math.max(0, Date.now() - startedAtMs),
         errorMessage: ingestResult.errorMessage,
+        backendFailure,
         ...(ingestResult.snapshotId === undefined ? {} : { snapshotId: ingestResult.snapshotId }),
       }
     }
+
+    const backendAck = toBackendSyncAck({
+      job: target,
+      snapshotId: ingestResult.snapshotId,
+      occurredAt: new Date().toISOString(),
+      newObservationsCount: ingestResult.newObservationsCount,
+      newAlertsCount: ingestResult.newAlertsCount,
+    })
 
     return {
       kind: 'success',
       durationMs: Math.max(0, Date.now() - startedAtMs),
       snapshotId: ingestResult.snapshotId,
+      backendAck,
     }
   } catch (error) {
     const message = toErrorMessage(error)
-    console.error(`[agent] target ${target.sync_request_id} failed: ${message}`)
+    console.error(`[agent] target ${target.syncRequestId} failed: ${message}`)
     console.warn(
-      `[agent] target ${target.sync_request_id} will be available again after lease expiration`,
+      `[agent] target ${target.syncRequestId} will be available again after lease expiration`,
     )
+
+    const backendFailure = toBackendSyncFailure({
+      job: target,
+      errorMessage: message,
+      occurredAt: new Date().toISOString(),
+      snapshotId: null,
+    })
 
     return {
       kind: 'failed',
       durationMs: Math.max(0, Date.now() - startedAtMs),
       errorMessage: message,
+      backendFailure,
     }
   }
 }
@@ -1364,7 +1087,7 @@ async function runOnce(
       }
     }
 
-    state.queueLagSeconds = targetsResponse.queue_lag_seconds
+    state.queueLagSeconds = targetsResponse.queueLagSeconds
 
     if (targets.length === 0) {
       if (processed === 0) {
@@ -1396,7 +1119,7 @@ async function runOnce(
           message: result.errorMessage,
           severity: 'warning',
           metadata: {
-            syncRequestId: target.sync_request_id,
+            syncRequestId: target.syncRequestId,
             provider: target.provider,
             ref: target.ref,
             durationMs: result.durationMs,
@@ -1409,14 +1132,11 @@ async function runOnce(
       state.lastError = result.errorMessage
       activities.push({
         type: 'REQUEST_FAILED',
-        message: result.errorMessage,
+        message: result.backendFailure.error,
         severity: 'danger',
         metadata: {
-          syncRequestId: target.sync_request_id,
-          provider: target.provider,
-          ref: target.ref,
+          ...result.backendFailure,
           durationMs: result.durationMs,
-          snapshotId: result.snapshotId,
         },
       })
     }

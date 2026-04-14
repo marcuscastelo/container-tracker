@@ -1,6 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import process from 'node:process'
+import {
+  loadRawAgentEnvFromFile,
+  parseAgentConfig,
+  serializeAgentConfig,
+  validateAgentConfig,
+} from '@agent/config/agent-config.mapper'
 import {
   AgentControlAuditEventSchema,
   AgentControlRemoteCacheSchema,
@@ -13,11 +18,13 @@ import {
   type RemoteCommandRecord,
   type RemotePolicyState,
 } from '@agent/control-core/contracts'
+import { ValidatedAgentConfigSchema } from '@agent/core/contracts/agent-config.contract'
 import { appendPendingActivityEvents } from '@agent/pending-activity'
 import type { ReleaseState } from '@agent/release-state'
 import { readReleaseState, writeReleaseState } from '@agent/release-state'
 import { type RuntimeHealthRecord, readRuntimeHealth } from '@agent/runtime-health'
 import type { AgentPathLayout } from '@agent/runtime-paths'
+import { readJsonFileWithSchema, writeFileAtomic } from '@agent/state/file-io'
 import { z } from 'zod/v4'
 
 export const ControlRuntimeConfigSchema = z.object({
@@ -71,73 +78,6 @@ function normalizeOptionalString(value: string | null | undefined): string | nul
   return normalized.length > 0 ? normalized : null
 }
 
-function unquoteValue(value: string): string {
-  if (value.length < 2) {
-    return value
-  }
-
-  const first = value.at(0)
-  const last = value.at(-1)
-  if (!first || !last) {
-    return value
-  }
-
-  if ((first === "'" && last === "'") || (first === '"' && last === '"')) {
-    return value.slice(1, -1)
-  }
-
-  return value
-}
-
-function parseEnvLine(line: string): { readonly key: string; readonly value: string } | null {
-  const trimmed = line.trim()
-  if (trimmed.length === 0 || trimmed.startsWith('#')) {
-    return null
-  }
-
-  const separatorIndex = trimmed.indexOf('=')
-  if (separatorIndex <= 0) {
-    return null
-  }
-
-  const key = trimmed.slice(0, separatorIndex).trim()
-  const value = trimmed.slice(separatorIndex + 1).trim()
-  if (key.length === 0) {
-    return null
-  }
-
-  return {
-    key,
-    value: unquoteValue(value),
-  }
-}
-
-function parseBooleanFlag(value: string | null): boolean | null {
-  const normalized = normalizeOptionalString(value)?.toLowerCase()
-  if (normalized === null) {
-    return null
-  }
-
-  if (normalized === '1' || normalized === 'true') {
-    return true
-  }
-
-  if (normalized === '0' || normalized === 'false') {
-    return false
-  }
-
-  return null
-}
-
-function writeFileAtomic(filePath: string, content: string): void {
-  const parentDir = path.dirname(filePath)
-  fs.mkdirSync(parentDir, { recursive: true })
-
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
-  fs.writeFileSync(tempPath, content, 'utf8')
-  fs.renameSync(tempPath, filePath)
-}
-
 function uniqueStrings(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))]
 }
@@ -154,22 +94,7 @@ function defaultLocalOverrides() {
 }
 
 function readJsonFile<T extends z.ZodType>(filePath: string, schema: T): z.infer<T> | null {
-  if (!fs.existsSync(filePath)) {
-    return null
-  }
-
-  try {
-    const raw = fs.readFileSync(filePath, 'utf8')
-    const parsed: unknown = JSON.parse(raw)
-    const normalized = schema.safeParse(parsed)
-    if (!normalized.success) {
-      return null
-    }
-
-    return normalized.data
-  } catch {
-    return null
-  }
+  return readJsonFileWithSchema(filePath, schema)
 }
 
 function writeJsonFile<T extends z.ZodType>(filePath: string, schema: T, value: unknown): void {
@@ -182,33 +107,23 @@ function booleanToEnvString(value: boolean): string {
 }
 
 export function serializeRuntimeConfig(config: ControlRuntimeConfig): string {
-  const lines = [
-    `BACKEND_URL=${config.BACKEND_URL}`,
-    `AGENT_TOKEN=${config.AGENT_TOKEN}`,
-    `TENANT_ID=${config.TENANT_ID}`,
-    `AGENT_ID=${config.AGENT_ID}`,
-    `INTERVAL_SEC=${config.INTERVAL_SEC}`,
-    `LIMIT=${config.LIMIT}`,
-    `MAERSK_ENABLED=${config.MAERSK_ENABLED ? '1' : '0'}`,
-    `MAERSK_HEADLESS=${booleanToEnvString(config.MAERSK_HEADLESS)}`,
-    `MAERSK_TIMEOUT_MS=${config.MAERSK_TIMEOUT_MS}`,
-    `AGENT_UPDATE_MANIFEST_CHANNEL=${config.AGENT_UPDATE_MANIFEST_CHANNEL}`,
-  ]
+  const validated = ValidatedAgentConfigSchema.parse({
+    BACKEND_URL: config.BACKEND_URL,
+    SUPABASE_URL: config.SUPABASE_URL,
+    SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY,
+    AGENT_TOKEN: config.AGENT_TOKEN,
+    TENANT_ID: config.TENANT_ID,
+    AGENT_ID: config.AGENT_ID,
+    INTERVAL_SEC: config.INTERVAL_SEC,
+    LIMIT: config.LIMIT,
+    MAERSK_ENABLED: config.MAERSK_ENABLED,
+    MAERSK_HEADLESS: config.MAERSK_HEADLESS,
+    MAERSK_TIMEOUT_MS: config.MAERSK_TIMEOUT_MS,
+    MAERSK_USER_DATA_DIR: config.MAERSK_USER_DATA_DIR,
+    AGENT_UPDATE_MANIFEST_CHANNEL: config.AGENT_UPDATE_MANIFEST_CHANNEL,
+  })
 
-  const maerskUserDataDir = normalizeOptionalString(config.MAERSK_USER_DATA_DIR)
-  lines.push(`MAERSK_USER_DATA_DIR=${maerskUserDataDir ?? ''}`)
-
-  const supabaseUrl = normalizeOptionalString(config.SUPABASE_URL)
-  if (supabaseUrl) {
-    lines.push(`SUPABASE_URL=${supabaseUrl}`)
-  }
-
-  const supabaseAnonKey = normalizeOptionalString(config.SUPABASE_ANON_KEY)
-  if (supabaseAnonKey) {
-    lines.push(`SUPABASE_ANON_KEY=${supabaseAnonKey}`)
-  }
-
-  return `${lines.join('\n')}\n`
+  return serializeAgentConfig(validated)
 }
 
 function readBaseConfig(
@@ -237,33 +152,28 @@ export function readCurrentControlRuntimeConfig(
   }
 
   try {
-    const raw = fs.readFileSync(layout.configPath, 'utf8')
-    const values = new Map<string, string>()
-
-    for (const line of raw.split(/\r?\n/u)) {
-      const parsed = parseEnvLine(line)
-      if (!parsed) {
-        continue
-      }
-
-      values.set(parsed.key, parsed.value)
+    const rawConfig = loadRawAgentEnvFromFile(layout.configPath)
+    if (!rawConfig) {
+      return null
     }
 
+    const parsed = parseAgentConfig(rawConfig)
+    const validated = validateAgentConfig(parsed)
+
     return ControlRuntimeConfigSchema.parse({
-      BACKEND_URL: values.get('BACKEND_URL'),
-      SUPABASE_URL: normalizeOptionalString(values.get('SUPABASE_URL') ?? null),
-      SUPABASE_ANON_KEY: normalizeOptionalString(values.get('SUPABASE_ANON_KEY') ?? null),
-      AGENT_TOKEN: values.get('AGENT_TOKEN'),
-      TENANT_ID: values.get('TENANT_ID'),
-      AGENT_ID: values.get('AGENT_ID'),
-      INTERVAL_SEC: Number.parseInt(values.get('INTERVAL_SEC') ?? '', 10),
-      LIMIT: Number.parseInt(values.get('LIMIT') ?? '', 10),
-      MAERSK_ENABLED: parseBooleanFlag(values.get('MAERSK_ENABLED') ?? null) ?? false,
-      MAERSK_HEADLESS: parseBooleanFlag(values.get('MAERSK_HEADLESS') ?? null) ?? true,
-      MAERSK_TIMEOUT_MS: Number.parseInt(values.get('MAERSK_TIMEOUT_MS') ?? '', 10),
-      MAERSK_USER_DATA_DIR: normalizeOptionalString(values.get('MAERSK_USER_DATA_DIR') ?? null),
-      AGENT_UPDATE_MANIFEST_CHANNEL:
-        normalizeOptionalString(values.get('AGENT_UPDATE_MANIFEST_CHANNEL') ?? null) ?? 'stable',
+      BACKEND_URL: validated.BACKEND_URL,
+      SUPABASE_URL: validated.SUPABASE_URL,
+      SUPABASE_ANON_KEY: validated.SUPABASE_ANON_KEY,
+      AGENT_TOKEN: validated.AGENT_TOKEN,
+      TENANT_ID: validated.TENANT_ID,
+      AGENT_ID: validated.AGENT_ID,
+      INTERVAL_SEC: validated.INTERVAL_SEC,
+      LIMIT: validated.LIMIT,
+      MAERSK_ENABLED: validated.MAERSK_ENABLED,
+      MAERSK_HEADLESS: validated.MAERSK_HEADLESS,
+      MAERSK_TIMEOUT_MS: validated.MAERSK_TIMEOUT_MS,
+      MAERSK_USER_DATA_DIR: validated.MAERSK_USER_DATA_DIR,
+      AGENT_UPDATE_MANIFEST_CHANNEL: validated.AGENT_UPDATE_MANIFEST_CHANNEL,
     })
   } catch {
     return null

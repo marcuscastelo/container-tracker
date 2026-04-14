@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import process from 'node:process'
 import {
   readCurrentControlRuntimeConfig,
   syncAgentControlState,
@@ -20,6 +19,7 @@ import {
   writeAgentControlPublicState,
 } from '@agent/control-core/public-control-state'
 import type { AgentPathLayout } from '@agent/runtime-paths'
+import { writeFileAtomic } from '@agent/state/file-io'
 import type { z } from 'zod/v4'
 
 const LOG_FILE_BY_CHANNEL = {
@@ -30,15 +30,6 @@ const LOG_FILE_BY_CHANNEL = {
 } as const
 
 type ManagedLogChannel = Exclude<keyof typeof LOG_FILE_BY_CHANNEL, 'all'>
-
-function writeFileAtomic(filePath: string, content: string): void {
-  const parentDir = path.dirname(filePath)
-  fs.mkdirSync(parentDir, { recursive: true })
-
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
-  fs.writeFileSync(tempPath, content, 'utf8')
-  fs.renameSync(tempPath, filePath)
-}
 
 function readJsonFile<T>(command: {
   readonly filePath: string

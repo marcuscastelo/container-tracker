@@ -11,7 +11,7 @@ import {
   refreshAgentControlPublicLogs,
 } from '../control-core/public-control-files.ts'
 import { appendPendingActivityEvents } from '../pending-activity.ts'
-import { resolvePlatformAdapter } from '../platform/platform.adapter.ts'
+import { resolvePlatformContractAdapter } from '../platform/platform.adapter.ts'
 // biome-ignore lint/performance/noNamespaceImport: Supervisor runtime keeps grouped release-manager symbols for resilient formatting.
 import * as releaseManager from '../release-manager.ts'
 import { readReleaseState, withRecordedFailure, writeReleaseState } from '../release-state.ts'
@@ -343,13 +343,14 @@ async function runChildWithHealthGate(command: {
   readonly logsDir: string
   readonly onStabilityConfirmed: () => void
 }): Promise<ChildRunOutcome> {
-  const platformAdapter = resolvePlatformAdapter()
-  const child = platformAdapter.startRuntime({
+  const platformAdapter = resolvePlatformContractAdapter()
+  const runtimeHandle = platformAdapter.startRuntime({
     scriptPath: command.scriptPath,
     execArgv: resolveRuntimeExecArgv(command.scriptPath),
     env: command.env,
     stdio: 'pipe',
   })
+  const child = runtimeHandle.child
   mirrorRuntimeOutput({
     child,
     logsDir: command.logsDir,
@@ -390,7 +391,7 @@ async function runChildWithHealthGate(command: {
 
     if (!startupConfirmed && !childExited) {
       startupTimedOut = true
-      platformAdapter.stopRuntime({ child })
+      platformAdapter.stopRuntime({ handle: runtimeHandle })
       return
     }
 
@@ -429,13 +430,14 @@ async function runChildWithoutHealthGate(command: {
   readonly logsDir: string
   readonly version: string
 }): Promise<ChildRunOutcome> {
-  const platformAdapter = resolvePlatformAdapter()
-  const child = platformAdapter.startRuntime({
+  const platformAdapter = resolvePlatformContractAdapter()
+  const runtimeHandle = platformAdapter.startRuntime({
     scriptPath: command.scriptPath,
     execArgv: resolveRuntimeExecArgv(command.scriptPath),
     env: command.env,
     stdio: 'pipe',
   })
+  const child = runtimeHandle.child
   mirrorRuntimeOutput({
     child,
     logsDir: command.logsDir,

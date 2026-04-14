@@ -7,7 +7,21 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-
+import {
+  loadRawAgentEnvFromFile,
+  parseAgentConfig,
+  parseBootstrapConfig,
+  serializeAgentConfig,
+  serializeBootstrapConfig,
+  validateAgentConfig,
+} from '@agent/config/agent-config.mapper'
+import {
+  type ValidatedAgentConfig,
+  ValidatedAgentConfigSchema,
+  type ValidatedBootstrapConfig,
+} from '@agent/core/contracts/agent-config.contract'
+import { writeFileAtomic } from '@agent/state/file-io'
+import { toReleaseState } from '@agent/state/release-state.mapper'
 import { z } from 'zod/v4'
 
 // biome-ignore lint/style/noRestrictedImports: CLI runtime resolves direct .ts imports for bundled agent execution.
@@ -19,58 +33,8 @@ import { resolveAgentPathLayout } from '../runtime-paths.ts'
 
 const AGENT_SERVICE_NAME = 'container-tracker-agent'
 const JOURNAL_TAIL_LINES = '200'
-const DEFAULT_AGENT_UPDATE_MANIFEST_CHANNEL = 'stable'
-const PLACEHOLDER_BACKEND_HOST = 'your-backend.example.com'
-const PLACEHOLDER_TOKEN_FRAGMENT = 'replace-with-'
-
-const runtimeConfigSchema = z.object({
-  BACKEND_URL: z
-    .string()
-    .url()
-    .transform((value) => value.replace(/\/+$/u, '')),
-  SUPABASE_URL: z.string().url().optional(),
-  SUPABASE_ANON_KEY: z.string().min(1).optional(),
-  AGENT_TOKEN: z.string().min(1),
-  TENANT_ID: z.string().uuid(),
-  AGENT_ID: z.string().min(1).default(os.hostname()),
-  INTERVAL_SEC: z.coerce.number().int().positive().default(60),
-  LIMIT: z.coerce.number().int().min(1).max(100).default(10),
-  MAERSK_ENABLED: z.boolean().default(false),
-  MAERSK_HEADLESS: z.boolean().default(true),
-  MAERSK_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
-  MAERSK_USER_DATA_DIR: z.string().min(1).optional(),
-  AGENT_UPDATE_MANIFEST_CHANNEL: z
-    .string()
-    .trim()
-    .min(1)
-    .default(DEFAULT_AGENT_UPDATE_MANIFEST_CHANNEL)
-    .transform((value) => value.toLowerCase()),
-})
-
-type RuntimeConfig = z.infer<typeof runtimeConfigSchema>
-
-const bootstrapConfigSchema = z.object({
-  BACKEND_URL: z
-    .string()
-    .url()
-    .transform((value) => value.replace(/\/+$/u, '')),
-  INSTALLER_TOKEN: z.string().min(1),
-  AGENT_ID: z.string().min(1).default(os.hostname()),
-  INTERVAL_SEC: z.coerce.number().int().positive().default(60),
-  LIMIT: z.coerce.number().int().min(1).max(100).default(10),
-  MAERSK_ENABLED: z.boolean().default(false),
-  MAERSK_HEADLESS: z.boolean().default(true),
-  MAERSK_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
-  MAERSK_USER_DATA_DIR: z.string().min(1).optional(),
-  AGENT_UPDATE_MANIFEST_CHANNEL: z
-    .string()
-    .trim()
-    .min(1)
-    .default(DEFAULT_AGENT_UPDATE_MANIFEST_CHANNEL)
-    .transform((value) => value.toLowerCase()),
-})
-
-type BootstrapConfig = z.infer<typeof bootstrapConfigSchema>
+type RuntimeConfig = ValidatedAgentConfig
+type BootstrapConfig = ValidatedBootstrapConfig
 
 const enrollResponseSchema = z.object({
   agentToken: z.string().min(1),
@@ -106,171 +70,33 @@ function normalizeOptionalEnv(value: string | undefined): string | undefined {
   return normalized
 }
 
-function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean {
-  const normalized = normalizeOptionalEnv(value)?.toLowerCase()
-  if (!normalized) return fallback
-
-  if (normalized === '1' || normalized === 'true') return true
-  if (normalized === '0' || normalized === 'false') return false
-  return fallback
-}
-
-function unquoteValue(value: string): string {
-  if (value.length < 2) return value
-  const first = value.at(0)
-  const last = value.at(-1)
-  if (!first || !last) return value
-
-  if ((first === "'" && last === "'") || (first === '"' && last === '"')) {
-    return value.slice(1, -1)
+function parseRuntimeConfigFromFile(filePath: string): RuntimeConfig | null {
+  const raw = loadRawAgentEnvFromFile(filePath)
+  if (!raw) {
+    return null
   }
 
-  return value
-}
-
-function parseEnvLine(line: string): { readonly key: string; readonly value: string } | null {
-  const trimmed = line.trim()
-  if (trimmed.length === 0 || trimmed.startsWith('#')) return null
-
-  const separatorIndex = trimmed.indexOf('=')
-  if (separatorIndex <= 0) return null
-
-  const key = trimmed.slice(0, separatorIndex).trim()
-  const value = trimmed.slice(separatorIndex + 1).trim()
-  if (key.length === 0) return null
-
-  return {
-    key,
-    value: unquoteValue(value),
-  }
-}
-
-function loadEnvFile(filePath: string): {
-  readonly values: Map<string, string>
-  readonly raw: string
-} {
-  const raw = fs.readFileSync(filePath, 'utf8')
-  const values = new Map<string, string>()
-
-  for (const line of raw.split(/\r?\n/u)) {
-    const parsed = parseEnvLine(line)
-    if (!parsed) continue
-    values.set(parsed.key, parsed.value)
-  }
-
-  return {
-    values,
-    raw,
-  }
-}
-
-function getEnvValue(key: string, fromFile: ReadonlyMap<string, string>): string | undefined {
-  return normalizeOptionalEnv(process.env[key]) ?? normalizeOptionalEnv(fromFile.get(key))
-}
-
-function resolveUrlHost(value: string): string | null {
   try {
-    return new URL(value).hostname.toLowerCase()
+    const parsed = parseAgentConfig(raw)
+    return validateAgentConfig(parsed)
   } catch {
     return null
   }
-}
-
-function containsPlaceholderToken(value: string | undefined): boolean {
-  const normalized = normalizeOptionalEnv(value)?.toLowerCase()
-  if (!normalized) return false
-  return normalized.includes(PLACEHOLDER_TOKEN_FRAGMENT)
-}
-
-function detectRuntimePlaceholderKeys(config: RuntimeConfig): readonly string[] {
-  const keys: string[] = []
-
-  if (resolveUrlHost(config.BACKEND_URL) === PLACEHOLDER_BACKEND_HOST) {
-    keys.push('BACKEND_URL')
-  }
-
-  if (containsPlaceholderToken(config.AGENT_TOKEN)) {
-    keys.push('AGENT_TOKEN')
-  }
-
-  if (containsPlaceholderToken(config.SUPABASE_ANON_KEY)) {
-    keys.push('SUPABASE_ANON_KEY')
-  }
-
-  return keys
-}
-
-function parseRuntimeConfigFromFile(filePath: string): RuntimeConfig | null {
-  if (!fs.existsSync(filePath)) {
-    return null
-  }
-
-  const loaded = loadEnvFile(filePath)
-  const parsed = runtimeConfigSchema.safeParse({
-    BACKEND_URL: getEnvValue('BACKEND_URL', loaded.values),
-    SUPABASE_URL: getEnvValue('SUPABASE_URL', loaded.values),
-    SUPABASE_ANON_KEY: getEnvValue('SUPABASE_ANON_KEY', loaded.values),
-    AGENT_TOKEN: getEnvValue('AGENT_TOKEN', loaded.values),
-    TENANT_ID: getEnvValue('TENANT_ID', loaded.values),
-    AGENT_ID: getEnvValue('AGENT_ID', loaded.values),
-    INTERVAL_SEC: getEnvValue('INTERVAL_SEC', loaded.values),
-    LIMIT: getEnvValue('LIMIT', loaded.values),
-    MAERSK_ENABLED: parseBooleanFlag(getEnvValue('MAERSK_ENABLED', loaded.values), false),
-    MAERSK_HEADLESS: parseBooleanFlag(getEnvValue('MAERSK_HEADLESS', loaded.values), true),
-    MAERSK_TIMEOUT_MS: getEnvValue('MAERSK_TIMEOUT_MS', loaded.values),
-    MAERSK_USER_DATA_DIR: getEnvValue('MAERSK_USER_DATA_DIR', loaded.values),
-    AGENT_UPDATE_MANIFEST_CHANNEL: getEnvValue('AGENT_UPDATE_MANIFEST_CHANNEL', loaded.values),
-  })
-
-  if (!parsed.success) {
-    return null
-  }
-
-  const placeholderKeys = detectRuntimePlaceholderKeys(parsed.data)
-  if (placeholderKeys.length > 0) {
-    return null
-  }
-
-  return parsed.data
 }
 
 function parseBootstrapConfigFromFile(filePath: string): {
   readonly config: BootstrapConfig
   readonly raw: string
 } | null {
-  if (!fs.existsSync(filePath)) {
+  const raw = loadRawAgentEnvFromFile(filePath)
+  if (!raw) {
     return null
   }
 
-  const loaded = loadEnvFile(filePath)
-  const parsed = bootstrapConfigSchema.safeParse({
-    BACKEND_URL: getEnvValue('BACKEND_URL', loaded.values),
-    INSTALLER_TOKEN: getEnvValue('INSTALLER_TOKEN', loaded.values),
-    AGENT_ID: getEnvValue('AGENT_ID', loaded.values),
-    INTERVAL_SEC: getEnvValue('INTERVAL_SEC', loaded.values),
-    LIMIT: getEnvValue('LIMIT', loaded.values),
-    MAERSK_ENABLED: parseBooleanFlag(getEnvValue('MAERSK_ENABLED', loaded.values), false),
-    MAERSK_HEADLESS: parseBooleanFlag(getEnvValue('MAERSK_HEADLESS', loaded.values), true),
-    MAERSK_TIMEOUT_MS: getEnvValue('MAERSK_TIMEOUT_MS', loaded.values),
-    MAERSK_USER_DATA_DIR: getEnvValue('MAERSK_USER_DATA_DIR', loaded.values),
-    AGENT_UPDATE_MANIFEST_CHANNEL: getEnvValue('AGENT_UPDATE_MANIFEST_CHANNEL', loaded.values),
-  })
-
-  if (!parsed.success) {
-    throw new Error(`invalid bootstrap.env: ${parsed.error.message}`)
-  }
-
-  if (resolveUrlHost(parsed.data.BACKEND_URL) === PLACEHOLDER_BACKEND_HOST) {
-    throw new Error('invalid bootstrap.env: placeholder BACKEND_URL')
-  }
-
-  if (containsPlaceholderToken(parsed.data.INSTALLER_TOKEN)) {
-    throw new Error('invalid bootstrap.env: placeholder INSTALLER_TOKEN')
-  }
-
+  const parsed = parseAgentConfig(raw)
   return {
-    config: parsed.data,
-    raw: loaded.raw,
+    config: parseBootstrapConfig(parsed),
+    raw: raw.raw,
   }
 }
 
@@ -357,10 +183,10 @@ function toRuntimeConfig(command: {
   readonly bootstrapConfig: BootstrapConfig
   readonly enrollResponse: EnrollResponse
 }): RuntimeConfig {
-  return runtimeConfigSchema.parse({
+  return ValidatedAgentConfigSchema.parse({
     BACKEND_URL: command.bootstrapConfig.BACKEND_URL,
-    SUPABASE_URL: command.enrollResponse.supabaseUrl,
-    SUPABASE_ANON_KEY: command.enrollResponse.supabaseAnonKey,
+    SUPABASE_URL: command.enrollResponse.supabaseUrl ?? null,
+    SUPABASE_ANON_KEY: command.enrollResponse.supabaseAnonKey ?? null,
     AGENT_TOKEN: command.enrollResponse.agentToken,
     TENANT_ID: command.enrollResponse.tenantId,
     AGENT_ID: command.bootstrapConfig.AGENT_ID,
@@ -369,36 +195,9 @@ function toRuntimeConfig(command: {
     MAERSK_ENABLED: command.enrollResponse.providers.maerskEnabled,
     MAERSK_HEADLESS: command.enrollResponse.providers.maerskHeadless,
     MAERSK_TIMEOUT_MS: command.enrollResponse.providers.maerskTimeoutMs,
-    MAERSK_USER_DATA_DIR: command.enrollResponse.providers.maerskUserDataDir,
+    MAERSK_USER_DATA_DIR: command.enrollResponse.providers.maerskUserDataDir ?? null,
     AGENT_UPDATE_MANIFEST_CHANNEL: command.bootstrapConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
   })
-}
-
-function serializeRuntimeConfig(config: RuntimeConfig): string {
-  const lines = [
-    '# Generated by runtime enrollment',
-    `BACKEND_URL=${config.BACKEND_URL}`,
-    `TENANT_ID=${config.TENANT_ID}`,
-    `AGENT_TOKEN=${config.AGENT_TOKEN}`,
-    `AGENT_ID=${config.AGENT_ID}`,
-    `INTERVAL_SEC=${config.INTERVAL_SEC}`,
-    `LIMIT=${config.LIMIT}`,
-    `MAERSK_ENABLED=${config.MAERSK_ENABLED ? 'true' : 'false'}`,
-    `MAERSK_HEADLESS=${config.MAERSK_HEADLESS ? 'true' : 'false'}`,
-    `MAERSK_TIMEOUT_MS=${config.MAERSK_TIMEOUT_MS}`,
-    `MAERSK_USER_DATA_DIR=${config.MAERSK_USER_DATA_DIR ?? ''}`,
-    `AGENT_UPDATE_MANIFEST_CHANNEL=${config.AGENT_UPDATE_MANIFEST_CHANNEL}`,
-  ]
-
-  if (config.SUPABASE_URL) {
-    lines.push(`SUPABASE_URL=${config.SUPABASE_URL}`)
-  }
-
-  if (config.SUPABASE_ANON_KEY) {
-    lines.push(`SUPABASE_ANON_KEY=${config.SUPABASE_ANON_KEY}`)
-  }
-
-  return `${lines.join('\n')}\n`
 }
 
 function sanitizeText(value: string, secrets: readonly string[]): string {
@@ -418,34 +217,8 @@ function toErrorMessage(error: unknown, secrets: readonly string[] = []): string
   return sanitizeText(String(error), secrets)
 }
 
-function writeFileAtomic(filePath: string, content: string): void {
-  const parentDir = path.dirname(filePath)
-  fs.mkdirSync(parentDir, { recursive: true })
-
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
-  fs.writeFileSync(tempPath, content, 'utf8')
-  fs.renameSync(tempPath, filePath)
-}
-
 function persistConfigFile(configPath: string, config: RuntimeConfig): void {
-  writeFileAtomic(configPath, serializeRuntimeConfig(config))
-}
-
-function serializeConsumedBootstrap(bootstrapConfig: BootstrapConfig): string {
-  return [
-    '# Bootstrap consumed by runtime enrollment',
-    `BACKEND_URL=${bootstrapConfig.BACKEND_URL}`,
-    'INSTALLER_TOKEN=[REDACTED]',
-    `AGENT_ID=${bootstrapConfig.AGENT_ID}`,
-    `INTERVAL_SEC=${bootstrapConfig.INTERVAL_SEC}`,
-    `LIMIT=${bootstrapConfig.LIMIT}`,
-    `MAERSK_ENABLED=${bootstrapConfig.MAERSK_ENABLED ? 'true' : 'false'}`,
-    `MAERSK_HEADLESS=${bootstrapConfig.MAERSK_HEADLESS ? 'true' : 'false'}`,
-    `MAERSK_TIMEOUT_MS=${bootstrapConfig.MAERSK_TIMEOUT_MS}`,
-    `MAERSK_USER_DATA_DIR=${bootstrapConfig.MAERSK_USER_DATA_DIR ?? ''}`,
-    `AGENT_UPDATE_MANIFEST_CHANNEL=${bootstrapConfig.AGENT_UPDATE_MANIFEST_CHANNEL}`,
-    '',
-  ].join('\n')
+  writeFileAtomic(configPath, serializeAgentConfig(config))
 }
 
 function consumeBootstrapFile(command: {
@@ -459,7 +232,10 @@ function consumeBootstrapFile(command: {
   ])
   const safeContent =
     consumedContent === command.bootstrapRaw
-      ? serializeConsumedBootstrap(command.bootstrapConfig)
+      ? serializeBootstrapConfig({
+          config: command.bootstrapConfig,
+          redactInstallerToken: true,
+        })
       : consumedContent
 
   writeFileAtomic(command.consumedBootstrapPath, safeContent)
@@ -570,7 +346,7 @@ async function runUpdateStatusCommand(): Promise<number> {
 
   try {
     const raw = fs.readFileSync(layout.releaseStatePath, 'utf8')
-    const parsed: unknown = JSON.parse(raw)
+    const parsed = toReleaseState(JSON.parse(raw))
     console.log(JSON.stringify(parsed, null, 2))
     return EXIT_OK
   } catch (error) {
