@@ -92,7 +92,7 @@ restart_tray_for_current_session
 
     expect(result.status).toBe(0)
     expect(fs.readFileSync(pgrepCapturePath, 'utf8')).toContain(
-      '/usr/lib/container-tracker-agent/dist/agent-control-ui',
+      '/usr/lib/container-tracker-agent/dist/apps/agent/control-ui',
     )
     expect(fs.readFileSync(pgrepCapturePath, 'utf8')).not.toContain('/usr/bin/ct-agent-tray')
     expect(fs.readFileSync(killCapturePath, 'utf8')).toContain('111')

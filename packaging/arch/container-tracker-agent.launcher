@@ -130,8 +130,8 @@ export DOTENV_PATH="$dotenv_path"
 export BOOTSTRAP_DOTENV_PATH="$bootstrap_path"
 export AGENT_DATA_DIR="$agent_data_dir"
 
-register_path="/usr/lib/container-tracker-agent/tools/agent/runtime/register-alias-loader.js"
-supervisor_path="/usr/lib/container-tracker-agent/tools/agent/supervisor.js"
+register_path="/usr/lib/container-tracker-agent/dist/apps/agent/src/runtime/register-alias-loader.js"
+supervisor_path="/usr/lib/container-tracker-agent/dist/apps/agent/src/bootstrap/supervisor-entry.js"
 
 if [ -f "$register_path" ]; then
   exec node --import="$register_path" "$supervisor_path"

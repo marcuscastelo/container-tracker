@@ -12,7 +12,7 @@ project_env_path="$repo_root/.env"
 pkg_dir="$repo_root/packaging/arch"
 agent_data_dir="/var/lib/container-tracker-agent"
 service_name="container-tracker-agent.service"
-tray_app_dir="/usr/lib/container-tracker-agent/dist/agent-control-ui"
+tray_app_dir="/usr/lib/container-tracker-agent/dist/apps/agent/control-ui"
 default_backend_url="https://castro-aduaneira.vercel.app/"
 
 find_existing_tray_pids() {

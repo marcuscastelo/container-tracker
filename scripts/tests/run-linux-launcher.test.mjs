@@ -116,17 +116,18 @@ describe('run-linux launcher', () => {
     })
     const registerPath = path.join(
       repoRoot,
-      'tools',
-      'agent',
       'dist',
-      'tools',
+      'apps',
       'agent',
+      'src',
       'runtime',
       'register-alias-loader.js',
     )
 
     expect(result.status).toBe(0)
-    expect(capturedArgs.at(-1)).toBe('tools/agent/dist/tools/agent/supervisor.js')
+    expect(capturedArgs.at(-1)).toBe(
+      path.join(repoRoot, 'dist', 'apps', 'agent', 'src', 'bootstrap', 'supervisor-entry.js'),
+    )
 
     if (fs.existsSync(registerPath)) {
       expect(capturedArgs).toContain(`--import=${registerPath}`)

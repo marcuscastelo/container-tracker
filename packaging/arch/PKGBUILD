@@ -65,7 +65,7 @@ build() {
 
   run_pnpm run agent:build
   run_pnpm run agent-control-ui:build
-  run_pnpm --filter example-with-tailwindcss deploy --legacy --prod "${deploy_dir}"
+  run_pnpm --filter @container-tracker/agent deploy --legacy --prod "${deploy_dir}"
   node "${_repo_root}/scripts/agent/sync-runtime-pnpm-deps.mjs" \
     "${_repo_root}/node_modules" \
     "${deploy_dir}/node_modules"
@@ -76,13 +76,14 @@ package() {
   local install_root="${pkgdir}/usr/lib/container-tracker-agent"
 
   install -d "${install_root}"
-  install -d "${install_root}/dist"
-  cp -a "${_repo_root}/tools/agent/dist/." "${install_root}/"
-  cp -a "${_repo_root}/dist/agent-control-ui" "${install_root}/dist/"
+  install -d "${install_root}/dist/apps/agent"
+  cp -a "${_repo_root}/dist/apps/agent/src" "${install_root}/dist/apps/agent/"
+  cp -a "${_repo_root}/dist/src" "${install_root}/dist/"
+  cp -a "${_repo_root}/dist/apps/agent/control-ui" "${install_root}/dist/apps/agent/"
   cp -a "${deploy_dir}/node_modules" "${install_root}/node_modules"
-  install -Dm644 "${_repo_root}/package.json" "${install_root}/package.json"
+  install -Dm644 "${_repo_root}/apps/agent/package.json" "${install_root}/package.json"
   install -Dm644 \
-    "${_repo_root}/tools/agent/installer/bootstrap.env.template" \
+    "${_repo_root}/apps/agent/src/installer/bootstrap.env.template" \
     "${pkgdir}/etc/container-tracker-agent/bootstrap.env.template"
   install -Dm755 \
     "${startdir}/container-tracker-agent.launcher" \
@@ -90,7 +91,7 @@ package() {
 
   cat > "${install_root}/supervisor.js" <<'SHIM'
 #!/usr/bin/env node
-import './tools/agent/supervisor.js'
+import './dist/apps/agent/src/bootstrap/supervisor-entry.js'
 SHIM
   chmod 0755 "${install_root}/supervisor.js"
 
@@ -98,8 +99,8 @@ SHIM
   cat > "${pkgdir}/usr/bin/ct-agent" <<'WRAPPER'
 #!/usr/bin/env bash
 install_root="/usr/lib/container-tracker-agent"
-register_path="$install_root/tools/agent/runtime/register-alias-loader.js"
-agent_path="$install_root/tools/agent/cli/ct-agent.js"
+register_path="$install_root/dist/apps/agent/src/runtime/register-alias-loader.js"
+agent_path="$install_root/dist/apps/agent/src/cli/ct-agent.js"
 
 if [ -f "$register_path" ]; then
   exec /usr/bin/node --import="$register_path" "$agent_path" "$@"
@@ -117,8 +118,8 @@ WRAPPER
     "${startdir}/container-tracker-agent-admin.launcher" \
     "${pkgdir}/usr/bin/ct-agent-admin"
   chmod 0755 "${pkgdir}/usr/bin/ct-agent"
-  chmod 0755 "${install_root}/tools/agent/cli/ct-agent.js"
-  chmod 0755 "${install_root}/tools/agent/cli/ct-agent-admin.js"
+  chmod 0755 "${install_root}/dist/apps/agent/src/cli/ct-agent.js"
+  chmod 0755 "${install_root}/dist/apps/agent/src/cli/ct-agent-admin.js"
 
   install -Dm644 \
     "${startdir}/container-tracker-agent.service" \

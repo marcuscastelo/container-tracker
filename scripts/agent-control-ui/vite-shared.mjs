@@ -8,13 +8,13 @@ const repoRoot = path.resolve(currentDir, '../..')
 
 function createAgentControlUiViteConfig() {
   return defineConfig({
-    root: path.join(repoRoot, 'tools', 'agent-control-ui', 'renderer'),
+    root: path.join(repoRoot, 'apps', 'agent', 'src', 'renderer'),
     plugins: [solid()],
     publicDir: false,
     base: './',
     resolve: {
       alias: {
-        '@tools': path.join(repoRoot, 'tools'),
+        '@agent': path.join(repoRoot, 'apps', 'agent', 'src'),
         '~': path.join(repoRoot, 'src'),
       },
     },
@@ -22,9 +22,12 @@ function createAgentControlUiViteConfig() {
       outDir: path.join(
         repoRoot,
         'dist',
-        'agent-control-ui',
-        'tools',
-        'agent-control-ui',
+        'apps',
+        'agent',
+        'control-ui',
+        'apps',
+        'agent',
+        'src',
         'renderer',
       ),
       emptyOutDir: false,

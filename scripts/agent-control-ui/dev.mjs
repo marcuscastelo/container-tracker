@@ -6,7 +6,7 @@ import { createServer } from 'vite'
 import { createAgentControlUiViteConfig } from './vite-shared.mjs'
 
 const repoRoot = path.resolve(import.meta.dirname, '../..')
-const distRoot = path.join(repoRoot, 'dist', 'agent-control-ui')
+const distRoot = path.join(repoRoot, 'dist', 'apps', 'agent', 'control-ui')
 const fallbackRendererUrl = process.env.AGENT_CONTROL_UI_RENDERER_URL ?? 'http://127.0.0.1:4310'
 
 function run(command, args, options = {}) {

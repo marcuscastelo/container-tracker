@@ -14,7 +14,7 @@
       "!.vinxi",
       "!dist",
       "!release/app/dist",
-      "!tools/agent/dist",
+      "!apps/agent/dist",
       "!build",
       "!out",
       "!.output",

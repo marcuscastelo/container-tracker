@@ -3,7 +3,7 @@ import path from 'node:path'
 import process from 'node:process'
 
 const repoRoot = path.resolve(import.meta.dirname, '../..')
-const distRoot = path.join(repoRoot, 'dist', 'agent-control-ui')
+const distRoot = path.join(repoRoot, 'dist', 'apps', 'agent', 'control-ui')
 
 function buildElectronEnv() {
   const env = { ...process.env }

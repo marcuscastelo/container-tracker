@@ -2,7 +2,7 @@
 set -euo pipefail
 
 install_root="/usr/lib/container-tracker-agent"
-app_dir="$install_root/dist/agent-control-ui"
+app_dir="$install_root/dist/apps/agent/control-ui"
 
 if [ ! -f "$app_dir/package.json" ]; then
   echo "[ct-agent-ui] missing Electron app manifest at $app_dir/package.json" >&2

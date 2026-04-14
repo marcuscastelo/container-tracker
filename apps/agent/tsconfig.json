@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "baseUrl": "../..",
+    "paths": {
+      "~/*": ["./src/*"],
+      "@agent/*": ["./apps/agent/src/*"]
+    },
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": false,
+    "outDir": "../../dist",
+    "rootDir": "../..",
+    "types": ["node"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": [
+    "./src/agent.ts",
+    "./src/agent.scheduler.ts",
+    "./src/supervisor.ts",
+    "./src/updater.ts",
+    "./src/updater.core.ts",
+    "./src/release-manager.ts",
+    "./src/release-state.ts",
+    "./src/runtime-health.ts",
+    "./src/runtime-paths.ts",
+    "./src/runtime/paths.ts",
+    "./src/runtime/alias-loader.ts",
+    "./src/runtime/register-alias-loader.ts",
+    "./src/runtime/lifecycle-exit-codes.ts",
+    "./src/pending-activity.ts",
+    "./src/supervisor-control.ts",
+    "./src/cli/ct-agent.ts",
+    "./src/cli/ct-agent-admin.ts",
+    "./src/build-release.ts",
+    "./src/bundle-release.ts",
+    "./src/bootstrap/runtime-entry.ts",
+    "./src/bootstrap/supervisor-entry.ts",
+    "./src/bootstrap/updater-entry.ts",
+    "./src/bootstrap/electron-entry.ts"
+  ]
+}
