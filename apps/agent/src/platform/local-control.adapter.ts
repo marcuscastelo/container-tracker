@@ -9,6 +9,7 @@ import type {
 
 const DEFAULT_LINUX_SERVICE_NAME = 'container-tracker-agent'
 const DEFAULT_WINDOWS_TASK_NAME = 'ContainerTrackerAgent'
+const DEFAULT_CONTROL_COMMAND_TIMEOUT_MS = 45_000
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -18,6 +19,30 @@ function toErrorMessage(error: unknown): string {
   return String(error)
 }
 
+function isExecFileFailure(
+  value: unknown,
+): value is {
+  readonly killed?: boolean
+  readonly signal?: NodeJS.Signals | null
+  readonly code?: string | number | null
+} {
+  return typeof value === 'object' && value !== null
+}
+
+function resolveControlCommandTimeoutMs(): number {
+  const rawValue = process.env.AGENT_CONTROL_COMMAND_TIMEOUT_MS
+  if (typeof rawValue !== 'string') {
+    return DEFAULT_CONTROL_COMMAND_TIMEOUT_MS
+  }
+
+  const parsed = Number.parseInt(rawValue, 10)
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return DEFAULT_CONTROL_COMMAND_TIMEOUT_MS
+  }
+
+  return parsed
+}
+
 function runCommand(
   command: string,
   args: readonly string[],
@@ -25,10 +50,25 @@ function runCommand(
   readonly stdout: string
   readonly stderr: string
 }> {
+  const timeoutMs = resolveControlCommandTimeoutMs()
+
   return new Promise((resolve, reject) => {
-    execFile(command, [...args], { maxBuffer: 1024 * 1024 * 4 }, (error, stdout, stderr) => {
+    execFile(
+      command,
+      [...args],
+      {
+        maxBuffer: 1024 * 1024 * 4,
+        timeout: timeoutMs,
+      },
+      (error, stdout, stderr) => {
       if (error) {
-        const detail = stderr.trim() || stdout.trim() || toErrorMessage(error)
+        const baseDetail = stderr.trim() || stdout.trim() || toErrorMessage(error)
+        if (isExecFileFailure(error) && error.killed === true && error.signal === 'SIGTERM') {
+          reject(new Error(`Command timed out after ${timeoutMs}ms: ${command} ${args.join(' ')}`))
+          return
+        }
+
+        const detail = `${command} ${args.join(' ')} failed: ${baseDetail}`
         reject(new Error(detail))
         return
       }
@@ -37,7 +77,8 @@ function runCommand(
         stdout,
         stderr,
       })
-    })
+      },
+    )
   })
 }
 
@@ -141,7 +182,7 @@ export function createLinuxLocalControlAdapter(): AgentPlatformControlAdapter {
       await runCommand('systemctl', ['stop', resolveLinuxServiceName(command)])
     },
     async restartAgent(command) {
-      await runCommand('systemctl', ['restart', resolveLinuxServiceName(command)])
+      await runCommand('systemctl', ['--no-block', 'restart', resolveLinuxServiceName(command)])
     },
   }
 }
