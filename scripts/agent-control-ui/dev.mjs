@@ -1,4 +1,5 @@
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { setTimeout as delay } from 'node:timers/promises'
@@ -15,6 +16,86 @@ function run(command, args, options = {}) {
     stdio: 'inherit',
     ...options,
   })
+}
+
+function runAndWait(command, args, options = {}) {
+  const child = run(command, args, options)
+  return new Promise((resolve, reject) => {
+    child.once('error', reject)
+    child.once('exit', (code) => resolve(code ?? 1))
+  })
+}
+
+function resolveSystemElectronBinary() {
+  const candidates = [
+    process.env.ELECTRON_BINARY,
+    'electron',
+    '/usr/bin/electron',
+    '/usr/bin/electron22',
+    '/usr/bin/electron23',
+  ].filter((value) => typeof value === 'string' && value.length > 0)
+
+  for (const candidate of candidates) {
+    if (candidate.startsWith('/') && !fs.existsSync(candidate)) {
+      continue
+    }
+
+    const probe = spawnSync(candidate, ['--version'], { stdio: 'ignore' })
+    if (probe.status === 0) {
+      return candidate
+    }
+  }
+
+  return null
+}
+
+async function resolveElectronCommand() {
+  const probeExit = await runAndWait('node', [
+    '-e',
+    "try{require('electron');process.exit(0)}catch{process.exit(1)}",
+  ])
+  if (probeExit === 0) {
+    return {
+      command: 'pnpm',
+      args: ['exec', 'electron'],
+    }
+  }
+
+  console.warn(
+    '[agent-control-ui] electron runtime not found in node_modules; attempting `pnpm rebuild electron`',
+  )
+  const rebuildExit = await runAndWait('pnpm', ['rebuild', 'electron'])
+  if (rebuildExit !== 0) {
+    throw new Error(
+      'Electron install is incomplete and automatic recovery failed. Run `pnpm rebuild electron` (or reinstall dependencies) and retry.',
+    )
+  }
+
+  const reProbeExit = await runAndWait('node', [
+    '-e',
+    "try{require('electron');process.exit(0)}catch{process.exit(1)}",
+  ])
+  if (reProbeExit === 0) {
+    return {
+      command: 'pnpm',
+      args: ['exec', 'electron'],
+    }
+  }
+
+  const systemElectronBinary = resolveSystemElectronBinary()
+  if (systemElectronBinary !== null) {
+    console.warn(
+      `[agent-control-ui] local electron package is unavailable; falling back to system electron binary at ${systemElectronBinary}`,
+    )
+    return {
+      command: systemElectronBinary,
+      args: [],
+    }
+  }
+
+  throw new Error(
+    'Electron install is still invalid after rebuild and no system `electron` binary was found. Delete `node_modules/.pnpm/electron@*` and run `pnpm install`.',
+  )
 }
 
 function buildElectronEnv(rendererUrl) {
@@ -46,6 +127,8 @@ async function waitForUrl(url, timeoutMs = 30000) {
 }
 
 async function main() {
+  const electronCommand = await resolveElectronCommand()
+
   const build = run('node', ['scripts/agent-control-ui/build-main.mjs'])
   const buildExitCode = await new Promise((resolve, reject) => {
     build.once('error', reject)
@@ -84,7 +167,7 @@ async function main() {
     throw error
   }
 
-  const electron = run('pnpm', ['exec', 'electron', distRoot], {
+  const electron = run(electronCommand.command, [...electronCommand.args, distRoot], {
     env: buildElectronEnv(rendererUrl),
   })
   console.log('[agent-control-ui] launching Electron shell')

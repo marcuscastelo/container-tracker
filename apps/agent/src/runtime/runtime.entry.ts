@@ -742,11 +742,83 @@ const IngestFailedResponseSchema = z.object({
 })
 
 const HeartbeatAckResponseSchema = z.object({
-  ok: z.literal(true),
-  updatedAt: z.string().datetime({ offset: true }),
+  ok: z.literal(true).optional(),
+  updatedAt: z.string().datetime({ offset: true }).optional(),
+  updated_at: z.string().datetime({ offset: true }).optional(),
 })
 
 type TargetsResponse = z.infer<typeof TargetsResponseSchema>
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return isRecord(value) ? value : null
+}
+
+function unwrapResponsePayload(payload: unknown): unknown {
+  const record = asRecord(payload)
+  if (!record) return payload
+
+  const data = asRecord(record.data)
+  if (data) return data
+
+  const result = asRecord(record.result)
+  if (result) return result
+
+  return payload
+}
+
+function toNullableString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null
+}
+
+function toNullableInt(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null
+  return Math.max(0, Math.trunc(value))
+}
+
+function normalizeTargetItem(item: unknown): unknown {
+  const raw = asRecord(item)
+  if (!raw) return item
+
+  return {
+    sync_request_id: raw.sync_request_id ?? raw.syncRequestId ?? raw.id,
+    provider: raw.provider,
+    ref_type: raw.ref_type ?? raw.refType ?? 'container',
+    ref: raw.ref ?? raw.ref_value ?? raw.refValue ?? raw.container_number ?? raw.containerNumber,
+  }
+}
+
+function normalizeTargetsResponsePayload(payload: unknown): unknown {
+  const candidate = asRecord(unwrapResponsePayload(payload))
+  if (!candidate) return payload
+
+  let rawTargets: readonly unknown[] = []
+  if (Array.isArray(candidate.targets)) {
+    rawTargets = candidate.targets
+  } else if (Array.isArray(candidate.items)) {
+    rawTargets = candidate.items
+  }
+
+  return {
+    targets: rawTargets.map((item) => normalizeTargetItem(item)),
+    leased_until:
+      toNullableString(candidate.leased_until) ??
+      toNullableString(candidate.lease_until) ??
+      toNullableString(candidate.leaseUntil) ??
+      null,
+    queue_lag_seconds:
+      toNullableInt(candidate.queue_lag_seconds) ??
+      toNullableInt(candidate.queueLagSeconds) ??
+      null,
+  }
+}
+
+function normalizeHeartbeatAckPayload(payload: unknown): unknown {
+  return unwrapResponsePayload(payload)
+}
 
 type AgentRealtimeState = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CONNECTING' | 'DISCONNECTED' | 'UNKNOWN'
 type AgentProcessingState = 'idle' | 'leasing' | 'processing' | 'backing_off' | 'unknown'
@@ -893,12 +965,13 @@ async function sendHeartbeat(command: {
   }
 
   const payload: unknown = await response.json().catch(() => ({}))
-  const parsed = HeartbeatAckResponseSchema.safeParse(payload)
+  const parsed = HeartbeatAckResponseSchema.safeParse(normalizeHeartbeatAckPayload(payload))
   if (!parsed.success) {
     throw new Error(`invalid heartbeat response: ${parsed.error.message}`)
   }
 
-  return parsed.data.updatedAt
+  const updatedAt = parsed.data.updatedAt ?? parsed.data.updated_at ?? new Date().toISOString()
+  return updatedAt
 }
 
 async function sendHeartbeatSafely(command: {
@@ -1028,7 +1101,7 @@ async function fetchTargets(
   }
 
   const payload: unknown = await response.json().catch(() => ({}))
-  const parsed = TargetsResponseSchema.safeParse(payload)
+  const parsed = TargetsResponseSchema.safeParse(normalizeTargetsResponsePayload(payload))
   if (!parsed.success) {
     throw new Error(`invalid targets response: ${parsed.error.message}`)
   }
