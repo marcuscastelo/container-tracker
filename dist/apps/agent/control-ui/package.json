@@ -1,6 +1,0 @@
-{
-  "name": "container-tracker-agent-control-ui",
-  "private": true,
-  "type": "module",
-  "main": "./apps/agent/src/electron/main.js"
-}
