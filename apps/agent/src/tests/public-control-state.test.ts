@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   ControlRuntimeConfigSchema,
   syncAgentControlState,
@@ -15,7 +15,6 @@ import {
 import { createInitialReleaseState } from '@agent/release/domain/release-state'
 import { writeReleaseState } from '@agent/release/infrastructure/release-state.file-repository'
 import { writeRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import { describe, expect, it } from 'vitest'
 
 function createLayout(baseDir: string): AgentPathLayout {

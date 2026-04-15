@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   ControlRuntimeConfigSchema,
   executeLocalReset,
@@ -14,15 +14,12 @@ import {
 } from '@agent/control-core/contracts'
 import { createAgentControlLocalService } from '@agent/control-core/local-control-service'
 import { appendPendingActivityEvents } from '@agent/pending-activity'
-import {
-  createInitialReleaseState,
-} from '@agent/release/domain/release-state'
+import { createInitialReleaseState } from '@agent/release/domain/release-state'
 import {
   readReleaseState,
   writeReleaseState,
 } from '@agent/release/infrastructure/release-state.file-repository'
 import { writeRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import { readSupervisorControl } from '@agent/runtime/infrastructure/supervisor-control.repository'
 import { describe, expect, it } from 'vitest'
 

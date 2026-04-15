@@ -2,10 +2,12 @@ import type { ChildProcess } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import type { ChildRunOutcome } from '@agent/runtime/domain/runtime-lifecycle'
 import { monitorRuntimeHealthGate } from '@agent/runtime/application/run-health-check'
 import { startRuntime } from '@agent/runtime/application/start-runtime'
+import type { ChildRunOutcome } from '@agent/runtime/domain/runtime-lifecycle'
 import { createRotatingChunkWriter } from '@agent/runtime/infrastructure/runtime-stdio-log-writer'
+
+export type { ChildRunOutcome } from '@agent/runtime/domain/runtime-lifecycle'
 
 const MAX_RUNTIME_STDIO_LOG_FILE_SIZE_BYTES = 20 * 1024 * 1024
 

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   ControlRuntimeConfigSchema,
   serializeRuntimeConfig,
@@ -14,7 +14,6 @@ import {
   refreshAgentControlPublicLogs,
   selectAgentControlPublicLogs,
 } from '@agent/control-core/public-control-files'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import { describe, expect, it } from 'vitest'
 
 function createLayout(baseDir: string): AgentPathLayout {
@@ -208,7 +207,6 @@ describe('agent control public artifacts', () => {
       'utf8',
     )
     fs.writeFileSync(path.join(layout.logsDir, 'supervisor.log'), 'super-1\n', 'utf8')
-    fs.writeFileSync(path.join(layout.logsDir, 'updater.log'), 'update-1\n', 'utf8')
 
     refreshAgentControlPublicLogs({
       filePath: publicLogsPath,
@@ -218,7 +216,7 @@ describe('agent control public artifacts', () => {
 
     const logs = readAgentControlPublicLogs(publicLogsPath)
     expect(logs).not.toBeNull()
-    expect(logs?.lines.length).toBe(7)
+    expect(logs?.lines.length).toBe(6)
 
     const filtered = selectAgentControlPublicLogs(logs ?? { lines: [] }, {
       channel: 'stdout',

@@ -85,7 +85,8 @@ export function withRecordedFailure(command: {
     ...command.state.activation_failures,
     [command.version]: activationFailuresForVersion,
   }
-  const activationFailureLimitReached = activationFailuresForVersion >= command.maxActivationFailures
+  const activationFailureLimitReached =
+    activationFailuresForVersion >= command.maxActivationFailures
 
   const blockedVersions =
     crashLoopDetected || activationFailureLimitReached

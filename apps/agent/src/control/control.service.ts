@@ -1,3 +1,4 @@
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import type { ControlCommand } from '@agent/control/control.commands'
 import { ControlCommandResultSchema } from '@agent/control/control.contracts'
 import type {
@@ -9,7 +10,6 @@ import type {
   AgentReleaseInventorySchema,
 } from '@agent/control-core/contracts'
 import { createAgentControlLocalService } from '@agent/control-core/local-control-service'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import type { z } from 'zod/v4'
 
 type LocalControlService = ReturnType<typeof createAgentControlLocalService>

@@ -24,7 +24,6 @@
     "./src/agent.scheduler.ts",
     "./src/app/agent.main.ts",
     "./src/supervisor.ts",
-    "./src/updater.ts",
     "./src/core/contracts/release-runtime-handoff.contract.ts",
     "./src/release/application/activate-release.ts",
     "./src/release/application/check-for-update.ts",
@@ -40,7 +39,6 @@
     "./src/release/infrastructure/bundle-extractor.ts",
     "./src/release/infrastructure/release-manifest.client.ts",
     "./src/release/infrastructure/release-state.file-repository.ts",
-    "./src/runtime-paths.ts",
     "./src/runtime/application/drain-runtime.ts",
     "./src/runtime/application/restart-runtime.ts",
     "./src/runtime/application/run-health-check.ts",
@@ -65,7 +63,6 @@
     "./src/bundle-release.ts",
     "./src/bootstrap/runtime-entry.ts",
     "./src/bootstrap/supervisor-entry.ts",
-    "./src/bootstrap/updater-entry.ts",
     "./src/bootstrap/electron-entry.ts"
   ]
 }

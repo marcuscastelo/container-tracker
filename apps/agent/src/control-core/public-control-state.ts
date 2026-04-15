@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   type AgentControlBackendState,
   type AgentControlPaths,
@@ -13,7 +13,6 @@ import {
 } from '@agent/control-core/contracts'
 import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
 import { resolveReleaseEntrypoint } from '@agent/release/application/release-layout'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import { readJsonFileWithSchema, writeFileAtomic } from '@agent/state/file-io'
 
 export function buildAgentControlPaths(layout: AgentPathLayout): AgentControlPaths {

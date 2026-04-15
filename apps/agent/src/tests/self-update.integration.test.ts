@@ -2,14 +2,14 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   activatePendingRelease,
   confirmActivatedRelease,
 } from '@agent/release/application/activate-release'
 import { rollbackRelease } from '@agent/release/application/rollback-release'
-import { createInitialReleaseState, withRecordedFailure } from '@agent/release/domain/release-state'
 import { stageRelease } from '@agent/release/application/stage-release'
-import type { AgentPathLayout } from '@agent/runtime-paths'
+import { createInitialReleaseState, withRecordedFailure } from '@agent/release/domain/release-state'
 import { describe, expect, it } from 'vitest'
 
 function createLayout(baseDir: string): AgentPathLayout {
@@ -77,15 +77,28 @@ describe('self-update integration flows', () => {
     const staged = await stageRelease({
       manifest: {
         version: '2.0.0',
-        download_url: 'https://agent.test.local/release.js',
-        checksum,
         channel: 'stable',
+        platforms: {
+          'linux-x64': {
+            url: 'https://agent.test.local/release.js',
+            checksum,
+          },
+          'windows-x64': {
+            url: 'https://agent.test.local/release.js',
+            checksum,
+          },
+        },
         update_available: true,
         desired_version: '2.0.0',
         current_version: '1.0.0',
         update_ready_version: null,
         restart_required: false,
         restart_requested_at: null,
+        selected_platform: 'linux-x64',
+        selected_asset: {
+          url: 'https://agent.test.local/release.js',
+          checksum,
+        },
       },
       layout,
       state: createInitialReleaseState('1.0.0'),

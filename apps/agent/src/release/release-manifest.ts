@@ -1,38 +1,14 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { z } from 'zod/v4'
+import {
+  type ReleaseManifestAsset,
+  UnifiedReleaseManifestSchema,
+} from '@agent/core/contracts/release-manifest.contract'
 
 // biome-ignore lint/style/noRestrictedImports: Release runtime needs direct relative imports for portable release bundles.
 import { type AgentPlatformKey, resolveAgentPlatformKey } from '../platform/platform.adapter.ts'
 
-const CHECKSUM_PATTERN = /^[a-f0-9]{64}$/iu
 const DEFAULT_MANIFESTS_DIR = 'agent-manifests'
-
-const manifestAssetSchema = z.object({
-  url: z.string().url(),
-  checksum: z.string().regex(CHECKSUM_PATTERN),
-})
-
-const unifiedManifestSchema = z.object({
-  channel: z.string().trim().min(1),
-  version: z.string().trim().min(1),
-  published_at: z.string().datetime({ offset: true }).nullable().optional(),
-  platforms: z.record(z.string().min(1), manifestAssetSchema),
-})
-
-const legacyManifestSchema = z.object({
-  channel: z.string().trim().min(1),
-  version: z.string().trim().min(1),
-  published_at: z.string().datetime({ offset: true }).nullable().optional(),
-  download_url: z.string().url(),
-  checksum: z.string().regex(CHECKSUM_PATTERN),
-})
-
-const rawManifestSchema = z.union([unifiedManifestSchema, legacyManifestSchema])
-
-type RawManifest = z.infer<typeof rawManifestSchema>
-
-export type ReleaseManifestAsset = z.infer<typeof manifestAssetSchema>
 
 export type ReleaseManifest = {
   readonly channel: string
@@ -51,25 +27,18 @@ function normalizeChannel(channel: string): string {
   return normalized
 }
 
-function normalizeManifest(raw: RawManifest): ReleaseManifest {
-  if ('platforms' in raw) {
-    const linuxAsset = raw.platforms['linux-x64']
-    const windowsAsset = raw.platforms['windows-x64']
-    if (!linuxAsset || !windowsAsset) {
-      throw new Error(
-        `manifest ${raw.channel}@${raw.version} must define linux-x64 and windows-x64 assets`,
-      )
-    }
-
-    return {
-      channel: raw.channel,
-      version: raw.version,
-      publishedAt: raw.published_at ?? null,
-      platforms: {
-        'linux-x64': linuxAsset,
-        'windows-x64': windowsAsset,
-      },
-    }
+function normalizeManifest(raw: {
+  readonly channel: string
+  readonly version: string
+  readonly published_at?: string | null
+  readonly platforms: Readonly<Record<string, ReleaseManifestAsset>>
+}): ReleaseManifest {
+  const linuxAsset = raw.platforms['linux-x64']
+  const windowsAsset = raw.platforms['windows-x64']
+  if (!linuxAsset || !windowsAsset) {
+    throw new Error(
+      `manifest ${raw.channel}@${raw.version} must define linux-x64 and windows-x64 assets`,
+    )
   }
 
   return {
@@ -77,14 +46,8 @@ function normalizeManifest(raw: RawManifest): ReleaseManifest {
     version: raw.version,
     publishedAt: raw.published_at ?? null,
     platforms: {
-      'linux-x64': {
-        url: raw.download_url,
-        checksum: raw.checksum,
-      },
-      'windows-x64': {
-        url: raw.download_url,
-        checksum: raw.checksum,
-      },
+      'linux-x64': linuxAsset,
+      'windows-x64': windowsAsset,
     },
   }
 }
@@ -138,7 +101,7 @@ export async function fetchManifest(
             : path.resolve(process.cwd(), DEFAULT_MANIFESTS_DIR),
         )
 
-  const parsed = rawManifestSchema.safeParse(payload)
+  const parsed = UnifiedReleaseManifestSchema.safeParse(payload)
   if (!parsed.success) {
     throw new Error(`invalid manifest payload for channel "${channel}": ${parsed.error.message}`)
   }

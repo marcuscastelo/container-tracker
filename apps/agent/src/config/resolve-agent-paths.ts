@@ -1,8 +1,7 @@
 // biome-ignore-all lint/style/noRestrictedImports: Runtime shim keeps direct relative imports for release bundles.
 import process from 'node:process'
-
-import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
 import { LINUX_SYSTEM_DATA_DIR } from '@agent/platform/linux.adapter'
+import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
 import type { AgentPathLayout } from './config.contract.ts'
 
 function resolveCurrentAdapter() {
@@ -14,15 +13,13 @@ export function resolveDataDir(): string {
 }
 
 export function resolveReleasesDir(dataDir: string): string {
-  return resolveCurrentAdapter()
-    .resolvePaths({
-      env: {
-        ...process.env,
-        AGENT_DATA_DIR: dataDir,
-      },
-      cwd: process.cwd(),
-    })
-    .releasesDir
+  return resolveCurrentAdapter().resolvePaths({
+    env: {
+      ...process.env,
+      AGENT_DATA_DIR: dataDir,
+    },
+    cwd: process.cwd(),
+  }).releasesDir
 }
 
 export function resolveCurrentRelease(currentPath: string): string | null {

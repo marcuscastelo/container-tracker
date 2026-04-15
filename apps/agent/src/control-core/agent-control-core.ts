@@ -6,6 +6,7 @@ import {
   serializeAgentConfig,
   validateAgentConfig,
 } from '@agent/config/agent-config.mapper'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   AgentControlAuditEventSchema,
   AgentControlRemoteCacheSchema,
@@ -27,7 +28,6 @@ import {
   writeReleaseState,
 } from '@agent/release/infrastructure/release-state.file-repository'
 import { readRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import { readJsonFileWithSchema, writeFileAtomic } from '@agent/state/file-io'
 import { z } from 'zod/v4'
 

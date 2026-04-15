@@ -1,7 +1,5 @@
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
-import type { AgentPathLayout } from '@agent/runtime-paths'
-import { hasBlockedVersion } from '@agent/release/domain/release-state'
-import type { UpdateManifestResponse } from '@agent/release/infrastructure/release-manifest.client'
 import { downloadRelease } from '@agent/release/application/download-release'
 import {
   removeReleaseDirectoryIfPresent,
@@ -9,6 +7,8 @@ import {
   resolveReleaseDir,
   resolveReleaseEntrypoint,
 } from '@agent/release/application/release-layout'
+import { hasBlockedVersion } from '@agent/release/domain/release-state'
+import type { UpdateManifestResponse } from '@agent/release/infrastructure/release-manifest.client'
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
 
@@ -58,10 +58,9 @@ export async function stageRelease(command: {
     }
   }
 
-  if (!command.manifest.download_url || !command.manifest.checksum) {
-    throw new Error(
-      `update manifest for ${command.manifest.version} is missing download URL or checksum`,
-    )
+  const selectedAsset = command.manifest.selected_asset
+  if (!selectedAsset) {
+    throw new Error(`update manifest for ${command.manifest.version} is missing platform asset`)
   }
 
   const releaseDir = resolveReleaseDir(command.layout.releasesDir, command.manifest.version)
@@ -80,8 +79,8 @@ export async function stageRelease(command: {
   const downloadedRelease = await downloadRelease({
     layout: command.layout,
     version: command.manifest.version,
-    downloadUrl: command.manifest.download_url,
-    expectedChecksum: command.manifest.checksum,
+    downloadUrl: selectedAsset.url,
+    expectedChecksum: selectedAsset.checksum,
     fetchImpl: command.fetchImpl,
   })
 

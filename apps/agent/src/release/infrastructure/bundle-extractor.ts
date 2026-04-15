@@ -1,8 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
-import type { AgentPathLayout } from '@agent/runtime-paths'
-import { writeFileAtomic } from '@agent/state/file-io'
 import {
   removeReleaseDirectoryWhenEntrypointMissing,
   resolveReleaseDir,
@@ -10,6 +9,7 @@ import {
   sanitizeVersionForPath,
 } from '@agent/release/application/release-layout'
 import type { ReleaseArchiveKind } from '@agent/release/infrastructure/bundle-downloader'
+import { writeFileAtomic } from '@agent/state/file-io'
 
 export type PreparedRelease = {
   readonly releaseDir: string

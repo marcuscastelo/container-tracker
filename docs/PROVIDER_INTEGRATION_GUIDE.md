@@ -88,7 +88,7 @@ Typical files:
 - `src/modules/tracking/interface/http/agent-sync.schemas.ts`
 - `src/modules/tracking/interface/http/agent-sync.controllers.ts`
 - `src/modules/tracking/interface/http/agent-enroll.controllers.bootstrap.ts`
-- `tools/agent/agent.ts`
+- `apps/agent/src/agent.ts`
 
 If you miss one of these, the repo often compiles but the runtime breaks later with:
 
@@ -194,7 +194,7 @@ Check:
 - provider enum in HTTP schemas
 - processable provider order
 - agent default capabilities
-- runtime provider dispatch in `tools/agent/agent.ts`
+- runtime provider dispatch in `apps/agent/src/agent.ts`
 - queue/provider DB checks and paced scheduler SQL
 
 Typical failure if this is incomplete:

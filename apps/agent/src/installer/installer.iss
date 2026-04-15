@@ -3,7 +3,6 @@
 #define AppIdValue "{{0F1AE8D1-7B19-4B14-9A17-2EF197BBD5AA}}"
 #define AppDirName "ContainerTrackerAgent"
 #define AgentTaskName "ContainerTrackerAgent"
-#define UpdaterTaskName "ContainerTrackerAgentUpdater"
 #define RepoRoot "..\..\.."
 #define ReleaseRoot RepoRoot + "\release"
 
@@ -35,7 +34,6 @@ Source: "{#ReleaseRoot}\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs cr
 Source: "{#ReleaseRoot}\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs createallsubdirs ignoreversion; BeforeInstall: LogAppBundleCopyStart
 Source: "run-supervisor.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion; BeforeInstall: LogFileCopy('run-supervisor.ps1', '{app}\app\dist\run-supervisor.ps1')
 Source: "agent-tray-host.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion; BeforeInstall: LogFileCopy('agent-tray-host.ps1', '{app}\app\dist\agent-tray-host.ps1')
-Source: "updater-hidden.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion; BeforeInstall: LogFileCopy('updater-hidden.ps1', '{app}\app\dist\updater-hidden.ps1')
 Source: "stop-agent-runtime.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion; BeforeInstall: LogFileCopy('stop-agent-runtime.ps1', '{app}\app\dist\stop-agent-runtime.ps1')
 Source: "resources\tray.ico"; DestDir: "{app}\app\assets"; Flags: ignoreversion; BeforeInstall: LogFileCopy('tray icon', '{app}\app\assets\tray.ico')
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{localappdata}\ContainerTracker"; DestName: "bootstrap.env"; Flags: uninsneveruninstall; BeforeInstall: LogFileCopy('bootstrap.env', '{localappdata}\ContainerTracker\bootstrap.env')
@@ -44,19 +42,14 @@ Source: "stop-agent-runtime.ps1"; DestDir: "{tmp}"; Flags: dontcopy; BeforeInsta
 
 [Run]
 Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#AgentTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\run-supervisor.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null"""; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Registering scheduled task {#AgentTaskName}.')
-Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#UpdaterTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\updater-hidden.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null"""; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Registering scheduled task {#UpdaterTaskName}.')
 Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & start """" /B powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\run-supervisor.ps1"""; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Starting agent supervisor process.')
-Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & start """" /B powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\updater-hidden.ps1"""; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Starting updater runtime process.')
 
 [UninstallRun]
 Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#AgentTaskName}"" /DISABLE || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Disabling scheduled task {#AgentTaskName}..."; RunOnceId: "disable-agent-task"
-Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#UpdaterTaskName}"" /DISABLE || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Disabling scheduled task {#UpdaterTaskName}..."; RunOnceId: "disable-updater-task"
 Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#AgentTaskName}"" || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Stopping scheduled task {#AgentTaskName}..."; RunOnceId: "end-agent-task"
-Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#UpdaterTaskName}"" || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Stopping scheduled task {#UpdaterTaskName}..."; RunOnceId: "end-updater-task"
 Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\stop-agent-runtime.ps1"" -CleanupNodeModules || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Stopping agent runtime processes..."; RunOnceId: "kill-agent-runtime-processes"
 Filename: "cmd.exe"; Parameters: "/C timeout /T 5 /NOBREAK || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Waiting for process shutdown..."; RunOnceId: "post-kill-runtime-delay"
 Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#AgentTaskName}"" /F || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Deleting scheduled task {#AgentTaskName}..."; RunOnceId: "delete-agent-task"
-Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#UpdaterTaskName}"" /F || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Deleting scheduled task {#UpdaterTaskName}..."; RunOnceId: "delete-updater-task"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\ContainerTracker\*"
@@ -913,20 +906,6 @@ begin
   end;
 
   if (not RunCmdAndLogOutput(
-    'Disable scheduled task {#UpdaterTaskName}',
-    '/C schtasks /Change /TN "{#UpdaterTaskName}" /DISABLE || exit /B 0',
-    ResultCode
-  )) or (ResultCode <> 0) then
-  begin
-    ErrorMessage :=
-      'Failed to disable scheduled task {#UpdaterTaskName} before install/update ' +
-      '(exit code ' + IntToStr(ResultCode) + ').';
-    UIErrorLog(ErrorMessage);
-    Result := False;
-    exit;
-  end;
-
-  if (not RunCmdAndLogOutput(
     'Stop running task {#AgentTaskName}',
     '/C schtasks /End /TN "{#AgentTaskName}" || exit /B 0',
     ResultCode
@@ -934,20 +913,6 @@ begin
   begin
     ErrorMessage :=
       'Failed to stop running task {#AgentTaskName} before install/update ' +
-      '(exit code ' + IntToStr(ResultCode) + ').';
-    UIErrorLog(ErrorMessage);
-    Result := False;
-    exit;
-  end;
-
-  if (not RunCmdAndLogOutput(
-    'Stop running task {#UpdaterTaskName}',
-    '/C schtasks /End /TN "{#UpdaterTaskName}" || exit /B 0',
-    ResultCode
-  )) or (ResultCode <> 0) then
-  begin
-    ErrorMessage :=
-      'Failed to stop running task {#UpdaterTaskName} before install/update ' +
       '(exit code ' + IntToStr(ResultCode) + ').';
     UIErrorLog(ErrorMessage);
     Result := False;

@@ -15,26 +15,24 @@ describe('build-release preflight task registration validation', () => {
   it('accepts legacy schtasks /Create registrations', () => {
     const installerContent = `
 Filename: "schtasks.exe"; Parameters: "/Create /SC ONLOGON /IT /RL LIMITED /TN ""ContainerTrackerAgent"" /TR ""powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\\app\\dist\\run-supervisor.ps1"""""""
-Filename: "schtasks.exe"; Parameters: "/Create /SC ONLOGON /IT /RL LIMITED /TN ""ContainerTrackerAgentUpdater"" /TR ""powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\\app\\dist\\updater-hidden.ps1"""""""
 `.trim()
 
     expect(collectInstallerTaskRegistrationErrors(installerContent)).toEqual([])
   })
 
-  it('rejects installers without two task registration commands', () => {
+  it('rejects installers without an ONLOGON task registration command', () => {
     const installerContent = `
-Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#AgentTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\\app\\dist\\run-supervisor.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null"""
+Filename: "cmd.exe"; Parameters: "/C echo Installer completed"
 `.trim()
 
     expect(collectInstallerTaskRegistrationErrors(installerContent)).toContain(
-      'installer.iss must include two ONLOGON task registration commands',
+      'installer.iss must include one ONLOGON task registration command',
     )
   })
 
   it('rejects agent task registrations that still point to the tray host', () => {
     const installerContent = `
 Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#AgentTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\\app\\dist\\agent-tray-host.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null"""
-Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#UpdaterTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\\app\\dist\\updater-hidden.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null"""
 `.trim()
 
     expect(collectInstallerTaskRegistrationErrors(installerContent)).toContain(

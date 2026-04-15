@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
 import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
 import { resolveReleaseDir } from '@agent/release/application/release-layout'
@@ -6,7 +7,6 @@ import {
   readReleaseState,
   writeReleaseState,
 } from '@agent/release/infrastructure/release-state.file-repository'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 
 function removePathIfExists(targetPath: string): void {
   if (!fs.existsSync(targetPath)) {

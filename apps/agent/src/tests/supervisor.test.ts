@@ -1,11 +1,11 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import { confirmActivatedRelease } from '@agent/release/application/activate-release'
 import { getCurrentRelease } from '@agent/release/application/get-current-release'
 import { rollbackRelease } from '@agent/release/application/rollback-release'
 import { createInitialReleaseState, withRecordedFailure } from '@agent/release/domain/release-state'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import { describe, expect, it } from 'vitest'
 
 function createLayout(baseDir: string): AgentPathLayout {

@@ -1,8 +1,8 @@
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import type {
   ResolvedActiveRelease,
   RuntimeLaunchSpec,
 } from '@agent/core/contracts/release-runtime-handoff.contract'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import { resolveActiveRelease } from '@agent/release/application/release-layout'
 
 export function getCurrentRelease(command: {

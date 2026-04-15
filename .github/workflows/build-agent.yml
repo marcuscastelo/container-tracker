@@ -41,6 +41,15 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN }}
 
+      - name: Type-check agent
+        run: pnpm run type-check:agent
+
+      - name: Agent boundary gates
+        run: pnpm run agent:boundary-scan
+
+      - name: Agent smoke suites
+        run: pnpm run agent:smoke
+
       - name: Build release app
         env:
           BACKEND_URL: https://agent.invalid

@@ -137,7 +137,7 @@ Rollback steps:
 Diferenças entre OS ficam isoladas em:
 
 ```
-tools/agent/platform/
+apps/agent/src/platform/
   linux.adapter.ts
   windows.adapter.ts
 ```

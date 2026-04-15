@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process'
 import path from 'node:path'
 import process from 'node:process'
-
+import type { AgentPathLayout } from '@agent/config/config.contract'
+import { resolveInstalledLinuxAgentPathLayout } from '@agent/config/resolve-agent-paths'
 import {
   type AgentControlBackendState,
   AgentControlBackendStateSchema,
@@ -32,8 +33,6 @@ import {
   type AgentControlLogsQuerySchema,
   type AgentControlReleaseVersionInputSchema,
 } from '@agent/electron/ipc'
-import type { AgentPathLayout } from '@agent/runtime-paths'
-import { resolveInstalledLinuxAgentPathLayout } from '@agent/runtime-paths'
 import type { z } from 'zod/v4'
 
 function toErrorMessage(error: unknown): string {

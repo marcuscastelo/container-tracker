@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { readAgentEnvFileValues } from '@agent/config/agent-config.mapper'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   type ControlRuntimeConfig,
   ControlRuntimeConfigSchema,
@@ -38,7 +39,6 @@ import {
   resolveAgentPublicBackendStatePath,
   resolveAgentPublicStatePath,
 } from '@agent/runtime/paths'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import { writeFileAtomic } from '@agent/state/file-io'
 import type { z } from 'zod/v4'
 
@@ -46,7 +46,6 @@ const LOG_FILE_BY_CHANNEL = {
   stdout: 'agent.out.log',
   stderr: 'agent.err.log',
   supervisor: 'supervisor.log',
-  updater: 'updater.log',
 } as const
 
 type ManagedLogChannel = Exclude<keyof typeof LOG_FILE_BY_CHANNEL, 'all'>
@@ -311,7 +310,7 @@ function readLogs(
   const parsedChannel = AgentControlLogChannelSchema.parse(command?.channel ?? 'all')
   const tail = Math.max(1, Math.min(command?.tail ?? 200, 2000))
   const channels: readonly ManagedLogChannel[] =
-    parsedChannel === 'all' ? ['stdout', 'stderr', 'supervisor', 'updater'] : [parsedChannel]
+    parsedChannel === 'all' ? ['stdout', 'stderr', 'supervisor'] : [parsedChannel]
 
   const lines = channels.flatMap((channel) =>
     readLogLines(path.join(layout.logsDir, LOG_FILE_BY_CHANNEL[channel]), channel, tail),

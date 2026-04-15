@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   consumeBootstrapConfig,
   readBootstrapConfigFromEnv,
@@ -12,6 +13,7 @@ import {
   readRuntimeConfigFromEnv,
   writeRuntimeConfigToEnv,
 } from '@agent/config/infrastructure/env-config.repository'
+import { ensureAgentPathLayout, resolveAgentPathLayout } from '@agent/config/resolve-agent-paths'
 import {
   acknowledgeRemoteCommand,
   applyRemoteCommand,
@@ -50,11 +52,6 @@ import { computeBackoffDelayMs } from '../backoff.ts'
 import { createAgentLogForwarder } from '../log-forwarder.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { drainPendingActivityEvents } from '../pending-activity.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import type { AgentPathLayout } from '../runtime-paths.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-// biome-ignore lint/performance/noNamespaceImport: Runtime keeps grouped imports stable to avoid formatter wrapping regressions.
-import * as runtimePaths from '../runtime-paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { EXIT_FATAL, EXIT_UPDATE_RESTART } from './lifecycle-exit-codes.ts'
 
@@ -838,8 +835,8 @@ function subscribeToRealtimeIfConfigured(command: {
 }
 
 async function main(): Promise<void> {
-  const agentLayout = runtimePaths.resolveAgentPathLayout()
-  runtimePaths.ensureAgentPathLayout(agentLayout)
+  const agentLayout = resolveAgentPathLayout()
+  ensureAgentPathLayout(agentLayout)
   let runtimeConfig = await resolveRuntimeConfigWithBootstrap(agentLayout)
   let controlSync = await syncControlStateAndPersistPublicState({
     layout: agentLayout,

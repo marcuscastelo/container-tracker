@@ -34,6 +34,25 @@ describe('state contracts', () => {
     ).toThrowError()
   })
 
+  it('rejects invalid release state payload', () => {
+    expect(() =>
+      toReleaseState({
+        current_version: '',
+        previous_version: null,
+        last_known_good_version: '1.0.0',
+        target_version: null,
+        activation_state: 'idle',
+        failure_count: 0,
+        last_update_attempt: null,
+        blocked_versions: [],
+        automatic_updates_blocked: false,
+        recent_failures: [],
+        activation_failures: {},
+        last_error: null,
+      }),
+    ).toThrowError()
+  })
+
   it('round-trips runtime state through mapper and serializer', () => {
     const runtime = toRuntimeState({
       agent_version: '1.0.0',

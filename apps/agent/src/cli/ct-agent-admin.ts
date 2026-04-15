@@ -4,6 +4,8 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { createBootstrapControlService } from '@agent/bootstrap/create-control-service'
+import type { AgentPathLayout } from '@agent/config/config.contract'
+import { resolveAgentPathLayout } from '@agent/config/resolve-agent-paths'
 import {
   AgentControlBackendStateSchema,
   AgentControlBackendUpdateResultSchema,
@@ -25,8 +27,6 @@ import {
   resolveAgentPublicBackendStatePath,
   resolveAgentPublicStatePath,
 } from '@agent/runtime/paths'
-import type { AgentPathLayout } from '@agent/runtime-paths'
-import { resolveAgentPathLayout } from '@agent/runtime-paths'
 import { z } from 'zod/v4'
 
 const adminLogsQuerySchema = z.object({

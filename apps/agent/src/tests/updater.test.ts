@@ -2,11 +2,10 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-
-import { createInitialReleaseState } from '@agent/release/domain/release-state'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import { stageRelease } from '@agent/release/application/stage-release'
+import { createInitialReleaseState } from '@agent/release/domain/release-state'
 import { fetchReleaseManifest } from '@agent/release/infrastructure/release-manifest.client'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import { describe, expect, it } from 'vitest'
 
 function sha256(value: string): string {
@@ -51,9 +50,17 @@ describe('updater core', () => {
         return new Response(
           JSON.stringify({
             version: '2.0.0',
-            download_url: 'https://example.com/agent-v2.js',
-            checksum,
             channel: 'stable',
+            platforms: {
+              'linux-x64': {
+                url: 'https://example.com/agent-v2.js',
+                checksum,
+              },
+              'windows-x64': {
+                url: 'https://example.com/agent-v2.js',
+                checksum,
+              },
+            },
             update_available: true,
             desired_version: '2.0.0',
             current_version: '1.0.0',
@@ -122,8 +129,8 @@ describe('updater core', () => {
       fetchManifest,
     )
 
-    expect(manifest.download_url).toBe('https://example.com/agent-v2-windows.zip')
-    expect(manifest.checksum).toBe(
+    expect(manifest.selected_asset?.url).toBe('https://example.com/agent-v2-windows.zip')
+    expect(manifest.selected_asset?.checksum).toBe(
       'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
     )
   })
@@ -143,7 +150,7 @@ describe('updater core', () => {
     )
 
     expect(manifest.update_available).toBe(false)
-    expect(manifest.download_url).toBeNull()
+    expect(manifest.selected_asset).toBeNull()
     expect(manifest.channel).toBe('stable')
   })
 
@@ -162,15 +169,28 @@ describe('updater core', () => {
     const result = await stageRelease({
       manifest: {
         version: '2.0.0',
-        download_url: 'https://agent.test.local/release-v2.js',
-        checksum,
         channel: 'stable',
+        platforms: {
+          'linux-x64': {
+            url: 'https://agent.test.local/release-v2.js',
+            checksum,
+          },
+          'windows-x64': {
+            url: 'https://agent.test.local/release-v2.js',
+            checksum,
+          },
+        },
         update_available: true,
         desired_version: '2.0.0',
         current_version: '1.0.0',
         update_ready_version: null,
         restart_required: false,
         restart_requested_at: null,
+        selected_platform: 'linux-x64',
+        selected_asset: {
+          url: 'https://agent.test.local/release-v2.js',
+          checksum,
+        },
       },
       layout,
       state: createInitialReleaseState('1.0.0'),
@@ -201,15 +221,28 @@ describe('updater core', () => {
     const result = await stageRelease({
       manifest: {
         version: '2.0.2',
-        download_url: 'https://agent.test.local/release-v202.js',
-        checksum,
         channel: 'stable',
+        platforms: {
+          'linux-x64': {
+            url: 'https://agent.test.local/release-v202.js',
+            checksum,
+          },
+          'windows-x64': {
+            url: 'https://agent.test.local/release-v202.js',
+            checksum,
+          },
+        },
         update_available: true,
         desired_version: '2.0.2',
         current_version: '1.0.0',
         update_ready_version: null,
         restart_required: false,
         restart_requested_at: null,
+        selected_platform: 'linux-x64',
+        selected_asset: {
+          url: 'https://agent.test.local/release-v202.js',
+          checksum,
+        },
       },
       layout,
       state: createInitialReleaseState('1.0.0'),
@@ -238,15 +271,28 @@ describe('updater core', () => {
       stageRelease({
         manifest: {
           version: '2.0.1',
-          download_url: 'https://agent.test.local/release-bad.js',
-          checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
           channel: 'stable',
+          platforms: {
+            'linux-x64': {
+              url: 'https://agent.test.local/release-bad.js',
+              checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            },
+            'windows-x64': {
+              url: 'https://agent.test.local/release-bad.js',
+              checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            },
+          },
           update_available: true,
           desired_version: '2.0.1',
           current_version: '1.0.0',
           update_ready_version: null,
           restart_required: false,
           restart_requested_at: null,
+          selected_platform: 'linux-x64',
+          selected_asset: {
+            url: 'https://agent.test.local/release-bad.js',
+            checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          },
         },
         layout,
         state: createInitialReleaseState('1.0.0'),
@@ -262,15 +308,28 @@ describe('updater core', () => {
     const result = await stageRelease({
       manifest: {
         version: '2.0.0',
-        download_url: 'https://agent.test.local/release-v2.js',
-        checksum: sha256("console.log('agent v2')\n"),
         channel: 'stable',
+        platforms: {
+          'linux-x64': {
+            url: 'https://agent.test.local/release-v2.js',
+            checksum: sha256("console.log('agent v2')\n"),
+          },
+          'windows-x64': {
+            url: 'https://agent.test.local/release-v2.js',
+            checksum: sha256("console.log('agent v2')\n"),
+          },
+        },
         update_available: true,
         desired_version: '2.0.0',
         current_version: '1.0.0',
         update_ready_version: null,
         restart_required: false,
         restart_requested_at: null,
+        selected_platform: 'linux-x64',
+        selected_asset: {
+          url: 'https://agent.test.local/release-v2.js',
+          checksum: sha256("console.log('agent v2')\n"),
+        },
       },
       layout,
       state: {

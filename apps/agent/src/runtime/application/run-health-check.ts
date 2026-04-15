@@ -1,9 +1,7 @@
 import type { ChildProcess } from 'node:child_process'
-import {
-  HEALTH_POLL_INTERVAL_MS,
-} from '@agent/runtime/domain/runtime-health-policy'
-import { readRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
+import { HEALTH_POLL_INTERVAL_MS } from '@agent/runtime/domain/runtime-health-policy'
 import { stopRuntimeProcess } from '@agent/runtime/infrastructure/process-runner'
+import { readRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {

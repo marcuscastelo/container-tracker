@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { clearRuntimeDrain, requestRuntimeDrain } from '@agent/runtime/application/drain-runtime'
-import { shouldRollbackFromHealthGate } from '@agent/runtime/domain/runtime-health-policy'
+import { shouldRollbackAfterHealthGate } from '@agent/runtime/application/runtime-health-gate'
 import { readSupervisorControl } from '@agent/runtime/infrastructure/supervisor-control.repository'
 import { describe, expect, it } from 'vitest'
 
@@ -34,7 +34,7 @@ describe('runtime lifecycle primitives', () => {
 
   it('keeps health gate rollback policy deterministic for timeout/grace cases', () => {
     expect(
-      shouldRollbackFromHealthGate({
+      shouldRollbackAfterHealthGate({
         startupConfirmed: true,
         startupTimedOut: false,
         healthGraceConfirmed: true,
@@ -42,7 +42,7 @@ describe('runtime lifecycle primitives', () => {
     ).toBe(false)
 
     expect(
-      shouldRollbackFromHealthGate({
+      shouldRollbackAfterHealthGate({
         startupConfirmed: false,
         startupTimedOut: true,
         healthGraceConfirmed: false,
@@ -50,7 +50,7 @@ describe('runtime lifecycle primitives', () => {
     ).toBe(true)
 
     expect(
-      shouldRollbackFromHealthGate({
+      shouldRollbackAfterHealthGate({
         startupConfirmed: true,
         startupTimedOut: false,
         healthGraceConfirmed: false,

@@ -1,13 +1,10 @@
 import fs from 'node:fs'
 import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
+import { createInitialReleaseState, migrateReleaseState } from '@agent/release/domain/release-state'
 import {
   readReleaseStateAtPath,
   writeReleaseStateAtPath,
 } from '@agent/state/infrastructure/release-state.file-store'
-import {
-  createInitialReleaseState,
-  migrateReleaseState,
-} from '@agent/release/domain/release-state'
 
 export function writeReleaseState(filePath: string, state: ReleaseState): void {
   writeReleaseStateAtPath(filePath, state)

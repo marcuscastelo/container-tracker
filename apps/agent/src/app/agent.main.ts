@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { ensureAgentPathLayout, resolveAgentPathLayout } from '@agent/config/resolve-agent-paths'
 import {
   readCurrentControlRuntimeConfig,
   syncAgentControlState,
@@ -15,38 +16,44 @@ import {
 } from '@agent/control-core/public-control-files'
 import { appendPendingActivityEvents } from '@agent/pending-activity'
 import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
-import { activatePendingRelease, confirmActivatedRelease } from '@agent/release/application/activate-release'
+import {
+  activatePendingRelease,
+  confirmActivatedRelease,
+} from '@agent/release/application/activate-release'
 import { runReleaseCheckCycle } from '@agent/release/application/check-for-update'
-import { createRuntimeLaunchSpec, getCurrentRelease } from '@agent/release/application/get-current-release'
+import {
+  createRuntimeLaunchSpec,
+  getCurrentRelease,
+} from '@agent/release/application/get-current-release'
+import { recordReleaseFailure } from '@agent/release/application/record-release-failure'
+import {
+  RELEASE_CHECK_INTERVAL_MS,
+  resolveSupervisorReleaseChecksMode,
+} from '@agent/release/application/release-checks-mode'
 import { ensureReleaseLinksForCurrentState } from '@agent/release/application/release-layout'
 import { rollbackRelease, selectRollbackVersion } from '@agent/release/application/rollback-release'
-import { resolveReleaseChecksMode, RELEASE_CHECK_INTERVAL_MS } from '@agent/release/domain/release-policy'
-import { withRecordedFailure } from '@agent/release/domain/release-state'
 import {
   readReleaseState,
   writeReleaseState,
 } from '@agent/release/infrastructure/release-state.file-repository'
+import { requestRuntimeDrain } from '@agent/runtime/application/drain-runtime'
+import {
+  DEFAULT_HEALTH_GRACE_MS,
+  DEFAULT_STARTUP_TIMEOUT_MS,
+  shouldRollbackAfterHealthGate,
+} from '@agent/runtime/application/runtime-health-gate'
+import {
+  type ChildRunOutcome,
+  runRuntimeWithHealthGate,
+  runRuntimeWithoutHealthGate,
+} from '@agent/runtime/application/supervise-runtime'
+import { clearSupervisorControl } from '@agent/runtime/infrastructure/supervisor-control.repository'
 import {
   EXIT_CONFIG_ERROR,
   EXIT_FATAL,
   EXIT_OK,
   resolveSupervisorExitAction,
 } from '@agent/runtime/lifecycle-exit-codes'
-import { requestRuntimeDrain } from '@agent/runtime/application/drain-runtime'
-import {
-  runRuntimeWithHealthGate,
-  runRuntimeWithoutHealthGate,
-} from '@agent/runtime/application/supervise-runtime'
-import {
-  DEFAULT_HEALTH_GRACE_MS,
-  DEFAULT_STARTUP_TIMEOUT_MS,
-  shouldRollbackFromHealthGate,
-} from '@agent/runtime/domain/runtime-health-policy'
-import type { ChildRunOutcome } from '@agent/runtime/domain/runtime-lifecycle'
-import {
-  clearSupervisorControl,
-} from '@agent/runtime/infrastructure/supervisor-control.repository'
-import { ensureAgentPathLayout, resolveAgentPathLayout } from '@agent/runtime-paths'
 
 const DEFAULT_CRASH_LOOP_WINDOW_MS = 5 * 60 * 1000
 const DEFAULT_CRASH_LOOP_THRESHOLD = 3
@@ -284,7 +291,7 @@ function startReleaseCheckLoop(command: {
         return
       }
 
-      const checkMode = resolveReleaseChecksMode({
+      const checkMode = resolveSupervisorReleaseChecksMode({
         env: process.env,
         configuredChannel: controlSync.effectiveConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
       })
@@ -292,7 +299,10 @@ function startReleaseCheckLoop(command: {
         return
       }
 
-      const releaseState = readReleaseState(command.layout.releaseStatePath, command.fallbackVersion)
+      const releaseState = readReleaseState(
+        command.layout.releaseStatePath,
+        command.fallbackVersion,
+      )
       if (releaseState.activation_state !== 'idle') {
         return
       }
@@ -378,7 +388,7 @@ export async function runAgentMain(): Promise<void> {
   publicArtifactPublisher.publishNow()
   await publishSupervisorPublicSnapshot(layout)
   const currentConfig = readCurrentControlRuntimeConfig(layout)
-  const releaseChecksMode = resolveReleaseChecksMode({
+  const releaseChecksMode = resolveSupervisorReleaseChecksMode({
     env: process.env,
     configuredChannel: currentConfig?.AGENT_UPDATE_MANIFEST_CHANNEL,
   })
@@ -425,11 +435,7 @@ export async function runAgentMain(): Promise<void> {
 
     const nowIso = new Date().toISOString()
 
-    if (
-      !releaseChecksDisabled &&
-      state.activation_state === 'pending' &&
-      state.target_version
-    ) {
+    if (!releaseChecksDisabled && state.activation_state === 'pending' && state.target_version) {
       try {
         const targetVersion = state.target_version
         state = activatePendingRelease({
@@ -455,7 +461,7 @@ export async function runAgentMain(): Promise<void> {
         const failureTracked =
           failedTargetVersion === null
             ? null
-            : withRecordedFailure({
+            : recordReleaseFailure({
                 state,
                 version: failedTargetVersion,
                 nowIso: new Date().toISOString(),
@@ -629,7 +635,7 @@ export async function runAgentMain(): Promise<void> {
 
     const rollbackFromHealthGate =
       requireHealthGate &&
-      shouldRollbackFromHealthGate({
+      shouldRollbackAfterHealthGate({
         startupConfirmed: runResult.startupConfirmed,
         startupTimedOut: runResult.startupTimedOut,
         healthGraceConfirmed: runResult.healthGraceConfirmed,
@@ -640,7 +646,7 @@ export async function runAgentMain(): Promise<void> {
         ? `startup timeout for version ${refreshedState.target_version}`
         : `unstable runtime for version ${refreshedState.target_version}`
 
-      const failureTracked = withRecordedFailure({
+      const failureTracked = recordReleaseFailure({
         state: refreshedState,
         version: refreshedState.target_version,
         nowIso: new Date().toISOString(),
@@ -716,7 +722,7 @@ export async function runAgentMain(): Promise<void> {
 
     if (shouldFallbackAfterReleaseCrashLoop) {
       const now = new Date().toISOString()
-      const failureTracked = withRecordedFailure({
+      const failureTracked = recordReleaseFailure({
         state: refreshedState,
         version: runtimeSelection.version,
         nowIso: now,

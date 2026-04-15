@@ -57,7 +57,7 @@ describe('release manifest', () => {
     expect(asset.url).toContain('agent-windows-x64.zip')
   })
 
-  it('keeps legacy manifest compatibility', async () => {
+  it('rejects legacy manifest shape without platforms', async () => {
     const manifestsDir = createManifestDir()
     fs.writeFileSync(
       path.join(manifestsDir, 'canary.json'),
@@ -75,17 +75,8 @@ describe('release manifest', () => {
       'utf8',
     )
 
-    const manifest = await fetchManifest('canary', { manifestsDir })
-    const linuxAsset = selectPlatformAsset({
-      manifest,
-      platform: 'linux-x64',
-    })
-    const windowsAsset = selectPlatformAsset({
-      manifest,
-      platform: 'windows-x64',
-    })
-
-    expect(linuxAsset.url).toBe(windowsAsset.url)
-    expect(linuxAsset.checksum).toBe(windowsAsset.checksum)
+    await expect(fetchManifest('canary', { manifestsDir })).rejects.toThrow(
+      /invalid manifest payload/i,
+    )
   })
 })

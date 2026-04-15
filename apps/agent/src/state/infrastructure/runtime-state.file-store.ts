@@ -1,8 +1,8 @@
 import type { RuntimeState } from '@agent/core/contracts/runtime-state.contract'
+import { RuntimeStateSchema } from '@agent/core/contracts/runtime-state.contract'
 import type { PlatformPathResolution } from '@agent/platform/platform.contract'
 import { readJsonFileWithSchema, writeFileAtomic } from '@agent/state/file-io'
 import { serializeRuntimeState } from '@agent/state/runtime-state.mapper'
-import { RuntimeStateSchema } from '@agent/core/contracts/runtime-state.contract'
 
 export function writeRuntimeStateFile(command: {
   readonly paths: PlatformPathResolution

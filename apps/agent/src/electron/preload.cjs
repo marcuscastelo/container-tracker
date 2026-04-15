@@ -77,5 +77,5 @@ const agentControl = {
 contextBridge.exposeInMainWorld('agentControl', agentControl)
 contextBridge.exposeInMainWorld('agentControlMeta', {
   logsRequireAction: false,
-  installedMode: process.platform === 'linux' && process.env.CT_AGENT_UI_INSTALLED === '1',
+  installedMode: process.env.CT_AGENT_UI_INSTALLED === '1',
 })

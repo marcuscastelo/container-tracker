@@ -1,15 +1,14 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..\..')
 $agentTaskName = 'ContainerTrackerAgent'
-$updaterTaskName = 'ContainerTrackerAgentUpdater'
 $installRoot = Join-Path $env:LOCALAPPDATA 'Programs\ContainerTrackerAgent'
 $dataRoot = Join-Path $env:LOCALAPPDATA 'ContainerTracker'
-$dataLogDir = Join-Path $dataRoot 'logs'
 $shortRoot = 'C:\a'
 $shortReleaseDir = Join-Path $shortRoot 'release'
-$shortInstallerDir = Join-Path $shortRoot 'tools\agent\installer'
+$shortInstallerParent = Join-Path $shortRoot 'apps\agent\src'
+$shortInstallerDir = Join-Path $shortInstallerParent 'installer'
 
 function Stop-AgentInstallProcesses {
   param(
@@ -60,15 +59,6 @@ function Show-TaskDiagnostics {
   }
 
   Show-OptionalTaskQuery -TaskName $agentTaskName
-  Show-OptionalTaskQuery -TaskName $updaterTaskName
-
-  $updaterLog = Join-Path $dataLogDir 'updater.log'
-  if (Test-Path $updaterLog) {
-    Write-Host "[agent:rebuild-restart] tail $updaterLog"
-    Get-Content $updaterLog -Tail 80
-  } else {
-    Write-Host "[agent:rebuild-restart] updater log not found: $updaterLog"
-  }
 }
 
 function Invoke-SafeTaskRun {
@@ -100,6 +90,7 @@ try {
 
   Write-Host "[agent:rebuild-restart] preparing short path workspace at $shortRoot..."
   New-Item -ItemType Directory -Path $shortRoot -Force | Out-Null
+  New-Item -ItemType Directory -Path $shortInstallerParent -Force | Out-Null
 
   if (Test-Path $shortReleaseDir) {
     Remove-Item $shortReleaseDir -Recurse -Force
@@ -109,7 +100,7 @@ try {
   }
 
   Copy-Item (Join-Path $repoRoot 'release') $shortReleaseDir -Recurse -Force
-  Copy-Item (Join-Path $repoRoot 'tools\agent\installer') $shortInstallerDir -Recurse -Force
+  Copy-Item (Join-Path $repoRoot 'apps\agent\src\installer') $shortInstallerDir -Recurse -Force
 
   Write-Host '[agent:rebuild-restart] compiling installer from short path...'
   & iscc (Join-Path $shortInstallerDir 'installer.iss')
@@ -120,8 +111,8 @@ try {
   $installerCandidates = @(
     (Join-Path $shortInstallerDir 'Output\ContainerTrackerAgent-Setup.exe'),
     (Join-Path $shortInstallerDir 'ContainerTrackerAgent-Setup.exe'),
-    (Join-Path $repoRoot 'tools\agent\installer\Output\ContainerTrackerAgent-Setup.exe'),
-    (Join-Path $repoRoot 'tools\agent\installer\ContainerTrackerAgent-Setup.exe')
+    (Join-Path $repoRoot 'apps\agent\src\installer\Output\ContainerTrackerAgent-Setup.exe'),
+    (Join-Path $repoRoot 'apps\agent\src\installer\ContainerTrackerAgent-Setup.exe')
   )
 
   $installerPath = $null
@@ -138,7 +129,6 @@ try {
 
   Stop-AgentInstallProcesses -InstallRootPath $installRoot
   Invoke-SafeTaskDelete -TaskName $agentTaskName
-  Invoke-SafeTaskDelete -TaskName $updaterTaskName
 
   $installerLogPath = Join-Path $shortRoot 'installer-run.log'
   if (Test-Path $installerLogPath) {
@@ -166,11 +156,6 @@ try {
     Invoke-SafeTaskRun -TaskName $agentTaskName
   } catch {
     Write-Warning "[agent:rebuild-restart] could not run task $agentTaskName immediately: $($_.Exception.Message)"
-  }
-  try {
-    Invoke-SafeTaskRun -TaskName $updaterTaskName
-  } catch {
-    Write-Warning "[agent:rebuild-restart] could not run task $updaterTaskName immediately: $($_.Exception.Message)"
   }
 
   Start-Sleep -Seconds 2

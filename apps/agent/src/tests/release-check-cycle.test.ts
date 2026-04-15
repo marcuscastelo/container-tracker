@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   activatePendingRelease,
   confirmActivatedRelease,
@@ -13,7 +14,6 @@ import {
   readReleaseState,
   writeReleaseState,
 } from '@agent/release/infrastructure/release-state.file-repository'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import { describe, expect, it } from 'vitest'
 
 function createLayout(baseDir: string): AgentPathLayout {
@@ -105,6 +105,7 @@ describe('release check cycle pipeline', () => {
         manifest: {
           version: '1.0.0',
           channel: 'stable',
+          platforms: {},
           update_available: false,
           desired_version: null,
           current_version: '1.0.0',
@@ -142,9 +143,17 @@ describe('release check cycle pipeline', () => {
       fetchImpl: createManifestFetch({
         manifest: {
           version: '2.0.0',
-          download_url: 'https://agent.test.local/release-v2.js',
-          checksum,
           channel: 'stable',
+          platforms: {
+            'linux-x64': {
+              url: 'https://agent.test.local/release-v2.js',
+              checksum,
+            },
+            'windows-x64': {
+              url: 'https://agent.test.local/release-v2.js',
+              checksum,
+            },
+          },
           update_available: true,
           desired_version: '2.0.0',
           current_version: '1.0.0',
@@ -204,9 +213,17 @@ describe('release check cycle pipeline', () => {
       fetchImpl: createManifestFetch({
         manifest: {
           version: '2.0.0',
-          download_url: 'https://agent.test.local/release-v2.js',
-          checksum,
           channel: 'stable',
+          platforms: {
+            'linux-x64': {
+              url: 'https://agent.test.local/release-v2.js',
+              checksum,
+            },
+            'windows-x64': {
+              url: 'https://agent.test.local/release-v2.js',
+              checksum,
+            },
+          },
           update_available: true,
           desired_version: '2.0.0',
           current_version: '1.0.0',

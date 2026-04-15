@@ -9,6 +9,14 @@
 - [ ] Placement is justified (folder + file role match responsibility)
 - [ ] No forbidden dependency direction was introduced (`modules -> capabilities`, `domain -> transport/ui`)
 
+## Agent Ownership (`apps/agent`)
+
+- [ ] `process.platform` usage is confined to `apps/agent/src/platform/*`
+- [ ] `release/*` does not import `sync/*` or `providers/*`
+- [ ] `providers/*` does not import `sync/*` orchestration (ack/polling/retry/finalization)
+- [ ] `app/*` remains composition-only (no domain policy imports)
+- [ ] Critical contracts were updated only under `apps/agent/src/core/contracts/*`
+
 ## Validation / Parsing Mode (ADR-0021)
 
 - [ ] Parsing mode is explicit in the changed code:
@@ -40,4 +48,3 @@
 
 - [ ] `pnpm check` is green locally
 - [ ] Relevant tests for changed behavior were updated
-

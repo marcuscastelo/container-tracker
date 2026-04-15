@@ -12,7 +12,6 @@ const FIXED_ZIP_DATE = new Date('2000-01-01T00:00:00.000Z')
 const REQUIRED_RELEASE_FILES = [
   'release/node/node.exe',
   'release/app/dist/agent.js',
-  'release/app/dist/updater.js',
   'release/app/dist/apps/agent/src/supervisor.js',
   'release/config/bootstrap.env',
 ] as const

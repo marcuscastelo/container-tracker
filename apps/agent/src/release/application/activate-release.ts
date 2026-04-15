@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
 import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
 import {
@@ -9,7 +10,6 @@ import {
   readReleaseState,
   writeReleaseState,
 } from '@agent/release/infrastructure/release-state.file-repository'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 
 function basenameFromPath(targetPath: string | null): string | null {
   if (!targetPath) {

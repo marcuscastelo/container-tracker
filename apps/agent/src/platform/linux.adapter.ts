@@ -31,7 +31,10 @@ function canUseLinuxSystemDir(candidate: string): boolean {
   }
 }
 
-function resolveDataDir(command: { readonly env: NodeJS.ProcessEnv; readonly cwd?: string }): string {
+function resolveDataDir(command: {
+  readonly env: NodeJS.ProcessEnv
+  readonly cwd?: string
+}): string {
   const explicitDataDir = normalizeOptionalEnv(command.env.AGENT_DATA_DIR)
   if (explicitDataDir) {
     return explicitDataDir

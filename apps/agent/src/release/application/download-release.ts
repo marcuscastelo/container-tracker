@@ -1,7 +1,10 @@
-import type { AgentPathLayout } from '@agent/runtime-paths'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import { verifyReleaseChecksum } from '@agent/release/application/verify-release-checksum'
 import { downloadReleaseBundle } from '@agent/release/infrastructure/bundle-downloader'
-import { prepareReleaseDirectory, type PreparedRelease } from '@agent/release/infrastructure/bundle-extractor'
+import {
+  type PreparedRelease,
+  prepareReleaseDirectory,
+} from '@agent/release/infrastructure/bundle-extractor'
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
 

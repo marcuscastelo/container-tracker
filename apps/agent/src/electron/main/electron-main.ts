@@ -18,6 +18,7 @@ import {
   setupSingleInstance,
   type UiLaunchMode,
 } from '@agent/electron/main/window-controller'
+import { isLinuxPlatform, isMacPlatform } from '@agent/platform/os-branching'
 import {
   app,
   BrowserWindow,
@@ -42,7 +43,7 @@ function resolveLaunchMode(): UiLaunchMode {
 }
 
 function isInstalledLinuxUi(): boolean {
-  return process.platform === 'linux' && process.env.CT_AGENT_UI_INSTALLED === '1'
+  return isLinuxPlatform() && process.env.CT_AGENT_UI_INSTALLED === '1'
 }
 
 function resolveIconPath(): string | undefined {
@@ -280,7 +281,7 @@ if (canRun) {
 }
 
 app.on('window-all-closed', () => {
-  if (launchMode !== 'tray' && process.platform !== 'darwin') {
+  if (launchMode !== 'tray' && !isMacPlatform()) {
     app.quit()
   }
 })

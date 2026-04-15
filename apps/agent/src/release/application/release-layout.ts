@@ -1,9 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import type { ResolvedActiveRelease } from '@agent/core/contracts/release-runtime-handoff.contract'
-import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
+import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
 
 const RELEASE_ENTRYPOINT_CANDIDATES = [
   path.join('dist', 'apps', 'agent', 'src', 'agent.js'),

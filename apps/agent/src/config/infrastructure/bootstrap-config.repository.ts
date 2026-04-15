@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import {
   loadRawAgentEnvFromFile,
   parseAgentConfig,
@@ -7,11 +8,8 @@ import {
 import type { ValidatedBootstrapConfig } from '@agent/core/contracts/agent-config.contract'
 import type { PlatformPathResolution } from '@agent/platform/platform.contract'
 import { writeFileAtomic } from '@agent/state/file-io'
-import fs from 'node:fs'
 
-export function readBootstrapConfigFromEnv(command: {
-  readonly paths: PlatformPathResolution
-}): {
+export function readBootstrapConfigFromEnv(command: { readonly paths: PlatformPathResolution }): {
   readonly config: ValidatedBootstrapConfig
   readonly raw: string
 } | null {

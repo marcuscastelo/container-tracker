@@ -11,20 +11,22 @@ import {
   consumeBootstrapConfig,
   readBootstrapConfigFromEnv,
 } from '@agent/config/infrastructure/bootstrap-config.repository'
-import { readRuntimeConfigFromEnv, writeRuntimeConfigToEnv } from '@agent/config/infrastructure/env-config.repository'
+import {
+  readRuntimeConfigFromEnv,
+  writeRuntimeConfigToEnv,
+} from '@agent/config/infrastructure/env-config.repository'
 import {
   type ValidatedAgentConfig,
   ValidatedAgentConfigSchema,
   type ValidatedBootstrapConfig,
 } from '@agent/core/contracts/agent-config.contract'
+import { readRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
 import { toReleaseState } from '@agent/state/release-state.mapper'
 import { z } from 'zod/v4'
-
+// biome-ignore lint/style/noRestrictedImports: CLI runtime resolves direct .ts imports for bundled agent execution.
+import { resolveAgentPathLayout } from '../config/resolve-agent-paths.ts'
 // biome-ignore lint/style/noRestrictedImports: CLI runtime resolves direct .ts imports for bundled agent execution.
 import { EXIT_CONFIG_ERROR, EXIT_FATAL, EXIT_OK } from '../runtime/lifecycle-exit-codes.ts'
-import { readRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
-// biome-ignore lint/style/noRestrictedImports: CLI runtime resolves direct .ts imports for bundled agent execution.
-import { resolveAgentPathLayout } from '../runtime-paths.ts'
 
 const AGENT_SERVICE_NAME = 'container-tracker-agent'
 const JOURNAL_TAIL_LINES = '200'

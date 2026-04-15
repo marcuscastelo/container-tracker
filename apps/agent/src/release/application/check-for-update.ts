@@ -1,13 +1,11 @@
-import {
-  markReleaseForActivation,
-} from '@agent/release/application/activate-release'
+import type { AgentPathLayout } from '@agent/config/config.contract'
+import { markReleaseForActivation } from '@agent/release/application/activate-release'
 import { stageRelease } from '@agent/release/application/stage-release'
 import { fetchReleaseManifest } from '@agent/release/infrastructure/release-manifest.client'
 import {
   readReleaseState,
   writeReleaseState,
 } from '@agent/release/infrastructure/release-state.file-repository'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
 
@@ -79,10 +77,7 @@ export async function runReleaseCheckCycle(command: {
   const effectiveReleaseState = {
     ...releaseState,
     blocked_versions: [
-      ...new Set([
-        ...releaseState.blocked_versions,
-        ...(command.effectiveBlockedVersions ?? []),
-      ]),
+      ...new Set([...releaseState.blocked_versions, ...(command.effectiveBlockedVersions ?? [])]),
     ],
   }
 
@@ -149,7 +144,7 @@ export async function runReleaseCheckCycle(command: {
       severity: 'info',
       metadata: {
         version: stagedRelease.manifest.version,
-        url: stagedRelease.manifest.download_url,
+        url: stagedRelease.manifest.selected_asset?.url ?? null,
       },
       occurred_at: nowIso,
     })
@@ -159,7 +154,7 @@ export async function runReleaseCheckCycle(command: {
       severity: 'success',
       metadata: {
         version: stagedRelease.manifest.version,
-        checksum: stagedRelease.manifest.checksum,
+        checksum: stagedRelease.manifest.selected_asset?.checksum ?? null,
       },
       occurred_at: nowIso,
     })

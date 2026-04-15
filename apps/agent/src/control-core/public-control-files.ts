@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   readCurrentControlRuntimeConfig,
   syncAgentControlState,
@@ -18,7 +19,6 @@ import {
   buildAgentReleaseInventory,
   writeAgentControlPublicState,
 } from '@agent/control-core/public-control-state'
-import type { AgentPathLayout } from '@agent/runtime-paths'
 import { writeFileAtomic } from '@agent/state/file-io'
 import type { z } from 'zod/v4'
 
@@ -26,7 +26,6 @@ const LOG_FILE_BY_CHANNEL = {
   stdout: 'agent.out.log',
   stderr: 'agent.err.log',
   supervisor: 'supervisor.log',
-  updater: 'updater.log',
 } as const
 
 type ManagedLogChannel = Exclude<keyof typeof LOG_FILE_BY_CHANNEL, 'all'>
@@ -75,7 +74,7 @@ export function selectAgentControlPublicLogs(
   const parsedChannel = AgentControlLogChannelSchema.parse(command?.channel ?? 'all')
   const tail = Math.max(1, Math.min(command?.tail ?? 200, 2000))
   const channels: readonly ManagedLogChannel[] =
-    parsedChannel === 'all' ? ['stdout', 'stderr', 'supervisor', 'updater'] : [parsedChannel]
+    parsedChannel === 'all' ? ['stdout', 'stderr', 'supervisor'] : [parsedChannel]
 
   return AgentControlLogsResponseSchema.parse({
     lines: channels.flatMap((channel) => {
@@ -199,7 +198,7 @@ export function refreshAgentControlPublicLogs(command: {
 }): AgentControlLogsResponse {
   const tail = Math.max(1, Math.min(command.tail ?? 2000, 2000))
   const logs = AgentControlLogsResponseSchema.parse({
-    lines: (['stdout', 'stderr', 'supervisor', 'updater'] as const).flatMap((channel) =>
+    lines: (['stdout', 'stderr', 'supervisor'] as const).flatMap((channel) =>
       readLogLines(path.join(command.layout.logsDir, LOG_FILE_BY_CHANNEL[channel]), channel, tail),
     ),
   })

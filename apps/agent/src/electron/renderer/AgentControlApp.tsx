@@ -314,7 +314,6 @@ function LogsPanel(props: {
             <option value="stdout">stdout</option>
             <option value="stderr">stderr</option>
             <option value="supervisor">supervisor</option>
-            <option value="updater">updater</option>
           </select>
         </label>
         <label class="inline-field">

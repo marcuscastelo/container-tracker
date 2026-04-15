@@ -1,8 +1,8 @@
+import fs from 'node:fs'
 import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
 import type { PlatformPathResolution } from '@agent/platform/platform.contract'
 import { writeFileAtomic } from '@agent/state/file-io'
 import { serializeReleaseState, toReleaseState } from '@agent/state/release-state.mapper'
-import fs from 'node:fs'
 
 export function writeReleaseStateFile(command: {
   readonly paths: PlatformPathResolution

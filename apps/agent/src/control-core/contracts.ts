@@ -148,18 +148,12 @@ export const AgentInfraConfigCacheSchema = z.object({
 
 export type AgentInfraConfigCache = z.infer<typeof AgentInfraConfigCacheSchema>
 
-export const AgentControlLogChannelSchema = z.enum([
-  'stdout',
-  'stderr',
-  'supervisor',
-  'updater',
-  'all',
-])
+export const AgentControlLogChannelSchema = z.enum(['stdout', 'stderr', 'supervisor', 'all'])
 
 export type AgentControlLogChannel = z.infer<typeof AgentControlLogChannelSchema>
 
 export const AgentControlLogLineSchema = z.object({
-  channel: z.enum(['stdout', 'stderr', 'supervisor', 'updater']),
+  channel: z.enum(['stdout', 'stderr', 'supervisor']),
   message: z.string(),
   filePath: z.string().min(1),
   lineNumber: z.number().int().min(1),

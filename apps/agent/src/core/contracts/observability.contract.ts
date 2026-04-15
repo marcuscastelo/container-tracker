@@ -59,7 +59,7 @@ export const HeartbeatPayloadSchema = z.object({
 export type HeartbeatPayload = z.infer<typeof HeartbeatPayloadSchema>
 
 export const AgentLogEntrySchema = z.object({
-  channel: z.enum(['stdout', 'stderr', 'supervisor', 'updater']),
+  channel: z.enum(['stdout', 'stderr', 'supervisor']),
   message: z.string(),
   filePath: z.string().min(1),
   lineNumber: z.number().int().min(1),
