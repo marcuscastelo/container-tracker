@@ -63,6 +63,7 @@
     "ai:skills:sync": "bash scripts/ai/sync-global-skills.sh",
     "agent:build": "pnpm --filter @container-tracker/agent run build:core",
     "agent:run": "pnpm --filter @container-tracker/agent run run",
+    "agent:run:headless": "pnpm --filter @container-tracker/agent run run:headless",
     "agent:release": "pnpm --filter @container-tracker/agent run release",
     "agent:bundle": "pnpm --filter @container-tracker/agent run bundle",
     "agent:setup": "pnpm --filter @container-tracker/agent run setup",
