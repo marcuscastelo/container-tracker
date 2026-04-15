@@ -92,7 +92,12 @@ function resolveInstalledLinuxLayout(): AgentPathLayout {
 }
 
 function resolveInstalledLinuxPublicStateDir(): string {
-  return normalizeOptionalEnv(process.env.AGENT_PUBLIC_STATE_DIR) || '/run/container-tracker-agent'
+  const explicitDir = normalizeOptionalEnv(process.env.AGENT_PUBLIC_STATE_DIR)
+  if (explicitDir) {
+    return explicitDir
+  }
+
+  return resolveInstalledLinuxLayout().publicStateDir
 }
 
 function resolveInstalledLinuxPublicStatePath(): string {

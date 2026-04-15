@@ -2,8 +2,13 @@
 set -euo pipefail
 
 install_root="/usr/lib/container-tracker-agent"
+agent_data_dir="${AGENT_DATA_DIR:-/var/lib/container-tracker-agent}"
+agent_public_state_dir="${AGENT_PUBLIC_STATE_DIR:-/run/container-tracker-agent}"
 register_path="$install_root/dist/apps/agent/src/runtime/register-alias-loader.js"
 admin_path="$install_root/dist/apps/agent/src/cli/ct-agent-admin.js"
+
+export AGENT_DATA_DIR="$agent_data_dir"
+export AGENT_PUBLIC_STATE_DIR="$agent_public_state_dir"
 
 if [ -f "$register_path" ]; then
   exec /usr/bin/node --import="$register_path" "$admin_path" "$@"

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 agent_data_dir="${AGENT_DATA_DIR:-/var/lib/container-tracker-agent}"
+agent_public_state_dir="${AGENT_PUBLIC_STATE_DIR:-/run/container-tracker-agent}"
 dotenv_path="${DOTENV_PATH:-$agent_data_dir/config.env}"
 bootstrap_path="${BOOTSTRAP_DOTENV_PATH:-$agent_data_dir/bootstrap.env}"
 env_source_path="${AGENT_BOOTSTRAP_ENV_PATH:-}"
@@ -129,6 +130,7 @@ fi
 export DOTENV_PATH="$dotenv_path"
 export BOOTSTRAP_DOTENV_PATH="$bootstrap_path"
 export AGENT_DATA_DIR="$agent_data_dir"
+export AGENT_PUBLIC_STATE_DIR="$agent_public_state_dir"
 
 register_path="/usr/lib/container-tracker-agent/dist/apps/agent/src/runtime/register-alias-loader.js"
 supervisor_path="/usr/lib/container-tracker-agent/dist/apps/agent/src/bootstrap/supervisor-entry.js"
