@@ -30,6 +30,25 @@ const AUTO_REFRESH_INTERVAL_MS = 5_000
 
 type CommandRunner = () => Promise<AgentControlCommandResult>
 
+function areStringMapsEqual(
+  left: Readonly<Record<string, string>>,
+  right: Readonly<Record<string, string>>,
+): boolean {
+  const leftKeys = Object.keys(left)
+  const rightKeys = Object.keys(right)
+  if (leftKeys.length !== rightKeys.length) {
+    return false
+  }
+
+  for (const key of leftKeys) {
+    if (left[key] !== right[key]) {
+      return false
+    }
+  }
+
+  return true
+}
+
 function logsRequireAction(): boolean {
   return window.agentControlMeta?.logsRequireAction === true
 }
@@ -374,6 +393,8 @@ export function AgentControlApp() {
   const [channelDraft, setChannelDraft] = createSignal('')
   const [blockedDraft, setBlockedDraft] = createSignal('')
   const [configDraft, setConfigDraft] = createSignal<Record<string, string>>({})
+  const [configFieldKeys, setConfigFieldKeys] = createSignal<readonly string[]>([])
+  const [configDraftTouched, setConfigDraftTouched] = createSignal(false)
   const [selectedLogChannel, setSelectedLogChannel] = createSignal<AgentControlLogChannel>('all')
   const [tail, setTail] = createSignal('200')
   const [backgroundRefreshTick, setBackgroundRefreshTick] = createSignal(0)
@@ -393,7 +414,12 @@ export function AgentControlApp() {
       nextSnapshot.updates.channel.source === 'BASE' ? '' : nextSnapshot.updates.channel.value,
     )
     setBlockedDraft(nextSnapshot.updates.blockedVersions.local.join('\n'))
-    setConfigDraft(nextSnapshot.config.editable)
+    const nextEditableConfig = nextSnapshot.config.editable
+    if (!configDraftTouched() || areStringMapsEqual(configDraft(), nextEditableConfig)) {
+      setConfigDraft(nextEditableConfig)
+      setConfigFieldKeys(Object.keys(nextEditableConfig))
+      setConfigDraftTouched(false)
+    }
   }
 
   function syncBackendDraft(nextBackendState: AgentControlBackendState): void {
@@ -583,6 +609,7 @@ export function AgentControlApp() {
   }
 
   function updateDraftValue(key: string, value: string): void {
+    setConfigDraftTouched(true)
     setConfigDraft((current) => ({
       ...current,
       [key]: value,
@@ -882,13 +909,13 @@ export function AgentControlApp() {
             {(currentSnapshot) => (
               <>
                 <div class="config-grid">
-                  <For each={Object.entries(configDraft())}>
-                    {([key, value]) => (
+                  <For each={configFieldKeys()}>
+                    {(key) => (
                       <label class="stack-field">
                         <span>{key}</span>
                         <input
                           type="text"
-                          value={value}
+                          value={configDraft()[key] ?? ''}
                           onInput={(event) => updateDraftValue(key, event.currentTarget.value)}
                         />
                       </label>
