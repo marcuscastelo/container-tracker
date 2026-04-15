@@ -14,6 +14,7 @@ import {
   type AgentControlPublicState,
 } from '@agent/control-core/contracts'
 import { readAgentControlBackendState } from '@agent/control-core/local-control-service'
+import { sortMergedLogLinesByTimestamp } from '@agent/control-core/log-ordering'
 import {
   buildAgentControlPaths,
   buildAgentReleaseInventory,
@@ -76,12 +77,15 @@ export function selectAgentControlPublicLogs(
   const channels: readonly ManagedLogChannel[] =
     parsedChannel === 'all' ? ['stdout', 'stderr', 'supervisor'] : [parsedChannel]
 
+  const mergedLines = channels.flatMap((channel) => {
+    const channelLines = logs.lines.filter((line) => line.channel === channel)
+    const startIndex = Math.max(0, channelLines.length - tail)
+    return channelLines.slice(startIndex)
+  })
+  const lines = parsedChannel === 'all' ? sortMergedLogLinesByTimestamp(mergedLines) : mergedLines
+
   return AgentControlLogsResponseSchema.parse({
-    lines: channels.flatMap((channel) => {
-      const channelLines = logs.lines.filter((line) => line.channel === channel)
-      const startIndex = Math.max(0, channelLines.length - tail)
-      return channelLines.slice(startIndex)
-    }),
+    lines,
   })
 }
 

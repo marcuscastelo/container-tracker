@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import type { AgentPathLayout } from '@agent/config/config.contract'
@@ -112,6 +113,57 @@ function resolveInstalledLinuxPublicLogsPath(): string {
   return path.join(resolveInstalledLinuxPublicStateDir(), 'control-ui-logs.json')
 }
 
+function readFileMtimeMs(filePath: string): number {
+  try {
+    return fs.statSync(filePath).mtimeMs
+  } catch {
+    return 0
+  }
+}
+
+function withPublicStateAvailable(
+  state: AgentControlBackendState,
+  available: boolean,
+): AgentControlBackendState {
+  return AgentControlBackendStateSchema.parse({
+    ...state,
+    publicStateAvailable: available,
+  })
+}
+
+function resolvePublishedBackendState(): AgentControlBackendState | null {
+  const publicStatePath = resolveInstalledLinuxPublicStatePath()
+  const publicBackendStatePath = resolveInstalledLinuxPublicBackendStatePath()
+  const publicState = readAgentControlPublicState(publicStatePath)
+  const publicBackendState = readAgentControlPublicBackendState(publicBackendStatePath)
+  let snapshotBackendState: AgentControlBackendState | null = null
+  if (publicState?.backendState) {
+    snapshotBackendState = withPublicStateAvailable(publicState.backendState, true)
+  } else if (publicState && publicBackendState) {
+    snapshotBackendState = withPublicStateAvailable(publicBackendState, true)
+  }
+
+  if (snapshotBackendState && publicBackendState) {
+    if (!publicBackendState.publicStateAvailable) {
+      return snapshotBackendState
+    }
+
+    const snapshotMtimeMs = readFileMtimeMs(publicStatePath)
+    const backendStateMtimeMs = readFileMtimeMs(publicBackendStatePath)
+    return snapshotMtimeMs >= backendStateMtimeMs ? snapshotBackendState : publicBackendState
+  }
+
+  if (snapshotBackendState) {
+    return snapshotBackendState
+  }
+
+  if (publicBackendState) {
+    return publicBackendState
+  }
+
+  return null
+}
+
 async function runAdminCommand<T>(command: {
   readonly subcommand: string
   readonly input?: unknown
@@ -147,14 +199,10 @@ function buildInstalledLinuxDebugPaths(): AgentControlPaths {
 export function createInstalledLinuxControlService() {
   return {
     async getBackendState(): Promise<AgentControlBackendState> {
-      const publicBackendState = readPublicBackendState()
-      if (publicBackendState) {
-        return publicBackendState
-      }
-
       const publicState = readPublicState()
-      if (publicState?.backendState) {
-        return publicState.backendState
+      const publishedBackendState = resolvePublishedBackendState()
+      if (publishedBackendState) {
+        return publishedBackendState
       }
 
       return AgentControlBackendStateSchema.parse({

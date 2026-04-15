@@ -14,9 +14,19 @@ import {
   AgentControlLogsResponseSchema,
 } from '@agent/control-core/contracts'
 import type { AgentControlRendererApi } from '@agent/electron/ipc'
-import { createMemo, createSignal, For, type JSX, onMount, Show } from 'solid-js'
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  type JSX,
+  onCleanup,
+  onMount,
+  Show,
+} from 'solid-js'
 
 type LoadState = 'loading' | 'ready' | 'error'
+const AUTO_REFRESH_INTERVAL_MS = 5_000
 
 type CommandRunner = () => Promise<AgentControlCommandResult>
 
@@ -366,9 +376,12 @@ export function AgentControlApp() {
   const [configDraft, setConfigDraft] = createSignal<Record<string, string>>({})
   const [selectedLogChannel, setSelectedLogChannel] = createSignal<AgentControlLogChannel>('all')
   const [tail, setTail] = createSignal('200')
+  const [backgroundRefreshTick, setBackgroundRefreshTick] = createSignal(0)
 
   const runtimeConfigAvailable = createMemo(() => backendState()?.runtimeConfigAvailable === true)
   const runtimeOperationsAvailable = createMemo(() => backendState()?.status === 'ENROLLED')
+  let refreshInFlight = false
+  let hasSuccessfulLoad = false
 
   function toErrorMessage(value: unknown): string {
     if (value instanceof Error) return value.message
@@ -400,8 +413,17 @@ export function AgentControlApp() {
     }
   }
 
-  async function refresh(): Promise<void> {
-    setLoadState('loading')
+  async function refresh(command?: { readonly background?: boolean }): Promise<void> {
+    if (refreshInFlight) {
+      return
+    }
+
+    const background = command?.background === true
+    if (!background) {
+      setLoadState('loading')
+    }
+
+    refreshInFlight = true
     setError(null)
     setSnapshotIssue(null)
 
@@ -425,23 +447,10 @@ export function AgentControlApp() {
                 }),
               ),
         ])
-
-      const shouldSkipSnapshotCall =
-        installedMode() &&
-        backendResult.status === 'fulfilled' &&
-        backendResult.value.publicStateAvailable === false
-
-      const snapshotResult = shouldSkipSnapshotCall
-        ? ({
-            status: 'rejected',
-            reason: new Error(
-              'Waiting for the supervisor to publish the canonical control snapshot.',
-            ),
-          } as const)
-        : await agentControl.getSnapshot().then(
-            (value) => ({ status: 'fulfilled', value }) as const,
-            (reason: unknown) => ({ status: 'rejected', reason }) as const,
-          )
+      const snapshotResult = await agentControl.getSnapshot().then(
+        (value) => ({ status: 'fulfilled', value }) as const,
+        (reason: unknown) => ({ status: 'rejected', reason }) as const,
+      )
 
       let loadedAny = false
 
@@ -461,7 +470,6 @@ export function AgentControlApp() {
         setSnapshot(null)
         const snapshotError = toErrorMessage(snapshotResult.reason)
         if (
-          shouldSkipSnapshotCall ||
           (installedMode() &&
             initialLogsResult.status === 'fulfilled' &&
             initialLogsResult.value.lines.length > 0 &&
@@ -507,9 +515,14 @@ export function AgentControlApp() {
       }
 
       setLoadState('ready')
+      hasSuccessfulLoad = true
     } catch (refreshError) {
       setError(toErrorMessage(refreshError))
-      setLoadState('error')
+      if (!background || !hasSuccessfulLoad) {
+        setLoadState('error')
+      }
+    } finally {
+      refreshInFlight = false
     }
   }
 
@@ -597,8 +610,22 @@ export function AgentControlApp() {
     void runAction('update-config', () => getAgentControlBridge().updateConfig({ patch }))
   }
 
+  createEffect(() => {
+    if (backgroundRefreshTick() === 0) {
+      return
+    }
+
+    void refresh({ background: true })
+  })
+
   onMount(() => {
     void refresh()
+    const refreshTimer = window.setInterval(() => {
+      setBackgroundRefreshTick((current) => current + 1)
+    }, AUTO_REFRESH_INTERVAL_MS)
+    onCleanup(() => {
+      window.clearInterval(refreshTimer)
+    })
   })
 
   return (

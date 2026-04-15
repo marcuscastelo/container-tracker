@@ -23,6 +23,7 @@ import {
   AgentControlLogsResponseSchema,
   type AgentControlPaths,
 } from '@agent/control-core/contracts'
+import { sortMergedLogLinesByTimestamp } from '@agent/control-core/log-ordering'
 import {
   buildAgentControlPaths,
   buildAgentReleaseInventory,
@@ -312,9 +313,10 @@ function readLogs(
   const channels: readonly ManagedLogChannel[] =
     parsedChannel === 'all' ? ['stdout', 'stderr', 'supervisor'] : [parsedChannel]
 
-  const lines = channels.flatMap((channel) =>
+  const mergedLines = channels.flatMap((channel) =>
     readLogLines(path.join(layout.logsDir, LOG_FILE_BY_CHANNEL[channel]), channel, tail),
   )
+  const lines = parsedChannel === 'all' ? sortMergedLogLinesByTimestamp(mergedLines) : mergedLines
 
   return AgentControlLogsResponseSchema.parse({
     lines,

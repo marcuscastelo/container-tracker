@@ -227,4 +227,40 @@ describe('agent control public artifacts', () => {
     expect(filtered.lines.map((line) => line.message)).toEqual(['out-2', 'out-3'])
     expect(filtered.lines.every((line) => line.channel === 'stdout')).toBe(true)
   })
+
+  it('keeps all-channel logs ordered by timestamp when lines include ISO datetimes', () => {
+    const logs = {
+      lines: [
+        {
+          channel: 'stdout' as const,
+          message: '[2026-04-06T20:00:03.000Z] out-3',
+          filePath: '/tmp/agent.out.log',
+          lineNumber: 3,
+        },
+        {
+          channel: 'stderr' as const,
+          message: '[2026-04-06T20:00:01.000Z] err-1',
+          filePath: '/tmp/agent.err.log',
+          lineNumber: 1,
+        },
+        {
+          channel: 'supervisor' as const,
+          message: '[2026-04-06T20:00:02.000Z] supervisor-2',
+          filePath: '/tmp/supervisor.log',
+          lineNumber: 2,
+        },
+      ],
+    }
+
+    const selected = selectAgentControlPublicLogs(logs, {
+      channel: 'all',
+      tail: 2000,
+    })
+
+    expect(selected.lines.map((line) => line.message)).toEqual([
+      '[2026-04-06T20:00:01.000Z] err-1',
+      '[2026-04-06T20:00:02.000Z] supervisor-2',
+      '[2026-04-06T20:00:03.000Z] out-3',
+    ])
+  })
 })
