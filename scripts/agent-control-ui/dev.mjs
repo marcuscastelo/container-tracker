@@ -102,6 +102,7 @@ function buildElectronEnv(rendererUrl) {
   const env = {
     ...process.env,
     AGENT_CONTROL_UI_RENDERER_URL: rendererUrl,
+    CT_AGENT_UI_INSTALLED: '0',
   }
   delete env.ELECTRON_RUN_AS_NODE
   return env

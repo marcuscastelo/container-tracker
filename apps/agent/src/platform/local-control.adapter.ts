@@ -1,4 +1,6 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
 import process from 'node:process'
 
 import type {
@@ -10,6 +12,11 @@ import type {
 const DEFAULT_LINUX_SERVICE_NAME = 'container-tracker-agent'
 const DEFAULT_WINDOWS_TASK_NAME = 'ContainerTrackerAgent'
 const DEFAULT_CONTROL_COMMAND_TIMEOUT_MS = 45_000
+const DEFAULT_PROCESS_EXIT_WAIT_MS = 5_000
+const PROCESS_EXIT_POLL_INTERVAL_MS = 100
+const DEV_FALLBACK_DATA_DIR_NAME = '.agent-runtime'
+const SUPERVISOR_PID_FILE_NAME = 'supervisor.pid'
+const SUPERVISOR_CONTROL_FILE_NAME = 'supervisor-control.json'
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -39,6 +46,12 @@ function resolveControlCommandTimeoutMs(): number {
   }
 
   return parsed
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
 }
 
 function runCommand(
@@ -98,6 +111,199 @@ function resolveWindowsTaskName(command?: PlatformControlCommand): string {
   )
 }
 
+function shouldUseLocalRuntimeProcessControl(): boolean {
+  return process.env.CT_AGENT_UI_INSTALLED === '0'
+}
+
+function resolveLocalRuntimeDataDir(): string {
+  const configured = process.env.AGENT_DATA_DIR?.trim()
+  if (typeof configured === 'string' && configured.length > 0) {
+    return configured
+  }
+
+  return path.resolve(process.cwd(), DEV_FALLBACK_DATA_DIR_NAME)
+}
+
+function resolveLocalRuntimeConfigPaths(): {
+  readonly dataDir: string
+  readonly dotenvPath: string
+  readonly bootstrapPath: string
+  readonly runtimeStatePath: string
+  readonly supervisorPidPath: string
+  readonly supervisorControlPath: string
+} {
+  const dataDir = resolveLocalRuntimeDataDir()
+  const dotenvPath = process.env.DOTENV_PATH?.trim() || path.join(dataDir, 'config.env')
+  const bootstrapPath =
+    process.env.BOOTSTRAP_DOTENV_PATH?.trim() || path.join(dataDir, 'bootstrap.env')
+  return {
+    dataDir,
+    dotenvPath,
+    bootstrapPath,
+    runtimeStatePath: path.join(dataDir, 'runtime-state.json'),
+    supervisorPidPath: path.join(dataDir, SUPERVISOR_PID_FILE_NAME),
+    supervisorControlPath: path.join(dataDir, SUPERVISOR_CONTROL_FILE_NAME),
+  }
+}
+
+function readSupervisorPid(pidFilePath: string): number | null {
+  if (!fs.existsSync(pidFilePath)) {
+    return null
+  }
+
+  const raw = fs.readFileSync(pidFilePath, 'utf8').trim()
+  const parsed = Number.parseInt(raw, 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null
+  }
+
+  return parsed
+}
+
+function extractPositiveIntegerPid(value: unknown): number | null {
+  if (typeof value !== 'object' || value === null) {
+    return null
+  }
+
+  const pid = Reflect.get(value, 'pid')
+  if (typeof pid !== 'number' || !Number.isInteger(pid) || pid <= 0) {
+    return null
+  }
+
+  return pid
+}
+
+function readRuntimePidFromState(runtimeStatePath: string): number | null {
+  if (!fs.existsSync(runtimeStatePath)) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(runtimeStatePath, 'utf8'))
+    return extractPositiveIntegerPid(parsed)
+  } catch {
+    return null
+  }
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function cleanupStaleSupervisorPidFile(pidFilePath: string): void {
+  try {
+    fs.rmSync(pidFilePath, { force: true })
+  } catch {
+    // Best effort stale-pid cleanup.
+  }
+}
+
+async function waitForProcessExit(pid: number, timeoutMs: number): Promise<boolean> {
+  const startedAt = Date.now()
+  while (Date.now() - startedAt < timeoutMs) {
+    if (!isProcessAlive(pid)) {
+      return true
+    }
+
+    await sleep(PROCESS_EXIT_POLL_INTERVAL_MS)
+  }
+
+  return !isProcessAlive(pid)
+}
+
+async function resolveRuntimeParentPid(runtimePid: number): Promise<number | null> {
+  try {
+    const result = await runCommand('ps', ['-o', 'ppid=', '-p', String(runtimePid)])
+    const parsed = Number.parseInt(result.stdout.trim(), 10)
+    if (!Number.isFinite(parsed) || parsed <= 1) {
+      return null
+    }
+
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+async function resolveLocalSupervisorPidFromRuntimeState(
+  runtimeStatePath: string,
+): Promise<number | null> {
+  const runtimePid = readRuntimePidFromState(runtimeStatePath)
+  if (runtimePid === null || !isProcessAlive(runtimePid)) {
+    return null
+  }
+
+  const parentPid = await resolveRuntimeParentPid(runtimePid)
+  if (parentPid === null || !isProcessAlive(parentPid)) {
+    return null
+  }
+
+  return parentPid
+}
+
+async function resolveEffectiveSupervisorPid(command: {
+  readonly supervisorPidPath: string
+  readonly runtimeStatePath: string
+}): Promise<number | null> {
+  const pidFromFile = readSupervisorPid(command.supervisorPidPath)
+  if (pidFromFile !== null && isProcessAlive(pidFromFile)) {
+    return pidFromFile
+  }
+
+  cleanupStaleSupervisorPidFile(command.supervisorPidPath)
+  return resolveLocalSupervisorPidFromRuntimeState(command.runtimeStatePath)
+}
+
+function requestLocalRuntimeRestart(supervisorControlPath: string): void {
+  fs.mkdirSync(path.dirname(supervisorControlPath), { recursive: true })
+  fs.writeFileSync(
+    supervisorControlPath,
+    `${JSON.stringify(
+      {
+        drain_requested: true,
+        reason: 'manual',
+        requested_at: new Date().toISOString(),
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  )
+}
+
+function startLocalRuntimeSupervisor(command: {
+  readonly dataDir: string
+  readonly dotenvPath: string
+  readonly bootstrapPath: string
+}): void {
+  const repoRoot = process.cwd()
+  const launcherPath = path.join(repoRoot, 'scripts', 'agent', 'run-linux.sh')
+  if (!fs.existsSync(launcherPath)) {
+    throw new Error(`Local runtime launcher not found at ${launcherPath}`)
+  }
+
+  fs.mkdirSync(command.dataDir, { recursive: true })
+
+  const child = spawn('bash', [launcherPath], {
+    cwd: repoRoot,
+    detached: true,
+    stdio: 'ignore',
+    shell: false,
+    env: {
+      ...process.env,
+      AGENT_DATA_DIR: command.dataDir,
+      DOTENV_PATH: command.dotenvPath,
+      BOOTSTRAP_DOTENV_PATH: command.bootstrapPath,
+    },
+  })
+  child.unref()
+}
+
 export function buildWindowsTaskRunCommand(taskName: string): string {
   return `schtasks /Run /TN "${taskName}" >NUL 2>&1`
 }
@@ -129,6 +335,19 @@ export function parseWindowsTaskQueryOutput(output: string): PlatformServiceQuer
 async function queryLinuxService(
   command?: PlatformControlCommand,
 ): Promise<PlatformServiceQueryResult> {
+  if (shouldUseLocalRuntimeProcessControl()) {
+    const { supervisorPidPath, runtimeStatePath } = resolveLocalRuntimeConfigPaths()
+    const pid = await resolveEffectiveSupervisorPid({
+      supervisorPidPath,
+      runtimeStatePath,
+    })
+    if (pid === null) {
+      return { status: 'stopped', detail: 'local supervisor pid not found' }
+    }
+
+    return { status: 'running', detail: `local supervisor pid=${pid}` }
+  }
+
   const serviceName = resolveLinuxServiceName(command)
 
   try {
@@ -176,12 +395,79 @@ export function createLinuxLocalControlAdapter(): AgentPlatformControlAdapter {
       return queryLinuxService(command)
     },
     async startAgent(command) {
+      if (shouldUseLocalRuntimeProcessControl()) {
+        const { dataDir, dotenvPath, bootstrapPath, supervisorPidPath, runtimeStatePath } =
+          resolveLocalRuntimeConfigPaths()
+        const runningPid = await resolveEffectiveSupervisorPid({
+          supervisorPidPath,
+          runtimeStatePath,
+        })
+        if (runningPid !== null) {
+          return
+        }
+
+        startLocalRuntimeSupervisor({
+          dataDir,
+          dotenvPath,
+          bootstrapPath,
+        })
+        return
+      }
+
       await runCommand('systemctl', ['start', resolveLinuxServiceName(command)])
     },
     async stopAgent(command) {
+      if (shouldUseLocalRuntimeProcessControl()) {
+        const { supervisorPidPath, runtimeStatePath } = resolveLocalRuntimeConfigPaths()
+        const supervisorPid = await resolveEffectiveSupervisorPid({
+          supervisorPidPath,
+          runtimeStatePath,
+        })
+        if (supervisorPid !== null) {
+          process.kill(supervisorPid, 'SIGTERM')
+          const exitedGracefully = await waitForProcessExit(
+            supervisorPid,
+            DEFAULT_PROCESS_EXIT_WAIT_MS,
+          )
+          if (!exitedGracefully) {
+            process.kill(supervisorPid, 'SIGKILL')
+            await waitForProcessExit(supervisorPid, 1_000)
+          }
+          cleanupStaleSupervisorPidFile(supervisorPidPath)
+        }
+
+        return
+      }
+
       await runCommand('systemctl', ['stop', resolveLinuxServiceName(command)])
     },
     async restartAgent(command) {
+      if (shouldUseLocalRuntimeProcessControl()) {
+        const {
+          dataDir,
+          dotenvPath,
+          bootstrapPath,
+          supervisorPidPath,
+          runtimeStatePath,
+          supervisorControlPath,
+        } = resolveLocalRuntimeConfigPaths()
+        const supervisorPid = await resolveEffectiveSupervisorPid({
+          supervisorPidPath,
+          runtimeStatePath,
+        })
+        if (supervisorPid === null) {
+          startLocalRuntimeSupervisor({
+            dataDir,
+            dotenvPath,
+            bootstrapPath,
+          })
+          return
+        }
+
+        requestLocalRuntimeRestart(supervisorControlPath)
+        return
+      }
+
       await runCommand('systemctl', ['--no-block', 'restart', resolveLinuxServiceName(command)])
     },
   }

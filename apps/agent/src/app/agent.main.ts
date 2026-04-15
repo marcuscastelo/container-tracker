@@ -62,6 +62,7 @@ const RESTART_BACKOFF_MS = 2_000
 const MAX_SUPERVISOR_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
 const PUBLIC_ARTIFACT_REFRESH_DEBOUNCE_MS = 150
 const PUBLIC_SNAPSHOT_REFRESH_INTERVAL_MS = 5_000
+const SUPERVISOR_PID_FILE_NAME = 'supervisor.pid'
 
 type PublicArtifactPublisher = {
   readonly requestRefresh: () => void
@@ -174,6 +175,25 @@ function resolveNumberEnv(value: string | undefined, fallback: number): number {
     return fallback
   }
   return parsed
+}
+
+function resolveSupervisorPidPath(layout: ReturnType<typeof resolveAgentPathLayout>): string {
+  return path.join(layout.dataDir, SUPERVISOR_PID_FILE_NAME)
+}
+
+function writeSupervisorPidFile(layout: ReturnType<typeof resolveAgentPathLayout>): void {
+  const pidPath = resolveSupervisorPidPath(layout)
+  fs.mkdirSync(path.dirname(pidPath), { recursive: true })
+  fs.writeFileSync(pidPath, `${process.pid}\n`, 'utf8')
+}
+
+function removeSupervisorPidFile(layout: ReturnType<typeof resolveAgentPathLayout>): void {
+  const pidPath = resolveSupervisorPidPath(layout)
+  try {
+    fs.rmSync(pidPath, { force: true })
+  } catch {
+    // Best effort cleanup.
+  }
 }
 
 function rotateLogIfNeeded(logPath: string, maxSizeBytes: number): void {
@@ -381,6 +401,10 @@ export async function runAgentMain(): Promise<void> {
 
   const layout = resolveAgentPathLayout()
   ensureAgentPathLayout(layout)
+  writeSupervisorPidFile(layout)
+  process.once('exit', () => {
+    removeSupervisorPidFile(layout)
+  })
   publicArtifactPublisher = createPublicArtifactPublisher(layout)
   const publicSnapshotRefreshLoop = startPublicSnapshotRefreshLoop(layout)
   clearSupervisorControl(layout.supervisorControlPath)
@@ -803,6 +827,7 @@ export async function runAgentMain(): Promise<void> {
   if (publicSnapshotRefreshLoop) {
     clearInterval(publicSnapshotRefreshLoop)
   }
+  removeSupervisorPidFile(layout)
   process.exitCode = supervisorExitCode
 }
 

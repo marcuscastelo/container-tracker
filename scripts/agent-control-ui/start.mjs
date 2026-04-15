@@ -7,7 +7,10 @@ const repoRoot = path.resolve(import.meta.dirname, '../..')
 const distRoot = path.join(repoRoot, 'dist', 'apps', 'agent', 'control-ui')
 
 function buildElectronEnv() {
-  const env = { ...process.env }
+  const env = {
+    ...process.env,
+    CT_AGENT_UI_INSTALLED: '0',
+  }
   delete env.ELECTRON_RUN_AS_NODE
   return env
 }
