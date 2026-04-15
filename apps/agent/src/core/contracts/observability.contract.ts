@@ -28,7 +28,7 @@ export const HeartbeatActivitySchema = z.object({
   message: z.string().min(1),
   severity: AgentActivitySeveritySchema,
   metadata: z.record(z.string(), z.unknown()).default({}),
-  occurred_at: z.string().datetime({ offset: true }).nullable(),
+  occurred_at: z.string().datetime({ offset: true }).optional(),
 })
 
 export const HeartbeatPayloadSchema = z.object({

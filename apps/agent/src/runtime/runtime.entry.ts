@@ -537,7 +537,7 @@ async function sendHeartbeat(command: {
       message: event.message,
       severity: event.severity,
       metadata: event.metadata ?? {},
-      occurred_at: event.occurredAt ?? null,
+      ...(event.occurredAt === undefined ? {} : { occurred_at: event.occurredAt }),
     })),
   })
 
