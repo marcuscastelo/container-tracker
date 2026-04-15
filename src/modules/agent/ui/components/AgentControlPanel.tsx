@@ -48,6 +48,21 @@ type AgentControlPanelController = {
   readonly handleClearDesiredVersion: () => Promise<void>
 }
 
+export function resolveRemoteControlStateView(command: {
+  readonly hasError: boolean
+  readonly controlState: AgentControlStatePayload | null | undefined
+}): 'error' | 'empty' | 'ready' {
+  if (command.hasError) {
+    return 'error'
+  }
+
+  if (!command.controlState) {
+    return 'empty'
+  }
+
+  return 'ready'
+}
+
 function formatDateTime(value: string | null): string {
   if (!value) return 'none'
   const parsed = new Date(value)
@@ -405,8 +420,20 @@ function useAgentControlPanelController(
   const [blockedVersionsDraft, setBlockedVersionsDraft] = createSignal('')
 
   createEffect(() => {
+    props.agentId
+    setBusyAction(null)
+    setReasonDraft('')
+    setDesiredVersionDraft('')
+    setChannelDraft('')
+    setBlockedVersionsDraft('')
+  })
+
+  createEffect(() => {
     const state = controlState()
     if (!state) return
+    setBusyAction(null)
+    setReasonDraft('')
+    setDesiredVersionDraft('')
     setChannelDraft(state.policy.updateChannel ?? '')
     setBlockedVersionsDraft(state.policy.blockedVersions.join('\n'))
   })
@@ -584,6 +611,11 @@ function useAgentControlPanelController(
 
 export function AgentControlPanel(props: AgentControlPanelProps): JSX.Element {
   const controller = useAgentControlPanelController(props)
+  const viewState = () =>
+    resolveRemoteControlStateView({
+      hasError: controller.hasError(),
+      controlState: controller.controlState(),
+    })
 
   return (
     <Section title="Remote Control">
@@ -592,14 +624,21 @@ export function AgentControlPanel(props: AgentControlPanelProps): JSX.Element {
         fallback={<p class="text-sm-ui text-text-muted">Loading remote control state...</p>}
       >
         <Show
-          when={!controller.hasError() && controller.controlState()}
+          when={viewState() !== 'error'}
           fallback={
             <p class="text-sm-ui text-tone-danger-fg">Failed to load remote control state.</p>
           }
         >
-          {(stateAccessor) => (
-            <RemoteControlReadyState state={stateAccessor()} controller={controller} />
-          )}
+          <Show
+            when={viewState() === 'ready' ? controller.controlState() : null}
+            fallback={
+              <p class="text-sm-ui text-text-muted">Remote control not available for this agent.</p>
+            }
+          >
+            {(stateAccessor) => (
+              <RemoteControlReadyState state={stateAccessor()} controller={controller} />
+            )}
+          </Show>
         </Show>
       </Show>
     </Section>

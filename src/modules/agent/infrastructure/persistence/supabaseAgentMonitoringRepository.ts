@@ -1,4 +1,5 @@
 import type { AgentMonitoringRepository } from '~/modules/agent/application/agent-monitoring.repository'
+import { toUniqueNormalizedVersions } from '~/modules/agent/application/normalize-blocked-versions'
 import { agentMonitoringPersistenceMappers } from '~/modules/agent/infrastructure/persistence/agent-monitoring.persistence.mappers'
 import { supabaseServer } from '~/shared/supabase/supabase.server'
 import {
@@ -25,11 +26,6 @@ function normalizeCapabilityFilter(value: string | undefined): string | undefine
 
 function looksLikeUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value)
-}
-
-function toUniqueNormalizedVersions(values: readonly string[]): string[] {
-  const normalized = values.map((value) => value.trim()).filter((value) => value.length > 0)
-  return [...new Set(normalized)]
 }
 
 export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
@@ -407,6 +403,21 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
   },
 
   async requestAgentReset({ tenantId, agentId, requestedAt }) {
+    const previousStateResult = await supabaseServer
+      .from('tracking_agents')
+      .select('restart_requested_at,updater_state')
+      .eq('id', agentId)
+      .eq('tenant_id', tenantId)
+      .is('revoked_at', null)
+      .maybeSingle()
+
+    const previousStateRow = unwrapSupabaseSingleOrNull(previousStateResult, {
+      operation: 'requestAgentReset/previousState',
+      table: 'tracking_agents',
+    })
+
+    if (!previousStateRow) return null
+
     const result = await supabaseServer
       .from('tracking_agents')
       .update({
@@ -426,22 +437,51 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
 
     if (!row) return null
 
-    const commandResult = await supabaseServer
-      .from('agent_control_commands')
-      .insert({
-        tenant_id: tenantId,
-        agent_id: agentId,
-        command_type: 'RESET_AGENT',
-        requested_at: requestedAt,
-        payload: {},
-        requested_by: 'control-plane',
-      })
-      .select('id')
+    try {
+      const commandResult = await supabaseServer
+        .from('agent_control_commands')
+        .insert({
+          tenant_id: tenantId,
+          agent_id: agentId,
+          command_type: 'RESET_AGENT',
+          requested_at: requestedAt,
+          payload: {},
+          requested_by: 'control-plane',
+        })
+        .select('id')
 
-    unwrapSupabaseResultOrThrow(commandResult, {
-      operation: 'requestAgentReset/agent_control_commands',
-      table: 'agent_control_commands',
-    })
+      unwrapSupabaseResultOrThrow(commandResult, {
+        operation: 'requestAgentReset/agent_control_commands',
+        table: 'agent_control_commands',
+      })
+    } catch (error) {
+      try {
+        const rollbackResult = await supabaseServer
+          .from('tracking_agents')
+          .update({
+            restart_requested_at: previousStateRow.restart_requested_at,
+            updater_state: previousStateRow.updater_state,
+          })
+          .eq('id', agentId)
+          .eq('tenant_id', tenantId)
+          .is('revoked_at', null)
+          .select('id')
+
+        unwrapSupabaseResultOrThrow(rollbackResult, {
+          operation: 'requestAgentReset/rollback',
+          table: 'tracking_agents',
+        })
+      } catch (rollbackError) {
+        const enqueueErrorMessage = error instanceof Error ? error.message : String(error)
+        const rollbackErrorMessage =
+          rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
+        throw new Error(
+          `requestAgentReset command enqueue failed and rollback failed: enqueue=${enqueueErrorMessage}; rollback=${rollbackErrorMessage}`,
+        )
+      }
+
+      throw error
+    }
 
     return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
   },

@@ -13,7 +13,6 @@ pkg_dir="$repo_root/packaging/arch"
 agent_data_dir="/var/lib/container-tracker-agent"
 service_name="container-tracker-agent.service"
 tray_app_dir="/usr/lib/container-tracker-agent/dist/apps/agent/control-ui"
-default_backend_url="https://castro-aduaneira.vercel.app/"
 
 find_existing_tray_pids() {
   local user_id="$1"
@@ -139,12 +138,16 @@ main() {
   backend_url="$(first_non_empty \
     "$(read_env_value "$project_env_path" BACKEND_URL AGENT_BACKEND_URL || true)" \
     "${AGENT_BACKEND_URL:-}" \
-    "${BACKEND_URL:-}" \
-    "$default_backend_url")"
+    "${BACKEND_URL:-}")"
   installer_token="$(first_non_empty \
     "$(read_env_value "$project_env_path" INSTALLER_TOKEN AGENT_INSTALLER_TOKEN || true)" \
     "${AGENT_INSTALLER_TOKEN:-}" \
     "${INSTALLER_TOKEN:-}")"
+
+  if [ -z "$backend_url" ]; then
+    echo "[agent:rebuild-restart:linux] BACKEND_URL is required in $project_env_path" >&2
+    exit 1
+  fi
 
   if [ -z "$installer_token" ]; then
     echo "[agent:rebuild-restart:linux] INSTALLER_TOKEN is required in $project_env_path" >&2

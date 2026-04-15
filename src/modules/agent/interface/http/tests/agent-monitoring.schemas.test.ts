@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AgentLogIngestBodySchema,
   AgentRemotePolicyPatchBodySchema,
+  AgentRequestResetBodySchema,
   AgentRequestRestartBodySchema,
   AgentRequestUpdateBodySchema,
 } from '~/modules/agent/interface/http/agent-monitoring.schemas'
@@ -39,6 +40,12 @@ describe('Agent request schemas', () => {
 
   it('requires reason for restart requests', () => {
     const result = AgentRequestRestartBodySchema.safeParse({})
+
+    expect(result.success).toBe(false)
+  })
+
+  it('requires reason for reset requests', () => {
+    const result = AgentRequestResetBodySchema.safeParse({})
 
     expect(result.success).toBe(false)
   })

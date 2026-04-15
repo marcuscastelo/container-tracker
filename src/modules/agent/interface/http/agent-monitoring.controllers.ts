@@ -1,4 +1,5 @@
 import type { AgentMonitoringUseCases } from '~/modules/agent/application/agent-monitoring.usecases'
+import { toUniqueNormalizedVersions } from '~/modules/agent/application/normalize-blocked-versions'
 import {
   toAgentDetailCommand,
   toAgentLogIngestCommand,
@@ -54,13 +55,6 @@ function getBearerToken(authorization: string | null): string | null {
   const [scheme, token] = authorization.trim().split(/\s+/u)
   if (scheme !== 'Bearer' || !token) return null
   return token
-}
-
-function toUniqueNormalizedVersions(versions: readonly string[]): string[] {
-  const normalized = versions
-    .map((version) => version.trim())
-    .filter((version) => version.length > 0)
-  return [...new Set(normalized)]
 }
 
 export function createAgentMonitoringControllers(deps: AgentMonitoringControllersDeps) {

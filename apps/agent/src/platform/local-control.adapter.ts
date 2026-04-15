@@ -468,7 +468,7 @@ export function createLinuxLocalControlAdapter(): AgentPlatformControlAdapter {
         return
       }
 
-      await runCommand('systemctl', ['--no-block', 'restart', resolveLinuxServiceName(command)])
+      await runCommand('systemctl', ['restart', resolveLinuxServiceName(command)])
     },
   }
 }

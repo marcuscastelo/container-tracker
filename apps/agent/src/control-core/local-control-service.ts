@@ -414,6 +414,10 @@ export function createAgentControlLocalService(
       const normalizedBackendUrl = normalizeBackendUrl(backendUrl)
       const currentConfig = readCurrentControlRuntimeConfig(deps.layout)
       const runtimeConfigMaterialized = fs.existsSync(deps.layout.configEnvPath)
+      const bootstrapConfigMaterialized = fs.existsSync(deps.layout.bootstrapEnvPath)
+      const consumedBootstrapConfigMaterialized = fs.existsSync(
+        deps.layout.consumedBootstrapEnvPath,
+      )
       let updated = false
 
       if (currentConfig) {
@@ -432,15 +436,16 @@ export function createAgentControlLocalService(
       }
 
       if (
+        bootstrapConfigMaterialized &&
         upsertEnvFileValue({
           filePath: deps.layout.bootstrapEnvPath,
           key: 'BACKEND_URL',
           value: normalizedBackendUrl,
-          createIfMissing: !runtimeConfigMaterialized,
         })
       ) {
         updated = true
       } else if (
+        consumedBootstrapConfigMaterialized &&
         upsertEnvFileValue({
           filePath: deps.layout.consumedBootstrapEnvPath,
           key: 'BACKEND_URL',

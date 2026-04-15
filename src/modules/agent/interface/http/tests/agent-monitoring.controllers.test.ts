@@ -143,6 +143,21 @@ describe('agent monitoring controllers', () => {
     expect(response.status).toBe(400)
   })
 
+  it('requires reason for request-reset', async () => {
+    const response = await controllers.requestAgentReset({
+      params: { id: AGENT_ID },
+      request: new Request(`http://localhost/api/agents/${AGENT_ID}/request-reset`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      }),
+    })
+
+    expect(response.status).toBe(400)
+  })
+
   it('requests remote reset and records activity with reason', async () => {
     const response = await controllers.requestAgentReset({
       params: { id: AGENT_ID },

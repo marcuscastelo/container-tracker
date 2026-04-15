@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { resolveAgentPathLayout } from '@agent/config/resolve-agent-paths'
 
 export function resolveAgentDataDir(): string {
@@ -5,7 +6,7 @@ export function resolveAgentDataDir(): string {
 }
 
 export function resolveAgentConfigDir(): string {
-  return resolveAgentPathLayout().dataDir
+  return path.dirname(resolveAgentPathLayout().configEnvPath)
 }
 
 export function resolveLogsDir(): string {

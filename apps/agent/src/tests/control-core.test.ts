@@ -547,4 +547,79 @@ describe('agent control core', () => {
       'BACKEND_URL=https://backend.changed.local',
     )
   })
+
+  it('updates base runtime config without creating bootstrap files when bootstrap does not exist', async () => {
+    const tempDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'agent-control-backend-base-no-bootstrap-'),
+    )
+    const layout = createLayout(tempDir)
+    writeJson(layout.baseRuntimeConfigPath, createControlRuntimeConfig())
+
+    let restartCalls = 0
+    const service = createAgentControlLocalService({
+      layout,
+      adapter: {
+        key: 'linux',
+        async startAgent() {},
+        async stopAgent() {},
+        async restartAgent() {
+          restartCalls += 1
+        },
+      },
+    })
+
+    const result = await service.setBackendUrl('https://backend.changed.local/')
+
+    expect(restartCalls).toBe(1)
+    expect(result.state.backendUrl).toBe('https://backend.changed.local')
+    expect(result.state.source).toBe('BASE_RUNTIME_CONFIG')
+    expect(fs.existsSync(layout.bootstrapEnvPath)).toBe(false)
+    expect(fs.existsSync(layout.consumedBootstrapEnvPath)).toBe(false)
+
+    const persistedRaw = JSON.parse(fs.readFileSync(layout.baseRuntimeConfigPath, 'utf8'))
+    if (typeof persistedRaw !== 'object' || persistedRaw === null) {
+      throw new Error('Expected persisted runtime config object')
+    }
+
+    expect(Reflect.get(persistedRaw, 'BACKEND_URL')).toBe('https://backend.changed.local')
+  })
+
+  it('updates consumed bootstrap env without creating bootstrap.env', async () => {
+    const tempDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'agent-control-backend-consumed-bootstrap-'),
+    )
+    const layout = createLayout(tempDir)
+    fs.writeFileSync(
+      layout.consumedBootstrapEnvPath,
+      [
+        'BACKEND_URL=https://backend.consumed.local',
+        'INSTALLER_TOKEN=installer-token-test',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+
+    let restartCalls = 0
+    const service = createAgentControlLocalService({
+      layout,
+      adapter: {
+        key: 'linux',
+        async startAgent() {},
+        async stopAgent() {},
+        async restartAgent() {
+          restartCalls += 1
+        },
+      },
+    })
+
+    const result = await service.setBackendUrl('https://backend.changed.local/')
+
+    expect(restartCalls).toBe(1)
+    expect(result.state.backendUrl).toBe('https://backend.changed.local')
+    expect(result.state.source).toBe('CONSUMED_BOOTSTRAP')
+    expect(fs.existsSync(layout.bootstrapEnvPath)).toBe(false)
+    expect(fs.readFileSync(layout.consumedBootstrapEnvPath, 'utf8')).toContain(
+      'BACKEND_URL=https://backend.changed.local',
+    )
+  })
 })

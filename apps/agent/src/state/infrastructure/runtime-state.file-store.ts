@@ -8,8 +8,7 @@ export function writeRuntimeStateFile(command: {
   readonly paths: PlatformPathResolution
   readonly state: RuntimeState
 }): void {
-  const normalized = RuntimeStateSchema.parse(command.state)
-  writeFileAtomic(command.paths.runtimeStatePath, serializeRuntimeState(normalized))
+  writeFileAtomic(command.paths.runtimeStatePath, serializeRuntimeState(command.state))
 }
 
 export function readRuntimeStateFile(command: {
@@ -19,8 +18,7 @@ export function readRuntimeStateFile(command: {
 }
 
 export function writeRuntimeStateAtPath(filePath: string, state: RuntimeState): void {
-  const normalized = RuntimeStateSchema.parse(state)
-  writeFileAtomic(filePath, serializeRuntimeState(normalized))
+  writeFileAtomic(filePath, serializeRuntimeState(state))
 }
 
 export function readRuntimeStateAtPath(filePath: string): RuntimeState | null {

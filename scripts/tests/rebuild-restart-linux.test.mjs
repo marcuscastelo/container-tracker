@@ -99,7 +99,7 @@ restart_tray_for_current_session
     expect(fs.readFileSync(killCapturePath, 'utf8')).not.toContain('222')
   })
 
-  it('falls back to castro-aduaneira backend URL when no BACKEND_URL is provided', () => {
+  it('does not inject a backend URL default when no BACKEND_URL is provided', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rebuild-restart-linux-default-url-'))
     const envFilePath = path.join(tempDir, '.env')
     fs.writeFileSync(envFilePath, '\n', 'utf8')
@@ -112,8 +112,7 @@ restart_tray_for_current_session
 backend_url="$(first_non_empty \
   "$(read_env_value "$PROJECT_ENV_PATH" BACKEND_URL AGENT_BACKEND_URL || true)" \
   "\${AGENT_BACKEND_URL:-}" \
-  "\${BACKEND_URL:-}" \
-  "$default_backend_url")"
+  "\${BACKEND_URL:-}")"
 printf '%s' "$backend_url"
 `,
       ],
@@ -129,6 +128,35 @@ printf '%s' "$backend_url"
     )
 
     expect(result.status).toBe(0)
-    expect(result.stdout.trim()).toBe('https://castro-aduaneira.vercel.app/')
+    expect(result.stdout.trim()).toBe('')
+  })
+
+  it('fails fast when BACKEND_URL is missing even if INSTALLER_TOKEN exists', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rebuild-restart-linux-missing-backend-'))
+    const envFilePath = path.join(tempDir, '.env')
+    fs.writeFileSync(envFilePath, 'INSTALLER_TOKEN=test-token\n', 'utf8')
+
+    const result = spawnSync(
+      'bash',
+      [
+        '-lc',
+        `source "$SCRIPT_PATH"
+project_env_path="$PROJECT_ENV_PATH"
+main
+`,
+      ],
+      {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PROJECT_ENV_PATH: envFilePath,
+          SCRIPT_PATH: scriptPath,
+        },
+      },
+    )
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('BACKEND_URL is required')
   })
 })
