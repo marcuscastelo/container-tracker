@@ -3,25 +3,13 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { readRuntimeConfigFromEnv } from '@agent/config/infrastructure/env-config.repository'
-
-// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
-import { refreshAgentControlPublicLogs } from '../control-core/public-control-files.ts'
-// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
-import { appendPendingActivityEvents } from '../pending-activity.ts'
-// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
-import { resolveAgentPlatformKey } from '../platform/platform.adapter.ts'
-// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
-import { readReleaseState, writeReleaseState } from '../release-state.ts'
-// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
-import { EXIT_FATAL, EXIT_OK } from '../runtime/lifecycle-exit-codes.ts'
-// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
-import type { AgentPathLayout } from '../runtime-paths.ts'
-// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
-import { ensureAgentPathLayout, resolveAgentPathLayout } from '../runtime-paths.ts'
-// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
-import { writeSupervisorControl } from '../supervisor-control.ts'
-// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
-import { fetchUpdateManifest, stageReleaseFromManifest } from '../updater.core.ts'
+import { refreshAgentControlPublicLogs } from '@agent/control-core/public-control-files'
+import { appendPendingActivityEvents } from '@agent/pending-activity'
+import { runReleaseCheckCycle } from '@agent/release/application/check-for-update'
+import { EXIT_FATAL, EXIT_OK } from '@agent/runtime/lifecycle-exit-codes'
+import type { AgentPathLayout } from '@agent/runtime-paths'
+import { ensureAgentPathLayout, resolveAgentPathLayout } from '@agent/runtime-paths'
+import { requestRuntimeDrain } from '@agent/runtime/application/drain-runtime'
 
 const MAX_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
 const PUBLIC_LOG_REFRESH_DEBOUNCE_MS = 150
@@ -43,25 +31,6 @@ function toErrorMessage(error: unknown): string {
 
 function resolveLogPath(layout: AgentPathLayout): string {
   return path.join(layout.logsDir, 'updater.log')
-}
-
-function readConfigFromLayout(layout: AgentPathLayout): {
-  readonly backendUrl: string
-  readonly agentToken: string
-  readonly agentId: string
-} {
-  const config = readRuntimeConfigFromEnv({
-    paths: layout,
-  })
-  if (!config) {
-    throw new Error(`config.env not found at ${layout.configEnvPath}`)
-  }
-
-  return {
-    backendUrl: config.BACKEND_URL,
-    agentToken: config.AGENT_TOKEN,
-    agentId: config.AGENT_ID,
-  }
 }
 
 function rotateLogIfNeeded(logPath: string): void {
@@ -193,6 +162,27 @@ function readAgentVersion(startDir: string): string {
   return 'unknown'
 }
 
+function readConfigFromLayout(layout: AgentPathLayout): {
+  readonly backendUrl: string
+  readonly agentToken: string
+  readonly agentId: string
+  readonly updateChannel: string
+} {
+  const config = readRuntimeConfigFromEnv({
+    paths: layout,
+  })
+  if (!config) {
+    throw new Error(`config.env not found at ${layout.configEnvPath}`)
+  }
+
+  return {
+    backendUrl: config.BACKEND_URL,
+    agentToken: config.AGENT_TOKEN,
+    agentId: config.AGENT_ID,
+    updateChannel: config.AGENT_UPDATE_MANIFEST_CHANNEL,
+  }
+}
+
 async function runUpdater(): Promise<void> {
   const scriptPath = fileURLToPath(import.meta.url)
   const scriptDir = path.dirname(scriptPath)
@@ -201,135 +191,37 @@ async function runUpdater(): Promise<void> {
   ensureAgentPathLayout(layout)
   const config = readConfigFromLayout(layout)
   const runningVersion = readAgentVersion(scriptDir)
-  const nowIso = new Date().toISOString()
 
-  let releaseState = readReleaseState(layout.releaseStatePath, runningVersion)
   appendLogLine(layout, `[updater] version=${runningVersion}`)
-  appendLogLine(layout, `[updater] state=${releaseState.activation_state}`)
 
-  const manifest = await fetchUpdateManifest({
+  const result = await runReleaseCheckCycle({
+    layout,
+    fallbackVersion: runningVersion,
     backendUrl: config.backendUrl,
     agentToken: config.agentToken,
     agentId: config.agentId,
-    platform: resolveAgentPlatformKey(),
+    updateChannel: config.updateChannel,
   })
 
-  appendPendingActivityEvents(layout.pendingActivityPath, [
-    {
-      type: 'UPDATE_CHECKED',
-      message: `Checked update manifest (desired=${manifest.desired_version ?? 'none'})`,
-      severity: 'info',
-      metadata: {
-        version: manifest.version,
-        updateAvailable: manifest.update_available,
-      },
-      occurred_at: nowIso,
-    },
-  ])
+  if (result.activities.length > 0) {
+    appendPendingActivityEvents(layout.pendingActivityPath, result.activities)
+  }
 
-  const staged = await stageReleaseFromManifest({
-    manifest,
-    layout,
-    state: releaseState,
-  })
+  if (result.shouldDrain && result.drainReason) {
+    requestRuntimeDrain({
+      supervisorControlPath: layout.supervisorControlPath,
+      reason: result.drainReason,
+      requestedAt: new Date().toISOString(),
+    })
+    appendLogLine(layout, `[updater] drain requested (${result.drainReason})`)
+  }
 
-  if (staged.kind === 'no_update') {
+  if (!result.updateAvailable) {
     appendLogLine(layout, '[updater] no update available')
     return
   }
 
-  if (staged.kind === 'blocked') {
-    releaseState = {
-      ...releaseState,
-      activation_state: 'idle',
-      last_error: staged.reason,
-      last_update_attempt: nowIso,
-      automatic_updates_blocked: releaseState.automatic_updates_blocked,
-    }
-    writeReleaseState(layout.releaseStatePath, releaseState)
-    appendPendingActivityEvents(layout.pendingActivityPath, [
-      {
-        type: 'UPDATE_APPLY_FAILED',
-        message: staged.reason,
-        severity: 'danger',
-        metadata: {
-          version: staged.manifest.version,
-        },
-        occurred_at: nowIso,
-      },
-    ])
-    appendLogLine(layout, `[updater] skipping blocked version: ${staged.reason}`)
-    return
-  }
-
-  appendPendingActivityEvents(layout.pendingActivityPath, [
-    {
-      type: 'UPDATE_AVAILABLE',
-      message: `Update available: ${staged.manifest.version}`,
-      severity: 'info',
-      metadata: {
-        version: staged.manifest.version,
-        channel: staged.manifest.channel,
-      },
-      occurred_at: nowIso,
-    },
-  ])
-
-  if (staged.downloaded) {
-    appendPendingActivityEvents(layout.pendingActivityPath, [
-      {
-        type: 'UPDATE_DOWNLOAD_STARTED',
-        message: `Downloading release ${staged.manifest.version}`,
-        severity: 'info',
-        metadata: {
-          version: staged.manifest.version,
-          url: staged.manifest.download_url,
-        },
-        occurred_at: nowIso,
-      },
-      {
-        type: 'UPDATE_DOWNLOAD_COMPLETED',
-        message: `Downloaded release ${staged.manifest.version}`,
-        severity: 'success',
-        metadata: {
-          version: staged.manifest.version,
-          checksum: staged.manifest.checksum,
-        },
-        occurred_at: nowIso,
-      },
-    ])
-  }
-
-  releaseState = {
-    ...releaseState,
-    target_version: staged.manifest.version,
-    activation_state: 'pending',
-    last_update_attempt: nowIso,
-    last_error: null,
-    automatic_updates_blocked: false,
-  }
-  writeReleaseState(layout.releaseStatePath, releaseState)
-
-  writeSupervisorControl(layout.supervisorControlPath, {
-    drain_requested: true,
-    reason: 'update',
-    requested_at: nowIso,
-  })
-
-  appendPendingActivityEvents(layout.pendingActivityPath, [
-    {
-      type: 'UPDATE_READY',
-      message: `Release ${staged.manifest.version} is staged and pending activation`,
-      severity: 'success',
-      metadata: {
-        version: staged.manifest.version,
-        releaseDir: staged.releaseDir,
-      },
-      occurred_at: nowIso,
-    },
-  ])
-
-  appendLogLine(layout, `[updater] staged version ${staged.manifest.version}`)
+  appendLogLine(layout, `[updater] processed manifest version ${result.manifestVersion}`)
 }
 
 export async function runUpdaterMain(): Promise<void> {

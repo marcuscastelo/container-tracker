@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { readReleaseState, withRecordedFailure } from '@agent/release-state'
+import { withRecordedFailure } from '@agent/release/domain/release-state'
+import { readReleaseState } from '@agent/release/infrastructure/release-state.file-repository'
 import { describe, expect, it } from 'vitest'
 
 describe('release state crash-loop policy', () => {

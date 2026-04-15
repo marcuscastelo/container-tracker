@@ -3,9 +3,10 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { createInitialReleaseState } from '@agent/release-state'
+import { createInitialReleaseState } from '@agent/release/domain/release-state'
+import { stageRelease } from '@agent/release/application/stage-release'
+import { fetchReleaseManifest } from '@agent/release/infrastructure/release-manifest.client'
 import type { AgentPathLayout } from '@agent/runtime-paths'
-import { fetchUpdateManifest, stageReleaseFromManifest } from '@agent/updater.core'
 import { describe, expect, it } from 'vitest'
 
 function sha256(value: string): string {
@@ -70,7 +71,7 @@ describe('updater core', () => {
       })
     }
 
-    const manifest = await fetchUpdateManifest(
+    const manifest = await fetchReleaseManifest(
       {
         backendUrl: 'https://agent.test.local',
         agentToken: 'tok_test',
@@ -111,7 +112,7 @@ describe('updater core', () => {
       )
     }
 
-    const manifest = await fetchUpdateManifest(
+    const manifest = await fetchReleaseManifest(
       {
         backendUrl: 'https://agent.test.local',
         agentToken: 'tok_test',
@@ -132,7 +133,7 @@ describe('updater core', () => {
       return new Response(null, { status: 204 })
     }
 
-    const manifest = await fetchUpdateManifest(
+    const manifest = await fetchReleaseManifest(
       {
         backendUrl: 'https://agent.test.local',
         agentToken: 'tok_test',
@@ -158,7 +159,7 @@ describe('updater core', () => {
         headers: { 'content-type': 'application/javascript' },
       })
 
-    const result = await stageReleaseFromManifest({
+    const result = await stageRelease({
       manifest: {
         version: '2.0.0',
         download_url: 'https://agent.test.local/release-v2.js',
@@ -197,7 +198,7 @@ describe('updater core', () => {
         headers: { 'content-type': 'application/javascript' },
       })
 
-    const result = await stageReleaseFromManifest({
+    const result = await stageRelease({
       manifest: {
         version: '2.0.2',
         download_url: 'https://agent.test.local/release-v202.js',
@@ -234,7 +235,7 @@ describe('updater core', () => {
       })
 
     await expect(
-      stageReleaseFromManifest({
+      stageRelease({
         manifest: {
           version: '2.0.1',
           download_url: 'https://agent.test.local/release-bad.js',
@@ -258,7 +259,7 @@ describe('updater core', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-updater-test-'))
     const layout = createLayout(tempDir)
 
-    const result = await stageReleaseFromManifest({
+    const result = await stageRelease({
       manifest: {
         version: '2.0.0',
         download_url: 'https://agent.test.local/release-v2.js',

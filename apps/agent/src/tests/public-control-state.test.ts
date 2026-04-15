@@ -12,8 +12,9 @@ import {
   readAgentControlPublicState,
   writeAgentControlPublicState,
 } from '@agent/control-core/public-control-state'
-import { createInitialReleaseState, writeReleaseState } from '@agent/release-state'
-import { writeRuntimeHealth } from '@agent/runtime-health'
+import { createInitialReleaseState } from '@agent/release/domain/release-state'
+import { writeReleaseState } from '@agent/release/infrastructure/release-state.file-repository'
+import { writeRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
 import type { AgentPathLayout } from '@agent/runtime-paths'
 import { describe, expect, it } from 'vitest'
 

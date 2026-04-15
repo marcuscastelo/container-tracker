@@ -1,10 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import type { ResolvedActiveRelease } from '@agent/core/contracts/release-runtime-handoff.contract'
 import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
-// biome-ignore lint/style/noRestrictedImports: Release manager is executed from Node runtime with direct .ts imports.
-import type { ReleaseState } from './release-state.ts'
-// biome-ignore lint/style/noRestrictedImports: Release manager is executed from Node runtime with direct .ts imports.
-import type { AgentPathLayout } from './runtime-paths.ts'
+import type { AgentPathLayout } from '@agent/runtime-paths'
+import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
 
 const RELEASE_ENTRYPOINT_CANDIDATES = [
   path.join('dist', 'apps', 'agent', 'src', 'agent.js'),
@@ -122,15 +121,11 @@ export function resolveReleaseEntrypoint(releaseDir: string): string | null {
   return null
 }
 
-export function resolveRuntimeEntrypoint(command: {
+export function resolveActiveRelease(command: {
   readonly layout: AgentPathLayout
   readonly fallbackEntrypoint: string
   readonly expectedVersion: string
-}): {
-  readonly version: string
-  readonly entrypointPath: string
-  readonly source: 'release' | 'fallback'
-} {
+}): ResolvedActiveRelease {
   const linkedReleasePath = safeRealpath(command.layout.currentPath)
   if (linkedReleasePath) {
     const releaseEntrypoint = resolveReleaseEntrypoint(linkedReleasePath)
@@ -186,91 +181,24 @@ export function ensureReleaseLinksForCurrentState(command: {
   }
 }
 
-export function activateTargetRelease(command: {
-  readonly layout: AgentPathLayout
-  readonly state: ReleaseState
-  readonly targetVersion: string
-  readonly nowIso: string
-}): ReleaseState {
-  const platformAdapter = resolvePlatformAdapter()
-  const targetDir = resolveReleaseDir(command.layout.releasesDir, command.targetVersion)
-  if (!pathExists(targetDir)) {
-    throw new Error(`target release is missing: ${targetDir}`)
+export function removeReleaseDirectoryIfPresent(releaseDir: string): void {
+  if (!fs.existsSync(releaseDir)) {
+    return
   }
 
-  const targetEntrypoint = resolveReleaseEntrypoint(targetDir)
-  if (!targetEntrypoint) {
-    throw new Error(`target release has no valid entrypoint: ${targetDir}`)
-  }
-
-  const currentRealPath = safeRealpath(command.layout.currentPath)
-  const previousVersionFromLink = basenameFromPath(currentRealPath)
-  platformAdapter.switchCurrentRelease({
-    currentPath: command.layout.currentPath,
-    previousPath: command.layout.previousPath,
-    targetPath: targetDir,
-  })
-
-  return {
-    ...command.state,
-    previous_version: previousVersionFromLink ?? command.state.current_version,
-    current_version: command.targetVersion,
-    target_version: command.targetVersion,
-    activation_state: 'verifying',
-    last_update_attempt: command.nowIso,
-    last_error: null,
-  }
+  fs.rmSync(releaseDir, { recursive: true, force: true })
 }
 
-export function confirmRelease(command: {
-  readonly state: ReleaseState
-  readonly confirmedVersion: string
-  readonly nowIso: string
-}): ReleaseState {
-  const activationFailures = { ...command.state.activation_failures }
-  delete activationFailures[command.confirmedVersion]
-
-  return {
-    ...command.state,
-    current_version: command.confirmedVersion,
-    previous_version: command.state.previous_version ?? command.state.last_known_good_version,
-    last_known_good_version: command.confirmedVersion,
-    target_version: null,
-    activation_state: 'idle',
-    failure_count: 0,
-    activation_failures: activationFailures,
-    last_update_attempt: command.nowIso,
-    last_error: null,
-  }
-}
-
-export function rollbackRelease(command: {
-  readonly layout: AgentPathLayout
-  readonly state: ReleaseState
-  readonly rollbackVersion: string
-  readonly nowIso: string
-  readonly reason: string
-}): ReleaseState {
-  const platformAdapter = resolvePlatformAdapter()
-  const rollbackDir = resolveReleaseDir(command.layout.releasesDir, command.rollbackVersion)
-  if (pathExists(rollbackDir)) {
-    platformAdapter.switchCurrentRelease({
-      currentPath: command.layout.currentPath,
-      previousPath: command.layout.previousPath,
-      targetPath: rollbackDir,
-    })
-  } else {
-    removePathIfExists(command.layout.currentPath)
-    removePathIfExists(command.layout.previousPath)
+export function removeReleaseDirectoryWhenEntrypointMissing(releaseDir: string): boolean {
+  if (!fs.existsSync(releaseDir)) {
+    return false
   }
 
-  return {
-    ...command.state,
-    current_version: command.rollbackVersion,
-    last_known_good_version: command.rollbackVersion,
-    target_version: null,
-    activation_state: 'rolled_back',
-    last_update_attempt: command.nowIso,
-    last_error: command.reason,
+  if (resolveReleaseEntrypoint(releaseDir)) {
+    return false
   }
+
+  console.warn(`[agent:update] removing release without executable entrypoint: ${releaseDir}`)
+  removeReleaseDirectoryIfPresent(releaseDir)
+  return true
 }

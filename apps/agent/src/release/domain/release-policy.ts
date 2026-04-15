@@ -1,6 +1,8 @@
+export const RELEASE_CHECK_INTERVAL_MS = 60_000
+
 const EXPLICIT_DISABLE_VALUES = new Set(['1', 'true'])
 
-export type AutomaticUpdateChecksMode = {
+export type ReleaseChecksMode = {
   readonly disabled: boolean
   readonly reason: 'EXPLICIT_DISABLE_FLAG' | 'CHANNEL_DISABLED' | null
   readonly configuredChannel: string | null
@@ -19,10 +21,10 @@ function isExplicitDisableFlagEnabled(value: string | undefined): boolean {
   return EXPLICIT_DISABLE_VALUES.has(normalized)
 }
 
-export function resolveAutomaticUpdateChecksMode(command: {
+export function resolveReleaseChecksMode(command: {
   readonly env: NodeJS.ProcessEnv
   readonly configuredChannel?: string | null
-}): AutomaticUpdateChecksMode {
+}): ReleaseChecksMode {
   const configuredChannel =
     normalizeOptionalEnv(
       command.configuredChannel ?? command.env.AGENT_UPDATE_MANIFEST_CHANNEL,

@@ -11,8 +11,8 @@ import {
   type AgentReleaseInventory,
   AgentReleaseInventorySchema,
 } from '@agent/control-core/contracts'
-import { resolveReleaseEntrypoint } from '@agent/release-manager'
-import type { ReleaseState } from '@agent/release-state'
+import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
+import { resolveReleaseEntrypoint } from '@agent/release/application/release-layout'
 import type { AgentPathLayout } from '@agent/runtime-paths'
 import { readJsonFileWithSchema, writeFileAtomic } from '@agent/state/file-io'
 

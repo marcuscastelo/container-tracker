@@ -22,8 +22,7 @@ import { z } from 'zod/v4'
 
 // biome-ignore lint/style/noRestrictedImports: CLI runtime resolves direct .ts imports for bundled agent execution.
 import { EXIT_CONFIG_ERROR, EXIT_FATAL, EXIT_OK } from '../runtime/lifecycle-exit-codes.ts'
-// biome-ignore lint/style/noRestrictedImports: CLI runtime resolves direct .ts imports for bundled agent execution.
-import { readRuntimeHealth } from '../runtime-health.ts'
+import { readRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
 // biome-ignore lint/style/noRestrictedImports: CLI runtime resolves direct .ts imports for bundled agent execution.
 import { resolveAgentPathLayout } from '../runtime-paths.ts'
 

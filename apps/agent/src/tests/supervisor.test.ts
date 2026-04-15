@@ -1,8 +1,10 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { confirmRelease, resolveRuntimeEntrypoint, rollbackRelease } from '@agent/release-manager'
-import { createInitialReleaseState, withRecordedFailure } from '@agent/release-state'
+import { confirmActivatedRelease } from '@agent/release/application/activate-release'
+import { getCurrentRelease } from '@agent/release/application/get-current-release'
+import { rollbackRelease } from '@agent/release/application/rollback-release'
+import { createInitialReleaseState, withRecordedFailure } from '@agent/release/domain/release-state'
 import type { AgentPathLayout } from '@agent/runtime-paths'
 import { describe, expect, it } from 'vitest'
 
@@ -74,7 +76,7 @@ function linkCurrent(layout: AgentPathLayout, releaseDir: string): void {
 describe('supervisor release policies', () => {
   it('confirms release after healthy boot stability window', () => {
     const state = createInitialReleaseState('1.0.0')
-    const confirmed = confirmRelease({
+    const confirmed = confirmActivatedRelease({
       state: {
         ...state,
         current_version: '2.0.0',
@@ -181,7 +183,7 @@ describe('supervisor release policies', () => {
 
     const fallbackEntrypoint = path.join(tempDir, 'agent-fallback.js')
     fs.writeFileSync(fallbackEntrypoint, "console.log('fallback')\n", 'utf8')
-    const runtimeSelection = resolveRuntimeEntrypoint({
+    const runtimeSelection = getCurrentRelease({
       layout,
       fallbackEntrypoint,
       expectedVersion: rolledBack.current_version,
@@ -203,7 +205,7 @@ describe('supervisor release policies', () => {
     const fallbackEntrypoint = path.join(tempDir, 'agent-fallback.js')
     fs.writeFileSync(fallbackEntrypoint, "console.log('fallback')\n", 'utf8')
 
-    const runtimeSelection = resolveRuntimeEntrypoint({
+    const runtimeSelection = getCurrentRelease({
       layout,
       fallbackEntrypoint,
       expectedVersion: '2.0.9',
@@ -221,7 +223,7 @@ describe('supervisor release policies', () => {
     const release = writeReleaseWithSupervisorShim(layout, '2.0.0')
     linkCurrent(layout, release.releaseDir)
 
-    const runtimeSelection = resolveRuntimeEntrypoint({
+    const runtimeSelection = getCurrentRelease({
       layout,
       fallbackEntrypoint: path.join(tempDir, 'agent-fallback.js'),
       expectedVersion: '2.0.0',

@@ -4,7 +4,7 @@ import path from 'node:path'
 import {
   type ChunkWritable,
   createRotatingChunkWriter,
-} from '@agent/supervisor/runtime-stdio-log-writer'
+} from '@agent/runtime/infrastructure/runtime-stdio-log-writer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 class StreamOpenError extends Error {

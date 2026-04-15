@@ -19,10 +19,14 @@ import {
   type RemotePolicyState,
 } from '@agent/control-core/contracts'
 import { ValidatedAgentConfigSchema } from '@agent/core/contracts/agent-config.contract'
+import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
+import type { RuntimeState as RuntimeHealthRecord } from '@agent/core/contracts/runtime-state.contract'
 import { appendPendingActivityEvents } from '@agent/pending-activity'
-import type { ReleaseState } from '@agent/release-state'
-import { readReleaseState, writeReleaseState } from '@agent/release-state'
-import { type RuntimeHealthRecord, readRuntimeHealth } from '@agent/runtime-health'
+import {
+  readReleaseState,
+  writeReleaseState,
+} from '@agent/release/infrastructure/release-state.file-repository'
+import { readRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
 import type { AgentPathLayout } from '@agent/runtime-paths'
 import { readJsonFileWithSchema, writeFileAtomic } from '@agent/state/file-io'
 import { z } from 'zod/v4'

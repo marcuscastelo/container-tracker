@@ -1,15 +1,9 @@
-import fs from 'node:fs'
 import type {
   ReleaseFailureEntry,
   ReleaseState,
 } from '@agent/core/contracts/release-state.contract'
-import {
-  readReleaseStateAtPath,
-  writeReleaseStateAtPath,
-} from '@agent/state/infrastructure/release-state.file-store'
 
 export type ActivationState = ReleaseState['activation_state']
-export type { ReleaseState } from '@agent/core/contracts/release-state.contract'
 
 export function createInitialReleaseState(currentVersion: string): ReleaseState {
   return {
@@ -28,7 +22,7 @@ export function createInitialReleaseState(currentVersion: string): ReleaseState 
   }
 }
 
-function migrateReleaseState(state: ReleaseState): ReleaseState {
+export function migrateReleaseState(state: ReleaseState): ReleaseState {
   const hasLegacyCrashLoopBlock =
     state.activation_state === 'blocked' ||
     state.last_error === 'automatic updates are blocked due to previous crash loop'
@@ -44,32 +38,6 @@ function migrateReleaseState(state: ReleaseState): ReleaseState {
     last_error:
       state.last_error ??
       `version ${state.blocked_versions.at(-1) ?? 'unknown'} blocked after crash loop`,
-  }
-}
-
-export function writeReleaseState(filePath: string, state: ReleaseState): void {
-  writeReleaseStateAtPath(filePath, state)
-}
-
-export function readReleaseState(filePath: string, fallbackVersion: string): ReleaseState {
-  if (!fs.existsSync(filePath)) {
-    const initialState = createInitialReleaseState(fallbackVersion)
-    writeReleaseState(filePath, initialState)
-    return initialState
-  }
-
-  try {
-    const parsedState = readReleaseStateAtPath(filePath)
-    const parsed =
-      parsedState === null
-        ? createInitialReleaseState(fallbackVersion)
-        : migrateReleaseState(parsedState)
-    writeReleaseState(filePath, parsed)
-    return parsed
-  } catch {
-    const fallbackState = createInitialReleaseState(fallbackVersion)
-    writeReleaseState(filePath, fallbackState)
-    return fallbackState
   }
 }
 
@@ -117,8 +85,7 @@ export function withRecordedFailure(command: {
     ...command.state.activation_failures,
     [command.version]: activationFailuresForVersion,
   }
-  const activationFailureLimitReached =
-    activationFailuresForVersion >= command.maxActivationFailures
+  const activationFailureLimitReached = activationFailuresForVersion >= command.maxActivationFailures
 
   const blockedVersions =
     crashLoopDetected || activationFailureLimitReached

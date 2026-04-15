@@ -2,10 +2,14 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { activateTargetRelease, confirmRelease, rollbackRelease } from '@agent/release-manager'
-import { createInitialReleaseState, withRecordedFailure } from '@agent/release-state'
+import {
+  activatePendingRelease,
+  confirmActivatedRelease,
+} from '@agent/release/application/activate-release'
+import { rollbackRelease } from '@agent/release/application/rollback-release'
+import { createInitialReleaseState, withRecordedFailure } from '@agent/release/domain/release-state'
+import { stageRelease } from '@agent/release/application/stage-release'
 import type { AgentPathLayout } from '@agent/runtime-paths'
-import { stageReleaseFromManifest } from '@agent/updater.core'
 import { describe, expect, it } from 'vitest'
 
 function createLayout(baseDir: string): AgentPathLayout {
@@ -70,7 +74,7 @@ describe('self-update integration flows', () => {
         headers: { 'content-type': 'application/javascript' },
       })
 
-    const staged = await stageReleaseFromManifest({
+    const staged = await stageRelease({
       manifest: {
         version: '2.0.0',
         download_url: 'https://agent.test.local/release.js',
@@ -90,7 +94,7 @@ describe('self-update integration flows', () => {
 
     expect(staged.kind).toBe('staged')
 
-    const activated = activateTargetRelease({
+    const activated = activatePendingRelease({
       layout,
       state: {
         ...createInitialReleaseState('1.0.0'),
@@ -101,7 +105,7 @@ describe('self-update integration flows', () => {
       nowIso: new Date().toISOString(),
     })
 
-    const confirmed = confirmRelease({
+    const confirmed = confirmActivatedRelease({
       state: activated,
       confirmedVersion: '2.0.0',
       nowIso: new Date().toISOString(),
@@ -119,7 +123,7 @@ describe('self-update integration flows', () => {
     writeRelease(layout, '2.0.0')
     linkCurrent(layout, releaseV1)
 
-    const activated = activateTargetRelease({
+    const activated = activatePendingRelease({
       layout,
       state: {
         ...createInitialReleaseState('1.0.0'),

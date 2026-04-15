@@ -4,8 +4,14 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { consumeBootstrapConfig, readBootstrapConfigFromEnv } from '@agent/config/infrastructure/bootstrap-config.repository'
-import { readRuntimeConfigFromEnv, writeRuntimeConfigToEnv } from '@agent/config/infrastructure/env-config.repository'
+import {
+  consumeBootstrapConfig,
+  readBootstrapConfigFromEnv,
+} from '@agent/config/infrastructure/bootstrap-config.repository'
+import {
+  readRuntimeConfigFromEnv,
+  writeRuntimeConfigToEnv,
+} from '@agent/config/infrastructure/env-config.repository'
 import {
   acknowledgeRemoteCommand,
   applyRemoteCommand,
@@ -26,6 +32,12 @@ import {
 } from '@agent/core/contracts/sync-job.contract'
 import { BoundaryValidationError } from '@agent/core/errors/boundary-validation.error'
 import { toHeartbeatPayload } from '@agent/observability/observability.mapper'
+import { writeRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
+import {
+  clearSupervisorControl,
+  readSupervisorControl,
+  writeSupervisorControl,
+} from '@agent/runtime/infrastructure/supervisor-control.repository'
 import {
   toAgentSyncJob,
   toBackendSyncAck,
@@ -57,23 +69,10 @@ import { createAgentLogForwarder } from '../log-forwarder.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { drainPendingActivityEvents } from '../pending-activity.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { resolveAgentPlatformKey } from '../platform/platform.adapter.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { readReleaseState, writeReleaseState } from '../release-state.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { writeRuntimeHealth } from '../runtime-health.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import type { AgentPathLayout } from '../runtime-paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 // biome-ignore lint/performance/noNamespaceImport: Runtime keeps grouped imports stable to avoid formatter wrapping regressions.
 import * as runtimePaths from '../runtime-paths.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-// biome-ignore lint/performance/noNamespaceImport: Runtime keeps grouped imports stable to avoid formatter wrapping regressions.
-import * as supervisorControl from '../supervisor-control.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { resolveAutomaticUpdateChecksMode } from '../update-checks.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { fetchUpdateManifest, stageReleaseFromManifest } from '../updater.core.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { EXIT_FATAL, EXIT_UPDATE_RESTART } from './lifecycle-exit-codes.ts'
 
@@ -247,8 +246,6 @@ type EnrollResponse = z.infer<typeof enrollResponseSchema>
 const packageJsonSchema = z.object({
   version: z.string().min(1),
 })
-
-const UPDATE_CHECK_INTERVAL_MS = 60_000
 
 type PathLayout = AgentPathLayout
 
@@ -1218,190 +1215,6 @@ function subscribeToRealtimeIfConfigured(command: {
   }
 }
 
-async function runUpdateCheck(command: {
-  readonly config: RuntimeConfig
-  readonly agentVersion: string
-  readonly state: AgentRuntimeState
-  readonly releaseStatePath: string
-  readonly agentLayout: AgentPathLayout
-  readonly supervisorControlPath: string
-  readonly effectiveBlockedVersions: readonly string[]
-}): Promise<{
-  readonly activities: readonly AgentRuntimeActivity[]
-  readonly shouldDrain: boolean
-}> {
-  const nowIso = new Date().toISOString()
-  const activities: AgentRuntimeActivity[] = []
-  command.state.updaterLastCheckedAt = nowIso
-  command.state.updateState = 'checking'
-
-  try {
-    const manifest = await fetchUpdateManifest({
-      backendUrl: command.config.BACKEND_URL,
-      agentToken: command.config.AGENT_TOKEN,
-      agentId: command.config.AGENT_ID,
-      platform: resolveAgentPlatformKey(),
-      updateChannelOverride: command.config.AGENT_UPDATE_MANIFEST_CHANNEL,
-    })
-
-    command.state.desiredVersion = manifest.desired_version
-    command.state.restartRequestedAt = manifest.restart_requested_at
-    command.state.updateReadyVersion = manifest.update_ready_version
-
-    activities.push({
-      type: 'UPDATE_CHECKED',
-      message: `Checked update manifest (desired=${manifest.desired_version ?? 'none'})`,
-      severity: 'info',
-      metadata: {
-        version: manifest.version,
-        updateAvailable: manifest.update_available,
-      },
-      occurredAt: nowIso,
-    })
-
-    let shouldDrain = false
-    if (manifest.restart_required) {
-      command.state.updateState = 'draining'
-      shouldDrain = true
-      supervisorControl.writeSupervisorControl(command.supervisorControlPath, {
-        drain_requested: true,
-        reason: 'restart',
-        requested_at: nowIso,
-      })
-    }
-
-    const releaseState = readReleaseState(command.releaseStatePath, command.agentVersion)
-    const effectiveReleaseState = {
-      ...releaseState,
-      blocked_versions: [
-        ...new Set([...releaseState.blocked_versions, ...command.effectiveBlockedVersions]),
-      ],
-    }
-    const stagedRelease = await stageReleaseFromManifest({
-      manifest,
-      layout: command.agentLayout,
-      state: effectiveReleaseState,
-    })
-
-    if (stagedRelease.kind === 'no_update') {
-      if (command.state.updateState !== 'draining') {
-        command.state.updateState = 'idle'
-      }
-      return { activities, shouldDrain }
-    }
-
-    if (stagedRelease.kind === 'blocked') {
-      command.state.updateState = 'blocked'
-      command.state.lastError = stagedRelease.reason
-      writeReleaseState(command.releaseStatePath, {
-        ...releaseState,
-        activation_state: 'idle',
-        automatic_updates_blocked: releaseState.automatic_updates_blocked,
-        last_update_attempt: nowIso,
-        last_error: stagedRelease.reason,
-      })
-
-      activities.push({
-        type: 'UPDATE_APPLY_FAILED',
-        message: stagedRelease.reason,
-        severity: 'danger',
-        metadata: {
-          version: stagedRelease.manifest.version,
-        },
-        occurredAt: nowIso,
-      })
-      return { activities, shouldDrain }
-    }
-
-    activities.push({
-      type: 'UPDATE_AVAILABLE',
-      message: `Update available: ${stagedRelease.manifest.version}`,
-      severity: 'info',
-      metadata: {
-        version: stagedRelease.manifest.version,
-        channel: stagedRelease.manifest.channel,
-      },
-      occurredAt: nowIso,
-    })
-
-    if (stagedRelease.downloaded) {
-      activities.push({
-        type: 'UPDATE_DOWNLOAD_STARTED',
-        message: `Downloading release ${stagedRelease.manifest.version}`,
-        severity: 'info',
-        metadata: {
-          version: stagedRelease.manifest.version,
-          url: stagedRelease.manifest.download_url,
-        },
-        occurredAt: nowIso,
-      })
-      activities.push({
-        type: 'UPDATE_DOWNLOAD_COMPLETED',
-        message: `Downloaded release ${stagedRelease.manifest.version}`,
-        severity: 'success',
-        metadata: {
-          version: stagedRelease.manifest.version,
-          checksum: stagedRelease.manifest.checksum,
-        },
-        occurredAt: nowIso,
-      })
-    }
-
-    writeReleaseState(command.releaseStatePath, {
-      ...releaseState,
-      target_version: stagedRelease.manifest.version,
-      activation_state: 'pending',
-      last_update_attempt: nowIso,
-      last_error: null,
-      automatic_updates_blocked: false,
-    })
-
-    command.state.updateState = 'ready'
-    command.state.updateReadyVersion = stagedRelease.manifest.version
-    command.state.lastError = null
-    shouldDrain = true
-
-    supervisorControl.writeSupervisorControl(command.supervisorControlPath, {
-      drain_requested: true,
-      reason: 'update',
-      requested_at: nowIso,
-    })
-
-    activities.push({
-      type: 'UPDATE_READY',
-      message: `Release ${stagedRelease.manifest.version} staged and pending activation`,
-      severity: 'success',
-      metadata: {
-        version: stagedRelease.manifest.version,
-        releaseDir: stagedRelease.releaseDir,
-      },
-      occurredAt: nowIso,
-    })
-
-    return {
-      activities,
-      shouldDrain,
-    }
-  } catch (error) {
-    const errorMessage = `Updater check failed: ${toErrorMessage(error)}`
-    command.state.updateState = 'error'
-    command.state.lastError = errorMessage
-    return {
-      activities: [
-        ...activities,
-        {
-          type: 'UPDATE_APPLY_FAILED',
-          message: errorMessage,
-          severity: 'danger',
-          metadata: {},
-          occurredAt: nowIso,
-        },
-      ],
-      shouldDrain: false,
-    }
-  }
-}
-
 async function main(): Promise<void> {
   const agentLayout = runtimePaths.resolveAgentPathLayout()
   runtimePaths.ensureAgentPathLayout(agentLayout)
@@ -1411,27 +1224,11 @@ async function main(): Promise<void> {
     currentConfig: toControlRuntimeConfig(runtimeConfig),
   })
   runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
-  let updateChecksMode = resolveAutomaticUpdateChecksMode({
-    env: process.env,
-    configuredChannel: runtimeConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
-  })
-  let updateManifestChecksDisabled = updateChecksMode.disabled
   const agentVersion = resolveAgentVersion()
 
   console.log(
     `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
   )
-  if (updateManifestChecksDisabled) {
-    if (updateChecksMode.reason === 'EXPLICIT_DISABLE_FLAG') {
-      console.log(
-        `[agent:update] manifest checks disabled by AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS; configured channel=${updateChecksMode.configuredChannel ?? 'unknown'}; using current runtime only`,
-      )
-    } else {
-      console.log(
-        '[agent:update] manifest checks disabled (AGENT_UPDATE_MANIFEST_CHANNEL=disabled); using current runtime only',
-      )
-    }
-  }
 
   const runtimeState: AgentRuntimeState = {
     realtimeState:
@@ -1476,7 +1273,6 @@ async function main(): Promise<void> {
   runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
 
   let lastRealtimeSignalFingerprint: string | null = null
-  let lastUpdateCheckAtMs = 0
   let requestRestartAfterHeartbeat = false
   let scheduler: ReturnType<typeof createAgentScheduler> | null = null
   let realtimeSubscription: { readonly unsubscribe: () => void } | null = null
@@ -1491,11 +1287,8 @@ async function main(): Promise<void> {
         currentConfig: toControlRuntimeConfig(runtimeConfig),
       })
       runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
-      updateChecksMode = resolveAutomaticUpdateChecksMode({
-        env: process.env,
-        configuredChannel: runtimeConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
-      })
-      updateManifestChecksDisabled = updateChecksMode.disabled
+      runtimeState.desiredVersion = controlSync.remotePolicy.desiredVersion
+      runtimeState.updateReadyVersion = controlSync.releaseState.target_version
 
       const pendingRemoteCommand = controlSync.remoteCommands[0]
       if (pendingRemoteCommand) {
@@ -1520,7 +1313,7 @@ async function main(): Promise<void> {
         if (remoteCommandResult.requiresRestart) {
           runtimeState.updateState = 'draining'
           runtimeState.restartRequestedAt = pendingRemoteCommand.requestedAt
-          supervisorControl.writeSupervisorControl(agentLayout.supervisorControlPath, {
+          writeSupervisorControl(agentLayout.supervisorControlPath, {
             drain_requested: true,
             reason: 'restart',
             requested_at: pendingRemoteCommand.requestedAt,
@@ -1528,7 +1321,7 @@ async function main(): Promise<void> {
         }
       }
 
-      const controlState = supervisorControl.readSupervisorControl(agentLayout.supervisorControlPath)
+      const controlState = readSupervisorControl(agentLayout.supervisorControlPath)
       if (controlState?.drain_requested) {
         runtimeState.updateState = 'draining'
         runtimeState.restartRequestedAt = controlState.requested_at
@@ -1540,30 +1333,6 @@ async function main(): Promise<void> {
       } else {
         runtimeState.processingState = 'idle'
         runtimeState.activeJobs = 0
-      }
-
-      const nowMs = Date.now()
-      const shouldRunUpdateCheck =
-        !updateManifestChecksDisabled &&
-        !controlSync.snapshot.updates.paused.value &&
-        runtimeState.updateState !== 'draining' &&
-        nowMs - lastUpdateCheckAtMs >= UPDATE_CHECK_INTERVAL_MS
-
-      if (shouldRunUpdateCheck) {
-        const updateResult = await runUpdateCheck({
-          config: runtimeConfig,
-          agentVersion,
-          state: runtimeState,
-          releaseStatePath: agentLayout.releaseStatePath,
-          agentLayout,
-          supervisorControlPath: agentLayout.supervisorControlPath,
-          effectiveBlockedVersions: controlSync.snapshot.updates.blockedVersions.effective,
-        })
-        lastUpdateCheckAtMs = nowMs
-        cycleActivities.push(...updateResult.activities)
-        if (updateResult.shouldDrain) {
-          runtimeState.updateState = 'draining'
-        }
       }
 
       if (runtimeState.updateState === 'draining' && runtimeState.activeJobs === 0) {
@@ -1595,7 +1364,7 @@ async function main(): Promise<void> {
       runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
 
       if (requestRestartAfterHeartbeat && runtimeState.activeJobs === 0) {
-        supervisorControl.writeSupervisorControl(agentLayout.supervisorControlPath, {
+        writeSupervisorControl(agentLayout.supervisorControlPath, {
           drain_requested: false,
           reason: null,
           requested_at: null,
@@ -1702,7 +1471,7 @@ async function main(): Promise<void> {
     void logForwarder.stop().catch((error) => {
       console.warn(`[agent] log forwarder stop failed: ${toErrorMessage(error)}`)
     })
-    supervisorControl.clearSupervisorControl(agentLayout.supervisorControlPath)
+    clearSupervisorControl(agentLayout.supervisorControlPath)
   }
 
   process.once('SIGINT', () => shutdown('SIGINT'))

@@ -16,12 +16,14 @@ import { createAgentControlLocalService } from '@agent/control-core/local-contro
 import { appendPendingActivityEvents } from '@agent/pending-activity'
 import {
   createInitialReleaseState,
+} from '@agent/release/domain/release-state'
+import {
   readReleaseState,
   writeReleaseState,
-} from '@agent/release-state'
-import { writeRuntimeHealth } from '@agent/runtime-health'
+} from '@agent/release/infrastructure/release-state.file-repository'
+import { writeRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
 import type { AgentPathLayout } from '@agent/runtime-paths'
-import { readSupervisorControl } from '@agent/supervisor-control'
+import { readSupervisorControl } from '@agent/runtime/infrastructure/supervisor-control.repository'
 import { describe, expect, it } from 'vitest'
 
 function createLayout(baseDir: string): AgentPathLayout {

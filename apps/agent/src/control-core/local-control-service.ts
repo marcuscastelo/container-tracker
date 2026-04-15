@@ -29,18 +29,17 @@ import {
 } from '@agent/control-core/public-control-state'
 import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
 import type { AgentPlatformControlAdapter } from '@agent/platform/platform.contract'
-import {
-  resolveReleaseEntrypoint,
-  rollbackRelease as rollbackReleaseState,
-} from '@agent/release-manager'
-import { readReleaseState, writeReleaseState } from '@agent/release-state'
+import { requestReleaseActivation } from '@agent/release/application/activate-release'
+import { resolveReleaseEntrypoint } from '@agent/release/application/release-layout'
+import { requestReleaseRollback } from '@agent/release/application/rollback-release'
+import { readReleaseState } from '@agent/release/infrastructure/release-state.file-repository'
+import { writeSupervisorControl } from '@agent/runtime/infrastructure/supervisor-control.repository'
 import {
   resolveAgentPublicBackendStatePath,
   resolveAgentPublicStatePath,
 } from '@agent/runtime/paths'
 import type { AgentPathLayout } from '@agent/runtime-paths'
 import { writeFileAtomic } from '@agent/state/file-io'
-import { writeSupervisorControl } from '@agent/supervisor-control'
 import type { z } from 'zod/v4'
 
 const LOG_FILE_BY_CHANNEL = {
@@ -492,13 +491,11 @@ export function createAgentControlLocalService(
       }
 
       const nowIso = new Date().toISOString()
-      writeReleaseState(deps.layout.releaseStatePath, {
-        ...syncResult.releaseState,
-        target_version: version,
-        activation_state: 'pending',
-        last_update_attempt: nowIso,
-        last_error: null,
-        automatic_updates_blocked: false,
+      requestReleaseActivation({
+        layout: deps.layout,
+        fallbackVersion: syncResult.releaseState.current_version,
+        targetVersion: version,
+        nowIso,
       })
       writeSupervisorControl(deps.layout.supervisorControlPath, {
         drain_requested: true,
@@ -525,14 +522,13 @@ export function createAgentControlLocalService(
       }
 
       const nowIso = new Date().toISOString()
-      const rolledBackState = rollbackReleaseState({
+      requestReleaseRollback({
         layout: deps.layout,
-        state,
+        fallbackVersion: state.current_version,
         rollbackVersion,
         nowIso,
         reason: 'manual rollback requested from local control UI',
       })
-      writeReleaseState(deps.layout.releaseStatePath, rolledBackState)
       writeSupervisorControl(deps.layout.supervisorControlPath, {
         drain_requested: true,
         reason: 'manual',

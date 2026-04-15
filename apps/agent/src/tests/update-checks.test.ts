@@ -1,9 +1,9 @@
-import { resolveAutomaticUpdateChecksMode } from '@agent/update-checks'
+import { resolveReleaseChecksMode } from '@agent/release/domain/release-policy'
 import { describe, expect, it } from 'vitest'
 
-describe('resolveAutomaticUpdateChecksMode', () => {
+describe('resolveReleaseChecksMode', () => {
   it('disables checks from explicit dev flag without masking the configured channel', () => {
-    const mode = resolveAutomaticUpdateChecksMode({
+    const mode = resolveReleaseChecksMode({
       env: {
         AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS: '1',
       },
@@ -16,7 +16,7 @@ describe('resolveAutomaticUpdateChecksMode', () => {
   })
 
   it('disables checks when channel is explicitly disabled', () => {
-    const mode = resolveAutomaticUpdateChecksMode({
+    const mode = resolveReleaseChecksMode({
       env: {},
       configuredChannel: 'disabled',
     })
@@ -27,7 +27,7 @@ describe('resolveAutomaticUpdateChecksMode', () => {
   })
 
   it('keeps checks enabled when channel is canary and no override is present', () => {
-    const mode = resolveAutomaticUpdateChecksMode({
+    const mode = resolveReleaseChecksMode({
       env: {},
       configuredChannel: 'canary',
     })
