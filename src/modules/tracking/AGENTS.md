@@ -9,6 +9,14 @@ This file contains only tracking-specific additions that are not already explici
 
 ---
 
+## Sanity Gate Inheritance
+
+For any commit-ready tracking change, follow the mandatory `pnpm sanity` close-out gate defined in root `AGENTS.md` section `11.1`.
+
+This addendum does not relax or replace that gate.
+
+---
+
 ## 0) Read-First for Tracking Changes
 
 - `docs/TRACKING_INVARIANTS.md`

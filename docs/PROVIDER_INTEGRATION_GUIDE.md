@@ -445,6 +445,8 @@ Before opening the PR, confirm:
 - DB constraints and backfills exist if needed
 - UI catalogs are updated if user-facing
 - tests cover fetcher, schemas, normalization, sync, and user-visible display
+- mandatory close-out `pnpm sanity` gate was executed (see `AGENTS.md` section `11.1`)
+- initial vs final `pnpm sanity` state (delta) was recorded with explicit no-regression confirmation
 - no domain semantics leaked into capabilities or UI
 
 If any answer is "not sure", stop and compare with the ONE implementation before merging.

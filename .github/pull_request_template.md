@@ -46,5 +46,13 @@
 
 ## Checks
 
-- [ ] `pnpm check` is green locally
+- [ ] `pnpm sanity` foi executado como gate obrigatório de fechamento
+- [ ] Baseline inicial do `pnpm sanity` foi capturado
+- [ ] Estado final do `pnpm sanity` não piorou vs baseline (se baseline era green, final green)
 - [ ] Relevant tests for changed behavior were updated
+
+## Sanity Baseline Report
+
+- Initial `pnpm sanity` state:
+- Final `pnpm sanity` state:
+- Delta (fixed / remaining / no-regression confirmation):

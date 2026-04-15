@@ -94,6 +94,7 @@ Enforcement:
 
 Pre-rollout gates:
 
+- mandatory close-out gate: `pnpm sanity` (baseline vs final, no regression), per `AGENTS.md` section `11.1`
 - lint + boundary scans
 - type-check
 - tests
