@@ -42,6 +42,33 @@ function resolveLaunchMode(): UiLaunchMode {
   return process.env.CT_AGENT_UI_MODE === 'tray' ? 'tray' : 'window'
 }
 
+function normalizeOptionalEnv(value: string | undefined): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+function resolveControlUiUserDataDir(): string | null {
+  return normalizeOptionalEnv(process.env.CT_AGENT_UI_USER_DATA_DIR)
+}
+
+function shouldDisableSingleInstanceLock(): boolean {
+  return normalizeOptionalEnv(process.env.CT_AGENT_UI_DISABLE_SINGLE_INSTANCE_LOCK) === '1'
+}
+
+function configureControlUiUserDataDir(): void {
+  const userDataDir = resolveControlUiUserDataDir()
+  if (userDataDir === null) {
+    return
+  }
+
+  fs.mkdirSync(userDataDir, { recursive: true })
+  app.setPath('userData', userDataDir)
+}
+
 function isInstalledLinuxUi(): boolean {
   return isLinuxPlatform() && process.env.CT_AGENT_UI_INSTALLED === '1'
 }
@@ -251,15 +278,19 @@ function registerIpcHandlers(): void {
   })
 }
 
-const canRun = setupSingleInstance({
-  app,
-  onSecondInstance() {
-    openWindowRequested = true
-    if (mainWindow) {
-      lifecycle.openWindow(mainWindow)
-    }
-  },
-})
+configureControlUiUserDataDir()
+
+const canRun = shouldDisableSingleInstanceLock()
+  ? true
+  : setupSingleInstance({
+      app,
+      onSecondInstance() {
+        openWindowRequested = true
+        if (mainWindow) {
+          lifecycle.openWindow(mainWindow)
+        }
+      },
+    })
 
 if (canRun) {
   void app.whenReady().then(() => {

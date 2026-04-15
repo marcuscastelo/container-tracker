@@ -52,7 +52,7 @@ exec /bin/bash "$@"
     `#!/bin/bash
 set -euo pipefail
 printf '%s\\n' "$*" >> "\${UI_ARGS_CAPTURE_PATH}"
-printf '%s\\n' "\${AGENT_DATA_DIR:-}|\${DOTENV_PATH:-}|\${BOOTSTRAP_DOTENV_PATH:-}" > "\${UI_ENV_CAPTURE_PATH}"
+printf '%s\\n' "\${AGENT_DATA_DIR:-}|\${DOTENV_PATH:-}|\${BOOTSTRAP_DOTENV_PATH:-}|\${CT_AGENT_UI_INSTALLED:-}|\${CT_AGENT_UI_MODE:-}|\${CT_AGENT_UI_DISABLE_SINGLE_INSTANCE_LOCK:-}|\${CT_AGENT_UI_USER_DATA_DIR:-}" > "\${UI_ENV_CAPTURE_PATH}"
 printf 'ui-start\\n' >> "\${EVENTS_PATH}"
 
 mode="\${MOCK_UI_MODE:-fail}"
@@ -105,6 +105,8 @@ function createHarness(command = {}) {
       command.disableAutomaticUpdateChecks ??
       process.env.AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS ??
       '1',
+    CT_AGENT_UI_INSTALLED: command.uiInstalledEnv ?? '1',
+    CT_AGENT_UI_MODE: command.uiModeEnv ?? 'tray',
     MOCK_RUNTIME_MODE: command.runtimeMode ?? 'short',
     MOCK_RUNTIME_SLEEP_SEC: String(command.runtimeSleepSec ?? 0.2),
     MOCK_RUNTIME_EXIT_CODE: String(command.runtimeExitCode ?? 0),
@@ -193,6 +195,7 @@ describe('run-linux-with-control-ui launcher', () => {
 
     const expectedDotenvPath = path.join(agentDataDir, 'config.env')
     const expectedBootstrapPath = path.join(agentDataDir, 'bootstrap.env')
+    const expectedControlUiUserDataDir = path.join(agentDataDir, 'control-ui-user-data')
 
     expect(result.status).toBe(7)
     expect(result.stderr).toContain('control UI exited with code 5')
@@ -200,7 +203,7 @@ describe('run-linux-with-control-ui launcher', () => {
       `${agentDataDir}|${expectedDotenvPath}|${expectedBootstrapPath}|1`,
     )
     expect(fs.readFileSync(uiEnvCapturePath, 'utf8').trim()).toBe(
-      `${agentDataDir}|${expectedDotenvPath}|${expectedBootstrapPath}`,
+      `${agentDataDir}|${expectedDotenvPath}|${expectedBootstrapPath}|0|window|1|${expectedControlUiUserDataDir}`,
     )
     expect(fs.readFileSync(uiArgsCapturePath, 'utf8')).toContain(
       '--filter @container-tracker/agent run control-ui:start',

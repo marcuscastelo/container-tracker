@@ -13,6 +13,7 @@ runtime_launcher_path="$script_dir/run-linux.sh"
 agent_data_dir="${AGENT_DATA_DIR:-$repo_root/.agent-runtime}"
 dotenv_path="${DOTENV_PATH:-$agent_data_dir/config.env}"
 bootstrap_path="${BOOTSTRAP_DOTENV_PATH:-$agent_data_dir/bootstrap.env}"
+control_ui_user_data_dir="${CT_AGENT_UI_USER_DATA_DIR:-$agent_data_dir/control-ui-user-data}"
 disable_automatic_update_checks="${AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS:-}"
 
 runtime_pid=""
@@ -44,6 +45,10 @@ launch_control_ui_best_effort() {
   AGENT_DATA_DIR="$agent_data_dir" \
     DOTENV_PATH="$dotenv_path" \
     BOOTSTRAP_DOTENV_PATH="$bootstrap_path" \
+    CT_AGENT_UI_INSTALLED=0 \
+    CT_AGENT_UI_MODE=window \
+    CT_AGENT_UI_DISABLE_SINGLE_INSTANCE_LOCK=1 \
+    CT_AGENT_UI_USER_DATA_DIR="$control_ui_user_data_dir" \
     pnpm --filter @container-tracker/agent run control-ui:start &
   ui_pid="$!"
 }
