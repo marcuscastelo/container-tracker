@@ -19,11 +19,11 @@ import { readJsonFileWithSchema, writeFileAtomic } from '@agent/state/file-io'
 export function buildAgentControlPaths(layout: AgentPathLayout): AgentControlPaths {
   return AgentControlPathsSchema.parse({
     dataDir: layout.dataDir,
-    configPath: layout.configPath,
+    configEnvPath: layout.configEnvPath,
     releasesDir: layout.releasesDir,
     logsDir: layout.logsDir,
     releaseStatePath: layout.releaseStatePath,
-    runtimeHealthPath: layout.runtimeHealthPath,
+    runtimeStatePath: layout.runtimeStatePath,
     supervisorControlPath: layout.supervisorControlPath,
     controlOverridesPath: layout.controlOverridesPath,
     controlRemoteCachePath: layout.controlRemoteCachePath,

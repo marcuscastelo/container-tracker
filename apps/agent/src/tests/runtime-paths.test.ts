@@ -1,110 +1,101 @@
 import path from 'node:path'
+import fs from 'node:fs'
+import os from 'node:os'
 
-import { resolveAgentDataDirFrom, resolveAgentPublicStateDirFrom } from '@agent/runtime/paths'
+import { linuxPlatformAdapter } from '@agent/platform/linux.adapter'
+import { windowsPlatformAdapter } from '@agent/platform/windows.adapter'
 import { describe, expect, it } from 'vitest'
 
-describe('runtime path abstraction', () => {
-  it('uses AGENT_DATA_DIR override when provided', () => {
-    const result = resolveAgentDataDirFrom({
+describe('platform path abstraction', () => {
+  it('resolves canonical Linux paths and defaults public state to DATA_DIR/run', () => {
+    const paths = linuxPlatformAdapter.resolvePaths({
       env: {
         AGENT_DATA_DIR: '/tmp/custom-agent-data',
       },
-      platform: 'linux',
       cwd: '/workspace',
-      resolvePlatformDataDir() {
-        return '/unused'
-      },
-      canUseLinuxSystemDir() {
-        return false
-      },
     })
 
-    expect(result).toBe('/tmp/custom-agent-data')
+    expect(paths.dataDir).toBe('/tmp/custom-agent-data')
+    expect(paths.releasesDir).toBe('/tmp/custom-agent-data/releases')
+    expect(paths.currentPath).toBe('/tmp/custom-agent-data/current')
+    expect(paths.previousPath).toBe('/tmp/custom-agent-data/previous')
+    expect(paths.releaseStatePath).toBe('/tmp/custom-agent-data/release-state.json')
+    expect(paths.runtimeStatePath).toBe('/tmp/custom-agent-data/runtime-state.json')
+    expect(paths.configEnvPath).toBe('/tmp/custom-agent-data/config.env')
+    expect(paths.bootstrapEnvPath).toBe('/tmp/custom-agent-data/bootstrap.env')
+    expect(paths.publicStateDir).toBe('/tmp/custom-agent-data/run')
+    expect(paths.publicStatePath).toBe('/tmp/custom-agent-data/run/control-ui-state.json')
   })
 
-  it('uses Linux system directory when writable', () => {
-    const result = resolveAgentDataDirFrom({
-      env: {},
-      platform: 'linux',
-      cwd: '/workspace',
-      resolvePlatformDataDir() {
-        return '/unused'
-      },
-      canUseLinuxSystemDir() {
-        return true
-      },
-    })
-
-    expect(result).toBe('/var/lib/container-tracker-agent')
-  })
-
-  it('falls back to .agent-runtime when Linux system directory is not writable', () => {
-    const result = resolveAgentDataDirFrom({
-      env: {},
-      platform: 'linux',
-      cwd: '/workspace',
-      resolvePlatformDataDir() {
-        return '/unused'
-      },
-      canUseLinuxSystemDir() {
-        return false
-      },
-    })
-
-    expect(result).toBe(path.resolve('/workspace', '.agent-runtime'))
-  })
-
-  it('uses platform adapter outside Linux when no override is provided', () => {
-    const result = resolveAgentDataDirFrom({
-      env: {},
-      platform: 'win32',
-      cwd: '/workspace',
-      resolvePlatformDataDir() {
-        return 'C:\\AgentData'
-      },
-      canUseLinuxSystemDir() {
-        return false
-      },
-    })
-
-    expect(result).toBe('C:\\AgentData')
-  })
-
-  it('uses AGENT_PUBLIC_STATE_DIR override when provided', () => {
-    const result = resolveAgentPublicStateDirFrom({
+  it('resolves canonical Windows paths using LOCALAPPDATA', () => {
+    const paths = windowsPlatformAdapter.resolvePaths({
       env: {
-        AGENT_PUBLIC_STATE_DIR: '/tmp/custom-agent-run',
+        LOCALAPPDATA: 'C:\\Users\\Agent\\AppData\\Local',
       },
-      platform: 'linux',
-      resolveAgentDataDir() {
-        return '/unused'
-      },
+      cwd: 'C:\\workspace',
     })
 
-    expect(result).toBe('/tmp/custom-agent-run')
+    expect(paths.dataDir).toBe('C:\\Users\\Agent\\AppData\\Local\\ContainerTracker')
+    expect(paths.releasesDir).toBe('C:\\Users\\Agent\\AppData\\Local\\ContainerTracker\\releases')
+    expect(paths.currentPath).toBe('C:\\Users\\Agent\\AppData\\Local\\ContainerTracker\\current')
+    expect(paths.previousPath).toBe('C:\\Users\\Agent\\AppData\\Local\\ContainerTracker\\previous')
+    expect(paths.runtimeStatePath).toBe(
+      'C:\\Users\\Agent\\AppData\\Local\\ContainerTracker\\runtime-state.json',
+    )
+    expect(paths.publicStateDir).toBe('C:\\Users\\Agent\\AppData\\Local\\ContainerTracker\\run')
   })
 
-  it('uses Linux public run directory when data dir is the installed system path', () => {
-    const result = resolveAgentPublicStateDirFrom({
-      env: {},
-      platform: 'linux',
-      resolveAgentDataDir() {
-        return '/var/lib/container-tracker-agent'
-      },
-    })
+  it('switches release pointers through the Linux adapter', () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-platform-switch-'))
+    const releasesDir = path.join(baseDir, 'releases')
+    const v1 = path.join(releasesDir, '1.0.0')
+    const v2 = path.join(releasesDir, '2.0.0')
+    const currentPath = path.join(baseDir, 'current')
+    const previousPath = path.join(baseDir, 'previous')
 
-    expect(result).toBe('/run/container-tracker-agent')
+    fs.mkdirSync(v1, { recursive: true })
+    fs.mkdirSync(v2, { recursive: true })
+
+    linuxPlatformAdapter.switchCurrentRelease({
+      currentPath,
+      previousPath,
+      targetPath: v1,
+    })
+    expect(linuxPlatformAdapter.readSymlinkOrPointer({ pointerPath: currentPath })).toBe(v1)
+
+    linuxPlatformAdapter.switchCurrentRelease({
+      currentPath,
+      previousPath,
+      targetPath: v2,
+    })
+    expect(linuxPlatformAdapter.readSymlinkOrPointer({ pointerPath: currentPath })).toBe(v2)
+    expect(linuxPlatformAdapter.readSymlinkOrPointer({ pointerPath: previousPath })).toBe(v1)
   })
 
-  it('uses dataDir/run when Linux is running from a local agent runtime', () => {
-    const result = resolveAgentPublicStateDirFrom({
-      env: {},
-      platform: 'linux',
-      resolveAgentDataDir() {
-        return path.resolve('/workspace', '.agent-runtime')
-      },
-    })
+  it('switches release pointers through the Windows adapter', () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-platform-switch-win-'))
+    const releasesDir = path.join(baseDir, 'releases')
+    const v1 = path.join(releasesDir, '1.0.0')
+    const v2 = path.join(releasesDir, '2.0.0')
+    const currentPath = path.join(baseDir, 'current')
+    const previousPath = path.join(baseDir, 'previous')
 
-    expect(result).toBe(path.resolve('/workspace', '.agent-runtime', 'run'))
+    fs.mkdirSync(v1, { recursive: true })
+    fs.mkdirSync(v2, { recursive: true })
+
+    windowsPlatformAdapter.switchCurrentRelease({
+      currentPath,
+      previousPath,
+      targetPath: v1,
+    })
+    expect(windowsPlatformAdapter.readSymlinkOrPointer({ pointerPath: currentPath })).toBe(v1)
+
+    windowsPlatformAdapter.switchCurrentRelease({
+      currentPath,
+      previousPath,
+      targetPath: v2,
+    })
+    expect(windowsPlatformAdapter.readSymlinkOrPointer({ pointerPath: currentPath })).toBe(v2)
+    expect(windowsPlatformAdapter.readSymlinkOrPointer({ pointerPath: previousPath })).toBe(v1)
   })
 })

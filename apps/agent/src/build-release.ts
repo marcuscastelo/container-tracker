@@ -1367,7 +1367,7 @@ async function runPreflightChecks(command: {
   readonly bootstrapTemplatePath: string
   readonly updaterSourcePath: string
   readonly runtimePathsSourcePath: string
-  readonly canonicalRuntimePathsSourcePath: string
+  readonly linuxAdapterSourcePath: string
   readonly windowsAdapterSourcePath: string
 }): Promise<void> {
   const errors: string[] = []
@@ -1434,6 +1434,25 @@ async function runPreflightChecks(command: {
       errors.push('installer.iss must include supervisor/updater launcher scripts in [Files]/[Run]')
     }
 
+    const requiredDataLayoutDirectories = [
+      '{localappdata}\\ContainerTracker\\releases',
+      '{localappdata}\\ContainerTracker\\logs',
+      '{localappdata}\\ContainerTracker\\downloads',
+      '{localappdata}\\ContainerTracker\\run',
+    ]
+    for (const requiredDirectory of requiredDataLayoutDirectories) {
+      if (!installerContentRaw.includes(requiredDirectory)) {
+        errors.push(`installer.iss missing canonical data directory: ${requiredDirectory}`)
+      }
+    }
+
+    if (
+      installerContentRaw.includes('{localappdata}\\ContainerTracker\\data') ||
+      installerContentRaw.includes('{localappdata}\\ContainerTracker\\cache')
+    ) {
+      errors.push('installer.iss must not define legacy data/cache directories')
+    }
+
     errors.push(...collectInstallerTaskRegistrationErrors(installerContentRaw))
   } else {
     errors.push(`installer.iss not found: ${command.installerFilePath}`)
@@ -1480,22 +1499,22 @@ async function runPreflightChecks(command: {
     errors.push(`runtime-paths.ts not found: ${command.runtimePathsSourcePath}`)
   }
 
-  if (await pathExists(command.canonicalRuntimePathsSourcePath)) {
-    const canonicalRuntimePathsSource = await fs.readFile(
-      command.canonicalRuntimePathsSourcePath,
-      'utf8',
-    )
+  if (await pathExists(command.linuxAdapterSourcePath)) {
+    const linuxAdapterSource = await fs.readFile(command.linuxAdapterSourcePath, 'utf8')
     if (
-      !canonicalRuntimePathsSource.includes('resolveAgentDataDir') ||
-      !canonicalRuntimePathsSource.includes('/var/lib/container-tracker-agent') ||
-      !canonicalRuntimePathsSource.includes('.agent-runtime')
+      !linuxAdapterSource.includes('LINUX_SYSTEM_DATA_DIR') ||
+      !linuxAdapterSource.includes('/var/lib/container-tracker-agent') ||
+      !linuxAdapterSource.includes('DEV_FALLBACK_DIR_NAME') ||
+      !linuxAdapterSource.includes('.agent-runtime') ||
+      !linuxAdapterSource.includes('AGENT_PUBLIC_STATE_DIR') ||
+      !linuxAdapterSource.includes("path.join(dataDir, 'run')")
     ) {
       errors.push(
-        'runtime/paths.ts must provide Linux data-dir defaults (/var/lib/container-tracker-agent with .agent-runtime fallback)',
+        'linux.adapter.ts must resolve Linux paths with /var/lib/container-tracker-agent, .agent-runtime fallback, and DATA_DIR/run public-state default',
       )
     }
   } else {
-    errors.push(`runtime/paths.ts not found: ${command.canonicalRuntimePathsSourcePath}`)
+    errors.push(`linux.adapter.ts not found: ${command.linuxAdapterSourcePath}`)
   }
 
   if (await pathExists(command.windowsAdapterSourcePath)) {
@@ -1636,7 +1655,7 @@ async function buildRelease(): Promise<void> {
     bootstrapTemplatePath: path.join(installerDir, 'bootstrap.env.template'),
     updaterSourcePath: path.join(appsAgentDir, 'src', 'updater.ts'),
     runtimePathsSourcePath: path.join(appsAgentDir, 'src', 'runtime-paths.ts'),
-    canonicalRuntimePathsSourcePath: path.join(appsAgentDir, 'src', 'runtime', 'paths.ts'),
+    linuxAdapterSourcePath: path.join(appsAgentDir, 'src', 'platform', 'linux.adapter.ts'),
     windowsAdapterSourcePath: path.join(appsAgentDir, 'src', 'platform', 'windows.adapter.ts'),
   })
 }

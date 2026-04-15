@@ -8,19 +8,15 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import {
-  loadRawAgentEnvFromFile,
-  parseAgentConfig,
-  parseBootstrapConfig,
-  serializeAgentConfig,
-  serializeBootstrapConfig,
-  validateAgentConfig,
-} from '@agent/config/agent-config.mapper'
+  consumeBootstrapConfig,
+  readBootstrapConfigFromEnv,
+} from '@agent/config/infrastructure/bootstrap-config.repository'
+import { readRuntimeConfigFromEnv, writeRuntimeConfigToEnv } from '@agent/config/infrastructure/env-config.repository'
 import {
   type ValidatedAgentConfig,
   ValidatedAgentConfigSchema,
   type ValidatedBootstrapConfig,
 } from '@agent/core/contracts/agent-config.contract'
-import { writeFileAtomic } from '@agent/state/file-io'
 import { toReleaseState } from '@agent/state/release-state.mapper'
 import { z } from 'zod/v4'
 
@@ -68,36 +64,6 @@ function normalizeOptionalEnv(value: string | undefined): string | undefined {
   const normalized = value.trim()
   if (normalized.length === 0) return undefined
   return normalized
-}
-
-function parseRuntimeConfigFromFile(filePath: string): RuntimeConfig | null {
-  const raw = loadRawAgentEnvFromFile(filePath)
-  if (!raw) {
-    return null
-  }
-
-  try {
-    const parsed = parseAgentConfig(raw)
-    return validateAgentConfig(parsed)
-  } catch {
-    return null
-  }
-}
-
-function parseBootstrapConfigFromFile(filePath: string): {
-  readonly config: BootstrapConfig
-  readonly raw: string
-} | null {
-  const raw = loadRawAgentEnvFromFile(filePath)
-  if (!raw) {
-    return null
-  }
-
-  const parsed = parseAgentConfig(raw)
-  return {
-    config: parseBootstrapConfig(parsed),
-    raw: raw.raw,
-  }
 }
 
 function resolveMachineFingerprint(hostname: string): string {
@@ -217,31 +183,6 @@ function toErrorMessage(error: unknown, secrets: readonly string[] = []): string
   return sanitizeText(String(error), secrets)
 }
 
-function persistConfigFile(configPath: string, config: RuntimeConfig): void {
-  writeFileAtomic(configPath, serializeAgentConfig(config))
-}
-
-function consumeBootstrapFile(command: {
-  readonly bootstrapPath: string
-  readonly consumedBootstrapPath: string
-  readonly bootstrapConfig: BootstrapConfig
-  readonly bootstrapRaw: string
-}): void {
-  const consumedContent = sanitizeText(command.bootstrapRaw, [
-    command.bootstrapConfig.INSTALLER_TOKEN,
-  ])
-  const safeContent =
-    consumedContent === command.bootstrapRaw
-      ? serializeBootstrapConfig({
-          config: command.bootstrapConfig,
-          redactInstallerToken: true,
-        })
-      : consumedContent
-
-  writeFileAtomic(command.consumedBootstrapPath, safeContent)
-  fs.rmSync(command.bootstrapPath, { force: true })
-}
-
 function printUsage(): void {
   console.log('Usage: ct-agent <status|logs|restart|update-status|enroll>')
 }
@@ -267,9 +208,9 @@ function createDefaultCommandRunner(): CommandRunner {
 
 async function runStatusCommand(): Promise<number> {
   const layout = resolveAgentPathLayout()
-  const status = readRuntimeHealth(layout.runtimeHealthPath)
+  const status = readRuntimeHealth(layout.runtimeStatePath)
   if (!status) {
-    console.error(`[ct-agent] runtime health unavailable at ${layout.runtimeHealthPath}`)
+    console.error(`[ct-agent] runtime health unavailable at ${layout.runtimeStatePath}`)
     return EXIT_FATAL
   }
 
@@ -357,7 +298,9 @@ async function runUpdateStatusCommand(): Promise<number> {
 
 async function runEnrollCommand(fetchImpl: typeof fetch): Promise<number> {
   const layout = resolveAgentPathLayout()
-  const existingConfig = parseRuntimeConfigFromFile(layout.configPath)
+  const existingConfig = readRuntimeConfigFromEnv({
+    paths: layout,
+  })
   if (existingConfig) {
     console.log(
       `[ct-agent] already enrolled (tenant=${existingConfig.TENANT_ID}, agent=${existingConfig.AGENT_ID})`,
@@ -367,9 +310,11 @@ async function runEnrollCommand(fetchImpl: typeof fetch): Promise<number> {
 
   let bootstrapLoaded: { readonly config: BootstrapConfig; readonly raw: string } | null = null
   try {
-    bootstrapLoaded = parseBootstrapConfigFromFile(layout.bootstrapPath)
+    bootstrapLoaded = readBootstrapConfigFromEnv({
+      paths: layout,
+    })
     if (!bootstrapLoaded) {
-      console.error(`[ct-agent] bootstrap.env not found at ${layout.bootstrapPath}`)
+      console.error(`[ct-agent] bootstrap.env not found at ${layout.bootstrapEnvPath}`)
       return EXIT_CONFIG_ERROR
     }
   } catch (error) {
@@ -398,12 +343,14 @@ async function runEnrollCommand(fetchImpl: typeof fetch): Promise<number> {
       enrollResponse,
     })
 
-    persistConfigFile(layout.configPath, runtimeConfig)
-    consumeBootstrapFile({
-      bootstrapPath: layout.bootstrapPath,
-      consumedBootstrapPath: layout.consumedBootstrapPath,
-      bootstrapConfig: bootstrapLoaded.config,
-      bootstrapRaw: bootstrapLoaded.raw,
+    writeRuntimeConfigToEnv({
+      paths: layout,
+      config: runtimeConfig,
+    })
+    consumeBootstrapConfig({
+      paths: layout,
+      config: bootstrapLoaded.config,
+      rawContent: bootstrapLoaded.raw,
     })
 
     console.log(

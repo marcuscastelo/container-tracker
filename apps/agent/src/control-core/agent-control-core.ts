@@ -147,12 +147,12 @@ export function readCurrentControlRuntimeConfig(
     return existingBaseConfig
   }
 
-  if (!fs.existsSync(layout.configPath)) {
+  if (!fs.existsSync(layout.configEnvPath)) {
     return null
   }
 
   try {
-    const rawConfig = loadRawAgentEnvFromFile(layout.configPath)
+    const rawConfig = loadRawAgentEnvFromFile(layout.configEnvPath)
     if (!rawConfig) {
       return null
     }
@@ -656,9 +656,9 @@ export async function syncAgentControlState(command: {
     infraConfig,
   })
 
-  writeFileAtomic(command.layout.configPath, serializeRuntimeConfig(effectiveConfig))
+  writeFileAtomic(command.layout.configEnvPath, serializeRuntimeConfig(effectiveConfig))
 
-  const runtimeHealth = readRuntimeHealth(command.layout.runtimeHealthPath)
+  const runtimeHealth = readRuntimeHealth(command.layout.runtimeStatePath)
   const releaseState = readReleaseState(
     command.layout.releaseStatePath,
     runtimeHealth?.agent_version ?? effectiveConfig.AGENT_ID,
@@ -809,7 +809,7 @@ export async function executeLocalReset(command: {
 }): Promise<ControlSyncResult> {
   writeLocalOverrideState(command.layout, {})
 
-  const runtimeHealth = readRuntimeHealth(command.layout.runtimeHealthPath)
+  const runtimeHealth = readRuntimeHealth(command.layout.runtimeStatePath)
   const releaseState = readReleaseState(
     command.layout.releaseStatePath,
     runtimeHealth?.agent_version ?? command.currentConfig.AGENT_ID,

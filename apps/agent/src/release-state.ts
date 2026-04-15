@@ -3,8 +3,10 @@ import type {
   ReleaseFailureEntry,
   ReleaseState,
 } from '@agent/core/contracts/release-state.contract'
-import { writeFileAtomic } from '@agent/state/file-io'
-import { serializeReleaseState, toReleaseState } from '@agent/state/release-state.mapper'
+import {
+  readReleaseStateAtPath,
+  writeReleaseStateAtPath,
+} from '@agent/state/infrastructure/release-state.file-store'
 
 export type ActivationState = ReleaseState['activation_state']
 export type { ReleaseState } from '@agent/core/contracts/release-state.contract'
@@ -45,24 +47,8 @@ function migrateReleaseState(state: ReleaseState): ReleaseState {
   }
 }
 
-function parseRawState(raw: string, fallbackVersion: string): ReleaseState {
-  let parsedJson: unknown
-
-  try {
-    parsedJson = JSON.parse(raw)
-  } catch {
-    return createInitialReleaseState(fallbackVersion)
-  }
-
-  try {
-    return migrateReleaseState(toReleaseState(parsedJson))
-  } catch {
-    return createInitialReleaseState(fallbackVersion)
-  }
-}
-
 export function writeReleaseState(filePath: string, state: ReleaseState): void {
-  writeFileAtomic(filePath, serializeReleaseState(state))
+  writeReleaseStateAtPath(filePath, state)
 }
 
 export function readReleaseState(filePath: string, fallbackVersion: string): ReleaseState {
@@ -73,8 +59,11 @@ export function readReleaseState(filePath: string, fallbackVersion: string): Rel
   }
 
   try {
-    const raw = fs.readFileSync(filePath, 'utf8')
-    const parsed = parseRawState(raw, fallbackVersion)
+    const parsedState = readReleaseStateAtPath(filePath)
+    const parsed =
+      parsedState === null
+        ? createInitialReleaseState(fallbackVersion)
+        : migrateReleaseState(parsedState)
     writeReleaseState(filePath, parsed)
     return parsed
   } catch {

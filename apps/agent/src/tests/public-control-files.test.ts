@@ -20,17 +20,17 @@ import { describe, expect, it } from 'vitest'
 function createLayout(baseDir: string): AgentPathLayout {
   const layout: AgentPathLayout = {
     dataDir: baseDir,
-    configPath: path.join(baseDir, 'config.env'),
+    configEnvPath: path.join(baseDir, 'config.env'),
     baseRuntimeConfigPath: path.join(baseDir, 'control-base.runtime.json'),
-    bootstrapPath: path.join(baseDir, 'bootstrap.env'),
-    consumedBootstrapPath: path.join(baseDir, 'bootstrap.env.consumed'),
+    bootstrapEnvPath: path.join(baseDir, 'bootstrap.env'),
+    consumedBootstrapEnvPath: path.join(baseDir, 'bootstrap.env.consumed'),
     releasesDir: path.join(baseDir, 'releases'),
     downloadsDir: path.join(baseDir, 'downloads'),
     logsDir: path.join(baseDir, 'logs'),
-    currentLinkPath: path.join(baseDir, 'current'),
-    previousLinkPath: path.join(baseDir, 'previous'),
+    currentPath: path.join(baseDir, 'current'),
+    previousPath: path.join(baseDir, 'previous'),
     releaseStatePath: path.join(baseDir, 'release-state.json'),
-    runtimeHealthPath: path.join(baseDir, 'runtime-health.json'),
+    runtimeStatePath: path.join(baseDir, 'runtime-state.json'),
     supervisorControlPath: path.join(baseDir, 'supervisor-control.json'),
     pendingActivityPath: path.join(baseDir, 'pending-activity-events.json'),
     controlOverridesPath: path.join(baseDir, 'control-overrides.local.json'),
@@ -69,9 +69,9 @@ describe('agent control public artifacts', () => {
     const layout = createLayout(tempDir)
     const publicBackendStatePath = path.join(tempDir, 'run', 'control-ui-backend-state.json')
 
-    fs.writeFileSync(layout.configPath, serializeRuntimeConfig(createRuntimeConfig()), 'utf8')
+    fs.writeFileSync(layout.configEnvPath, serializeRuntimeConfig(createRuntimeConfig()), 'utf8')
     fs.writeFileSync(
-      layout.bootstrapPath,
+      layout.bootstrapEnvPath,
       ['BACKEND_URL=https://bootstrap.test.local', 'INSTALLER_TOKEN=bootstrap-token'].join('\n'),
       'utf8',
     )
@@ -97,9 +97,9 @@ describe('agent control public artifacts', () => {
     const publicBackendStatePath = path.join(tempDir, 'run', 'control-ui-backend-state.json')
     const runtimeConfig = createRuntimeConfig()
 
-    fs.writeFileSync(layout.configPath, serializeRuntimeConfig(runtimeConfig), 'utf8')
+    fs.writeFileSync(layout.configEnvPath, serializeRuntimeConfig(runtimeConfig), 'utf8')
     fs.writeFileSync(
-      layout.bootstrapPath,
+      layout.bootstrapEnvPath,
       ['BACKEND_URL=https://bootstrap.test.local', 'INSTALLER_TOKEN=bootstrap-token'].join('\n'),
       'utf8',
     )
@@ -129,7 +129,7 @@ describe('agent control public artifacts', () => {
       'utf8',
     )
     fs.writeFileSync(
-      layout.runtimeHealthPath,
+      layout.runtimeStatePath,
       `${JSON.stringify(
         {
           agent_version: '0.3.0-alpha.1',
@@ -173,7 +173,7 @@ describe('agent control public artifacts', () => {
     fs.mkdirSync(path.dirname(publicStatePath), { recursive: true })
     fs.writeFileSync(publicStatePath, '{"stale":true}\n', 'utf8')
     fs.writeFileSync(
-      layout.bootstrapPath,
+      layout.bootstrapEnvPath,
       ['BACKEND_URL=https://bootstrap.test.local', 'INSTALLER_TOKEN=bootstrap-token'].join('\n'),
       'utf8',
     )

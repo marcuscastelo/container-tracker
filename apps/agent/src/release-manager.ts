@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import process from 'node:process'
+import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
 // biome-ignore lint/style/noRestrictedImports: Release manager is executed from Node runtime with direct .ts imports.
 import type { ReleaseState } from './release-state.ts'
 // biome-ignore lint/style/noRestrictedImports: Release manager is executed from Node runtime with direct .ts imports.
@@ -47,22 +47,8 @@ function removePathIfExists(targetPath: string): void {
   fs.rmSync(targetPath, { recursive: true, force: true })
 }
 
-function createOrReplaceDirectoryLink(command: {
-  readonly linkPath: string
-  readonly targetPath: string
-}): void {
-  removePathIfExists(command.linkPath)
-
-  const linkType = process.platform === 'win32' ? 'junction' : 'dir'
-  fs.symlinkSync(command.targetPath, command.linkPath, linkType)
-}
-
 function safeRealpath(targetPath: string): string | null {
-  try {
-    return fs.realpathSync(targetPath)
-  } catch {
-    return null
-  }
+  return resolvePlatformAdapter().readSymlinkOrPointer({ pointerPath: targetPath })
 }
 
 function basenameFromPath(targetPath: string | null): string | null {
@@ -75,12 +61,8 @@ function basenameFromPath(targetPath: string | null): string | null {
 }
 
 function normalizePathForComparison(targetPath: string): string {
-  const resolved = path.resolve(targetPath)
-  if (process.platform === 'win32') {
-    return resolved.toLowerCase()
-  }
-
-  return resolved
+  const normalized = path.resolve(targetPath).replaceAll('\\', '/')
+  return resolvePlatformAdapter().key === 'windows-x64' ? normalized.toLowerCase() : normalized
 }
 
 function arePathsEqual(leftPath: string, rightPath: string): boolean {
@@ -100,11 +82,11 @@ function isPathWithinDirectory(directoryPath: string, candidatePath: string): bo
 }
 
 function removeInvalidCurrentRelease(layout: AgentPathLayout, linkedReleasePath: string): void {
-  removePathIfExists(layout.currentLinkPath)
+  removePathIfExists(layout.currentPath)
 
-  const previousLinkedReleasePath = safeRealpath(layout.previousLinkPath)
+  const previousLinkedReleasePath = safeRealpath(layout.previousPath)
   if (previousLinkedReleasePath && arePathsEqual(previousLinkedReleasePath, linkedReleasePath)) {
-    removePathIfExists(layout.previousLinkPath)
+    removePathIfExists(layout.previousPath)
   }
 
   if (isPathWithinDirectory(layout.releasesDir, linkedReleasePath)) {
@@ -149,7 +131,7 @@ export function resolveRuntimeEntrypoint(command: {
   readonly entrypointPath: string
   readonly source: 'release' | 'fallback'
 } {
-  const linkedReleasePath = safeRealpath(command.layout.currentLinkPath)
+  const linkedReleasePath = safeRealpath(command.layout.currentPath)
   if (linkedReleasePath) {
     const releaseEntrypoint = resolveReleaseEntrypoint(linkedReleasePath)
     if (releaseEntrypoint) {
@@ -175,33 +157,32 @@ export function ensureReleaseLinksForCurrentState(command: {
   readonly layout: AgentPathLayout
   readonly state: ReleaseState
 }): void {
+  const platformAdapter = resolvePlatformAdapter()
   const currentDir = resolveReleaseDir(command.layout.releasesDir, command.state.current_version)
   if (!pathExists(currentDir)) {
     return
   }
 
-  const currentRealPath = safeRealpath(command.layout.currentLinkPath)
-  if (currentRealPath !== currentDir) {
-    createOrReplaceDirectoryLink({
-      linkPath: command.layout.currentLinkPath,
-      targetPath: currentDir,
-    })
-  }
+  const previousDir = command.state.previous_version
+    ? resolveReleaseDir(command.layout.releasesDir, command.state.previous_version)
+    : null
+  const previousTargetPath = previousDir && pathExists(previousDir) ? previousDir : null
+  const currentRealPath = safeRealpath(command.layout.currentPath)
+  const previousRealPath = safeRealpath(command.layout.previousPath)
+  const currentOk = currentRealPath !== null && arePathsEqual(currentRealPath, currentDir)
+  const previousOk =
+    (previousTargetPath === null && previousRealPath === null) ||
+    (previousTargetPath !== null &&
+      previousRealPath !== null &&
+      arePathsEqual(previousRealPath, previousTargetPath))
 
-  if (command.state.previous_version) {
-    const previousDir = resolveReleaseDir(
-      command.layout.releasesDir,
-      command.state.previous_version,
-    )
-    if (pathExists(previousDir)) {
-      const previousRealPath = safeRealpath(command.layout.previousLinkPath)
-      if (previousRealPath !== previousDir) {
-        createOrReplaceDirectoryLink({
-          linkPath: command.layout.previousLinkPath,
-          targetPath: previousDir,
-        })
-      }
-    }
+  if (!currentOk || !previousOk) {
+    platformAdapter.switchCurrentRelease({
+      currentPath: command.layout.currentPath,
+      previousPath: command.layout.previousPath,
+      targetPath: currentDir,
+      previousTargetPath,
+    })
   }
 }
 
@@ -211,6 +192,7 @@ export function activateTargetRelease(command: {
   readonly targetVersion: string
   readonly nowIso: string
 }): ReleaseState {
+  const platformAdapter = resolvePlatformAdapter()
   const targetDir = resolveReleaseDir(command.layout.releasesDir, command.targetVersion)
   if (!pathExists(targetDir)) {
     throw new Error(`target release is missing: ${targetDir}`)
@@ -221,17 +203,11 @@ export function activateTargetRelease(command: {
     throw new Error(`target release has no valid entrypoint: ${targetDir}`)
   }
 
-  const currentRealPath = safeRealpath(command.layout.currentLinkPath)
+  const currentRealPath = safeRealpath(command.layout.currentPath)
   const previousVersionFromLink = basenameFromPath(currentRealPath)
-  if (currentRealPath) {
-    createOrReplaceDirectoryLink({
-      linkPath: command.layout.previousLinkPath,
-      targetPath: currentRealPath,
-    })
-  }
-
-  createOrReplaceDirectoryLink({
-    linkPath: command.layout.currentLinkPath,
+  platformAdapter.switchCurrentRelease({
+    currentPath: command.layout.currentPath,
+    previousPath: command.layout.previousPath,
     targetPath: targetDir,
   })
 
@@ -275,15 +251,17 @@ export function rollbackRelease(command: {
   readonly nowIso: string
   readonly reason: string
 }): ReleaseState {
+  const platformAdapter = resolvePlatformAdapter()
   const rollbackDir = resolveReleaseDir(command.layout.releasesDir, command.rollbackVersion)
   if (pathExists(rollbackDir)) {
-    createOrReplaceDirectoryLink({
-      linkPath: command.layout.currentLinkPath,
+    platformAdapter.switchCurrentRelease({
+      currentPath: command.layout.currentPath,
+      previousPath: command.layout.previousPath,
       targetPath: rollbackDir,
     })
   } else {
-    removePathIfExists(command.layout.currentLinkPath)
-    removePathIfExists(command.layout.previousLinkPath)
+    removePathIfExists(command.layout.currentPath)
+    removePathIfExists(command.layout.previousPath)
   }
 
   return {

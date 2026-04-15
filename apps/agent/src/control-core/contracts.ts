@@ -191,11 +191,11 @@ export type AgentReleaseInventory = z.infer<typeof AgentReleaseInventorySchema>
 
 export const AgentControlPathsSchema = z.object({
   dataDir: z.string().min(1),
-  configPath: z.string().min(1),
+  configEnvPath: z.string().min(1),
   releasesDir: z.string().min(1),
   logsDir: z.string().min(1),
   releaseStatePath: z.string().min(1),
-  runtimeHealthPath: z.string().min(1),
+  runtimeStatePath: z.string().min(1),
   supervisorControlPath: z.string().min(1),
   controlOverridesPath: z.string().min(1),
   controlRemoteCachePath: z.string().min(1),

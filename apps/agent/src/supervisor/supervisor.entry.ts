@@ -11,7 +11,7 @@ import {
   refreshAgentControlPublicLogs,
 } from '../control-core/public-control-files.ts'
 import { appendPendingActivityEvents } from '../pending-activity.ts'
-import { resolvePlatformContractAdapter } from '../platform/platform.adapter.ts'
+import { resolvePlatformAdapter } from '../platform/platform.adapter.ts'
 // biome-ignore lint/performance/noNamespaceImport: Supervisor runtime keeps grouped release-manager symbols for resilient formatting.
 import * as releaseManager from '../release-manager.ts'
 import { readReleaseState, withRecordedFailure, writeReleaseState } from '../release-state.ts'
@@ -21,11 +21,6 @@ import {
   EXIT_OK,
   resolveSupervisorExitAction,
 } from '../runtime/lifecycle-exit-codes.ts'
-import {
-  resolveAgentPublicBackendStatePath,
-  resolveAgentPublicLogsPath,
-  resolveAgentPublicStatePath,
-} from '../runtime/paths.ts'
 import { readRuntimeHealth } from '../runtime-health.ts'
 import { ensureAgentPathLayout, resolveAgentPathLayout } from '../runtime-paths.ts'
 import { clearSupervisorControl } from '../supervisor-control.ts'
@@ -83,14 +78,10 @@ function toErrorMessage(error: unknown): string {
 async function publishSupervisorPublicSnapshot(
   layout: ReturnType<typeof resolveAgentPathLayout>,
 ): Promise<void> {
-  if (process.platform !== 'linux') {
-    return
-  }
-
   try {
     await publishAgentControlPublicSnapshot({
-      filePath: resolveAgentPublicStatePath(),
-      backendStatePath: resolveAgentPublicBackendStatePath(),
+      filePath: layout.publicStatePath,
+      backendStatePath: layout.publicBackendStatePath,
       layout,
       forceRemoteFetch: false,
     })
@@ -100,13 +91,9 @@ async function publishSupervisorPublicSnapshot(
 }
 
 function refreshPublicLogArtifacts(layout: ReturnType<typeof resolveAgentPathLayout>): void {
-  if (process.platform !== 'linux') {
-    return
-  }
-
   try {
     refreshAgentControlPublicLogs({
-      filePath: resolveAgentPublicLogsPath(),
+      filePath: layout.publicLogsPath,
       layout,
     })
   } catch (error) {
@@ -149,15 +136,16 @@ function requestPublicArtifactRefresh(): void {
 function startPublicSnapshotRefreshLoop(
   layout: ReturnType<typeof resolveAgentPathLayout>,
 ): NodeJS.Timeout | null {
-  if (process.platform !== 'linux') {
-    return null
-  }
-
   const timer = setInterval(() => {
     void publishSupervisorPublicSnapshot(layout)
   }, PUBLIC_SNAPSHOT_REFRESH_INTERVAL_MS)
   timer.unref?.()
   return timer
+}
+
+function normalizePathForEntryComparison(targetPath: string): string {
+  const normalized = path.resolve(targetPath).replaceAll('\\', '/')
+  return resolvePlatformAdapter().key === 'windows-x64' ? normalized.toLowerCase() : normalized
 }
 
 function resolveNumberEnv(value: string | undefined, fallback: number): number {
@@ -343,14 +331,13 @@ async function runChildWithHealthGate(command: {
   readonly logsDir: string
   readonly onStabilityConfirmed: () => void
 }): Promise<ChildRunOutcome> {
-  const platformAdapter = resolvePlatformContractAdapter()
-  const runtimeHandle = platformAdapter.startRuntime({
+  const platformAdapter = resolvePlatformAdapter()
+  const child = platformAdapter.startRuntime({
     scriptPath: command.scriptPath,
     execArgv: resolveRuntimeExecArgv(command.scriptPath),
     env: command.env,
     stdio: 'pipe',
   })
-  const child = runtimeHandle.child
   mirrorRuntimeOutput({
     child,
     logsDir: command.logsDir,
@@ -391,7 +378,7 @@ async function runChildWithHealthGate(command: {
 
     if (!startupConfirmed && !childExited) {
       startupTimedOut = true
-      platformAdapter.stopRuntime({ handle: runtimeHandle })
+      platformAdapter.stopRuntime({ child })
       return
     }
 
@@ -430,14 +417,13 @@ async function runChildWithoutHealthGate(command: {
   readonly logsDir: string
   readonly version: string
 }): Promise<ChildRunOutcome> {
-  const platformAdapter = resolvePlatformContractAdapter()
-  const runtimeHandle = platformAdapter.startRuntime({
+  const platformAdapter = resolvePlatformAdapter()
+  const child = platformAdapter.startRuntime({
     scriptPath: command.scriptPath,
     execArgv: resolveRuntimeExecArgv(command.scriptPath),
     env: command.env,
     stdio: 'pipe',
   })
-  const child = runtimeHandle.child
   mirrorRuntimeOutput({
     child,
     logsDir: command.logsDir,
@@ -657,7 +643,7 @@ export async function runSupervisorMain(): Promise<void> {
 
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
-      AGENT_SUPERVISOR_HEALTH_PATH: layout.runtimeHealthPath,
+      AGENT_SUPERVISOR_HEALTH_PATH: layout.runtimeStatePath,
       AGENT_SUPERVISOR_CONTROL_PATH: layout.supervisorControlPath,
       AGENT_PENDING_ACTIVITY_PATH: layout.pendingActivityPath,
       AGENT_ACTIVE_RELEASE_VERSION: runtimeSelection.version,
@@ -669,7 +655,7 @@ export async function runSupervisorMain(): Promise<void> {
           expectedVersion: runtimeSelection.version,
           startupTimeoutMs,
           healthGraceMs: HEALTH_GRACE_MS,
-          healthPath: layout.runtimeHealthPath,
+          healthPath: layout.runtimeStatePath,
           env: childEnv,
           logsDir: layout.logsDir,
           onStabilityConfirmed() {
@@ -898,12 +884,7 @@ function isDirectExecution(moduleUrl: string): boolean {
   }
 
   const modulePath = fileURLToPath(moduleUrl)
-  const resolvedEntryArg = path.resolve(entryArg)
-  if (process.platform === 'win32') {
-    return resolvedEntryArg.toLowerCase() === modulePath.toLowerCase()
-  }
-
-  return resolvedEntryArg === modulePath
+  return normalizePathForEntryComparison(entryArg) === normalizePathForEntryComparison(modulePath)
 }
 
 if (isDirectExecution(import.meta.url)) {

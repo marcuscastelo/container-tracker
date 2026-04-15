@@ -4,14 +4,8 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import {
-  loadRawAgentEnvFromFile,
-  parseAgentConfig,
-  parseBootstrapConfig,
-  serializeAgentConfig,
-  serializeBootstrapConfig,
-  validateAgentConfig,
-} from '@agent/config/agent-config.mapper'
+import { consumeBootstrapConfig, readBootstrapConfigFromEnv } from '@agent/config/infrastructure/bootstrap-config.repository'
+import { readRuntimeConfigFromEnv, writeRuntimeConfigToEnv } from '@agent/config/infrastructure/env-config.repository'
 import {
   acknowledgeRemoteCommand,
   applyRemoteCommand,
@@ -32,7 +26,6 @@ import {
 } from '@agent/core/contracts/sync-job.contract'
 import { BoundaryValidationError } from '@agent/core/errors/boundary-validation.error'
 import { toHeartbeatPayload } from '@agent/observability/observability.mapper'
-import { writeFileAtomic } from '@agent/state/file-io'
 import {
   toAgentSyncJob,
   toBackendSyncAck,
@@ -83,8 +76,6 @@ import { resolveAutomaticUpdateChecksMode } from '../update-checks.ts'
 import { fetchUpdateManifest, stageReleaseFromManifest } from '../updater.core.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { EXIT_FATAL, EXIT_UPDATE_RESTART } from './lifecycle-exit-codes.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime keeps Linux public-state path resolution local to runtime helpers.
-import { resolveAgentPublicBackendStatePath, resolveAgentPublicStatePath } from './paths.ts'
 
 function normalizeOptionalEnv(value: string | undefined): string | undefined {
   if (typeof value !== 'string') return undefined
@@ -225,13 +216,9 @@ function persistPublicControlState(command: {
   readonly layout: AgentPathLayout
   readonly controlSync?: Awaited<ReturnType<typeof syncAgentControlState>>
 }): void {
-  if (process.platform !== 'linux') {
-    return
-  }
-
   void publishAgentControlPublicSnapshot({
-    filePath: resolveAgentPublicStatePath(),
-    backendStatePath: resolveAgentPublicBackendStatePath(),
+    filePath: command.layout.publicStatePath,
+    backendStatePath: command.layout.publicBackendStatePath,
     layout: command.layout,
     forceRemoteFetch: false,
     ...(typeof command.controlSync === 'undefined' ? {} : { controlSync: command.controlSync }),
@@ -263,46 +250,7 @@ const packageJsonSchema = z.object({
 
 const UPDATE_CHECK_INTERVAL_MS = 60_000
 
-type PathLayout = {
-  readonly dataDir: string
-  readonly configPath: string
-  readonly bootstrapPath: string
-  readonly consumedBootstrapPath: string
-}
-
-function parseRuntimeConfigFromFile(filePath: string): RuntimeConfig | null {
-  const raw = loadRawAgentEnvFromFile(filePath)
-  if (!raw) return null
-
-  try {
-    const parsed = parseAgentConfig(raw)
-    return validateAgentConfig(parsed)
-  } catch (error) {
-    if (error instanceof BoundaryValidationError) {
-      console.warn(`[agent] config.env is invalid, switching to bootstrap mode: ${error.details}`)
-      return null
-    }
-
-    console.warn(
-      `[agent] config.env is invalid, switching to bootstrap mode: ${toErrorMessage(error)}`,
-    )
-    return null
-  }
-}
-
-function parseBootstrapConfigFromFile(filePath: string): {
-  readonly config: BootstrapConfig
-  readonly raw: string
-} | null {
-  const raw = loadRawAgentEnvFromFile(filePath)
-  if (!raw) return null
-
-  const parsed = parseAgentConfig(raw)
-  return {
-    config: parseBootstrapConfig(parsed),
-    raw: raw.raw,
-  }
-}
+type PathLayout = AgentPathLayout
 
 function resolveMachineFingerprint(hostname: string): string {
   const providedMachineGuid = normalizeOptionalEnv(process.env.AGENT_MACHINE_GUID)
@@ -395,45 +343,34 @@ function toRuntimeConfig(command: {
   })
 }
 
-function persistConfigFile(configPath: string, config: RuntimeConfig): void {
-  writeFileAtomic(configPath, serializeAgentConfig(config))
-}
-
-function consumeBootstrapFile(command: {
-  readonly bootstrapPath: string
-  readonly consumedBootstrapPath: string
-  readonly bootstrapConfig: BootstrapConfig
-  readonly bootstrapRaw: string
-}): void {
-  const consumedContent = sanitizeText(command.bootstrapRaw, [
-    command.bootstrapConfig.INSTALLER_TOKEN,
-  ])
-  const safeContent =
-    consumedContent === command.bootstrapRaw
-      ? serializeBootstrapConfig({
-          config: command.bootstrapConfig,
-          redactInstallerToken: true,
-        })
-      : consumedContent
-
-  writeFileAtomic(command.consumedBootstrapPath, safeContent)
-  fs.rmSync(command.bootstrapPath, { force: true })
-}
-
 async function resolveRuntimeConfigWithBootstrap(paths: PathLayout): Promise<RuntimeConfig> {
   let enrollAttempt = 0
 
   for (;;) {
-    const existingConfig = parseRuntimeConfigFromFile(paths.configPath)
-    if (existingConfig) {
-      return existingConfig
+    try {
+      const existingConfig = readRuntimeConfigFromEnv({
+        paths,
+      })
+      if (existingConfig) {
+        return existingConfig
+      }
+    } catch (error) {
+      if (error instanceof BoundaryValidationError) {
+        console.warn(`[agent] config.env is invalid, switching to bootstrap mode: ${error.details}`)
+      } else {
+        console.warn(
+          `[agent] config.env is invalid, switching to bootstrap mode: ${toErrorMessage(error)}`,
+        )
+      }
     }
 
     let bootstrapLoaded: { readonly config: BootstrapConfig; readonly raw: string } | null = null
     try {
-      bootstrapLoaded = parseBootstrapConfigFromFile(paths.bootstrapPath)
+      bootstrapLoaded = readBootstrapConfigFromEnv({
+        paths,
+      })
       if (!bootstrapLoaded) {
-        throw new Error(`bootstrap.env not found at ${paths.bootstrapPath}`)
+        throw new Error(`bootstrap.env not found at ${paths.bootstrapEnvPath}`)
       }
     } catch (error) {
       const delayMs = computeBackoffDelayMs(enrollAttempt)
@@ -464,12 +401,14 @@ async function resolveRuntimeConfigWithBootstrap(paths: PathLayout): Promise<Run
         enrollResponse,
       })
 
-      persistConfigFile(paths.configPath, runtimeConfig)
-      consumeBootstrapFile({
-        bootstrapPath: paths.bootstrapPath,
-        consumedBootstrapPath: paths.consumedBootstrapPath,
-        bootstrapConfig: bootstrapLoaded.config,
-        bootstrapRaw: bootstrapLoaded.raw,
+      writeRuntimeConfigToEnv({
+        paths,
+        config: runtimeConfig,
+      })
+      consumeBootstrapConfig({
+        paths,
+        config: bootstrapLoaded.config,
+        rawContent: bootstrapLoaded.raw,
       })
       return runtimeConfig
     } catch (error) {
@@ -684,30 +623,6 @@ async function sendHeartbeatSafely(command: {
       ok: false,
       updatedAt: null,
     }
-  }
-}
-
-function resolveSupervisorPaths(dataDir: string): {
-  readonly healthPath: string
-  readonly controlPath: string
-  readonly pendingActivityPath: string
-} {
-  const healthPath =
-    normalizeOptionalEnv(process.env.AGENT_SUPERVISOR_HEALTH_PATH) ??
-    path.join(dataDir, 'runtime-health.json')
-
-  const controlPath =
-    normalizeOptionalEnv(process.env.AGENT_SUPERVISOR_CONTROL_PATH) ??
-    path.join(dataDir, 'supervisor-control.json')
-
-  const pendingActivityPath =
-    normalizeOptionalEnv(process.env.AGENT_PENDING_ACTIVITY_PATH) ??
-    path.join(dataDir, 'pending-activity-events.json')
-
-  return {
-    healthPath,
-    controlPath,
-    pendingActivityPath,
   }
 }
 
@@ -1502,7 +1417,6 @@ async function main(): Promise<void> {
   })
   let updateManifestChecksDisabled = updateChecksMode.disabled
   const agentVersion = resolveAgentVersion()
-  const supervisorPaths = resolveSupervisorPaths(agentLayout.dataDir)
 
   console.log(
     `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
@@ -1540,11 +1454,11 @@ async function main(): Promise<void> {
     agentToken: runtimeConfig.AGENT_TOKEN,
     agentId: runtimeConfig.AGENT_ID,
     logsDir: agentLayout.logsDir,
-    statePath: path.join(agentLayout.dataDir, 'agent-log-forwarder-state.json'),
+    statePath: agentLayout.agentLogForwarderStatePath,
   })
   logForwarder.start()
 
-  const pendingActivities = drainPendingActivityEvents(supervisorPaths.pendingActivityPath).map(
+  const pendingActivities = drainPendingActivityEvents(agentLayout.pendingActivityPath).map(
     toRuntimeActivityFromPending,
   )
   await sendHeartbeatAndPersistHealth({
@@ -1552,7 +1466,7 @@ async function main(): Promise<void> {
     agentVersion,
     state: runtimeState,
     activity: pendingActivities,
-    healthPath: supervisorPaths.healthPath,
+    healthPath: agentLayout.runtimeStatePath,
   })
   controlSync = await syncControlStateAndPersistPublicState({
     layout: agentLayout,
@@ -1606,7 +1520,7 @@ async function main(): Promise<void> {
         if (remoteCommandResult.requiresRestart) {
           runtimeState.updateState = 'draining'
           runtimeState.restartRequestedAt = pendingRemoteCommand.requestedAt
-          supervisorControl.writeSupervisorControl(supervisorPaths.controlPath, {
+          supervisorControl.writeSupervisorControl(agentLayout.supervisorControlPath, {
             drain_requested: true,
             reason: 'restart',
             requested_at: pendingRemoteCommand.requestedAt,
@@ -1614,7 +1528,7 @@ async function main(): Promise<void> {
         }
       }
 
-      const controlState = supervisorControl.readSupervisorControl(supervisorPaths.controlPath)
+      const controlState = supervisorControl.readSupervisorControl(agentLayout.supervisorControlPath)
       if (controlState?.drain_requested) {
         runtimeState.updateState = 'draining'
         runtimeState.restartRequestedAt = controlState.requested_at
@@ -1642,7 +1556,7 @@ async function main(): Promise<void> {
           state: runtimeState,
           releaseStatePath: agentLayout.releaseStatePath,
           agentLayout,
-          supervisorControlPath: supervisorPaths.controlPath,
+          supervisorControlPath: agentLayout.supervisorControlPath,
           effectiveBlockedVersions: controlSync.snapshot.updates.blockedVersions.effective,
         })
         lastUpdateCheckAtMs = nowMs
@@ -1671,7 +1585,7 @@ async function main(): Promise<void> {
         agentVersion,
         state: runtimeState,
         activity: cycleActivities,
-        healthPath: supervisorPaths.healthPath,
+        healthPath: agentLayout.runtimeStatePath,
       })
       controlSync = await syncControlStateAndPersistPublicState({
         layout: agentLayout,
@@ -1681,7 +1595,7 @@ async function main(): Promise<void> {
       runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
 
       if (requestRestartAfterHeartbeat && runtimeState.activeJobs === 0) {
-        supervisorControl.writeSupervisorControl(supervisorPaths.controlPath, {
+        supervisorControl.writeSupervisorControl(agentLayout.supervisorControlPath, {
           drain_requested: false,
           reason: null,
           requested_at: null,
@@ -1713,7 +1627,7 @@ async function main(): Promise<void> {
             },
           },
         ],
-        healthPath: supervisorPaths.healthPath,
+        healthPath: agentLayout.runtimeStatePath,
       })
     },
   })
@@ -1743,7 +1657,7 @@ async function main(): Promise<void> {
               metadata: signal.metadata ?? {},
             },
           ],
-          healthPath: supervisorPaths.healthPath,
+          healthPath: agentLayout.runtimeStatePath,
         })
         return
       }
@@ -1762,7 +1676,7 @@ async function main(): Promise<void> {
               metadata: signal.metadata ?? {},
             },
           ],
-          healthPath: supervisorPaths.healthPath,
+          healthPath: agentLayout.runtimeStatePath,
         })
       }
     },
@@ -1781,14 +1695,14 @@ async function main(): Promise<void> {
       agentVersion,
       state: runtimeState,
       activity: [],
-      healthPath: supervisorPaths.healthPath,
+      healthPath: agentLayout.runtimeStatePath,
     })
     realtimeSubscription?.unsubscribe()
     scheduler?.stop()
     void logForwarder.stop().catch((error) => {
       console.warn(`[agent] log forwarder stop failed: ${toErrorMessage(error)}`)
     })
-    supervisorControl.clearSupervisorControl(supervisorPaths.controlPath)
+    supervisorControl.clearSupervisorControl(agentLayout.supervisorControlPath)
   }
 
   process.once('SIGINT', () => shutdown('SIGINT'))

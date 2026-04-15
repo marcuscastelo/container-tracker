@@ -11,17 +11,17 @@ import { describe, expect, it } from 'vitest'
 function createLayout(baseDir: string): AgentPathLayout {
   const layout: AgentPathLayout = {
     dataDir: baseDir,
-    configPath: path.join(baseDir, 'config.env'),
+    configEnvPath: path.join(baseDir, 'config.env'),
     baseRuntimeConfigPath: path.join(baseDir, 'control-base.runtime.json'),
-    bootstrapPath: path.join(baseDir, 'bootstrap.env'),
-    consumedBootstrapPath: path.join(baseDir, 'bootstrap.env.consumed'),
+    bootstrapEnvPath: path.join(baseDir, 'bootstrap.env'),
+    consumedBootstrapEnvPath: path.join(baseDir, 'bootstrap.env.consumed'),
     releasesDir: path.join(baseDir, 'releases'),
     downloadsDir: path.join(baseDir, 'downloads'),
     logsDir: path.join(baseDir, 'logs'),
-    currentLinkPath: path.join(baseDir, 'current'),
-    previousLinkPath: path.join(baseDir, 'previous'),
+    currentPath: path.join(baseDir, 'current'),
+    previousPath: path.join(baseDir, 'previous'),
     releaseStatePath: path.join(baseDir, 'release-state.json'),
-    runtimeHealthPath: path.join(baseDir, 'runtime-health.json'),
+    runtimeStatePath: path.join(baseDir, 'runtime-state.json'),
     supervisorControlPath: path.join(baseDir, 'supervisor-control.json'),
     pendingActivityPath: path.join(baseDir, 'pending-activity-events.json'),
     controlOverridesPath: path.join(baseDir, 'control-overrides.local.json'),
@@ -45,10 +45,10 @@ function writeRelease(layout: AgentPathLayout, version: string): string {
 
 function linkCurrent(layout: AgentPathLayout, releaseDir: string): void {
   const linkType = process.platform === 'win32' ? 'junction' : 'dir'
-  if (fs.existsSync(layout.currentLinkPath)) {
-    fs.rmSync(layout.currentLinkPath, { recursive: true, force: true })
+  if (fs.existsSync(layout.currentPath)) {
+    fs.rmSync(layout.currentPath, { recursive: true, force: true })
   }
-  fs.symlinkSync(releaseDir, layout.currentLinkPath, linkType)
+  fs.symlinkSync(releaseDir, layout.currentPath, linkType)
 }
 
 function sha256(value: string): string {
@@ -147,7 +147,7 @@ describe('self-update integration flows', () => {
       reason: 'runtime crashed before heartbeat',
     })
 
-    const currentRealpath = fs.realpathSync(layout.currentLinkPath)
+    const currentRealpath = fs.realpathSync(layout.currentPath)
     expect(currentRealpath).toBe(path.join(layout.releasesDir, '1.0.0'))
     expect(rolledBack.current_version).toBe('1.0.0')
     expect(rolledBack.activation_state).toBe('rolled_back')

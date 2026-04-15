@@ -2,12 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import {
-  loadRawAgentEnvFromFile,
-  parseAgentConfig,
-  validateAgentConfig,
-} from '@agent/config/agent-config.mapper'
-import { BoundaryValidationError } from '@agent/core/errors/boundary-validation.error'
+import { readRuntimeConfigFromEnv } from '@agent/config/infrastructure/env-config.repository'
 
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { refreshAgentControlPublicLogs } from '../control-core/public-control-files.ts'
@@ -19,8 +14,6 @@ import { resolveAgentPlatformKey } from '../platform/platform.adapter.ts'
 import { readReleaseState, writeReleaseState } from '../release-state.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { EXIT_FATAL, EXIT_OK } from '../runtime/lifecycle-exit-codes.ts'
-// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
-import { resolveAgentPublicLogsPath } from '../runtime/paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import type { AgentPathLayout } from '../runtime-paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
@@ -48,43 +41,26 @@ function toErrorMessage(error: unknown): string {
   return String(error)
 }
 
-function resolveDotenvPath(layout: AgentPathLayout): string {
-  const fromEnv = process.env.DOTENV_PATH?.trim()
-  if (fromEnv && fromEnv.length > 0) {
-    return fromEnv
-  }
-
-  return layout.configPath
-}
-
 function resolveLogPath(layout: AgentPathLayout): string {
   return path.join(layout.logsDir, 'updater.log')
 }
 
-function readConfigFromEnvFile(filePath: string): {
+function readConfigFromLayout(layout: AgentPathLayout): {
   readonly backendUrl: string
   readonly agentToken: string
   readonly agentId: string
 } {
-  const raw = loadRawAgentEnvFromFile(filePath)
-  if (!raw) {
-    throw new Error(`DOTENV_PATH file not found: ${filePath}`)
+  const config = readRuntimeConfigFromEnv({
+    paths: layout,
+  })
+  if (!config) {
+    throw new Error(`config.env not found at ${layout.configEnvPath}`)
   }
 
-  try {
-    const parsed = parseAgentConfig(raw)
-    const config = validateAgentConfig(parsed)
-    return {
-      backendUrl: config.BACKEND_URL,
-      agentToken: config.AGENT_TOKEN,
-      agentId: config.AGENT_ID,
-    }
-  } catch (error) {
-    if (error instanceof BoundaryValidationError) {
-      throw new Error(`config.env invalid for updater execution: ${error.details}`)
-    }
-
-    throw error
+  return {
+    backendUrl: config.BACKEND_URL,
+    agentToken: config.AGENT_TOKEN,
+    agentId: config.AGENT_ID,
   }
 }
 
@@ -144,13 +120,9 @@ function getPublicLogsPublisher(layout: AgentPathLayout): UpdaterPublicLogsPubli
 
   publicLogsPublisher = createUpdaterPublicLogsPublisher({
     refresh() {
-      if (process.platform !== 'linux') {
-        return
-      }
-
       try {
         refreshAgentControlPublicLogs({
-          filePath: resolveAgentPublicLogsPath(),
+          filePath: layout.publicLogsPath,
           layout,
         })
       } catch (error) {
@@ -175,10 +147,7 @@ function appendLogLine(layout: AgentPathLayout, message: string): void {
   fs.mkdirSync(logDir, { recursive: true })
   rotateLogIfNeeded(logPath)
   fs.appendFileSync(logPath, `${line}\n`, 'utf8')
-
-  if (process.platform === 'linux') {
-    getPublicLogsPublisher(layout).requestRefresh()
-  }
+  getPublicLogsPublisher(layout).requestRefresh()
 }
 
 function findPackageJsonPath(startDir: string): string | null {
@@ -230,8 +199,7 @@ async function runUpdater(): Promise<void> {
 
   const layout = resolveAgentPathLayout()
   ensureAgentPathLayout(layout)
-  const dotenvPath = resolveDotenvPath(layout)
-  const config = readConfigFromEnvFile(dotenvPath)
+  const config = readConfigFromLayout(layout)
   const runningVersion = readAgentVersion(scriptDir)
   const nowIso = new Date().toISOString()
 

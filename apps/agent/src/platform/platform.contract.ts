@@ -6,6 +6,28 @@ export type ExtractBundleArchiveKind = 'zip' | 'tar' | 'tgz'
 
 export type PlatformPathResolution = {
   readonly dataDir: string
+  readonly releasesDir: string
+  readonly currentPath: string
+  readonly previousPath: string
+  readonly logsDir: string
+  readonly releaseStatePath: string
+  readonly runtimeStatePath: string
+  readonly configEnvPath: string
+  readonly bootstrapEnvPath: string
+  readonly consumedBootstrapEnvPath: string
+  readonly downloadsDir: string
+  readonly baseRuntimeConfigPath: string
+  readonly supervisorControlPath: string
+  readonly pendingActivityPath: string
+  readonly controlOverridesPath: string
+  readonly controlRemoteCachePath: string
+  readonly infraConfigPath: string
+  readonly auditLogPath: string
+  readonly publicStateDir: string
+  readonly publicStatePath: string
+  readonly publicBackendStatePath: string
+  readonly publicLogsPath: string
+  readonly agentLogForwarderStatePath: string
 }
 
 export type PlatformServiceStatus = 'running' | 'stopped' | 'unknown'
@@ -39,6 +61,7 @@ export type ExtractBundleCommand = {
 
 export type ResolvePathsCommand = {
   readonly env: NodeJS.ProcessEnv
+  readonly cwd?: string
 }
 
 export type PlatformControlCommand = {
@@ -57,8 +80,16 @@ export type AgentPlatformAdapter = {
   readonly key: AgentPlatformKey
   readonly control: AgentPlatformControlAdapter
   resolvePaths: (command: ResolvePathsCommand) => PlatformPathResolution
+  ensureDirectories: (command: { readonly paths: PlatformPathResolution }) => void
   startRuntime: (command: StartRuntimeCommand) => ChildProcess
   stopRuntime: (command: StopRuntimeCommand) => void
   restartRuntime: (command: RestartRuntimeCommand) => ChildProcess
   extractBundle: (command: ExtractBundleCommand) => void
+  readSymlinkOrPointer: (command: { readonly pointerPath: string }) => string | null
+  switchCurrentRelease: (command: {
+    readonly currentPath: string
+    readonly previousPath: string
+    readonly targetPath: string
+    readonly previousTargetPath?: string | null
+  }) => void
 }

@@ -86,8 +86,9 @@ If automatic Chrome install is selected on the dependency page, setup calls `win
 - Copies binaries to `%LOCALAPPDATA%\Programs\ContainerTrackerAgent\`
 - Ensures `%LOCALAPPDATA%\ContainerTracker\`
 - Ensures `%LOCALAPPDATA%\ContainerTracker\logs\`
-- Ensures `%LOCALAPPDATA%\ContainerTracker\data\`
-- Ensures `%LOCALAPPDATA%\ContainerTracker\cache\`
+- Ensures `%LOCALAPPDATA%\ContainerTracker\releases\`
+- Ensures `%LOCALAPPDATA%\ContainerTracker\downloads\`
+- Ensures `%LOCALAPPDATA%\ContainerTracker\run\`
 - Copies `bootstrap.env` to `%LOCALAPPDATA%\ContainerTracker\bootstrap.env`
 - Creates per-user startup task `ContainerTrackerAgent`:
   - `Trigger=At logon`
@@ -132,6 +133,8 @@ Default retry policy for enrollment:
 - Consumed bootstrap: `%LOCALAPPDATA%\ContainerTracker\bootstrap.env.consumed`
 - Effective config: `%LOCALAPPDATA%\ContainerTracker\config.env`
 - Logs: `%LOCALAPPDATA%\ContainerTracker\logs\`
+- Runtime state: `%LOCALAPPDATA%\ContainerTracker\runtime-state.json`
+- Release state: `%LOCALAPPDATA%\ContainerTracker\release-state.json`
 
 ## States and troubleshooting
 

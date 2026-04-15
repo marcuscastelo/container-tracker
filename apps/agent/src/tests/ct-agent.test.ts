@@ -12,10 +12,10 @@ function makeTempAgentDataDir(): string {
 }
 
 function writeRuntimeHealthFile(baseDir: string): void {
-  const runtimeHealthPath = path.join(baseDir, 'runtime-health.json')
+  const runtimeStatePath = path.join(baseDir, 'runtime-state.json')
   fs.mkdirSync(baseDir, { recursive: true })
   fs.writeFileSync(
-    runtimeHealthPath,
+    runtimeStatePath,
     `${JSON.stringify(
       {
         agent_version: '1.0.0',

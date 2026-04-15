@@ -14,7 +14,7 @@ function ensureDotenvPath(): void {
     return
   }
 
-  process.env.DOTENV_PATH = resolveAgentPathLayout().configPath
+  process.env.DOTENV_PATH = resolveAgentPathLayout().configEnvPath
 }
 
 function isUpdaterEntrypoint(): boolean {

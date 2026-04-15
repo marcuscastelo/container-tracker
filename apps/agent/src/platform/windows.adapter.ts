@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
@@ -19,12 +20,30 @@ function normalizeOptionalEnv(value: string | undefined): string | undefined {
 }
 
 function resolveDataDir(env: NodeJS.ProcessEnv): string {
+  const explicitDataDir = normalizeOptionalEnv(env.AGENT_DATA_DIR)
+  if (explicitDataDir) {
+    return explicitDataDir
+  }
+
   const localAppData = normalizeOptionalEnv(env.LOCALAPPDATA)
   if (localAppData) {
     return path.win32.join(localAppData, DEFAULT_DATA_DIR_NAME)
   }
 
   return path.win32.join(os.homedir(), 'AppData', 'Local', DEFAULT_DATA_DIR_NAME)
+}
+
+function removePathIfExists(targetPath: string): void {
+  try {
+    fs.rmSync(targetPath, { recursive: true, force: true })
+  } catch {
+    // best effort cleanup
+  }
+}
+
+function linkDirectory(linkPath: string, targetPath: string): void {
+  removePathIfExists(linkPath)
+  fs.symlinkSync(targetPath, linkPath, 'junction')
 }
 
 function extractZipOnWindows(archivePath: string, destinationDir: string): void {
@@ -71,9 +90,47 @@ export const windowsPlatformAdapter: AgentPlatformAdapter = {
   key: 'windows-x64',
   control: createWindowsLocalControlAdapter(),
   resolvePaths(command) {
+    const dataDir = resolveDataDir(command.env)
+    const bootstrapEnvPath =
+      normalizeOptionalEnv(command.env.BOOTSTRAP_DOTENV_PATH) ??
+      path.win32.join(dataDir, 'bootstrap.env')
+    const configEnvPath =
+      normalizeOptionalEnv(command.env.DOTENV_PATH) ?? path.win32.join(dataDir, 'config.env')
+    const publicStateDir =
+      normalizeOptionalEnv(command.env.AGENT_PUBLIC_STATE_DIR) ?? path.win32.join(dataDir, 'run')
+
     return {
-      dataDir: resolveDataDir(command.env),
+      dataDir,
+      releasesDir: path.win32.join(dataDir, 'releases'),
+      currentPath: path.win32.join(dataDir, 'current'),
+      previousPath: path.win32.join(dataDir, 'previous'),
+      logsDir: path.win32.join(dataDir, 'logs'),
+      releaseStatePath: path.win32.join(dataDir, 'release-state.json'),
+      runtimeStatePath: path.win32.join(dataDir, 'runtime-state.json'),
+      configEnvPath,
+      bootstrapEnvPath,
+      consumedBootstrapEnvPath: `${bootstrapEnvPath}.consumed`,
+      downloadsDir: path.win32.join(dataDir, 'downloads'),
+      baseRuntimeConfigPath: path.win32.join(dataDir, 'control-base.runtime.json'),
+      supervisorControlPath: path.win32.join(dataDir, 'supervisor-control.json'),
+      pendingActivityPath: path.win32.join(dataDir, 'pending-activity-events.json'),
+      controlOverridesPath: path.win32.join(dataDir, 'control-overrides.local.json'),
+      controlRemoteCachePath: path.win32.join(dataDir, 'control-remote-cache.json'),
+      infraConfigPath: path.win32.join(dataDir, 'infra-config.json'),
+      auditLogPath: path.win32.join(dataDir, 'agent-control-audit.ndjson'),
+      publicStateDir,
+      publicStatePath: path.win32.join(publicStateDir, 'control-ui-state.json'),
+      publicBackendStatePath: path.win32.join(publicStateDir, 'control-ui-backend-state.json'),
+      publicLogsPath: path.win32.join(publicStateDir, 'control-ui-logs.json'),
+      agentLogForwarderStatePath: path.win32.join(dataDir, 'agent-log-forwarder-state.json'),
     }
+  },
+  ensureDirectories(command) {
+    fs.mkdirSync(command.paths.dataDir, { recursive: true })
+    fs.mkdirSync(command.paths.releasesDir, { recursive: true })
+    fs.mkdirSync(command.paths.downloadsDir, { recursive: true })
+    fs.mkdirSync(command.paths.logsDir, { recursive: true })
+    fs.mkdirSync(command.paths.publicStateDir, { recursive: true })
   },
   startRuntime(command) {
     return spawn(process.execPath, [...(command.execArgv ?? []), command.scriptPath], {
@@ -95,5 +152,26 @@ export const windowsPlatformAdapter: AgentPlatformAdapter = {
   },
   extractBundle(command) {
     extractArchive(command)
+  },
+  readSymlinkOrPointer(command) {
+    try {
+      return fs.realpathSync(command.pointerPath)
+    } catch {
+      return null
+    }
+  },
+  switchCurrentRelease(command) {
+    const previousTargetPath =
+      typeof command.previousTargetPath === 'string'
+        ? command.previousTargetPath
+        : windowsPlatformAdapter.readSymlinkOrPointer({ pointerPath: command.currentPath })
+
+    if (previousTargetPath) {
+      linkDirectory(command.previousPath, previousTargetPath)
+    } else {
+      removePathIfExists(command.previousPath)
+    }
+
+    linkDirectory(command.currentPath, command.targetPath)
   },
 }

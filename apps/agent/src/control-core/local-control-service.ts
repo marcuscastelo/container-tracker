@@ -201,17 +201,17 @@ function invalidateRemoteCaches(layout: AgentPathLayout): void {
 
 export function readAgentControlBackendState(layout: AgentPathLayout) {
   const publicStateAvailable = readAgentControlPublicState(resolveAgentPublicStatePath()) !== null
-  const runtimeConfigMaterialized = fs.existsSync(layout.configPath)
+  const runtimeConfigMaterialized = fs.existsSync(layout.configEnvPath)
   const baseRuntimeConfigAvailable = fs.existsSync(layout.baseRuntimeConfigPath)
   const runtimeConfigAvailable =
     readCurrentControlRuntimeConfig(layout) !== null &&
     (runtimeConfigMaterialized || baseRuntimeConfigAvailable)
   const currentConfig = readCurrentControlRuntimeConfig(layout)
-  const bootstrapConfigAvailable = fs.existsSync(layout.bootstrapPath)
-  const consumedBootstrapAvailable = fs.existsSync(layout.consumedBootstrapPath)
-  const installerTokenAvailable = hasInstallerToken(layout.bootstrapPath)
-  const bootstrapBackendUrl = readBackendUrlFromEnvFile(layout.bootstrapPath)
-  const consumedBootstrapBackendUrl = readBackendUrlFromEnvFile(layout.consumedBootstrapPath)
+  const bootstrapConfigAvailable = fs.existsSync(layout.bootstrapEnvPath)
+  const consumedBootstrapAvailable = fs.existsSync(layout.consumedBootstrapEnvPath)
+  const installerTokenAvailable = hasInstallerToken(layout.bootstrapEnvPath)
+  const bootstrapBackendUrl = readBackendUrlFromEnvFile(layout.bootstrapEnvPath)
+  const consumedBootstrapBackendUrl = readBackendUrlFromEnvFile(layout.consumedBootstrapEnvPath)
 
   let backendUrl: string | null = null
   let source: z.infer<typeof AgentControlBackendStateSchema>['source'] = 'NONE'
@@ -263,7 +263,7 @@ export function readAgentControlBackendState(layout: AgentPathLayout) {
 function requireCurrentConfig(layout: AgentPathLayout): ControlRuntimeConfig {
   const config = readCurrentControlRuntimeConfig(layout)
   if (!config) {
-    throw new Error(`Agent runtime config is unavailable at ${layout.configPath}`)
+    throw new Error(`Agent runtime config is unavailable at ${layout.configEnvPath}`)
   }
 
   return config
@@ -413,7 +413,7 @@ export function createAgentControlLocalService(
     async setBackendUrl(backendUrl) {
       const normalizedBackendUrl = normalizeBackendUrl(backendUrl)
       const currentConfig = readCurrentControlRuntimeConfig(deps.layout)
-      const runtimeConfigMaterialized = fs.existsSync(deps.layout.configPath)
+      const runtimeConfigMaterialized = fs.existsSync(deps.layout.configEnvPath)
       let updated = false
 
       if (currentConfig) {
@@ -426,14 +426,14 @@ export function createAgentControlLocalService(
           `${JSON.stringify(nextConfig, null, 2)}\n`,
         )
         if (runtimeConfigMaterialized) {
-          writeFileAtomic(deps.layout.configPath, serializeRuntimeConfig(nextConfig))
+          writeFileAtomic(deps.layout.configEnvPath, serializeRuntimeConfig(nextConfig))
         }
         updated = true
       }
 
       if (
         upsertEnvFileValue({
-          filePath: deps.layout.bootstrapPath,
+          filePath: deps.layout.bootstrapEnvPath,
           key: 'BACKEND_URL',
           value: normalizedBackendUrl,
           createIfMissing: !runtimeConfigMaterialized,
@@ -442,7 +442,7 @@ export function createAgentControlLocalService(
         updated = true
       } else if (
         upsertEnvFileValue({
-          filePath: deps.layout.consumedBootstrapPath,
+          filePath: deps.layout.consumedBootstrapEnvPath,
           key: 'BACKEND_URL',
           value: normalizedBackendUrl,
         })

@@ -27,17 +27,17 @@ import { describe, expect, it } from 'vitest'
 function createLayout(baseDir: string): AgentPathLayout {
   const layout: AgentPathLayout = {
     dataDir: baseDir,
-    configPath: path.join(baseDir, 'config.env'),
+    configEnvPath: path.join(baseDir, 'config.env'),
     baseRuntimeConfigPath: path.join(baseDir, 'control-base.runtime.json'),
-    bootstrapPath: path.join(baseDir, 'bootstrap.env'),
-    consumedBootstrapPath: path.join(baseDir, 'bootstrap.env.consumed'),
+    bootstrapEnvPath: path.join(baseDir, 'bootstrap.env'),
+    consumedBootstrapEnvPath: path.join(baseDir, 'bootstrap.env.consumed'),
     releasesDir: path.join(baseDir, 'releases'),
     downloadsDir: path.join(baseDir, 'downloads'),
     logsDir: path.join(baseDir, 'logs'),
-    currentLinkPath: path.join(baseDir, 'current'),
-    previousLinkPath: path.join(baseDir, 'previous'),
+    currentPath: path.join(baseDir, 'current'),
+    previousPath: path.join(baseDir, 'previous'),
     releaseStatePath: path.join(baseDir, 'release-state.json'),
-    runtimeHealthPath: path.join(baseDir, 'runtime-health.json'),
+    runtimeStatePath: path.join(baseDir, 'runtime-state.json'),
     supervisorControlPath: path.join(baseDir, 'supervisor-control.json'),
     pendingActivityPath: path.join(baseDir, 'pending-activity-events.json'),
     controlOverridesPath: path.join(baseDir, 'control-overrides.local.json'),
@@ -85,7 +85,7 @@ function baseConfig() {
 }
 
 function writeHealthyRuntime(layout: AgentPathLayout, version: string): void {
-  writeRuntimeHealth(layout.runtimeHealthPath, {
+  writeRuntimeHealth(layout.runtimeStatePath, {
     agent_version: version,
     boot_status: 'healthy',
     update_state: 'idle',
@@ -173,7 +173,7 @@ describe('agent control core', () => {
     expect(result.snapshot.updates.blockedVersions.effective).toEqual(['2.7.0', '2.8.0', '2.9.0'])
     expect(result.snapshot.infra.source).toBe('FALLBACK')
 
-    const configEnv = fs.readFileSync(layout.configPath, 'utf8')
+    const configEnv = fs.readFileSync(layout.configEnvPath, 'utf8')
     expect(configEnv).toContain('AGENT_UPDATE_MANIFEST_CHANNEL=canary')
     expect(configEnv).toContain('SUPABASE_URL=https://infra-cache.test.local')
     expect(configEnv).toContain('LIMIT=25')
@@ -399,7 +399,7 @@ describe('agent control core', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-control-backend-bootstrap-'))
     const layout = createLayout(tempDir)
     fs.writeFileSync(
-      layout.bootstrapPath,
+      layout.bootstrapEnvPath,
       [
         'BACKEND_URL=http://localhost:3000/',
         'INSTALLER_TOKEN=installer-token-test',
@@ -440,7 +440,7 @@ describe('agent control core', () => {
     expect(restartCalls).toBe(1)
     expect(result.state.backendUrl).toBe('https://backend.changed.local')
     expect(result.state.source).toBe('BOOTSTRAP')
-    expect(fs.readFileSync(layout.bootstrapPath, 'utf8')).toContain(
+    expect(fs.readFileSync(layout.bootstrapEnvPath, 'utf8')).toContain(
       'BACKEND_URL=https://backend.changed.local',
     )
   })
@@ -518,7 +518,7 @@ describe('agent control core', () => {
       }),
     )
     fs.writeFileSync(
-      layout.bootstrapPath,
+      layout.bootstrapEnvPath,
       ['BACKEND_URL=http://localhost:3000/', 'INSTALLER_TOKEN=installer-token-test', ''].join('\n'),
       'utf8',
     )
@@ -541,10 +541,10 @@ describe('agent control core', () => {
     expect(restartCalls).toBe(1)
     expect(result.state.backendUrl).toBe('https://backend.changed.local')
     expect(result.state.source).toBe('BOOTSTRAP')
-    expect(fs.existsSync(layout.configPath)).toBe(false)
+    expect(fs.existsSync(layout.configEnvPath)).toBe(false)
     expect(fs.existsSync(layout.controlRemoteCachePath)).toBe(false)
     expect(fs.existsSync(layout.infraConfigPath)).toBe(false)
-    expect(fs.readFileSync(layout.bootstrapPath, 'utf8')).toContain(
+    expect(fs.readFileSync(layout.bootstrapEnvPath, 'utf8')).toContain(
       'BACKEND_URL=https://backend.changed.local',
     )
   })

@@ -153,11 +153,11 @@ function createMockService(command?: {
     }),
     getPaths: () => ({
       dataDir: '/var/lib/container-tracker-agent',
-      configPath: '/var/lib/container-tracker-agent/config.env',
+      configEnvPath: '/var/lib/container-tracker-agent/config.env',
       releasesDir: '/var/lib/container-tracker-agent/releases',
       logsDir: '/var/lib/container-tracker-agent/logs',
       releaseStatePath: '/var/lib/container-tracker-agent/release-state.json',
-      runtimeHealthPath: '/var/lib/container-tracker-agent/runtime-health.json',
+      runtimeStatePath: '/var/lib/container-tracker-agent/runtime-state.json',
       supervisorControlPath: '/var/lib/container-tracker-agent/supervisor-control.json',
       controlOverridesPath: '/var/lib/container-tracker-agent/control-overrides.local.json',
       controlRemoteCachePath: '/var/lib/container-tracker-agent/control-remote-cache.json',

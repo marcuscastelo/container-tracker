@@ -25,9 +25,10 @@ UninstallLogging=yes
 
 [Dirs]
 Name: "{localappdata}\ContainerTracker"; BeforeInstall: LogDirectoryCreation('{localappdata}\ContainerTracker')
-Name: "{localappdata}\ContainerTracker\data"; BeforeInstall: LogDirectoryCreation('{localappdata}\ContainerTracker\data')
+Name: "{localappdata}\ContainerTracker\releases"; BeforeInstall: LogDirectoryCreation('{localappdata}\ContainerTracker\releases')
 Name: "{localappdata}\ContainerTracker\logs"; BeforeInstall: LogDirectoryCreation('{localappdata}\ContainerTracker\logs')
-Name: "{localappdata}\ContainerTracker\cache"; BeforeInstall: LogDirectoryCreation('{localappdata}\ContainerTracker\cache')
+Name: "{localappdata}\ContainerTracker\downloads"; BeforeInstall: LogDirectoryCreation('{localappdata}\ContainerTracker\downloads')
+Name: "{localappdata}\ContainerTracker\run"; BeforeInstall: LogDirectoryCreation('{localappdata}\ContainerTracker\run')
 
 [Files]
 Source: "{#ReleaseRoot}\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs createallsubdirs ignoreversion; BeforeInstall: LogNodeRuntimeCopyStart

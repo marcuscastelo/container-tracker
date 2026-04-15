@@ -19,6 +19,7 @@ import {
   readAgentControlPublicState,
   writeAgentControlPublicState,
 } from '@agent/control-core/public-control-state'
+import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
 import { EXIT_CONFIG_ERROR, EXIT_FATAL, EXIT_OK } from '@agent/runtime/lifecycle-exit-codes'
 import {
   resolveAgentPublicBackendStatePath,
@@ -138,28 +139,14 @@ export function resolveCtAgentAdminLayout(): AgentPathLayout {
     return defaultLayout
   }
 
-  const dataDir = publicState.paths.dataDir
-  return {
-    ...defaultLayout,
-    dataDir,
-    configPath: publicState.paths.configPath,
-    baseRuntimeConfigPath: path.join(dataDir, 'control-base.runtime.json'),
-    bootstrapPath: path.join(dataDir, 'bootstrap.env'),
-    consumedBootstrapPath: path.join(dataDir, 'bootstrap.env.consumed'),
-    releasesDir: publicState.paths.releasesDir,
-    downloadsDir: path.join(dataDir, 'downloads'),
-    logsDir: publicState.paths.logsDir,
-    currentLinkPath: path.join(dataDir, 'current'),
-    previousLinkPath: path.join(dataDir, 'previous'),
-    releaseStatePath: publicState.paths.releaseStatePath,
-    runtimeHealthPath: publicState.paths.runtimeHealthPath,
-    supervisorControlPath: publicState.paths.supervisorControlPath,
-    pendingActivityPath: path.join(dataDir, 'pending-activity-events.json'),
-    controlOverridesPath: publicState.paths.controlOverridesPath,
-    controlRemoteCachePath: publicState.paths.controlRemoteCachePath,
-    infraConfigPath: publicState.paths.infraConfigPath,
-    auditLogPath: publicState.paths.auditLogPath,
-  }
+  return resolvePlatformAdapter().resolvePaths({
+    env: {
+      ...process.env,
+      AGENT_DATA_DIR: publicState.paths.dataDir,
+      DOTENV_PATH: publicState.paths.configEnvPath,
+    },
+    cwd: process.cwd(),
+  })
 }
 
 export async function runCtAgentAdmin(command: {
