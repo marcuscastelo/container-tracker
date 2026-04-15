@@ -16,10 +16,9 @@
       "entry": [
         "src/agent.ts",
         "src/supervisor.ts",
-        "src/updater.ts",
         "src/electron/main.ts",
         "src/electron/preload.cjs",
-        "src/renderer/main.tsx",
+        "src/electron/renderer/main.tsx",
         "src/bootstrap/**/*.ts",
         "src/cli/**/*.ts",
         "src/runtime/alias-loader.ts",
@@ -28,10 +27,7 @@
         "src/bundle-release.ts"
       ],
       "project": ["src/**/*.{js,ts,tsx,cjs,d.ts}"],
-      "ignoreFiles": [
-        "src/config/resolve-agent-public-paths.ts",
-        "src/renderer/AgentControlApp.tsx"
-      ]
+      "ignoreFiles": ["src/config/resolve-agent-public-paths.ts"]
     }
   },
   "ignore": [

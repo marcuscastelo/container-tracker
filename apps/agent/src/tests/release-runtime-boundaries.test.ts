@@ -30,12 +30,12 @@ function listTypeScriptFiles(rootDir: string): readonly string[] {
 }
 
 function toRelativeFromAgentSrc(filePath: string): string {
-  return path.relative(path.join(process.cwd(), 'src'), filePath)
+  return path.relative(path.join(process.cwd(), 'apps', 'agent', 'src'), filePath)
 }
 
 describe('release/runtime boundaries', () => {
   it('runtime does not import release download/checksum/extract internals', () => {
-    const runtimeRoot = path.join(process.cwd(), 'src', 'runtime')
+    const runtimeRoot = path.join(process.cwd(), 'apps', 'agent', 'src', 'runtime')
     const runtimeFiles = listTypeScriptFiles(runtimeRoot)
 
     const forbiddenPatterns = [
@@ -56,7 +56,7 @@ describe('release/runtime boundaries', () => {
   })
 
   it('release does not import sync/provider execution modules', () => {
-    const releaseRoot = path.join(process.cwd(), 'src', 'release')
+    const releaseRoot = path.join(process.cwd(), 'apps', 'agent', 'src', 'release')
     const releaseFiles = listTypeScriptFiles(releaseRoot)
 
     const forbiddenPatterns = [

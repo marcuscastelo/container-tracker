@@ -720,8 +720,13 @@ export default [
       'no-restricted-imports': createRestrictedImportsRule({
         patterns: [
           {
-            group: ['@agent/release/domain/**', '@agent/runtime/domain/**', '@agent/sync/domain/**'],
-            message: 'app/* is composition root and must not import operational policy from domain modules.',
+            group: [
+              '@agent/release/domain/**',
+              '@agent/runtime/domain/**',
+              '@agent/sync/domain/**',
+            ],
+            message:
+              'app/* is composition root and must not import operational policy from domain modules.',
           },
         ],
       }),
@@ -750,7 +755,7 @@ export default [
         },
         {
           selector:
-            "VariableDeclarator[id.name=/^(ProviderInputSchema|ProviderRunResultSchema|AgentSyncJobSchema|ReleaseStateSchema|RuntimeStateSchema|HeartbeatPayloadSchema|UnifiedReleaseManifestSchema|UpdateManifestResponseDTOSchema)$/]",
+            'VariableDeclarator[id.name=/^(ProviderInputSchema|ProviderRunResultSchema|AgentSyncJobSchema|ReleaseStateSchema|RuntimeStateSchema|HeartbeatPayloadSchema|UnifiedReleaseManifestSchema|UpdateManifestResponseDTOSchema)$/]',
           message:
             'Critical agent Zod contracts must be centralized in apps/agent/src/core/contracts/*.',
         },

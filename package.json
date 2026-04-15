@@ -12,6 +12,7 @@
     "agent-control-ui:build:renderer": "pnpm --filter @container-tracker/agent run control-ui:build:renderer",
     "agent-control-ui:build": "pnpm --filter @container-tracker/agent run control-ui:build",
     "agent-control-ui:dev": "pnpm --filter @container-tracker/agent run control-ui:dev",
+    "agent:ui-control:dev": "pnpm run agent-control-ui:dev",
     "agent-control-ui:start": "pnpm --filter @container-tracker/agent run control-ui:start",
     "build": "vinxi build",
     "start": "vinxi start",

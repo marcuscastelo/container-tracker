@@ -3,7 +3,14 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 function readRuntimeEntrySource(): string {
-  const runtimeEntryPath = path.join(process.cwd(), 'src', 'runtime', 'runtime.entry.ts')
+  const runtimeEntryPath = path.join(
+    process.cwd(),
+    'apps',
+    'agent',
+    'src',
+    'runtime',
+    'runtime.entry.ts',
+  )
   return fs.readFileSync(runtimeEntryPath, 'utf8')
 }
 
