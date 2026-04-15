@@ -24,38 +24,20 @@ import {
   ValidatedAgentConfigSchema,
   type ValidatedBootstrapConfig,
 } from '@agent/core/contracts/agent-config.contract'
-import {
-  type AgentSyncJob,
-  BackendSyncTargetsResponseDTOSchema,
-  IngestAcceptedResponseSchema,
-  IngestFailedResponseSchema,
-} from '@agent/core/contracts/sync-job.contract'
 import { BoundaryValidationError } from '@agent/core/errors/boundary-validation.error'
 import { toHeartbeatPayload } from '@agent/observability/observability.mapper'
+import { createProviderRunnerRegistry } from '@agent/providers/common/provider-runner.registry'
 import { writeRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
 import {
   clearSupervisorControl,
   readSupervisorControl,
   writeSupervisorControl,
 } from '@agent/runtime/infrastructure/supervisor-control.repository'
-import {
-  toAgentSyncJob,
-  toBackendSyncAck,
-  toBackendSyncFailure,
-  toProviderInput,
-} from '@agent/sync/sync-job.mapper'
+import { runSyncCycle } from '@agent/sync/application/run-sync-cycle'
+import type { SyncCycleActivity } from '@agent/sync/application/sync-types'
+import { createSyncBackendClient } from '@agent/sync/infrastructure/sync-backend.client'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod/v4'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { fetchCmaCgmStatus } from '../../../../src/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { createMaerskCaptureService } from '../../../../src/modules/tracking/infrastructure/carriers/fetchers/maersk.puppeteer.fetcher.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { fetchMscStatus } from '../../../../src/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { fetchOneStatus } from '../../../../src/modules/tracking/infrastructure/carriers/fetchers/one.fetcher.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { fetchPilStatus } from '../../../../src/modules/tracking/infrastructure/carriers/fetchers/pil.fetcher.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import type { SyncRequestsRealtimeStatusUpdate } from '../../../../src/shared/supabase/sync-requests.realtime.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
@@ -425,14 +407,6 @@ const HeartbeatAckResponseSchema = z.object({
   updated_at: z.string().datetime({ offset: true }).optional(),
 })
 
-type AgentTarget = AgentSyncJob
-
-type TargetsResponse = {
-  readonly targets: readonly AgentTarget[]
-  readonly leasedUntil: string | null
-  readonly queueLagSeconds: number | null
-}
-
 type AgentRealtimeState = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CONNECTING' | 'DISCONNECTED' | 'UNKNOWN'
 type AgentProcessingState = 'idle' | 'leasing' | 'processing' | 'backing_off' | 'unknown'
 type AgentLeaseHealth = 'healthy' | 'stale' | 'conflict' | 'unknown'
@@ -671,306 +645,12 @@ async function sendHeartbeatAndPersistHealth(command: {
   })
 }
 
-async function fetchTargets(
-  config: RuntimeConfig,
-  limit: number,
-  recoverOwnedLeases = false,
-): Promise<TargetsResponse> {
-  const url = new URL('/api/agent/targets', config.BACKEND_URL)
-  url.searchParams.set('tenant_id', config.TENANT_ID)
-  url.searchParams.set('limit', String(limit))
-  if (recoverOwnedLeases) {
-    url.searchParams.set('recover_owned_leases', 'true')
-  }
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: buildHeaders(config, false),
-  })
-
-  if (!response.ok) {
-    const details = await response.text().catch(() => '')
-    throw new Error(`targets request failed (${response.status}): ${details}`)
-  }
-
-  const payload: unknown = await response.json().catch(() => ({}))
-  const parsed = BackendSyncTargetsResponseDTOSchema.safeParse(payload)
-  if (!parsed.success) {
-    throw new Error(`invalid targets response: ${parsed.error.message}`)
-  }
-
+function toRuntimeActivityFromSync(event: SyncCycleActivity): AgentRuntimeActivity {
   return {
-    targets: parsed.data.targets.map((target) => toAgentSyncJob(target)),
-    leasedUntil: parsed.data.leased_until,
-    queueLagSeconds: parsed.data.queue_lag_seconds,
-  }
-}
-
-const maerskCaptureService = createMaerskCaptureService()
-
-type ScrapeResult = {
-  readonly raw: unknown
-  readonly observedAt: string
-  readonly parseError?: string | null
-}
-
-async function performScrapeTarget(
-  config: RuntimeConfig,
-  target: AgentTarget,
-): Promise<ScrapeResult> {
-  const providerInput = toProviderInput(target)
-
-  if (providerInput.provider === 'msc') {
-    const result = await fetchMscStatus(providerInput.ref)
-    return {
-      raw: result.payload,
-      observedAt: result.fetchedAt,
-      parseError: result.parseError ?? null,
-    }
-  }
-
-  if (providerInput.provider === 'cmacgm') {
-    const result = await fetchCmaCgmStatus(providerInput.ref)
-    return {
-      raw: result.payload,
-      observedAt: result.fetchedAt,
-      parseError: result.parseError ?? null,
-    }
-  }
-
-  if (providerInput.provider === 'pil') {
-    const result = await fetchPilStatus(providerInput.ref)
-    return {
-      raw: result.payload,
-      observedAt: result.fetchedAt,
-      parseError: result.parseError ?? null,
-    }
-  }
-
-  if (providerInput.provider === 'one') {
-    const result = await fetchOneStatus(providerInput.ref)
-    return {
-      raw: result.payload,
-      observedAt: result.fetchedAt,
-      parseError: result.parseError ?? null,
-    }
-  }
-
-  if (!config.MAERSK_ENABLED) {
-    throw new Error('maersk target received but MAERSK_ENABLED is disabled')
-  }
-
-  const result = await maerskCaptureService.capture({
-    container: providerInput.ref,
-    headless: config.MAERSK_HEADLESS,
-    hold: false,
-    timeoutMs: config.MAERSK_TIMEOUT_MS,
-    userDataDir: config.MAERSK_USER_DATA_DIR ?? null,
-  })
-
-  if (result.kind === 'error') {
-    throw new Error(`maersk capture failed: ${JSON.stringify(result.body)}`)
-  }
-
-  return { raw: result.payload, observedAt: new Date().toISOString(), parseError: null }
-}
-
-async function scrapeTarget(config: RuntimeConfig, target: AgentTarget): Promise<ScrapeResult> {
-  try {
-    return await performScrapeTarget(config, target)
-  } catch (error) {
-    const errorMessage = toErrorMessage(error)
-    return {
-      raw: {
-        _error: true,
-        message: errorMessage,
-      },
-      observedAt: new Date().toISOString(),
-      parseError: `Fetch failed: ${errorMessage}`,
-    }
-  }
-}
-
-async function ingestSnapshot(
-  config: RuntimeConfig,
-  target: AgentTarget,
-  scrape: ScrapeResult,
-  agentVersion: string,
-): Promise<
-  | {
-      readonly kind: 'accepted'
-      readonly snapshotId: string
-      readonly newObservationsCount: number | null
-      readonly newAlertsCount: number | null
-    }
-  | { readonly kind: 'failed'; readonly errorMessage: string; readonly snapshotId?: string }
-  | { readonly kind: 'lease_conflict' }
-> {
-  const response = await fetch(`${config.BACKEND_URL}/api/tracking/snapshots/ingest`, {
-    method: 'POST',
-    headers: buildHeaders(config, true),
-    body: JSON.stringify({
-      tenant_id: config.TENANT_ID,
-      provider: target.provider,
-      ref: {
-        type: 'container',
-        value: target.ref,
-      },
-      observed_at: scrape.observedAt,
-      raw: scrape.raw,
-      parse_error: scrape.parseError ?? null,
-      meta: {
-        agent_version: agentVersion,
-        host: config.AGENT_ID,
-      },
-      sync_request_id: target.syncRequestId,
-    }),
-  })
-
-  if (response.status === 409) {
-    const body = await response.json().catch(() => ({}))
-    console.warn(`[agent] lease conflict for ${target.syncRequestId}:`, body)
-    return { kind: 'lease_conflict' }
-  }
-
-  if (response.status === 422) {
-    const payload: unknown = await response.json().catch(() => ({}))
-    const parsed = IngestFailedResponseSchema.safeParse(payload)
-    if (!parsed.success) {
-      throw new Error(`invalid ingest failure response: ${parsed.error.message}`)
-    }
-
-    if (parsed.data.snapshot_id) {
-      console.warn(
-        `[agent] backend marked ${target.ref} as failed after persisting snapshot ${parsed.data.snapshot_id}: ${parsed.data.error}`,
-      )
-    } else {
-      console.warn(`[agent] backend marked ${target.ref} as failed: ${parsed.data.error}`)
-    }
-
-    return {
-      kind: 'failed',
-      errorMessage: parsed.data.error,
-      ...(parsed.data.snapshot_id === undefined ? {} : { snapshotId: parsed.data.snapshot_id }),
-    }
-  }
-
-  if (!response.ok) {
-    const details = await response.text().catch(() => '')
-    throw new Error(`ingest failed (${response.status}): ${details}`)
-  }
-
-  const payload: unknown = await response.json().catch(() => ({}))
-  const parsed = IngestAcceptedResponseSchema.safeParse(payload)
-  if (!parsed.success) {
-    throw new Error(`invalid ingest response: ${parsed.error.message}`)
-  }
-
-  const newObservationsCount = parsed.data.new_observations_count
-  const newAlertsCount = parsed.data.new_alerts_count
-  const summary =
-    newObservationsCount === undefined
-      ? ''
-      : ` (${newObservationsCount} new observation${newObservationsCount === 1 ? '' : 's'}${newAlertsCount === undefined ? '' : `, ${newAlertsCount} new alert${newAlertsCount === 1 ? '' : 's'}`})`
-
-  console.log(`[agent] ingested ${target.ref} -> snapshot ${parsed.data.snapshot_id}${summary}`)
-  return {
-    kind: 'accepted',
-    snapshotId: parsed.data.snapshot_id,
-    newObservationsCount: parsed.data.new_observations_count ?? null,
-    newAlertsCount: parsed.data.new_alerts_count ?? null,
-  }
-}
-
-type ProcessTargetResult =
-  | {
-      readonly kind: 'success'
-      readonly durationMs: number
-      readonly snapshotId: string
-      readonly backendAck: ReturnType<typeof toBackendSyncAck>
-    }
-  | {
-      readonly kind: 'lease_conflict'
-      readonly durationMs: number
-      readonly errorMessage: string
-    }
-  | {
-      readonly kind: 'failed'
-      readonly durationMs: number
-      readonly errorMessage: string
-      readonly snapshotId?: string
-      readonly backendFailure: ReturnType<typeof toBackendSyncFailure>
-    }
-
-async function processTarget(
-  config: RuntimeConfig,
-  target: AgentTarget,
-  agentVersion: string,
-): Promise<ProcessTargetResult> {
-  const startedAtMs = Date.now()
-
-  try {
-    const scrape = await scrapeTarget(config, target)
-    const ingestResult = await ingestSnapshot(config, target, scrape, agentVersion)
-
-    if (ingestResult.kind === 'lease_conflict') {
-      return {
-        kind: 'lease_conflict',
-        durationMs: Math.max(0, Date.now() - startedAtMs),
-        errorMessage: `Lease conflict for ${target.syncRequestId}`,
-      }
-    }
-
-    if (ingestResult.kind === 'failed') {
-      const backendFailure = toBackendSyncFailure({
-        job: target,
-        errorMessage: ingestResult.errorMessage,
-        occurredAt: new Date().toISOString(),
-        snapshotId: ingestResult.snapshotId ?? null,
-      })
-      return {
-        kind: 'failed',
-        durationMs: Math.max(0, Date.now() - startedAtMs),
-        errorMessage: ingestResult.errorMessage,
-        backendFailure,
-        ...(ingestResult.snapshotId === undefined ? {} : { snapshotId: ingestResult.snapshotId }),
-      }
-    }
-
-    const backendAck = toBackendSyncAck({
-      job: target,
-      snapshotId: ingestResult.snapshotId,
-      occurredAt: new Date().toISOString(),
-      newObservationsCount: ingestResult.newObservationsCount,
-      newAlertsCount: ingestResult.newAlertsCount,
-    })
-
-    return {
-      kind: 'success',
-      durationMs: Math.max(0, Date.now() - startedAtMs),
-      snapshotId: ingestResult.snapshotId,
-      backendAck,
-    }
-  } catch (error) {
-    const message = toErrorMessage(error)
-    console.error(`[agent] target ${target.syncRequestId} failed: ${message}`)
-    console.warn(
-      `[agent] target ${target.syncRequestId} will be available again after lease expiration`,
-    )
-
-    const backendFailure = toBackendSyncFailure({
-      job: target,
-      errorMessage: message,
-      occurredAt: new Date().toISOString(),
-      snapshotId: null,
-    })
-
-    return {
-      kind: 'failed',
-      durationMs: Math.max(0, Date.now() - startedAtMs),
-      errorMessage: message,
-      backendFailure,
-    }
+    type: event.type,
+    message: event.message,
+    severity: event.severity,
+    metadata: event.metadata,
   }
 }
 
@@ -979,90 +659,32 @@ async function runOnce(
   agentVersion: string,
   state: AgentRuntimeState,
   reason: AgentRunReason,
+  providerRegistry: ReturnType<typeof createProviderRunnerRegistry>,
 ): Promise<readonly AgentRuntimeActivity[]> {
-  const leaseBatchSize = 1
-  let processed = 0
-  const activities: AgentRuntimeActivity[] = []
-  state.processingState = 'leasing'
-  state.activeJobs = 0
+  const backendClient = createSyncBackendClient({
+    config,
+  })
 
-  while (processed < config.LIMIT) {
-    const remaining = config.LIMIT - processed
-    let targetsResponse = await fetchTargets(config, Math.min(leaseBatchSize, remaining))
-    let targets = targetsResponse.targets
+  const syncActivities = await runSyncCycle({
+    config,
+    agentVersion,
+    state,
+    reason,
+    providerRegistry,
+    backendClient,
+    leaseBatchSize: 1,
+    onRecoveredOwnedLeases() {
+      console.log('[agent] recovered owned lease(s) on startup')
+    },
+    onNoTargets() {
+      console.log('[agent] no targets available')
+    },
+    onCycleProcessed(processed) {
+      console.log(`[agent] cycle processed ${processed} target(s)`)
+    },
+  })
 
-    if (targets.length === 0 && reason === 'startup' && processed === 0) {
-      targetsResponse = await fetchTargets(config, Math.min(leaseBatchSize, remaining), true)
-      targets = targetsResponse.targets
-      if (targets.length > 0) {
-        console.log('[agent] recovered owned lease(s) on startup')
-      }
-    }
-
-    state.queueLagSeconds = targetsResponse.queueLagSeconds
-
-    if (targets.length === 0) {
-      if (processed === 0) {
-        console.log('[agent] no targets available')
-      }
-      state.processingState = 'idle'
-      state.activeJobs = 0
-      break
-    }
-
-    for (const target of targets) {
-      state.processingState = 'processing'
-      state.activeJobs = 1
-      const result = await processTarget(config, target, agentVersion)
-      state.activeJobs = 0
-      processed += 1
-
-      if (result.kind === 'success') {
-        state.lastError = null
-        state.leaseHealth = 'healthy'
-        continue
-      }
-
-      if (result.kind === 'lease_conflict') {
-        state.leaseHealth = 'conflict'
-        state.lastError = result.errorMessage
-        activities.push({
-          type: 'LEASE_CONFLICT',
-          message: result.errorMessage,
-          severity: 'warning',
-          metadata: {
-            syncRequestId: target.syncRequestId,
-            provider: target.provider,
-            ref: target.ref,
-            durationMs: result.durationMs,
-          },
-        })
-        continue
-      }
-
-      state.processingState = 'backing_off'
-      state.lastError = result.errorMessage
-      activities.push({
-        type: 'REQUEST_FAILED',
-        message: result.backendFailure.error,
-        severity: 'danger',
-        metadata: {
-          ...result.backendFailure,
-          durationMs: result.durationMs,
-        },
-      })
-    }
-  }
-
-  if (processed > 0) {
-    console.log(`[agent] cycle processed ${processed} target(s)`)
-  }
-
-  if (state.processingState !== 'backing_off') {
-    state.processingState = 'idle'
-  }
-
-  return activities
+  return syncActivities.map((event) => toRuntimeActivityFromSync(event))
 }
 
 function shouldWakeForRealtimeEvent(event: {
@@ -1276,6 +898,7 @@ async function main(): Promise<void> {
   let requestRestartAfterHeartbeat = false
   let scheduler: ReturnType<typeof createAgentScheduler> | null = null
   let realtimeSubscription: { readonly unsubscribe: () => void } | null = null
+  const providerRegistry = createProviderRunnerRegistry()
 
   scheduler = createAgentScheduler({
     intervalMs: runtimeConfig.INTERVAL_SEC * 1000,
@@ -1328,7 +951,13 @@ async function main(): Promise<void> {
       }
 
       if (runtimeState.updateState !== 'draining') {
-        const runActivities = await runOnce(runtimeConfig, agentVersion, runtimeState, reason)
+        const runActivities = await runOnce(
+          runtimeConfig,
+          agentVersion,
+          runtimeState,
+          reason,
+          providerRegistry,
+        )
         cycleActivities.push(...runActivities)
       } else {
         runtimeState.processingState = 'idle'

@@ -1,5 +1,10 @@
 import { BackendSyncTargetsResponseDTOSchema } from '@agent/core/contracts/sync-job.contract'
-import { toAgentSyncJob, toBackendSyncAck, toBackendSyncFailure } from '@agent/sync/sync-job.mapper'
+import {
+  toAgentSyncJob,
+  toBackendSyncAck,
+  toBackendSyncFailure,
+  toProviderInput,
+} from '@agent/sync/sync-job.mapper'
 import { describe, expect, it } from 'vitest'
 
 describe('sync contracts', () => {
@@ -66,5 +71,38 @@ describe('sync contracts', () => {
 
     expect(ack.status).toBe('DONE')
     expect(failure.status).toBe('FAILED')
+  })
+
+  it('maps agent job to provider input with execution hints and correlation ids', () => {
+    const job = toAgentSyncJob({
+      sync_request_id: '11111111-1111-4111-8111-111111111111',
+      provider: 'maersk',
+      ref_type: 'container',
+      ref: 'MAEU1234567',
+    })
+
+    const providerInput = toProviderInput({
+      job,
+      config: {
+        BACKEND_URL: 'https://api.example.com',
+        SUPABASE_URL: null,
+        SUPABASE_ANON_KEY: null,
+        AGENT_TOKEN: 'token-123',
+        TENANT_ID: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        AGENT_ID: 'agent-a',
+        INTERVAL_SEC: 30,
+        LIMIT: 10,
+        MAERSK_ENABLED: true,
+        MAERSK_HEADLESS: false,
+        MAERSK_TIMEOUT_MS: 90_000,
+        MAERSK_USER_DATA_DIR: '/tmp/maersk-profile',
+        AGENT_UPDATE_MANIFEST_CHANNEL: 'stable',
+      },
+      agentVersion: '1.2.3',
+    })
+
+    expect(providerInput.hints.maerskEnabled).toBe(true)
+    expect(providerInput.hints.maerskTimeoutMs).toBe(90_000)
+    expect(providerInput.correlation.agentVersion).toBe('1.2.3')
   })
 })
