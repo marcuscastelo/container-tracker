@@ -8,6 +8,7 @@
 - `apps/agent/src/config/agent-config.mapper.ts` is linted with `noBarrelFile`; keep it as explicit compatibility wrappers (functions) instead of pure re-export barrels when delegating to canonical config modules.
 - Production agent consumers should import parse/serialize/env-file helpers from `@agent/config/agent-env` and validation/effective-resolution policy from `@agent/config/agent-config.policy`; keep `agent-config.mapper.ts` as a compatibility/testing facade only.
 - Keep local-control behavior inside `apps/agent/src/platform/control/*` strategies and keep `apps/agent/src/platform/local-control.adapter.ts` as thin strategy composition/dispatch only.
+- Canonical agent control/runtime state persistence must go through `@agent/state/infrastructure/json-state.file-store` (or repositories that delegate to it), not direct `fs`/`writeFileAtomic` calls in feature modules.
 
 Started: 2026-04-16T00:59:05Z
 ---
@@ -150,4 +151,29 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - **Learnings for future iterations:**
   - Treat `agent-config.mapper.ts` as compatibility-only; new production flows should wire directly to `agent-env` + `agent-config.policy`.
   - `pnpm sanity` runs Biome fix before checks, so import-order/style normalization may modify touched files even when logic changes are minimal.
+---
+## 2026-04-15 23:17:32 -03 - US-008
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Centralized canonical agent state persistence through `state/*` by introducing `apps/agent/src/state/infrastructure/json-state.file-store.ts` and migrating control/runtime consumers away from direct feature-layer file persistence.
+- Updated state-bearing flows to route canonical state reads/writes/removals via state infrastructure APIs (control runtime caches/overrides/base runtime state, public control artifacts, pending activity, supervisor control, and log forwarder sequence state).
+- Replaced Linux local restart drain-file write with repository delegation (`writeSupervisorControl`) to keep supervisor control persistence owned by state-backed repositories.
+- Added `apps/agent/src/tests/state-ownership-boundary.test.ts` to guard against regressions by asserting canonical persistence points import `@agent/state/infrastructure/json-state.file-store` and that Linux local restart no longer writes supervisor-control JSON directly.
+- Files changed:
+  - AGENTS.md
+  - apps/agent/src/state/infrastructure/json-state.file-store.ts
+  - apps/agent/src/control-core/agent-control-core.ts
+  - apps/agent/src/control-core/local-control-service.ts
+  - apps/agent/src/control-core/public-control-state.ts
+  - apps/agent/src/control-core/public-control-files.ts
+  - apps/agent/src/pending-activity.ts
+  - apps/agent/src/runtime/infrastructure/supervisor-control.repository.ts
+  - apps/agent/src/platform/control/linux-dev-process-control.ts
+  - apps/agent/src/log-forwarder.ts
+  - apps/agent/src/tests/state-ownership-boundary.test.ts
+  - .ralph-loop/runtime/prd.json
+  - .ralph-loop/runtime/progress.txt
+- **Learnings for future iterations:**
+  - For canonical state JSON in agent flows, prefer state infrastructure APIs (`readStateJsonFile`, `writeStateJsonFile`, `removeStateFile`) to keep behavior consistent (atomic writes, schema parse, optional mode) and auditable.
+  - Keep feature modules focused on domain/application decisions; repository/store modules should own file persistence mechanics and low-level cleanup.
+  - A lightweight boundary test that inspects source imports can catch accidental drift back to direct file persistence for canonical state paths.
 ---

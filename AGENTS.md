@@ -286,6 +286,7 @@ Why:
 - Do not add Chromium auto-update logic to `.devcontainer/post-create.sh`, `.devcontainer/post-start.sh`, or refresh workflows; version bumps must happen in explicit PRs.
 - Before debugging `/api/refresh-maersk/:container`, run `pnpm run maersk:smoke:puppeteer` to validate browser launch and classify failures as `missing_browser_binary`, `invalid_chrome_path`, or `launch_incompatibility`.
 - For `/api/refresh-maersk/:container` smoke, minimum pass criterion is response output not containing `Browser launch failed`; provider-side `403/502` responses are acceptable for this smoke if launch succeeded.
+- For agent canonical state files (`control-base.runtime.json`, `control-overrides.local.json`, `control-remote-cache.json`, `infra-config.json`, `supervisor-control.json`, `pending-activity-events.json`, public control JSONs, and `agent-log-forwarder-state.json`), route reads/writes/removals through `@agent/state/infrastructure/json-state.file-store` (or delegating repositories) instead of direct `fs` persistence in feature modules.
 
 ---
 

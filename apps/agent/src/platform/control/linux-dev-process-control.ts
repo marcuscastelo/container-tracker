@@ -9,6 +9,7 @@ import {
   createControlCommandRunner,
 } from '@agent/platform/control/control-command'
 import type { AgentControlStrategy } from '@agent/platform/control/control-strategy.contract'
+import { writeSupervisorControl } from '@agent/runtime/infrastructure/supervisor-control.repository'
 
 const DEFAULT_PROCESS_EXIT_WAIT_MS = 5_000
 const PROCESS_EXIT_POLL_INTERVAL_MS = 100
@@ -217,20 +218,11 @@ async function resolveEffectiveSupervisorPid(command: {
 }
 
 function requestLocalRuntimeRestart(supervisorControlPath: string): void {
-  fs.mkdirSync(path.dirname(supervisorControlPath), { recursive: true })
-  fs.writeFileSync(
-    supervisorControlPath,
-    `${JSON.stringify(
-      {
-        drain_requested: true,
-        reason: 'manual',
-        requested_at: new Date().toISOString(),
-      },
-      null,
-      2,
-    )}\n`,
-    'utf8',
-  )
+  writeSupervisorControl(supervisorControlPath, {
+    drain_requested: true,
+    reason: 'manual',
+    requested_at: new Date().toISOString(),
+  })
 }
 
 function startLocalRuntimeSupervisor(command: {
