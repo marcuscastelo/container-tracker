@@ -306,6 +306,24 @@ export const AgentRequestOperationResponseSchema = z.object({
   requestedAt: z.string().datetime({ offset: true }),
 })
 
+const AgentUpdateManifestAssetSchema = z.object({
+  url: z.string().url(),
+  checksum: z.string().regex(/^[a-f0-9]{64}$/iu),
+})
+
+export const AgentRuntimeUpdateManifestResponseSchema = z.object({
+  version: z.string().min(1),
+  channel: z.string().min(1),
+  published_at: z.string().datetime({ offset: true }).nullable().optional(),
+  platforms: z.record(z.string().min(1), AgentUpdateManifestAssetSchema),
+  update_available: z.boolean(),
+  desired_version: z.string().nullable(),
+  current_version: z.string().min(1),
+  update_ready_version: z.string().nullable(),
+  restart_required: z.boolean(),
+  restart_requested_at: z.string().datetime({ offset: true }).nullable(),
+})
+
 export const AgentUpdateManifestResponseSchema = z.object({
   version: z.string().min(1),
   download_url: z.string().url().nullable(),
