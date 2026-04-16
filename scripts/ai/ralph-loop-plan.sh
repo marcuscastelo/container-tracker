@@ -35,7 +35,8 @@ user_prompt="$(resolve_input_text "$input_arg")"
 
 tmp_prompt_file="$(mktemp)"
 tmp_clean_file="$(mktemp)"
-trap 'rm -f "$tmp_prompt_file" "$tmp_clean_file"' EXIT
+tmp_fenced_file="$(mktemp)"
+trap 'rm -f "$tmp_prompt_file" "$tmp_clean_file" "$tmp_fenced_file"' EXIT
 
 cat > "$tmp_prompt_file" <<EOF
 You are generating a PRD JSON for Ralph autonomous execution.
@@ -56,16 +57,43 @@ User request:
 $user_prompt
 EOF
 
-run_agent_prompt "$tmp_prompt_file" "$raw_output_file"
-sed '/^```/d' "$raw_output_file" > "$tmp_clean_file"
+run_agent_prompt "$tmp_prompt_file" "$raw_output_file" "PRD planning"
+tr -d '\r' < "$raw_output_file" | sed '/^[[:space:]]*```/d' > "$tmp_clean_file"
 
-if ! jq empty "$tmp_clean_file" >/dev/null 2>&1; then
+valid_json_file=""
+if jq empty "$tmp_clean_file" >/dev/null 2>&1; then
+  valid_json_file="$tmp_clean_file"
+else
+  awk '
+    BEGIN { in_fence=0 }
+    /^[[:space:]]*```/ {
+      if (in_fence == 0) { in_fence=1; next }
+      exit
+    }
+    in_fence == 1 { print }
+  ' "$raw_output_file" > "$tmp_fenced_file"
+
+  if [ -s "$tmp_fenced_file" ] && jq empty "$tmp_fenced_file" >/dev/null 2>&1; then
+    valid_json_file="$tmp_fenced_file"
+  fi
+fi
+
+if [ -z "$valid_json_file" ]; then
+  raw_summary="$(tr -d '\r' < "$raw_output_file" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  if [ "$raw_summary" = "Execution error" ]; then
+    rl_error "Agent returned 'Execution error' instead of PRD JSON."
+    if [ "$RALPH_AGENT" = "claude" ]; then
+      rl_error "Claude endpoint: ${ANTHROPIC_BASE_URL:-$RALPH_CLAUDE_BASE_URL}"
+      rl_error "Claude model: $RALPH_CLAUDE_MODEL"
+      rl_error "Tip: retry with --agent codex or verify the Claude endpoint/model."
+    fi
+  fi
   rl_error "Generated output is not valid JSON."
   rl_error "Inspect raw output at: $raw_output_file"
   exit 1
 fi
 
 mkdir -p "$(dirname "$output_file")"
-cp "$tmp_clean_file" "$output_file"
+cp "$valid_json_file" "$output_file"
 
 rl_info "Ralph PRD generated: $output_file"
