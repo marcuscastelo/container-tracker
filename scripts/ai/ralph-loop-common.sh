@@ -9,6 +9,9 @@ export RALPH_LOOP_ROOT="${RALPH_LOOP_ROOT:-$REPO_ROOT/tools/ralph-loop}"
 export RALPH_LOOP_WORKDIR="${RALPH_LOOP_WORKDIR:-$REPO_ROOT/.ralph-loop}"
 export RALPH_MAX_ITERATIONS="${RALPH_MAX_ITERATIONS:-10}"
 export RALPH_ALLOW_DANGEROUS_EXEC="${RALPH_ALLOW_DANGEROUS_EXEC:-1}"
+export RALPH_CLAUDE_MODEL="${RALPH_CLAUDE_MODEL:-google/gemma-4-e4b}"
+export RALPH_CLAUDE_BASE_URL="${RALPH_CLAUDE_BASE_URL:-http://localhost:1234}"
+export RALPH_CLAUDE_AUTH_TOKEN="${RALPH_CLAUDE_AUTH_TOKEN:-lmstudio}"
 
 rl_info() {
   printf '%s\n' "$*"
@@ -91,7 +94,12 @@ run_agent_prompt() {
       codex exec --cd "$REPO_ROOT" --skip-git-repo-check "$mode_flag" -o "$output_file" - < "$prompt_file"
       ;;
     claude)
-      claude --dangerously-skip-permissions --print < "$prompt_file" > "$output_file"
+      ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-$RALPH_CLAUDE_BASE_URL}" \
+      ANTHROPIC_AUTH_TOKEN="${ANTHROPIC_AUTH_TOKEN:-$RALPH_CLAUDE_AUTH_TOKEN}" \
+        claude \
+          --model "$RALPH_CLAUDE_MODEL" \
+          --dangerously-skip-permissions \
+          --print < "$prompt_file" > "$output_file"
       ;;
     amp)
       amp --dangerously-allow-all < "$prompt_file" > "$output_file"
