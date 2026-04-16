@@ -11,6 +11,7 @@ dist/agent-installer-bundle.zip
 
 marucs-src/
 .ralph-loop/
+.ralph
 .agent-runtime/
 .playwright-mcp/
 supabase/.temp/
