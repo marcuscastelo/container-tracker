@@ -1,7 +1,7 @@
 import type { ChildProcess } from 'node:child_process'
 import { HEALTH_POLL_INTERVAL_MS } from '@agent/runtime/domain/runtime-health-policy'
 import { stopRuntimeProcess } from '@agent/runtime/infrastructure/process-runner'
-import { readRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
+import { readRuntimeState } from '@agent/runtime/infrastructure/runtime-state.repository'
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -33,7 +33,7 @@ export async function monitorRuntimeHealthGate(command: {
 
   const startupDeadlineMs = Date.now() + command.startupTimeoutMs
   while (!childExited && Date.now() < startupDeadlineMs) {
-    const health = readRuntimeHealth(command.healthPath)
+    const health = readRuntimeState(command.healthPath)
     if (
       health &&
       health.boot_status === 'healthy' &&

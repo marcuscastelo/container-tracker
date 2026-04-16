@@ -71,7 +71,8 @@ jobs:
                     "checksum": $windows_checksum
                   }
                 }
-              | .published_at = $published_at' \
+              | .published_at = $published_at
+              | del(.download_url, .checksum)' \
             agent-manifests/canary.json > agent-manifests/stable.json
 
       - name: Commit stable manifest

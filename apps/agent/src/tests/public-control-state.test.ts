@@ -14,7 +14,7 @@ import {
 } from '@agent/control-core/public-control-state'
 import { createInitialReleaseState } from '@agent/release/domain/release-state'
 import { writeReleaseState } from '@agent/release/infrastructure/release-state.file-repository'
-import { writeRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
+import { writeRuntimeState } from '@agent/runtime/infrastructure/runtime-state.repository'
 import { describe, expect, it } from 'vitest'
 
 function createLayout(baseDir: string): AgentPathLayout {
@@ -69,7 +69,7 @@ describe('agent control public state', () => {
       AGENT_UPDATE_MANIFEST_CHANNEL: 'stable',
     })
 
-    writeRuntimeHealth(layout.runtimeStatePath, {
+    writeRuntimeState(layout.runtimeStatePath, {
       agent_version: '1.0.0',
       boot_status: 'healthy',
       update_state: 'idle',

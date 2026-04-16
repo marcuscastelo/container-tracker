@@ -51,14 +51,18 @@ export function ensureBootstrapPlaceholdersAbsent(config: ValidatedBootstrapConf
   ensureBootstrapPlaceholdersAbsentPolicy(config)
 }
 
-export function resolveEffectiveRuntimeConfig(parsed: ParsedAgentConfig): ValidatedAgentConfig {
-  return resolveEffectiveRuntimeConfigPolicy(parsed)
+export function resolveEffectiveRuntimeConfig(
+  parsed: ParsedAgentConfig,
+  context?: Parameters<typeof resolveEffectiveRuntimeConfigPolicy>[1],
+): ValidatedAgentConfig {
+  return resolveEffectiveRuntimeConfigPolicy(parsed, context)
 }
 
 export function resolveEffectiveBootstrapConfig(
   parsed: ParsedAgentConfig,
+  context?: Parameters<typeof resolveEffectiveBootstrapConfigPolicy>[1],
 ): ValidatedBootstrapConfig {
-  return resolveEffectiveBootstrapConfigPolicy(parsed)
+  return resolveEffectiveBootstrapConfigPolicy(parsed, context)
 }
 
 export function validateAgentConfig(parsed: ParsedAgentConfig): ValidatedAgentConfig {

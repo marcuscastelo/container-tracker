@@ -20,7 +20,7 @@ import {
   ValidatedAgentConfigSchema,
   type ValidatedBootstrapConfig,
 } from '@agent/core/contracts/agent-config.contract'
-import { readRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
+import { readRuntimeState } from '@agent/runtime/infrastructure/runtime-state.repository'
 import { toReleaseState } from '@agent/state/release-state.mapper'
 import { z } from 'zod/v4'
 // biome-ignore lint/style/noRestrictedImports: CLI runtime resolves direct .ts imports for bundled agent execution.
@@ -209,9 +209,9 @@ function createDefaultCommandRunner(): CommandRunner {
 
 async function runStatusCommand(): Promise<number> {
   const layout = resolveAgentPathLayout()
-  const status = readRuntimeHealth(layout.runtimeStatePath)
+  const status = readRuntimeState(layout.runtimeStatePath)
   if (!status) {
-    console.error(`[ct-agent] runtime health unavailable at ${layout.runtimeStatePath}`)
+    console.error(`[ct-agent] runtime state unavailable at ${layout.runtimeStatePath}`)
     return EXIT_FATAL
   }
 

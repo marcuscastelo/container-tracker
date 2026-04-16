@@ -29,7 +29,7 @@ import {
 import { BoundaryValidationError } from '@agent/core/errors/boundary-validation.error'
 import { toHeartbeatPayload } from '@agent/observability/observability.mapper'
 import { createProviderRunnerRegistry } from '@agent/providers/common/provider-runner.registry'
-import { writeRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
+import { writeRuntimeState } from '@agent/runtime/infrastructure/runtime-state.repository'
 import {
   clearSupervisorControl,
   readSupervisorControl,
@@ -629,7 +629,7 @@ async function sendHeartbeatAndPersistHealth(command: {
     command.state.bootStatus = 'degraded'
   }
 
-  writeRuntimeHealth(command.healthPath, {
+  writeRuntimeState(command.healthPath, {
     agent_version: command.agentVersion,
     boot_status: command.state.bootStatus,
     update_state: command.state.updateState,

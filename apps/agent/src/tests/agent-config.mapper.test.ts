@@ -1,6 +1,8 @@
 import {
   parseAgentConfig,
   parseBootstrapConfig,
+  resolveEffectiveBootstrapConfig,
+  resolveEffectiveRuntimeConfig,
   serializeAgentConfig,
   validateAgentConfig,
 } from '@agent/config/agent-config.mapper'
@@ -82,5 +84,30 @@ describe('agent config mapper', () => {
     const serialized = serializeAgentConfig(validateAgentConfig(parsed))
     expect(serialized).toContain('BACKEND_URL=https://api.example.com')
     expect(serialized).toContain('AGENT_TOKEN=token-123')
+  })
+
+  it('forwards optional hostname context to runtime resolution', () => {
+    const parsed = parseAgentConfig(
+      makeRaw({
+        BACKEND_URL: 'https://api.example.com',
+        AGENT_TOKEN: 'token-123',
+        TENANT_ID: '11111111-1111-4111-8111-111111111111',
+      }),
+    )
+
+    const validated = resolveEffectiveRuntimeConfig(parsed, { hostname: 'edge-agent-01' })
+    expect(validated.AGENT_ID).toBe('edge-agent-01')
+  })
+
+  it('forwards optional hostname context to bootstrap resolution', () => {
+    const parsed = parseAgentConfig(
+      makeRaw({
+        BACKEND_URL: 'https://api.example.com',
+        INSTALLER_TOKEN: 'installer-token-123',
+      }),
+    )
+
+    const validated = resolveEffectiveBootstrapConfig(parsed, { hostname: 'bootstrap-node-01' })
+    expect(validated.AGENT_ID).toBe('bootstrap-node-01')
   })
 })

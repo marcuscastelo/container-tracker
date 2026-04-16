@@ -21,13 +21,13 @@ import {
 } from '@agent/control-core/contracts'
 import { ValidatedAgentConfigSchema } from '@agent/core/contracts/agent-config.contract'
 import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
-import type { RuntimeState as RuntimeHealthRecord } from '@agent/core/contracts/runtime-state.contract'
+import type { RuntimeState } from '@agent/core/contracts/runtime-state.contract'
 import { appendPendingActivityEvents } from '@agent/pending-activity'
 import {
   readReleaseState,
   writeReleaseState,
 } from '@agent/release/infrastructure/release-state.file-repository'
-import { readRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
+import { readRuntimeState } from '@agent/runtime/infrastructure/runtime-state.repository'
 import { writeFileAtomic } from '@agent/state/file-io'
 import {
   readStateJsonFile,
@@ -73,7 +73,7 @@ type ControlSyncResult = {
   readonly remotePolicy: RemotePolicyState
   readonly remoteCommands: readonly RemoteCommandRecord[]
   readonly releaseState: ReleaseState
-  readonly runtimeHealth: RuntimeHealthRecord | null
+  readonly runtimeState: RuntimeState | null
   readonly snapshot: AgentOperationalSnapshot
 }
 
@@ -384,22 +384,22 @@ function applyEditableConfig(
   return nextConfig
 }
 
-function resolveRuntimeStatus(runtimeHealth: RuntimeHealthRecord | null) {
-  if (!runtimeHealth) {
+function resolveRuntimeStatus(runtimeState: RuntimeState | null) {
+  if (!runtimeState) {
     return {
       status: 'STOPPED' as const,
       health: 'UNHEALTHY' as const,
     }
   }
 
-  if (runtimeHealth.boot_status === 'healthy') {
+  if (runtimeState.boot_status === 'healthy') {
     return {
       status: 'RUNNING' as const,
       health: 'HEALTHY' as const,
     }
   }
 
-  if (runtimeHealth.boot_status === 'degraded') {
+  if (runtimeState.boot_status === 'degraded') {
     return {
       status: 'DEGRADED' as const,
       health: 'DEGRADED' as const,
@@ -565,14 +565,14 @@ function clearReleaseStateLocalFlags(state: ReleaseState): ReleaseState {
 function createSnapshot(command: {
   readonly baseConfig: ControlRuntimeConfig
   readonly effectiveConfig: ControlRuntimeConfig
-  readonly runtimeHealth: RuntimeHealthRecord | null
+  readonly runtimeState: RuntimeState | null
   readonly releaseState: ReleaseState
   readonly localOverrides: z.infer<typeof LocalOverrideStateSchema>
   readonly remotePolicy: RemotePolicyState
   readonly infraConfig: z.infer<typeof AgentInfraConfigResponseSchema> | null
   readonly infraSource: 'REMOTE' | 'FALLBACK'
 }): AgentOperationalSnapshot {
-  const runtimeStatus = resolveRuntimeStatus(command.runtimeHealth)
+  const runtimeStatus = resolveRuntimeStatus(command.runtimeState)
   const localBlockedVersions = uniqueStrings([
     ...command.releaseState.blocked_versions,
     ...command.localOverrides.blockedVersions,
@@ -598,8 +598,8 @@ function createSnapshot(command: {
     runtime: {
       status: runtimeStatus.status,
       health: runtimeStatus.health,
-      lastHeartbeatAt: command.runtimeHealth?.last_heartbeat_at ?? null,
-      activeJobs: command.runtimeHealth?.active_jobs ?? 0,
+      lastHeartbeatAt: command.runtimeState?.last_heartbeat_at ?? null,
+      activeJobs: command.runtimeState?.active_jobs ?? 0,
     },
     release: {
       current: command.releaseState.current_version,
@@ -686,15 +686,15 @@ export async function syncAgentControlState(command: {
 
   writeFileAtomic(command.layout.configEnvPath, serializeRuntimeConfig(effectiveConfig))
 
-  const runtimeHealth = readRuntimeHealth(command.layout.runtimeStatePath)
+  const runtimeState = readRuntimeState(command.layout.runtimeStatePath)
   const releaseState = readReleaseState(
     command.layout.releaseStatePath,
-    runtimeHealth?.agent_version ?? effectiveConfig.AGENT_ID,
+    runtimeState?.agent_version ?? effectiveConfig.AGENT_ID,
   )
   const snapshot = createSnapshot({
     baseConfig,
     effectiveConfig,
-    runtimeHealth,
+    runtimeState,
     releaseState,
     localOverrides,
     remotePolicy: remoteState.policy,
@@ -709,7 +709,7 @@ export async function syncAgentControlState(command: {
     remotePolicy: remoteState.policy,
     remoteCommands: remoteState.commands,
     releaseState,
-    runtimeHealth,
+    runtimeState,
     snapshot,
   }
 }
@@ -837,10 +837,10 @@ export async function executeLocalReset(command: {
 }): Promise<ControlSyncResult> {
   writeLocalOverrideState(command.layout, {})
 
-  const runtimeHealth = readRuntimeHealth(command.layout.runtimeStatePath)
+  const runtimeState = readRuntimeState(command.layout.runtimeStatePath)
   const releaseState = readReleaseState(
     command.layout.releaseStatePath,
-    runtimeHealth?.agent_version ?? command.currentConfig.AGENT_ID,
+    runtimeState?.agent_version ?? command.currentConfig.AGENT_ID,
   )
   writeReleaseState(command.layout.releaseStatePath, clearReleaseStateLocalFlags(releaseState))
 

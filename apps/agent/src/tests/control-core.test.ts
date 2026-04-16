@@ -19,7 +19,7 @@ import {
   readReleaseState,
   writeReleaseState,
 } from '@agent/release/infrastructure/release-state.file-repository'
-import { writeRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
+import { writeRuntimeState } from '@agent/runtime/infrastructure/runtime-state.repository'
 import { readSupervisorControl } from '@agent/runtime/infrastructure/supervisor-control.repository'
 import { describe, expect, it } from 'vitest'
 
@@ -84,7 +84,7 @@ function baseConfig() {
 }
 
 function writeHealthyRuntime(layout: AgentPathLayout, version: string): void {
-  writeRuntimeHealth(layout.runtimeStatePath, {
+  writeRuntimeState(layout.runtimeStatePath, {
     agent_version: version,
     boot_status: 'healthy',
     update_state: 'idle',
