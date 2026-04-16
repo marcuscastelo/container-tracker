@@ -1,10 +1,10 @@
 import fs from 'node:fs'
+import { parseBootstrapConfig } from '@agent/config/agent-config.policy'
 import {
   loadRawAgentEnvFromFile,
   parseAgentConfig,
-  parseBootstrapConfig,
   serializeBootstrapConfig,
-} from '@agent/config/agent-config.mapper'
+} from '@agent/config/agent-env'
 import type { ValidatedBootstrapConfig } from '@agent/core/contracts/agent-config.contract'
 import type { PlatformPathResolution } from '@agent/platform/platform.contract'
 import { writeFileAtomic } from '@agent/state/file-io'

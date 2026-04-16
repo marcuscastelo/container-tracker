@@ -105,7 +105,7 @@
         "`pnpm --filter agent test` passes for affected config consumers"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

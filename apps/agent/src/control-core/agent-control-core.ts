@@ -1,11 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { validateAgentConfig } from '@agent/config/agent-config.policy'
 import {
   loadRawAgentEnvFromFile,
   parseAgentConfig,
   serializeAgentConfig,
-  validateAgentConfig,
-} from '@agent/config/agent-config.mapper'
+} from '@agent/config/agent-env'
 import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   AgentControlAuditEventSchema,

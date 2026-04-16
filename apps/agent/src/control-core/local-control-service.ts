@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { readAgentEnvFileValues } from '@agent/config/agent-config.mapper'
+import { readAgentEnvFileValues } from '@agent/config/agent-env'
 import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   type ControlRuntimeConfig,

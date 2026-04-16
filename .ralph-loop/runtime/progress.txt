@@ -6,6 +6,7 @@
 - Keep cross-platform path-layout drift guarded by asserting adapter `resolvePaths()` outputs against `resolveAgentPathLayoutPaths` in integration tests (`apps/agent/src/tests/platform-layout-integration.test.ts`).
 - Agent source files enforce `noRestrictedImports`; use absolute `@agent/...` aliases even for sibling imports inside `apps/agent/src/**`.
 - `apps/agent/src/config/agent-config.mapper.ts` is linted with `noBarrelFile`; keep it as explicit compatibility wrappers (functions) instead of pure re-export barrels when delegating to canonical config modules.
+- Production agent consumers should import parse/serialize/env-file helpers from `@agent/config/agent-env` and validation/effective-resolution policy from `@agent/config/agent-config.policy`; keep `agent-config.mapper.ts` as a compatibility/testing facade only.
 - Keep local-control behavior inside `apps/agent/src/platform/control/*` strategies and keep `apps/agent/src/platform/local-control.adapter.ts` as thin strategy composition/dispatch only.
 
 Started: 2026-04-16T00:59:05Z
@@ -132,4 +133,21 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Keep parse/serialize logic in `agent-env.ts` and policy/default/placeholder logic in `agent-config.policy.ts`; avoid re-concentrating these concerns in `agent-config.mapper.ts`.
   - If compatibility layers are required in agent source, implement explicit wrapper functions instead of re-export barrels to satisfy `noBarrelFile`.
   - Injecting hostname via policy options enables deterministic tests for effective config resolution defaults.
+---
+## 2026-04-15 23:07:12 -03 - US-007
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Migrated agent config consumers in runtime-facing infra and control-core paths to canonical config owners by removing production imports of `@agent/config/agent-config.mapper`.
+- Updated env/ bootstrap repositories and control-core services to call `@agent/config/agent-env` for parse/serialize/env-file helpers and `@agent/config/agent-config.policy` for validation/bootstrap parsing.
+- Verified no production source under `apps/agent/src/**` imports the compatibility mapper path.
+- Ran quality gates: targeted `pnpm --filter @container-tracker/agent run type-check`, targeted `vitest` for affected consumers (`control-core`, `ct-agent`, runtime lifecycle, config-state smoke), and full `pnpm sanity` (green).
+- Files changed:
+  - apps/agent/src/config/infrastructure/env-config.repository.ts
+  - apps/agent/src/config/infrastructure/bootstrap-config.repository.ts
+  - apps/agent/src/control-core/agent-control-core.ts
+  - apps/agent/src/control-core/local-control-service.ts
+  - .ralph-loop/runtime/prd.json
+  - .ralph-loop/runtime/progress.txt
+- **Learnings for future iterations:**
+  - Treat `agent-config.mapper.ts` as compatibility-only; new production flows should wire directly to `agent-env` + `agent-config.policy`.
+  - `pnpm sanity` runs Biome fix before checks, so import-order/style normalization may modify touched files even when logic changes are minimal.
 ---
