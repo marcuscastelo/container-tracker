@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 
+import { resolveAgentPathLayoutPaths } from '@agent/platform/agent-path-layout'
 import { ensureDirectory, runCommand, tryCommand } from '@agent/platform/common'
 import { createWindowsLocalControlAdapter } from '@agent/platform/local-control.adapter'
 import type { AgentPlatformAdapter } from '@agent/platform/platform.types'
@@ -99,31 +100,13 @@ export const windowsPlatformAdapter: AgentPlatformAdapter = {
     const publicStateDir =
       normalizeOptionalEnv(command.env.AGENT_PUBLIC_STATE_DIR) ?? path.win32.join(dataDir, 'run')
 
-    return {
+    return resolveAgentPathLayoutPaths({
       dataDir,
-      releasesDir: path.win32.join(dataDir, 'releases'),
-      currentPath: path.win32.join(dataDir, 'current'),
-      previousPath: path.win32.join(dataDir, 'previous'),
-      logsDir: path.win32.join(dataDir, 'logs'),
-      releaseStatePath: path.win32.join(dataDir, 'release-state.json'),
-      runtimeStatePath: path.win32.join(dataDir, 'runtime-state.json'),
-      configEnvPath,
       bootstrapEnvPath,
-      consumedBootstrapEnvPath: `${bootstrapEnvPath}.consumed`,
-      downloadsDir: path.win32.join(dataDir, 'downloads'),
-      baseRuntimeConfigPath: path.win32.join(dataDir, 'control-base.runtime.json'),
-      supervisorControlPath: path.win32.join(dataDir, 'supervisor-control.json'),
-      pendingActivityPath: path.win32.join(dataDir, 'pending-activity-events.json'),
-      controlOverridesPath: path.win32.join(dataDir, 'control-overrides.local.json'),
-      controlRemoteCachePath: path.win32.join(dataDir, 'control-remote-cache.json'),
-      infraConfigPath: path.win32.join(dataDir, 'infra-config.json'),
-      auditLogPath: path.win32.join(dataDir, 'agent-control-audit.ndjson'),
       publicStateDir,
-      publicStatePath: path.win32.join(publicStateDir, 'control-ui-state.json'),
-      publicBackendStatePath: path.win32.join(publicStateDir, 'control-ui-backend-state.json'),
-      publicLogsPath: path.win32.join(publicStateDir, 'control-ui-logs.json'),
-      agentLogForwarderStatePath: path.win32.join(dataDir, 'agent-log-forwarder-state.json'),
-    }
+      configEnvPath,
+      joinPath: path.win32.join,
+    })
   },
   ensureDirectories(command) {
     fs.mkdirSync(command.paths.dataDir, { recursive: true })

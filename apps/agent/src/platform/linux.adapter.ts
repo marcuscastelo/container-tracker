@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 
+import { resolveAgentPathLayoutPaths } from '@agent/platform/agent-path-layout'
 import { ensureDirectory, runCommand, tryCommand } from '@agent/platform/common'
 import { createLinuxLocalControlAdapter } from '@agent/platform/local-control.adapter'
 import type { AgentPlatformAdapter } from '@agent/platform/platform.types'
@@ -105,31 +106,13 @@ export const linuxPlatformAdapter: AgentPlatformAdapter = {
     const publicStateDir =
       normalizeOptionalEnv(command.env.AGENT_PUBLIC_STATE_DIR) ?? path.join(dataDir, 'run')
 
-    return {
+    return resolveAgentPathLayoutPaths({
       dataDir,
-      releasesDir: path.join(dataDir, 'releases'),
-      currentPath: path.join(dataDir, 'current'),
-      previousPath: path.join(dataDir, 'previous'),
-      logsDir: path.join(dataDir, 'logs'),
-      releaseStatePath: path.join(dataDir, 'release-state.json'),
-      runtimeStatePath: path.join(dataDir, 'runtime-state.json'),
-      configEnvPath,
       bootstrapEnvPath,
-      consumedBootstrapEnvPath: `${bootstrapEnvPath}.consumed`,
-      downloadsDir: path.join(dataDir, 'downloads'),
-      baseRuntimeConfigPath: path.join(dataDir, 'control-base.runtime.json'),
-      supervisorControlPath: path.join(dataDir, 'supervisor-control.json'),
-      pendingActivityPath: path.join(dataDir, 'pending-activity-events.json'),
-      controlOverridesPath: path.join(dataDir, 'control-overrides.local.json'),
-      controlRemoteCachePath: path.join(dataDir, 'control-remote-cache.json'),
-      infraConfigPath: path.join(dataDir, 'infra-config.json'),
-      auditLogPath: path.join(dataDir, 'agent-control-audit.ndjson'),
       publicStateDir,
-      publicStatePath: path.join(publicStateDir, 'control-ui-state.json'),
-      publicBackendStatePath: path.join(publicStateDir, 'control-ui-backend-state.json'),
-      publicLogsPath: path.join(publicStateDir, 'control-ui-logs.json'),
-      agentLogForwarderStatePath: path.join(dataDir, 'agent-log-forwarder-state.json'),
-    }
+      configEnvPath,
+      joinPath: path.join,
+    })
   },
   ensureDirectories(command) {
     fs.mkdirSync(command.paths.dataDir, { recursive: true })
