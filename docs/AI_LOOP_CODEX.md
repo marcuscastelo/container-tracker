@@ -99,6 +99,7 @@ The loop will run one story per iteration and stop when it sees `<promise>COMPLE
 - `RALPH_MAX_ITERATIONS` (default: `10`)
 - `RALPH_ALLOW_DANGEROUS_EXEC` (default: `1`)
 - `RALPH_AGENT_TIMEOUT_SECONDS` (default: `0`, disabled)
+- `RALPH_NO_PROGRESS_LIMIT` (default: `2`, set `0` to disable no-progress stop)
 - `RALPH_CLAUDE_MODEL` (default: `google/gemma-4-e4b`)
 - `RALPH_CLAUDE_BASE_URL` (default: `http://localhost:1234`)
 - `RALPH_CLAUDE_AUTH_TOKEN` (default: `lmstudio`)
