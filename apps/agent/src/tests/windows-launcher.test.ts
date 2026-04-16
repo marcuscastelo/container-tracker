@@ -23,8 +23,16 @@ describe('windows supervisor launcher', () => {
 
     expect(content).toContain('Source: "run-supervisor.ps1"')
     expect(content).toContain('{app}\\app\\dist\\run-supervisor.ps1')
+    expect(content).toContain('Filename: "schtasks.exe"')
+    expect(content).toContain('/Create /F /SC ONLOGON /IT /RL LIMITED')
+    expect(content).toContain(
+      'powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden',
+    )
+    expect(content).toContain('Starting agent supervisor task.')
     expect(content).toContain('Starting agent tray host.')
     expect(content).toContain('{app}\\app\\dist\\agent-tray-host.ps1')
+    expect(content).not.toContain("New-ScheduledTaskAction -Execute 'cmd.exe'")
+    expect(content).not.toContain("New-ScheduledTaskAction -Execute 'powershell.exe'")
     expect(content).not.toContain('Starting agent runtime process.')
   })
 
@@ -41,6 +49,7 @@ describe('windows supervisor launcher', () => {
 
     expect(content).toContain("$agentTaskName = 'ContainerTrackerAgent'")
     expect(content).toContain('schtasks.exe')
+    expect(content).toContain('Abrir terminal (logs ao vivo)')
     expect(content).not.toContain('$agentScriptPath')
     expect(content).not.toContain('Stop-AgentNodeProcesses')
     expect(content).not.toContain("Join-Path $installRoot 'app\\dist\\agent.js'")

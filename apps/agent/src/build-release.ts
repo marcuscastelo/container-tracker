@@ -558,6 +558,15 @@ export function collectInstallerTaskRegistrationErrors(
     errors.push('installer.iss missing expected ONLOGON task registration for supervisor')
   }
 
+  const wrapsTaskWithCmdExe = taskRegistrationLines.some(
+    (line) =>
+      line.includes('new-scheduledtaskaction') &&
+      (line.includes("-execute 'cmd.exe'") || line.includes('-execute "cmd.exe"')),
+  )
+  if (wrapsTaskWithCmdExe) {
+    errors.push('installer.iss task registration must execute powershell.exe directly')
+  }
+
   const usesLegacyAgentTrayHost = taskRegistrationLines.some((line) =>
     line.includes('agent-tray-host.ps1'),
   )

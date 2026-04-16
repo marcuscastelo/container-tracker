@@ -39,4 +39,14 @@ Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy 
       'installer.iss agent task must launch run-supervisor.ps1 instead of agent-tray-host.ps1',
     )
   })
+
+  it('rejects Register-ScheduledTask registrations that still wrap execution with cmd.exe', () => {
+    const installerContent = `
+Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#AgentTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\\app\\dist\\run-supervisor.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null"""
+`.trim()
+
+    expect(collectInstallerTaskRegistrationErrors(installerContent)).toContain(
+      'installer.iss task registration must execute powershell.exe directly',
+    )
+  })
 })

@@ -129,6 +129,46 @@ function Open-LogFile {
   Start-Process -FilePath 'notepad.exe' -ArgumentList @($Path) | Out-Null
 }
 
+function Escape-PowerShellSingleQuotedLiteral {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Value
+  )
+
+  return $Value.Replace("'", "''")
+}
+
+function Open-AgentTerminal {
+  Ensure-FileExists -Path $supervisorLogPath
+  Ensure-FileExists -Path $agentOutLogPath
+  Ensure-FileExists -Path $agentErrLogPath
+
+  $escapedSupervisorLogPath = Escape-PowerShellSingleQuotedLiteral -Value $supervisorLogPath
+  $escapedOutLogPath = Escape-PowerShellSingleQuotedLiteral -Value $agentOutLogPath
+  $escapedErrLogPath = Escape-PowerShellSingleQuotedLiteral -Value $agentErrLogPath
+
+  $command = @(
+    '$ErrorActionPreference = ''Stop''',
+    '$host.UI.RawUI.WindowTitle = ''Container Tracker Agent - Runtime Logs''',
+    ('$supervisor = ''{0}''' -f $escapedSupervisorLogPath),
+    ('$out = ''{0}''' -f $escapedOutLogPath),
+    ('$err = ''{0}''' -f $escapedErrLogPath),
+    'Write-Host ''Container Tracker Agent - terminal de logs''',
+    'Write-Host ''Pressione Ctrl+C para fechar.''',
+    'Write-Host ''''',
+    'Get-Content -LiteralPath @($supervisor, $out, $err) -Tail 40 -Wait'
+  ) -join '; '
+
+  Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-NoExit',
+    '-Command',
+    $command
+  ) | Out-Null
+}
+
 function Get-AgentStatusText {
   $snapshot = Get-AgentTaskSnapshot
   $script:lastKnownTaskStatus = $snapshot.Status
@@ -252,6 +292,12 @@ try {
       Open-LogFile -Path $agentErrLogPath
     })
 
+  $openTerminalMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
+  $openTerminalMenuItem.Text = 'Abrir terminal (logs ao vivo)'
+  $null = $openTerminalMenuItem.add_Click({
+      Open-AgentTerminal
+    })
+
   $restartMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
   $restartMenuItem.Text = 'Reiniciar agente'
   $null = $restartMenuItem.add_Click({
@@ -272,6 +318,7 @@ try {
   $null = $contextMenu.Items.Add($openSupervisorLogMenuItem)
   $null = $contextMenu.Items.Add($openOutLogMenuItem)
   $null = $contextMenu.Items.Add($openErrLogMenuItem)
+  $null = $contextMenu.Items.Add($openTerminalMenuItem)
   $null = $contextMenu.Items.Add($restartMenuItem)
   $null = $contextMenu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
   $null = $contextMenu.Items.Add($exitMenuItem)
