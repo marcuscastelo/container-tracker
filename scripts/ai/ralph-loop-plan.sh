@@ -56,7 +56,7 @@ User request:
 $user_prompt
 EOF
 
-run_agent_prompt "$tmp_prompt_file" "$raw_output_file"
+run_agent_prompt "$tmp_prompt_file" "$raw_output_file" "PRD planning"
 sed '/^```/d' "$raw_output_file" > "$tmp_clean_file"
 
 if ! jq empty "$tmp_clean_file" >/dev/null 2>&1; then

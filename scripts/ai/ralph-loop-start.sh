@@ -139,6 +139,8 @@ if [ -n "$source_path" ] && jq empty "$source_path" >/dev/null 2>&1; then
   cp "$source_path" "$plan_json"
   rl_info "Using provided PRD JSON: $source_path"
 else
+  rl_info "Planning phase started for feature: $feature_key"
+
   if [ -n "$source_path" ]; then
     cp "$source_path" "$feature_dir/prd.md"
     rl_info "Saved PRD markdown copy: $feature_dir/prd.md"
@@ -147,6 +149,7 @@ else
   bash "$SCRIPT_DIR/ralph-loop-plan.sh" "$prd_source" "$plan_json"
 fi
 
+rl_info "Building Ralph execution input for feature: $feature_key"
 bash "$SCRIPT_DIR/ralph-loop-make-input.sh" "$plan_json" "$progress_file" "$input_json"
 
 if [ "$prepare_only" = "1" ]; then
