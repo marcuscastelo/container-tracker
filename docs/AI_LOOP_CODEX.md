@@ -2,7 +2,7 @@
 
 This project integrates [snarktank/ralph](https://github.com/snarktank/ralph) as a submodule in `tools/ralph-loop` and runs it through local wrappers in `scripts/ai`.
 
-The current default is Codex. Claude can be enabled later via `RALPH_AGENT=claude`.
+The current default is Claude. Codex can be enabled via `RALPH_AGENT=codex`.
 
 ## Setup
 
@@ -51,7 +51,7 @@ Useful options:
 pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --prepare-only
 
 # Limit iterations and retries
-pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --max-iterations 5 --exec-retries 3
+pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --max-iterations 5 --plan-retries 2 --exec-retries 3
 ```
 
 ## One Command Flow (Pasted PRD Text -> Ralph)
@@ -93,7 +93,7 @@ The loop will run one story per iteration and stop when it sees `<promise>COMPLE
 
 ## Environment Variables
 
-- `RALPH_AGENT` (default: `codex`): `codex | claude | amp`
+- `RALPH_AGENT` (default: `claude`): `codex | claude | amp`
 - `RALPH_LOOP_ROOT` (default: `tools/ralph-loop`)
 - `RALPH_LOOP_WORKDIR` (default: `.ralph-loop`)
 - `RALPH_MAX_ITERATIONS` (default: `10`)
