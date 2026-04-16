@@ -22,7 +22,7 @@
     "type-check:agent": "pnpm --filter @container-tracker/agent run type-check",
     "type-check:agent-control-ui": "pnpm --filter @container-tracker/agent run type-check",
     "test": "vitest run",
-    "test:silent": "vitest run --silent | grep -C 5 -E 'Test Files|Tests |failed|passed|Duration'",
+    "test:silent": "node scripts/vitest-summary.mjs",
     "test:coverage": "vitest run --coverage",
     "coverage:report": "node scripts/coverage-policy-report.mjs",
     "coverage:baseline": "pnpm run test:coverage && node scripts/coverage-policy-report.mjs --write --write-baseline",
