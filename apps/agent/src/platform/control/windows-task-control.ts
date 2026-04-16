@@ -96,11 +96,9 @@ export function createWindowsTaskControlStrategy(
 
   return {
     queryAgent(platformCommand) {
-      return queryWindowsTask({
-        runCommand,
-        env,
-        platformCommand,
-      })
+      const queryCommand =
+        platformCommand === undefined ? { runCommand, env } : { runCommand, env, platformCommand }
+      return queryWindowsTask(queryCommand)
     },
     async startAgent(platformCommand) {
       await runWindowsTaskCommand({

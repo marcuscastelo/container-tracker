@@ -59,11 +59,9 @@ export function createLinuxServiceControlStrategy(
 
   return {
     queryAgent(platformCommand) {
-      return queryLinuxService({
-        runCommand,
-        env,
-        platformCommand,
-      })
+      const queryCommand =
+        platformCommand === undefined ? { runCommand, env } : { runCommand, env, platformCommand }
+      return queryLinuxService(queryCommand)
     },
     async startAgent(platformCommand) {
       await runCommand('systemctl', ['start', resolveLinuxServiceName(platformCommand, env)])
