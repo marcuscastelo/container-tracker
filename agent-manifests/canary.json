@@ -1,15 +1,15 @@
 {
   "channel": "canary",
-  "version": "v0.4.0-alpha.1",
+  "version": "v0.4.0-alpha.2",
   "platforms": {
     "linux-x64": {
-      "url": "https://github.com/marcuscastelo/container-tracker/releases/download/agent/vv0.4.0-alpha.1/agent-linux-x64.tar.gz",
-      "checksum": "94d30557b9ad5b2b4bf03fccacd45678e5cd0ce3abe7df665c8f83ec79df678b"
+      "url": "https://github.com/marcuscastelo/container-tracker/releases/download/agent/vv0.4.0-alpha.2/agent-linux-x64.tar.gz",
+      "checksum": "374958cb72a10546c649724ad4b24b0f16210a8a6de646955004209c5ee53242"
     },
     "windows-x64": {
-      "url": "https://github.com/marcuscastelo/container-tracker/releases/download/agent/vv0.4.0-alpha.1/agent-windows-x64.zip",
-      "checksum": "b19bbc2f013ca39103cc9616d38eca8ec623ccc4e7aa3079c78cd532c1e7e627"
+      "url": "https://github.com/marcuscastelo/container-tracker/releases/download/agent/vv0.4.0-alpha.2/agent-windows-x64.zip",
+      "checksum": "fe46aa4afcbda745157fcad0bbf288627132203a1af2de3d9a2c7c47271b3761"
     }
   },
-  "published_at": "2026-04-05T01:39:44Z"
+  "published_at": "2026-04-16T12:16:31Z"
 }
