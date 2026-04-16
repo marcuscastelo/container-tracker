@@ -4,6 +4,7 @@ import {
 } from '@agent/core/contracts/agent-config.contract'
 import type { ProviderRunResult } from '@agent/core/contracts/provider.contract'
 import type { AgentSyncJob } from '@agent/core/contracts/sync-job.contract'
+import { AgentTokenUnauthorizedError } from '@agent/core/errors/agent-token-unauthorized.error'
 import type { ProviderRunnerRegistry } from '@agent/providers/common/provider-runner.registry'
 import { runSyncCycle } from '@agent/sync/application/run-sync-cycle'
 import type { SyncRuntimeState } from '@agent/sync/application/sync-types'
@@ -97,6 +98,39 @@ function makeTargetsResponse(targets: readonly AgentSyncJob[]): SyncTargetsRespo
 }
 
 describe('runSyncCycle', () => {
+  it('propagates typed unauthorized errors to runtime orchestration', async () => {
+    const state = makeState()
+    const backendClient: SyncBackendClient = {
+      async fetchTargets() {
+        throw new AgentTokenUnauthorizedError('targets request unauthorized (401)')
+      },
+      async ingestSnapshot() {
+        return {
+          kind: 'accepted',
+          snapshotId: '22222222-2222-4222-8222-222222222222',
+          newObservationsCount: 0,
+          newAlertsCount: 0,
+        }
+      },
+    }
+
+    await expect(
+      runSyncCycle({
+        config: makeConfig(1),
+        agentVersion: '1.0.0',
+        state,
+        reason: 'interval',
+        providerRegistry: makeRegistry(
+          makeProviderResult({
+            status: 'success',
+            raw: { ok: true },
+          }),
+        ),
+        backendClient,
+      }),
+    ).rejects.toBeInstanceOf(AgentTokenUnauthorizedError)
+  })
+
   it('recovers owned leases on startup and processes a successful target', async () => {
     const state = makeState()
     const fetchCalls: Array<{ readonly recoverOwnedLeases: boolean }> = []

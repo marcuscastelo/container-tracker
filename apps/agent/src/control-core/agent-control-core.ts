@@ -22,6 +22,10 @@ import {
 import { ValidatedAgentConfigSchema } from '@agent/core/contracts/agent-config.contract'
 import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
 import type { RuntimeState } from '@agent/core/contracts/runtime-state.contract'
+import {
+  AgentTokenUnauthorizedError,
+  isAgentTokenUnauthorizedError,
+} from '@agent/core/errors/agent-token-unauthorized.error'
 import { appendPendingActivityEvents } from '@agent/pending-activity'
 import {
   readReleaseState,
@@ -496,6 +500,10 @@ async function fetchJson<T extends z.ZodType>(command: {
     },
   })
 
+  if (response.status === 401) {
+    throw new AgentTokenUnauthorizedError(`unauthorized request to ${command.url}`)
+  }
+
   const raw = await response.json().catch(() => ({}))
   if (!response.ok) {
     const errorMessage =
@@ -651,7 +659,10 @@ export async function syncAgentControlState(command: {
         fetchedAt: new Date().toISOString(),
         state: fetchedRemoteState,
       })
-    } catch {
+    } catch (error) {
+      if (isAgentTokenUnauthorizedError(error)) {
+        throw error
+      }
       // fall back to cache below
     }
   }
@@ -671,7 +682,10 @@ export async function syncAgentControlState(command: {
         fetchedAt: new Date().toISOString(),
         config: fetchedInfraConfig,
       })
-    } catch {
+    } catch (error) {
+      if (isAgentTokenUnauthorizedError(error)) {
+        throw error
+      }
       infraSource = 'FALLBACK'
     }
   }

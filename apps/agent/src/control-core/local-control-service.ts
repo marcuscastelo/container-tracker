@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { readAgentEnvFileValues } from '@agent/config/agent-env'
 import type { AgentPathLayout } from '@agent/config/config.contract'
+import { readInstallerTokenValue } from '@agent/config/infrastructure/installer-token-state.repository'
 import {
   type ControlRuntimeConfig,
   ControlRuntimeConfigSchema,
@@ -199,7 +200,9 @@ export function readAgentControlBackendState(layout: AgentPathLayout) {
   const currentConfig = readCurrentControlRuntimeConfig(layout)
   const bootstrapConfigAvailable = fs.existsSync(layout.bootstrapEnvPath)
   const consumedBootstrapAvailable = fs.existsSync(layout.consumedBootstrapEnvPath)
-  const installerTokenAvailable = hasInstallerToken(layout.bootstrapEnvPath)
+  const installerTokenAvailable =
+    hasInstallerToken(layout.bootstrapEnvPath) ||
+    readInstallerTokenValue({ paths: layout }) !== null
   const bootstrapBackendUrl = readBackendUrlFromEnvFile(layout.bootstrapEnvPath)
   const consumedBootstrapBackendUrl = readBackendUrlFromEnvFile(layout.consumedBootstrapEnvPath)
 

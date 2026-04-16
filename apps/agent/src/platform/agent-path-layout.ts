@@ -16,6 +16,7 @@ export const AGENT_PATH_LAYOUT = {
     runtimeState: 'runtime-state.json',
     configEnv: 'config.env',
     bootstrapEnv: 'bootstrap.env',
+    installerTokenState: 'installer-token-state.json',
     baseRuntimeConfig: 'control-base.runtime.json',
     supervisorControl: 'supervisor-control.json',
     pendingActivity: 'pending-activity-events.json',
@@ -72,6 +73,10 @@ export function resolveAgentPathLayoutPaths(
     configEnvPath,
     bootstrapEnvPath,
     consumedBootstrapEnvPath: `${bootstrapEnvPath}${AGENT_PATH_LAYOUT.consumedBootstrapSuffix}`,
+    installerTokenStatePath: command.joinPath(
+      command.dataDir,
+      AGENT_PATH_LAYOUT.files.installerTokenState,
+    ),
     downloadsDir: command.joinPath(command.dataDir, AGENT_PATH_LAYOUT.directories.downloads),
     baseRuntimeConfigPath: command.joinPath(
       command.dataDir,

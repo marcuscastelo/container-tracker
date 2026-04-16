@@ -19,6 +19,7 @@ function createLayout(baseDir: string): AgentPathLayout {
     baseRuntimeConfigPath: path.join(baseDir, 'control-base.runtime.json'),
     bootstrapEnvPath: path.join(baseDir, 'bootstrap.env'),
     consumedBootstrapEnvPath: path.join(baseDir, 'bootstrap.env.consumed'),
+    installerTokenStatePath: path.join(baseDir, 'installer-token-state.json'),
     releasesDir: path.join(baseDir, 'releases'),
     downloadsDir: path.join(baseDir, 'downloads'),
     logsDir: path.join(baseDir, 'logs'),

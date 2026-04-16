@@ -15,6 +15,7 @@ import {
   readRuntimeConfigFromEnv,
   writeRuntimeConfigToEnv,
 } from '@agent/config/infrastructure/env-config.repository'
+import { writeInstallerTokenState } from '@agent/config/infrastructure/installer-token-state.repository'
 import {
   type ValidatedAgentConfig,
   ValidatedAgentConfigSchema,
@@ -347,6 +348,10 @@ async function runEnrollCommand(fetchImpl: typeof fetch): Promise<number> {
     writeRuntimeConfigToEnv({
       paths: layout,
       config: runtimeConfig,
+    })
+    writeInstallerTokenState({
+      paths: layout,
+      installerToken: bootstrapLoaded.config.INSTALLER_TOKEN,
     })
     consumeBootstrapConfig({
       paths: layout,

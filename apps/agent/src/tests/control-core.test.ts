@@ -30,6 +30,7 @@ function createLayout(baseDir: string): AgentPathLayout {
     baseRuntimeConfigPath: path.join(baseDir, 'control-base.runtime.json'),
     bootstrapEnvPath: path.join(baseDir, 'bootstrap.env'),
     consumedBootstrapEnvPath: path.join(baseDir, 'bootstrap.env.consumed'),
+    installerTokenStatePath: path.join(baseDir, 'installer-token-state.json'),
     releasesDir: path.join(baseDir, 'releases'),
     downloadsDir: path.join(baseDir, 'downloads'),
     logsDir: path.join(baseDir, 'logs'),
@@ -442,6 +443,33 @@ describe('agent control core', () => {
     expect(fs.readFileSync(layout.bootstrapEnvPath, 'utf8')).toContain(
       'BACKEND_URL=https://backend.changed.local',
     )
+  })
+
+  it('reports installer token as available when persisted installer-token state exists', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-control-backend-installer-state-'))
+    const layout = createLayout(tempDir)
+    writeJson(layout.baseRuntimeConfigPath, createControlRuntimeConfig())
+    writeJson(layout.installerTokenStatePath, {
+      installerToken: 'persisted-installer-token',
+      updatedAt: '2026-04-16T12:00:00.000Z',
+    })
+
+    const service = createAgentControlLocalService({
+      layout,
+      adapter: {
+        key: 'linux',
+        async startAgent() {},
+        async stopAgent() {},
+        async restartAgent() {},
+      },
+    })
+
+    expect(service.getBackendState()).toMatchObject({
+      source: 'BASE_RUNTIME_CONFIG',
+      status: 'ENROLLED',
+      bootstrapConfigAvailable: false,
+      installerTokenAvailable: true,
+    })
   })
 
   it('ignores stale remote policy cache so local channel override can take effect', async () => {

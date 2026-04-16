@@ -6,6 +6,7 @@ import {
   IngestAcceptedResponseSchema,
   IngestFailedResponseSchema,
 } from '@agent/core/contracts/sync-job.contract'
+import { AgentTokenUnauthorizedError } from '@agent/core/errors/agent-token-unauthorized.error'
 import { toAgentSyncJob } from '@agent/sync/sync-job.mapper'
 
 export type SyncTargetsResponse = {
@@ -81,6 +82,10 @@ export function createSyncBackendClient(command: {
         headers: buildHeaders(command.config, false),
       })
 
+      if (response.status === 401) {
+        throw new AgentTokenUnauthorizedError('targets request unauthorized (401)')
+      }
+
       if (!response.ok) {
         const details = await response.text().catch(() => '')
         throw new Error(`targets request failed (${response.status}): ${details}`)
@@ -144,6 +149,10 @@ export function createSyncBackendClient(command: {
           errorMessage: parsed.data.error,
           ...(parsed.data.snapshot_id === undefined ? {} : { snapshotId: parsed.data.snapshot_id }),
         }
+      }
+
+      if (response.status === 401) {
+        throw new AgentTokenUnauthorizedError('ingest request unauthorized (401)')
       }
 
       if (!response.ok) {

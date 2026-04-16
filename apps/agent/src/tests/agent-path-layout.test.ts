@@ -19,6 +19,7 @@ describe('agent path layout', () => {
       runtimeState: 'runtime-state.json',
       configEnv: 'config.env',
       bootstrapEnv: 'bootstrap.env',
+      installerTokenState: 'installer-token-state.json',
       baseRuntimeConfig: 'control-base.runtime.json',
       supervisorControl: 'supervisor-control.json',
       pendingActivity: 'pending-activity-events.json',
@@ -52,6 +53,7 @@ describe('agent path layout', () => {
       configEnvPath: '/tmp/container-tracker-agent/config.env',
       bootstrapEnvPath: '/tmp/container-tracker-agent/bootstrap.env',
       consumedBootstrapEnvPath: '/tmp/container-tracker-agent/bootstrap.env.consumed',
+      installerTokenStatePath: '/tmp/container-tracker-agent/installer-token-state.json',
     })
   })
 
@@ -77,6 +79,7 @@ describe('agent path layout', () => {
       configEnvPath: 'D:\\Agent\\config.env',
       bootstrapEnvPath: 'D:\\Agent\\bootstrap.env',
       consumedBootstrapEnvPath: 'D:\\Agent\\bootstrap.env.consumed',
+      installerTokenStatePath: 'C:\\Agent\\Data\\installer-token-state.json',
       publicStatePath: 'D:\\Agent\\State\\control-ui-state.json',
       publicBackendStatePath: 'D:\\Agent\\State\\control-ui-backend-state.json',
       publicLogsPath: 'D:\\Agent\\State\\control-ui-logs.json',

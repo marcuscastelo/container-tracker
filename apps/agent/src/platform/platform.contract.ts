@@ -15,6 +15,7 @@ export type PlatformPathResolution = {
   readonly configEnvPath: string
   readonly bootstrapEnvPath: string
   readonly consumedBootstrapEnvPath: string
+  readonly installerTokenStatePath: string
   readonly downloadsDir: string
   readonly baseRuntimeConfigPath: string
   readonly supervisorControlPath: string

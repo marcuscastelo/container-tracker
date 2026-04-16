@@ -13,11 +13,16 @@ import {
   readRuntimeConfigFromEnv,
   writeRuntimeConfigToEnv,
 } from '@agent/config/infrastructure/env-config.repository'
+import {
+  readInstallerTokenValue,
+  writeInstallerTokenState,
+} from '@agent/config/infrastructure/installer-token-state.repository'
 import { ensureAgentPathLayout, resolveAgentPathLayout } from '@agent/config/resolve-agent-paths'
 import {
   acknowledgeRemoteCommand,
   applyRemoteCommand,
   type ControlRuntimeConfig,
+  ControlRuntimeConfigSchema,
   syncAgentControlState,
 } from '@agent/control-core/agent-control-core'
 import { publishAgentControlPublicSnapshot } from '@agent/control-core/public-control-files'
@@ -25,7 +30,12 @@ import {
   type ValidatedAgentConfig,
   ValidatedAgentConfigSchema,
   type ValidatedBootstrapConfig,
+  ValidatedBootstrapConfigSchema,
 } from '@agent/core/contracts/agent-config.contract'
+import {
+  AgentTokenUnauthorizedError,
+  isAgentTokenUnauthorizedError,
+} from '@agent/core/errors/agent-token-unauthorized.error'
 import { BoundaryValidationError } from '@agent/core/errors/boundary-validation.error'
 import { toHeartbeatPayload } from '@agent/observability/observability.mapper'
 import { createProviderRunnerRegistry } from '@agent/providers/common/provider-runner.registry'
@@ -35,6 +45,7 @@ import {
   readSupervisorControl,
   writeSupervisorControl,
 } from '@agent/runtime/infrastructure/supervisor-control.repository'
+import { writeStateJsonFile } from '@agent/state/infrastructure/json-state.file-store'
 import { runSyncCycle } from '@agent/sync/application/run-sync-cycle'
 import type { SyncCycleActivity } from '@agent/sync/application/sync-types'
 import { createSyncBackendClient } from '@agent/sync/infrastructure/sync-backend.client'
@@ -51,7 +62,7 @@ import { computeBackoffDelayMs } from '../backoff.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { createAgentLogForwarder } from '../log-forwarder.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { drainPendingActivityEvents } from '../pending-activity.ts'
+import { appendPendingActivityEvents, drainPendingActivityEvents } from '../pending-activity.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { EXIT_FATAL, EXIT_UPDATE_RESTART } from './lifecycle-exit-codes.ts'
 
@@ -164,6 +175,28 @@ function toRuntimeConfigFromControlConfig(config: ControlRuntimeConfig): Runtime
     MAERSK_USER_DATA_DIR: config.MAERSK_USER_DATA_DIR,
     AGENT_UPDATE_MANIFEST_CHANNEL: config.AGENT_UPDATE_MANIFEST_CHANNEL,
   })
+}
+
+function persistBaseRuntimeConfig(command: {
+  readonly layout: AgentPathLayout
+  readonly runtimeConfig: RuntimeConfig
+}): void {
+  writeStateJsonFile({
+    filePath: command.layout.baseRuntimeConfigPath,
+    schema: ControlRuntimeConfigSchema,
+    value: toControlRuntimeConfig(command.runtimeConfig),
+  })
+}
+
+function persistRuntimeConfig(command: {
+  readonly layout: AgentPathLayout
+  readonly runtimeConfig: RuntimeConfig
+}): void {
+  writeRuntimeConfigToEnv({
+    paths: command.layout,
+    config: command.runtimeConfig,
+  })
+  persistBaseRuntimeConfig(command)
 }
 
 async function syncControlStateAndPersistPublicState(command: {
@@ -319,6 +352,98 @@ function toRuntimeConfig(command: {
   })
 }
 
+function toBootstrapConfigFromRuntime(command: {
+  readonly runtimeConfig: RuntimeConfig
+  readonly installerToken: string
+}): BootstrapConfig {
+  return ValidatedBootstrapConfigSchema.parse({
+    BACKEND_URL: command.runtimeConfig.BACKEND_URL,
+    INSTALLER_TOKEN: command.installerToken,
+    AGENT_ID: command.runtimeConfig.AGENT_ID,
+    INTERVAL_SEC: command.runtimeConfig.INTERVAL_SEC,
+    LIMIT: command.runtimeConfig.LIMIT,
+    MAERSK_ENABLED: command.runtimeConfig.MAERSK_ENABLED,
+    MAERSK_HEADLESS: command.runtimeConfig.MAERSK_HEADLESS,
+    MAERSK_TIMEOUT_MS: command.runtimeConfig.MAERSK_TIMEOUT_MS,
+    MAERSK_USER_DATA_DIR: command.runtimeConfig.MAERSK_USER_DATA_DIR,
+    AGENT_UPDATE_MANIFEST_CHANNEL: command.runtimeConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
+  })
+}
+
+function resolveBootstrapConfigForReenroll(command: {
+  readonly paths: PathLayout
+  readonly runtimeConfig: RuntimeConfig
+}): {
+  readonly config: BootstrapConfig
+  readonly source: 'INSTALLER_TOKEN_STATE' | 'BOOTSTRAP_ENV'
+} {
+  const installerToken = readInstallerTokenValue({
+    paths: command.paths,
+  })
+  if (installerToken) {
+    return {
+      config: toBootstrapConfigFromRuntime({
+        runtimeConfig: command.runtimeConfig,
+        installerToken,
+      }),
+      source: 'INSTALLER_TOKEN_STATE',
+    }
+  }
+
+  const bootstrap = readBootstrapConfigFromEnv({
+    paths: command.paths,
+  })
+  if (bootstrap) {
+    return {
+      config: bootstrap.config,
+      source: 'BOOTSTRAP_ENV',
+    }
+  }
+
+  throw new Error(
+    `auto re-enroll unavailable: installer token state and bootstrap.env are missing under ${command.paths.dataDir}`,
+  )
+}
+
+async function attemptAutoReenroll(command: {
+  readonly paths: PathLayout
+  readonly runtimeConfig: RuntimeConfig
+  readonly agentVersion: string
+}): Promise<{
+  readonly runtimeConfig: RuntimeConfig
+  readonly source: 'INSTALLER_TOKEN_STATE' | 'BOOTSTRAP_ENV'
+}> {
+  const bootstrapConfig = resolveBootstrapConfigForReenroll({
+    paths: command.paths,
+    runtimeConfig: command.runtimeConfig,
+  })
+  const hostname = os.hostname()
+  const machineFingerprint = resolveMachineFingerprint(hostname)
+  const enrollResponse = await enrollRuntime({
+    bootstrapConfig: bootstrapConfig.config,
+    machineFingerprint,
+    hostname,
+    osName: `${os.platform()} ${os.release()}`,
+    agentVersion: command.agentVersion,
+  })
+  const runtimeConfig = toRuntimeConfig({
+    bootstrapConfig: bootstrapConfig.config,
+    enrollResponse,
+  })
+  persistRuntimeConfig({
+    layout: command.paths,
+    runtimeConfig,
+  })
+  writeInstallerTokenState({
+    paths: command.paths,
+    installerToken: bootstrapConfig.config.INSTALLER_TOKEN,
+  })
+  return {
+    runtimeConfig,
+    source: bootstrapConfig.source,
+  }
+}
+
 async function resolveRuntimeConfigWithBootstrap(paths: PathLayout): Promise<RuntimeConfig> {
   let enrollAttempt = 0
 
@@ -377,9 +502,13 @@ async function resolveRuntimeConfigWithBootstrap(paths: PathLayout): Promise<Run
         enrollResponse,
       })
 
-      writeRuntimeConfigToEnv({
+      persistRuntimeConfig({
+        layout: paths,
+        runtimeConfig,
+      })
+      writeInstallerTokenState({
         paths,
-        config: runtimeConfig,
+        installerToken: bootstrapLoaded.config.INSTALLER_TOKEN,
       })
       consumeBootstrapConfig({
         paths,
@@ -547,6 +676,10 @@ async function sendHeartbeat(command: {
     body: JSON.stringify(payload),
   })
 
+  if (response.status === 401) {
+    throw new AgentTokenUnauthorizedError('heartbeat request unauthorized (401)')
+  }
+
   if (!response.ok) {
     const details = await response.text().catch(() => '')
     throw new Error(`heartbeat failed (${response.status}): ${details}`)
@@ -571,6 +704,7 @@ async function sendHeartbeatSafely(command: {
 }): Promise<{
   readonly ok: boolean
   readonly updatedAt: string | null
+  readonly unauthorized: boolean
 }> {
   try {
     const updatedAt = await sendHeartbeat({
@@ -584,12 +718,21 @@ async function sendHeartbeatSafely(command: {
     return {
       ok: true,
       updatedAt,
+      unauthorized: false,
     }
   } catch (error) {
+    if (isAgentTokenUnauthorizedError(error)) {
+      return {
+        ok: false,
+        updatedAt: null,
+        unauthorized: true,
+      }
+    }
     console.warn(`[agent] heartbeat publish failed: ${toErrorMessage(error)}`)
     return {
       ok: false,
       updatedAt: null,
+      unauthorized: false,
     }
   }
 }
@@ -613,6 +756,7 @@ async function sendHeartbeatAndPersistHealth(command: {
   readonly activity?: readonly AgentRuntimeActivity[]
   readonly occurredAt?: string
   readonly healthPath: string
+  readonly throwOnUnauthorized?: boolean
 }): Promise<void> {
   const occurredAt = command.occurredAt ?? new Date().toISOString()
   const heartbeat = await sendHeartbeatSafely({
@@ -627,6 +771,10 @@ async function sendHeartbeatAndPersistHealth(command: {
     command.state.bootStatus = 'healthy'
   } else if (command.state.bootStatus === 'starting') {
     command.state.bootStatus = 'degraded'
+  }
+
+  if (heartbeat.unauthorized && command.throwOnUnauthorized) {
+    throw new AgentTokenUnauthorizedError('heartbeat request unauthorized (401)')
   }
 
   writeRuntimeState(command.healthPath, {
@@ -839,12 +987,123 @@ export async function runRuntimeMain(): Promise<void> {
   const agentLayout = resolveAgentPathLayout()
   ensureAgentPathLayout(agentLayout)
   let runtimeConfig = await resolveRuntimeConfigWithBootstrap(agentLayout)
-  let controlSync = await syncControlStateAndPersistPublicState({
-    layout: agentLayout,
-    currentConfig: toControlRuntimeConfig(runtimeConfig),
-  })
-  runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
   const agentVersion = resolveAgentVersion()
+  let scheduler: ReturnType<typeof createAgentScheduler> | null = null
+  let realtimeSubscription: { readonly unsubscribe: () => void } | null = null
+  let logForwarder: ReturnType<typeof createAgentLogForwarder> | null = null
+  let requestRestartAfterHeartbeat = false
+
+  async function requestRuntimeRestartAfterReenroll(): Promise<void> {
+    scheduler?.stop()
+    realtimeSubscription?.unsubscribe()
+    await logForwarder?.stop().catch((error) => {
+      console.warn(
+        `[agent] log forwarder stop failed during re-enroll restart: ${toErrorMessage(error)}`,
+      )
+    })
+    process.exit(EXIT_UPDATE_RESTART)
+  }
+
+  async function handleUnauthorizedAgentToken(command: {
+    readonly reason: string
+    readonly runtimeState?: AgentRuntimeState
+  }): Promise<void> {
+    console.warn(
+      `[agent] detected unauthorized agent token during ${command.reason}; attempting auto re-enroll`,
+    )
+    const currentInstallerToken = readInstallerTokenValue({ paths: agentLayout })
+    const secrets = currentInstallerToken
+      ? [runtimeConfig.AGENT_TOKEN, currentInstallerToken]
+      : [runtimeConfig.AGENT_TOKEN]
+
+    try {
+      const reenrolled = await attemptAutoReenroll({
+        paths: agentLayout,
+        runtimeConfig,
+        agentVersion,
+      })
+      runtimeConfig = reenrolled.runtimeConfig
+      const occurredAt = new Date().toISOString()
+      if (command.runtimeState) {
+        command.runtimeState.lastError = null
+        command.runtimeState.processingState = 'idle'
+      }
+      console.log(
+        `[agent] auto re-enroll succeeded via ${reenrolled.source}; requesting runtime restart`,
+      )
+
+      const successActivity: AgentRuntimeActivity = {
+        type: 'ENROLLED',
+        message: `Auto re-enroll succeeded via ${reenrolled.source}; runtime restart requested`,
+        severity: 'success',
+        metadata: {
+          reason: command.reason,
+          source: reenrolled.source,
+        },
+        occurredAt,
+      }
+
+      if (command.runtimeState) {
+        await sendHeartbeatAndPersistHealth({
+          config: runtimeConfig,
+          agentVersion,
+          state: command.runtimeState,
+          activity: [successActivity],
+          occurredAt,
+          healthPath: agentLayout.runtimeStatePath,
+        })
+      } else {
+        appendPendingActivityEvents(agentLayout.pendingActivityPath, [
+          {
+            type: successActivity.type,
+            message: successActivity.message,
+            severity: successActivity.severity,
+            metadata: successActivity.metadata ?? {},
+            occurred_at: occurredAt,
+          },
+        ])
+      }
+
+      await requestRuntimeRestartAfterReenroll()
+    } catch (reenrollError) {
+      const reenrollMessage = toErrorMessage(reenrollError, secrets)
+      const occurredAt = new Date().toISOString()
+      if (command.runtimeState) {
+        command.runtimeState.lastError = reenrollMessage
+      }
+      appendPendingActivityEvents(agentLayout.pendingActivityPath, [
+        {
+          type: 'REQUEST_FAILED',
+          message: `Auto re-enroll failed: ${reenrollMessage}`,
+          severity: 'danger',
+          metadata: {
+            reason: command.reason,
+          },
+          occurred_at: occurredAt,
+        },
+      ])
+      console.error(`[agent] auto re-enroll failed during ${command.reason}: ${reenrollMessage}`)
+      throw reenrollError
+    }
+  }
+
+  let controlSync: Awaited<ReturnType<typeof syncAgentControlState>>
+  try {
+    controlSync = await syncControlStateAndPersistPublicState({
+      layout: agentLayout,
+      currentConfig: toControlRuntimeConfig(runtimeConfig),
+    })
+  } catch (error) {
+    if (isAgentTokenUnauthorizedError(error)) {
+      await handleUnauthorizedAgentToken({
+        reason: 'startup control sync',
+      })
+      return
+    }
+    throw error
+  }
+
+  runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
 
   console.log(
     `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
@@ -866,7 +1125,7 @@ export async function runRuntimeMain(): Promise<void> {
     updaterLastCheckedAt: null,
   }
 
-  const logForwarder = createAgentLogForwarder({
+  logForwarder = createAgentLogForwarder({
     backendUrl: runtimeConfig.BACKEND_URL,
     agentToken: runtimeConfig.AGENT_TOKEN,
     agentId: runtimeConfig.AGENT_ID,
@@ -878,129 +1137,149 @@ export async function runRuntimeMain(): Promise<void> {
   const pendingActivities = drainPendingActivityEvents(agentLayout.pendingActivityPath).map(
     toRuntimeActivityFromPending,
   )
-  await sendHeartbeatAndPersistHealth({
-    config: runtimeConfig,
-    agentVersion,
-    state: runtimeState,
-    activity: pendingActivities,
-    healthPath: agentLayout.runtimeStatePath,
-  })
-  controlSync = await syncControlStateAndPersistPublicState({
-    layout: agentLayout,
-    currentConfig: toControlRuntimeConfig(runtimeConfig),
-    forceRemoteFetch: false,
-  })
-  runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+  try {
+    await sendHeartbeatAndPersistHealth({
+      config: runtimeConfig,
+      agentVersion,
+      state: runtimeState,
+      activity: pendingActivities,
+      healthPath: agentLayout.runtimeStatePath,
+      throwOnUnauthorized: true,
+    })
+    controlSync = await syncControlStateAndPersistPublicState({
+      layout: agentLayout,
+      currentConfig: toControlRuntimeConfig(runtimeConfig),
+      forceRemoteFetch: false,
+    })
+    runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+  } catch (error) {
+    if (isAgentTokenUnauthorizedError(error)) {
+      await handleUnauthorizedAgentToken({
+        reason: 'startup heartbeat/control sync',
+        runtimeState,
+      })
+      return
+    }
+    throw error
+  }
 
   let lastRealtimeSignalFingerprint: string | null = null
-  let requestRestartAfterHeartbeat = false
-  let scheduler: ReturnType<typeof createAgentScheduler> | null = null
-  let realtimeSubscription: { readonly unsubscribe: () => void } | null = null
   const providerRegistry = createProviderRunnerRegistry()
 
   scheduler = createAgentScheduler({
     intervalMs: runtimeConfig.INTERVAL_SEC * 1000,
     runCycle: async (reason) => {
       const cycleActivities: AgentRuntimeActivity[] = []
-
-      controlSync = await syncControlStateAndPersistPublicState({
-        layout: agentLayout,
-        currentConfig: toControlRuntimeConfig(runtimeConfig),
-      })
-      runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
-      runtimeState.desiredVersion = controlSync.remotePolicy.desiredVersion
-      runtimeState.updateReadyVersion = controlSync.releaseState.target_version
-
-      const pendingRemoteCommand = controlSync.remoteCommands[0]
-      if (pendingRemoteCommand) {
-        const remoteCommandResult = await applyRemoteCommand({
+      try {
+        controlSync = await syncControlStateAndPersistPublicState({
           layout: agentLayout,
           currentConfig: toControlRuntimeConfig(runtimeConfig),
-          remoteCommand: pendingRemoteCommand,
         })
-        controlSync = remoteCommandResult.result
+        runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+        runtimeState.desiredVersion = controlSync.remotePolicy.desiredVersion
+        runtimeState.updateReadyVersion = controlSync.releaseState.target_version
+
+        const pendingRemoteCommand = controlSync.remoteCommands[0]
+        if (pendingRemoteCommand) {
+          const remoteCommandResult = await applyRemoteCommand({
+            layout: agentLayout,
+            currentConfig: toControlRuntimeConfig(runtimeConfig),
+            remoteCommand: pendingRemoteCommand,
+          })
+          controlSync = remoteCommandResult.result
+          runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+
+          try {
+            await acknowledgeRemoteCommand({
+              config: toControlRuntimeConfig(runtimeConfig),
+              remoteCommandId: pendingRemoteCommand.id,
+              status: 'APPLIED',
+            })
+          } catch (error) {
+            console.warn(`[agent] failed to acknowledge remote command: ${toErrorMessage(error)}`)
+          }
+
+          if (remoteCommandResult.requiresRestart) {
+            runtimeState.updateState = 'draining'
+            runtimeState.restartRequestedAt = pendingRemoteCommand.requestedAt
+            writeSupervisorControl(agentLayout.supervisorControlPath, {
+              drain_requested: true,
+              reason: 'restart',
+              requested_at: pendingRemoteCommand.requestedAt,
+            })
+          }
+        }
+
+        const controlState = readSupervisorControl(agentLayout.supervisorControlPath)
+        if (controlState?.drain_requested) {
+          runtimeState.updateState = 'draining'
+          runtimeState.restartRequestedAt = controlState.requested_at
+        }
+
+        if (runtimeState.updateState !== 'draining') {
+          const runActivities = await runOnce(
+            runtimeConfig,
+            agentVersion,
+            runtimeState,
+            reason,
+            providerRegistry,
+          )
+          cycleActivities.push(...runActivities)
+        } else {
+          runtimeState.processingState = 'idle'
+          runtimeState.activeJobs = 0
+        }
+
+        if (runtimeState.updateState === 'draining' && runtimeState.activeJobs === 0) {
+          requestRestartAfterHeartbeat = true
+          cycleActivities.push({
+            type: 'RESTART_FOR_UPDATE',
+            message: 'Runtime drained and ready to restart for update',
+            severity: 'warning',
+            metadata: {
+              targetVersion: runtimeState.updateReadyVersion,
+              desiredVersion: runtimeState.desiredVersion,
+            },
+            occurredAt: new Date().toISOString(),
+          })
+        }
+
+        await sendHeartbeatAndPersistHealth({
+          config: runtimeConfig,
+          agentVersion,
+          state: runtimeState,
+          activity: cycleActivities,
+          healthPath: agentLayout.runtimeStatePath,
+          throwOnUnauthorized: true,
+        })
+        controlSync = await syncControlStateAndPersistPublicState({
+          layout: agentLayout,
+          currentConfig: toControlRuntimeConfig(runtimeConfig),
+          forceRemoteFetch: false,
+        })
         runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
 
-        try {
-          await acknowledgeRemoteCommand({
-            config: toControlRuntimeConfig(runtimeConfig),
-            remoteCommandId: pendingRemoteCommand.id,
-            status: 'APPLIED',
-          })
-        } catch (error) {
-          console.warn(`[agent] failed to acknowledge remote command: ${toErrorMessage(error)}`)
-        }
-
-        if (remoteCommandResult.requiresRestart) {
-          runtimeState.updateState = 'draining'
-          runtimeState.restartRequestedAt = pendingRemoteCommand.requestedAt
+        if (requestRestartAfterHeartbeat && runtimeState.activeJobs === 0) {
           writeSupervisorControl(agentLayout.supervisorControlPath, {
-            drain_requested: true,
-            reason: 'restart',
-            requested_at: pendingRemoteCommand.requestedAt,
+            drain_requested: false,
+            reason: null,
+            requested_at: null,
+          })
+          scheduler?.stop()
+          realtimeSubscription?.unsubscribe()
+          void logForwarder?.stop().finally(() => {
+            process.exit(EXIT_UPDATE_RESTART)
           })
         }
-      }
-
-      const controlState = readSupervisorControl(agentLayout.supervisorControlPath)
-      if (controlState?.drain_requested) {
-        runtimeState.updateState = 'draining'
-        runtimeState.restartRequestedAt = controlState.requested_at
-      }
-
-      if (runtimeState.updateState !== 'draining') {
-        const runActivities = await runOnce(
-          runtimeConfig,
-          agentVersion,
-          runtimeState,
-          reason,
-          providerRegistry,
-        )
-        cycleActivities.push(...runActivities)
-      } else {
-        runtimeState.processingState = 'idle'
-        runtimeState.activeJobs = 0
-      }
-
-      if (runtimeState.updateState === 'draining' && runtimeState.activeJobs === 0) {
-        requestRestartAfterHeartbeat = true
-        cycleActivities.push({
-          type: 'RESTART_FOR_UPDATE',
-          message: 'Runtime drained and ready to restart for update',
-          severity: 'warning',
-          metadata: {
-            targetVersion: runtimeState.updateReadyVersion,
-            desiredVersion: runtimeState.desiredVersion,
-          },
-          occurredAt: new Date().toISOString(),
-        })
-      }
-
-      await sendHeartbeatAndPersistHealth({
-        config: runtimeConfig,
-        agentVersion,
-        state: runtimeState,
-        activity: cycleActivities,
-        healthPath: agentLayout.runtimeStatePath,
-      })
-      controlSync = await syncControlStateAndPersistPublicState({
-        layout: agentLayout,
-        currentConfig: toControlRuntimeConfig(runtimeConfig),
-        forceRemoteFetch: false,
-      })
-      runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
-
-      if (requestRestartAfterHeartbeat && runtimeState.activeJobs === 0) {
-        writeSupervisorControl(agentLayout.supervisorControlPath, {
-          drain_requested: false,
-          reason: null,
-          requested_at: null,
-        })
-        scheduler?.stop()
-        realtimeSubscription?.unsubscribe()
-        void logForwarder.stop().finally(() => {
-          process.exit(EXIT_UPDATE_RESTART)
-        })
+      } catch (error) {
+        if (isAgentTokenUnauthorizedError(error)) {
+          await handleUnauthorizedAgentToken({
+            reason: `cycle ${reason}`,
+            runtimeState,
+          })
+          return
+        }
+        throw error
       }
     },
     onRunError({ reason, error }) {
@@ -1095,7 +1374,7 @@ export async function runRuntimeMain(): Promise<void> {
     })
     realtimeSubscription?.unsubscribe()
     scheduler?.stop()
-    void logForwarder.stop().catch((error) => {
+    void logForwarder?.stop().catch((error) => {
       console.warn(`[agent] log forwarder stop failed: ${toErrorMessage(error)}`)
     })
     clearSupervisorControl(agentLayout.supervisorControlPath)
