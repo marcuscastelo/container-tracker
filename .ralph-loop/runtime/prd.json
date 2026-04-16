@@ -1,0 +1,142 @@
+{
+  "project": "ContainerTrackerAgent",
+  "branchName": "ralph/agent-compat-cleanup-platform-normalization",
+  "description": "Agent Structural Refactor - Compatibility cleanup and Linux/Windows platform normalization without intentional external contract changes",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Define canonical executable entrypoints",
+      "description": "As an agent platform engineer, I need one canonical entrypoint per executable so ownership is explicit and wrappers are not treated as core logic.",
+      "acceptanceCriteria": [
+        "Identify canonical entrypoint files for agent and supervisor inside `apps/agent/src/**`",
+        "Each executable has exactly one real `main()` entrypoint in production code",
+        "Any remaining bootstrap files are classified as wrapper or canonical in code comments or file naming",
+        "No canonical logic is duplicated across multiple entrypoint files",
+        "`pnpm --filter agent type-check` passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Remove redundant internal compat wrappers",
+      "description": "As an agent maintainer, I need internal wrappers removed so only externally-required wrappers remain.",
+      "acceptanceCriteria": [
+        "Redundant wrappers that only forward to another internal entrypoint are removed from `apps/agent/src/**`",
+        "Required external wrappers follow the strict pattern `wrapper -> main()`",
+        "Wrappers contain no config parsing, no OS branching, and no path-resolution logic",
+        "Imports/scripts/tests are updated to reference canonical entrypoints",
+        "`pnpm --filter agent test` passes for affected entrypoint tests"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Create canonical agent path layout builder",
+      "description": "As a platform engineer, I need a single logical path layout owner so Linux and Windows do not duplicate layout definitions.",
+      "acceptanceCriteria": [
+        "Create `apps/agent/src/platform/agent-path-layout.ts` with canonical logical directory and file names",
+        "Layout includes canonical names for releases/current/previous/logs/downloads/run and canonical state/config file names",
+        "The shared layout API is pure and testable (no direct OS side effects)",
+        "Unit tests validate expected layout shape for representative inputs",
+        "`pnpm --filter agent test` passes for new layout tests"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Make Linux and Windows adapters consume canonical layout",
+      "description": "As a maintainer, I need OS adapters to consume shared layout so only true OS differences remain in adapters.",
+      "acceptanceCriteria": [
+        "`linux.adapter.ts` and `windows.adapter.ts` consume the canonical layout builder",
+        "Logical path/file naming is no longer duplicated in both adapters",
+        "Adapters keep only OS-specific behavior (dataDir resolution, path joining, linking/pointer mechanics, extraction/control specifics)",
+        "Integration tests cover Linux and Windows layout resolution using the shared layout",
+        "`pnpm --filter agent type-check` passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Split local control into OS/mode strategies",
+      "description": "As a platform engineer, I need local control split into focused strategies so behavior is testable and ownership is clear.",
+      "acceptanceCriteria": [
+        "Create `linux-service-control.ts`, `linux-dev-process-control.ts`, and `windows-task-control.ts` under `apps/agent/src/platform/control/`",
+        "All strategies implement a shared control interface used by composition code",
+        "`local-control.adapter.ts` becomes thin composition/dispatch and no longer embeds full multi-mode control logic",
+        "Strategy unit tests cover start/stop/restart semantics for each strategy",
+        "`pnpm --filter agent test` passes for local control tests"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Centralize config parse/validate/serialize APIs",
+      "description": "As an agent developer, I need config logic centralized so runtime, CLI, and control paths cannot drift.",
+      "acceptanceCriteria": [
+        "Create `apps/agent/src/config/agent-env.ts` for parse/serialize responsibilities",
+        "Create `apps/agent/src/config/agent-config.policy.ts` for validation, placeholder policy, and effective config resolution",
+        "Public APIs cover parsing, serializing, validating, and placeholder checks used by agent flows",
+        "Unit tests cover valid/invalid env input and placeholder-policy behavior",
+        "`pnpm --filter agent type-check` passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Migrate consumers to canonical config owners",
+      "description": "As a maintainer, I need runtime/CLI/control-core to consume config APIs instead of duplicating parsing logic.",
+      "acceptanceCriteria": [
+        "Runtime, CLI, and control-core use `config/*` APIs for parse/validate/serialize/resolve flows",
+        "Duplicate config parsing/serialization code in those consumers is removed",
+        "No new production imports depend on legacy internal compat paths",
+        "Regression tests verify effective config behavior remains stable",
+        "`pnpm --filter agent test` passes for affected config consumers"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Enforce state ownership in state modules",
+      "description": "As a platform engineer, I need canonical state file persistence centralized in `state/*` so writes are consistent and auditable.",
+      "acceptanceCriteria": [
+        "Canonical state file read/write paths are routed through `apps/agent/src/state/*` APIs",
+        "Direct writes to canonical state files outside `state/*` are removed",
+        "Non-canonical logs/artifacts remain outside `state/*` only when explicitly non-state",
+        "Tests verify canonical state persistence flows through state owners",
+        "`pnpm --filter agent type-check` passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Add structural guardrails and confirm no contract regression",
+      "description": "As the agent platform owner, I need guardrails and regression checks to keep boundaries stable after the refactor.",
+      "acceptanceCriteria": [
+        "Add or update boundary checks/tests to prevent OS-branching spread outside `platform/*` and config/state ownership violations",
+        "Agent tests cover path layout, local control strategies, and config parsing boundaries impacted by this refactor",
+        "Smoke checks confirm wrappers still invoke correct `main()` entrypoints",
+        "No intentional HTTP/backend/UI contract changes are introduced by this refactor",
+        "`pnpm sanity` baseline and final results are recorded with no worsening versus baseline"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
