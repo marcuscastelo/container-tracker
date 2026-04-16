@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const scriptPath = path.join(repoRoot, 'scripts', 'agent', 'rebuild-restart-linux.sh')
+const describeOnLinuxShellHost = process.platform === 'win32' ? describe.skip : describe
 
 function writeExecutable(filePath, contents) {
   fs.writeFileSync(filePath, contents, 'utf8')
@@ -19,7 +20,7 @@ function writeProcEnviron(filePath, values) {
   fs.writeFileSync(filePath, `${values.join('\u0000')}\u0000`, 'utf8')
 }
 
-describe('rebuild-restart-linux tray restart', () => {
+describeOnLinuxShellHost('rebuild-restart-linux tray restart', () => {
   it('kills only tray-mode Electron processes and avoids matching the wrapper path', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rebuild-restart-linux-'))
     const binDir = path.join(tempDir, 'bin')

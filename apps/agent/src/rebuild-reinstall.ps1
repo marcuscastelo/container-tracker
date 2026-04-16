@@ -6,7 +6,7 @@ $agentTaskName = 'ContainerTrackerAgent'
 $installRoot = Join-Path $env:LOCALAPPDATA 'Programs\ContainerTrackerAgent'
 $dataRoot = Join-Path $env:LOCALAPPDATA 'ContainerTracker'
 $shortRoot = 'C:\a'
-$shortReleaseDir = Join-Path $shortRoot 'release'
+$shortReleaseDir = Join-Path $shortRoot 'apps\release'
 $shortInstallerParent = Join-Path $shortRoot 'apps\agent\src'
 $shortInstallerDir = Join-Path $shortInstallerParent 'installer'
 
@@ -15,10 +15,21 @@ function Stop-AgentInstallProcesses {
     [string]$InstallRootPath
   )
 
+  $normalizedTrayHostPath = (Join-Path $InstallRootPath 'app\dist\agent-tray-host.ps1').ToLowerInvariant()
   $deadline = (Get-Date).AddSeconds(20)
   do {
     $running = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-        Where-Object { $_.ExecutablePath -and $_.ExecutablePath -like "$InstallRootPath*" })
+        Where-Object {
+          if ($_.ExecutablePath -and $_.ExecutablePath -like "$InstallRootPath*") {
+            return $true
+          }
+
+          if ($_.CommandLine) {
+            return $_.CommandLine.ToLowerInvariant().Contains($normalizedTrayHostPath)
+          }
+
+          return $false
+        })
 
     foreach ($process in $running) {
       Write-Warning "[agent:rebuild-restart] stopping process $($process.Name) (PID=$($process.ProcessId))"
@@ -78,6 +89,29 @@ function Invoke-SafeTaskRun {
 
   Write-Warning "[agent:rebuild-restart] failed to run task $TaskName after $maxAttempts attempts; dumping task query for diagnostics"
   throw "failed to run scheduled task $TaskName after $maxAttempts attempts"
+}
+
+function Start-AgentTrayHost {
+  $trayHostPath = Join-Path $installRoot 'app\dist\agent-tray-host.ps1'
+  if (-not (Test-Path -LiteralPath $trayHostPath)) {
+    Write-Warning "[agent:rebuild-restart] tray host script not found: $trayHostPath"
+    return
+  }
+
+  Write-Host "[agent:rebuild-restart] starting tray host: $trayHostPath"
+  Start-Process `
+    -FilePath 'powershell.exe' `
+    -ArgumentList @(
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-WindowStyle',
+      'Hidden',
+      '-File',
+      $trayHostPath
+    ) `
+    -WorkingDirectory $installRoot `
+    -WindowStyle Hidden | Out-Null
 }
 
 Push-Location $repoRoot
@@ -157,6 +191,8 @@ try {
   } catch {
     Write-Warning "[agent:rebuild-restart] could not run task $agentTaskName immediately: $($_.Exception.Message)"
   }
+
+  Start-AgentTrayHost
 
   Start-Sleep -Seconds 2
   Show-TaskDiagnostics

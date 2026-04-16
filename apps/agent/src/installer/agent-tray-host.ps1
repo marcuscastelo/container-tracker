@@ -7,16 +7,13 @@ Add-Type -AssemblyName System.Drawing
 $installRoot = Join-Path $env:LOCALAPPDATA 'Programs\ContainerTrackerAgent'
 $dataRoot = Join-Path $env:LOCALAPPDATA 'ContainerTracker'
 $logsDir = Join-Path $dataRoot 'logs'
-$nodeExePath = Join-Path $installRoot 'node\node.exe'
-$registerAliasLoaderPath = Join-Path $installRoot 'app\dist\apps\agent\src\runtime\register-alias-loader.js'
-$agentScriptPath = Join-Path $installRoot 'app\dist\apps\agent\src\agent.js'
+$agentTaskName = 'ContainerTrackerAgent'
+$supervisorLogPath = Join-Path $logsDir 'supervisor.log'
 $agentOutLogPath = Join-Path $logsDir 'agent.out.log'
 $agentErrLogPath = Join-Path $logsDir 'agent.err.log'
-$registerAliasLoaderUrl = $null
 
-$script:agentProcess = $null
+$script:lastKnownTaskStatus = 'Unknown'
 $script:lastAgentStartUtc = $null
-$script:lastAgentExitCode = $null
 $script:lastAgentError = $null
 $script:isShuttingDown = $false
 $script:trayIconImage = $null
@@ -37,100 +34,65 @@ function Ensure-FileExists {
   }
 }
 
-function Convert-ToCmdQuoted {
+function Invoke-ScheduledTaskCommand {
   param(
     [Parameter(Mandatory = $true)]
-    [string]$Value
+    [string[]]$Arguments,
+    [switch]$IgnoreFailure
   )
 
-  return '"' + $Value.Replace('"', '""') + '"'
+  $output = (& schtasks.exe @Arguments 2>&1 | Out-String)
+  $exitCode = $LASTEXITCODE
+  if ($null -eq $exitCode) {
+    $exitCode = 0
+  }
+
+  if ($exitCode -ne 0 -and -not $IgnoreFailure) {
+    throw "schtasks.exe $($Arguments -join ' ') failed with code ${exitCode}: $output"
+  }
+
+  return [pscustomobject]@{
+    ExitCode = $exitCode
+    Output   = $output
+  }
 }
 
-function Stop-AgentNodeProcesses {
-  $normalizedInstallRoot = $installRoot.ToLowerInvariant()
-  $agentCommandFragments = @(
-    '\app\dist\apps\agent\src\supervisor.js',
-    '\app\dist\apps\agent\src\agent.js',
-    '\app\dist\agent.js'
-  )
+function Get-AgentTaskSnapshot {
+  $result = Invoke-ScheduledTaskCommand `
+    -Arguments @('/Query', '/TN', $agentTaskName, '/V', '/FO', 'LIST') `
+    -IgnoreFailure
 
-  $candidateProcesses = @(
-    Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
-    Where-Object {
-      if (-not $_.CommandLine) {
-        return $false
-      }
-
-      $normalizedCommandLine = $_.CommandLine.ToLowerInvariant()
-      return (
-        $normalizedCommandLine.Contains($normalizedInstallRoot) -and
-        ($agentCommandFragments | Where-Object { $normalizedCommandLine.Contains($_) }).Count -gt 0
-      )
+  if ($result.ExitCode -ne 0) {
+    return [pscustomobject]@{
+      Status = 'Unavailable'
+      Detail = $result.Output.Trim()
     }
-  )
+  }
 
-  foreach ($candidateProcess in $candidateProcesses) {
-    Stop-Process -Id $candidateProcess.ProcessId -Force -ErrorAction SilentlyContinue
+  $status = 'Unknown'
+  foreach ($line in ($result.Output -split '\r?\n')) {
+    if ($line -match '^Status:\s*(.+)$') {
+      $status = $Matches[1].Trim()
+      break
+    }
+  }
+
+  return [pscustomobject]@{
+    Status = $status
+    Detail = $result.Output.Trim()
   }
 }
 
-function Start-AgentProcess {
-  if (-not (Test-Path -LiteralPath $nodeExePath)) {
-    throw "node.exe not found at $nodeExePath"
-  }
-
-  if (-not (Test-Path -LiteralPath $registerAliasLoaderPath)) {
-    throw "register-alias-loader.js not found at $registerAliasLoaderPath"
-  }
-
-  $registerAliasLoaderUrl = [System.Uri]::new($registerAliasLoaderPath).AbsoluteUri
-
-  if (-not (Test-Path -LiteralPath $agentScriptPath)) {
-    throw "agent.js not found at $agentScriptPath"
-  }
-
-  Ensure-FileExists -Path $agentOutLogPath
-  Ensure-FileExists -Path $agentErrLogPath
-
-  $nodeExeQuoted = Convert-ToCmdQuoted -Value $nodeExePath
-  $registerAliasLoaderQuoted = Convert-ToCmdQuoted -Value $registerAliasLoaderUrl
-  $agentScriptQuoted = Convert-ToCmdQuoted -Value $agentScriptPath
-  $outLogQuoted = Convert-ToCmdQuoted -Value $agentOutLogPath
-  $errLogQuoted = Convert-ToCmdQuoted -Value $agentErrLogPath
-
-  $agentCommand =
-    "$nodeExeQuoted --import $registerAliasLoaderQuoted $agentScriptQuoted 1>>$outLogQuoted 2>>$errLogQuoted"
-  $cmdArguments = @(
-    '/d',
-    '/s',
-    '/c',
-    "`"$agentCommand`""
-  )
-
-  $script:agentProcess = Start-Process `
-    -FilePath 'cmd.exe' `
-    -ArgumentList $cmdArguments `
-    -WindowStyle Hidden `
-    -PassThru
-
+function Start-AgentTask {
+  Invoke-ScheduledTaskCommand -Arguments @('/Run', '/TN', $agentTaskName) | Out-Null
   $script:lastAgentStartUtc = [DateTime]::UtcNow
-  $script:lastAgentExitCode = $null
   $script:lastAgentError = $null
 }
 
 function Is-AgentRunning {
-  if ($null -eq $script:agentProcess) {
-    return $false
-  }
-
-  try {
-    $script:agentProcess.Refresh()
-  }
-  catch {
-    return $false
-  }
-
-  return -not $script:agentProcess.HasExited
+  $snapshot = Get-AgentTaskSnapshot
+  $script:lastKnownTaskStatus = $snapshot.Status
+  return $snapshot.Status -eq 'Running'
 }
 
 function Ensure-AgentRunning {
@@ -142,24 +104,19 @@ function Ensure-AgentRunning {
     return
   }
 
-  if ($null -ne $script:agentProcess -and $script:agentProcess.HasExited) {
-    $script:lastAgentExitCode = $script:agentProcess.ExitCode
-  }
-
   try {
-    Start-AgentProcess
+    Start-AgentTask
   }
   catch {
     $script:lastAgentError = $_.Exception.Message
   }
 }
 
-function Stop-AgentProcess {
-  if ($null -ne $script:agentProcess -and -not $script:agentProcess.HasExited) {
-    Stop-Process -Id $script:agentProcess.Id -Force -ErrorAction SilentlyContinue
-  }
-
-  Stop-AgentNodeProcesses
+function Restart-AgentTask {
+  Invoke-ScheduledTaskCommand -Arguments @('/End', '/TN', $agentTaskName) -IgnoreFailure |
+    Out-Null
+  Start-Sleep -Milliseconds 500
+  Start-AgentTask
 }
 
 function Open-LogFile {
@@ -173,15 +130,13 @@ function Open-LogFile {
 }
 
 function Get-AgentStatusText {
-  $statusLabel = if (Is-AgentRunning) {
-    "Ativo (PID $($script:agentProcess.Id))"
-  }
-  else {
-    'Parado'
-  }
+  $snapshot = Get-AgentTaskSnapshot
+  $script:lastKnownTaskStatus = $snapshot.Status
 
   $lines = @(
-    "Status: $statusLabel",
+    "Task: $agentTaskName",
+    "Status: $($snapshot.Status)",
+    "Log supervisor: $supervisorLogPath",
     "Log out: $agentOutLogPath",
     "Log err: $agentErrLogPath"
   )
@@ -190,12 +145,13 @@ function Get-AgentStatusText {
     $lines += "Ultimo start UTC: $($script:lastAgentStartUtc.ToString('yyyy-MM-dd HH:mm:ss'))"
   }
 
-  if ($null -ne $script:lastAgentExitCode) {
-    $lines += "Ultimo exit code: $($script:lastAgentExitCode)"
-  }
-
   if ($script:lastAgentError) {
     $lines += "Ultimo erro: $($script:lastAgentError)"
+  }
+
+  if ($snapshot.Detail) {
+    $lines += ''
+    $lines += $snapshot.Detail
   }
 
   return ($lines -join [Environment]::NewLine)
@@ -225,20 +181,23 @@ function Update-StatusLabel {
     [System.Windows.Forms.NotifyIcon]$TrayIcon
   )
 
-  if (Is-AgentRunning) {
-    $StatusMenuItem.Text = "Status: ativo (PID $($script:agentProcess.Id))"
+  $snapshot = Get-AgentTaskSnapshot
+  $script:lastKnownTaskStatus = $snapshot.Status
+
+  if ($snapshot.Status -eq 'Running') {
+    $StatusMenuItem.Text = 'Status: ativo'
     Set-NotifyText -TrayIcon $TrayIcon -Text 'Container Tracker Agent - Ativo'
     return
   }
 
   if ($script:lastAgentError) {
-    $StatusMenuItem.Text = 'Status: erro ao iniciar (veja log err)'
+    $StatusMenuItem.Text = 'Status: erro ao iniciar'
     Set-NotifyText -TrayIcon $TrayIcon -Text 'Container Tracker Agent - Erro'
     return
   }
 
-  $StatusMenuItem.Text = 'Status: parado'
-  Set-NotifyText -TrayIcon $TrayIcon -Text 'Container Tracker Agent - Parado'
+  $StatusMenuItem.Text = "Status: $($snapshot.Status)"
+  Set-NotifyText -TrayIcon $TrayIcon -Text "Container Tracker Agent - $($snapshot.Status)"
 }
 
 $mutexCreated = $false
@@ -253,10 +212,10 @@ $trayIcon = $null
 $monitorTimer = $null
 
 try {
+  Ensure-FileExists -Path $supervisorLogPath
   Ensure-FileExists -Path $agentOutLogPath
   Ensure-FileExists -Path $agentErrLogPath
 
-  Stop-AgentNodeProcesses
   Ensure-AgentRunning
 
   $contextMenu = New-Object System.Windows.Forms.ContextMenuStrip
@@ -275,6 +234,12 @@ try {
       ) | Out-Null
     })
 
+  $openSupervisorLogMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
+  $openSupervisorLogMenuItem.Text = 'Abrir log supervisor'
+  $null = $openSupervisorLogMenuItem.add_Click({
+      Open-LogFile -Path $supervisorLogPath
+    })
+
   $openOutLogMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
   $openOutLogMenuItem.Text = 'Abrir log out'
   $null = $openOutLogMenuItem.add_Click({
@@ -290,9 +255,7 @@ try {
   $restartMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
   $restartMenuItem.Text = 'Reiniciar agente'
   $null = $restartMenuItem.add_Click({
-      Stop-AgentProcess
-      Start-Sleep -Milliseconds 250
-      Ensure-AgentRunning
+      Restart-AgentTask
       Update-StatusLabel -StatusMenuItem $statusMenuItem -TrayIcon $trayIcon
     })
 
@@ -306,6 +269,7 @@ try {
   $null = $contextMenu.Items.Add($statusMenuItem)
   $null = $contextMenu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
   $null = $contextMenu.Items.Add($showStatusMenuItem)
+  $null = $contextMenu.Items.Add($openSupervisorLogMenuItem)
   $null = $contextMenu.Items.Add($openOutLogMenuItem)
   $null = $contextMenu.Items.Add($openErrLogMenuItem)
   $null = $contextMenu.Items.Add($restartMenuItem)
@@ -358,8 +322,6 @@ finally {
     $monitorTimer.Stop()
     $monitorTimer.Dispose()
   }
-
-  Stop-AgentProcess
 
   if ($null -ne $trayIcon) {
     $trayIcon.Visible = $false

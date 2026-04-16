@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 const runSupervisorFileUrl = new URL('../installer/run-supervisor.ps1', import.meta.url)
 const agentTrayHostFileUrl = new URL('../installer/agent-tray-host.ps1', import.meta.url)
 const installerFileUrl = new URL('../installer/installer.iss', import.meta.url)
+const rebuildReinstallFileUrl = new URL('../rebuild-reinstall.ps1', import.meta.url)
 const winswServiceFileUrl = new URL('../installer/ContainerTrackerAgent.xml', import.meta.url)
 
 describe('windows supervisor launcher', () => {
@@ -22,15 +23,26 @@ describe('windows supervisor launcher', () => {
 
     expect(content).toContain('Source: "run-supervisor.ps1"')
     expect(content).toContain('{app}\\app\\dist\\run-supervisor.ps1')
+    expect(content).toContain('Starting agent tray host.')
+    expect(content).toContain('{app}\\app\\dist\\agent-tray-host.ps1')
     expect(content).not.toContain('Starting agent runtime process.')
   })
 
-  it('keeps the legacy tray host pointed at the runtime entrypoint instead of the supervisor shim', () => {
+  it('starts the tray host from the rebuild-restart Windows flow', () => {
+    const content = fs.readFileSync(rebuildReinstallFileUrl, 'utf8')
+
+    expect(content).toContain('Start-AgentTrayHost')
+    expect(content).toContain('agent-tray-host.ps1')
+    expect(content).toContain('[agent:rebuild-restart] starting tray host:')
+  })
+
+  it('keeps the tray host task-backed instead of launching the runtime directly', () => {
     const content = fs.readFileSync(agentTrayHostFileUrl, 'utf8')
 
-    expect(content).toContain('register-alias-loader.js')
-    expect(content).toContain('\\app\\dist\\apps\\agent\\src\\supervisor.js')
-    expect(content).toContain('app\\dist\\apps\\agent\\src\\agent.js')
+    expect(content).toContain("$agentTaskName = 'ContainerTrackerAgent'")
+    expect(content).toContain('schtasks.exe')
+    expect(content).not.toContain('$agentScriptPath')
+    expect(content).not.toContain('Stop-AgentNodeProcesses')
     expect(content).not.toContain("Join-Path $installRoot 'app\\dist\\agent.js'")
   })
 

@@ -17,7 +17,7 @@ describe('platform adapters path layout integration', () => {
 
     const expected = resolveAgentPathLayoutPaths({
       dataDir,
-      joinPath: path.join,
+      joinPath: path.posix.join,
     })
 
     expect(paths).toEqual(expected)
@@ -40,7 +40,7 @@ describe('platform adapters path layout integration', () => {
       bootstrapEnvPath: '/etc/agent/bootstrap.override.env',
       configEnvPath: '/etc/agent/config.override.env',
       publicStateDir: '/srv/agent/public',
-      joinPath: path.join,
+      joinPath: path.posix.join,
     })
 
     expect(paths).toEqual(expected)

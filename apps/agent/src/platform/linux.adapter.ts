@@ -12,6 +12,7 @@ import type { AgentPlatformAdapter } from '@agent/platform/platform.types'
 const DEFAULT_DATA_DIR_NAME = 'ContainerTracker'
 export const LINUX_SYSTEM_DATA_DIR = '/var/lib/container-tracker-agent'
 const DEV_FALLBACK_DIR_NAME = '.agent-runtime'
+const linuxPath = path.posix
 
 function normalizeOptionalEnv(value: string | undefined): string | undefined {
   if (typeof value !== 'string') {
@@ -46,15 +47,15 @@ function resolveDataDir(command: {
   }
 
   if (typeof command.cwd === 'string' && command.cwd.length > 0) {
-    return path.resolve(command.cwd, DEV_FALLBACK_DIR_NAME)
+    return linuxPath.resolve(command.cwd, DEV_FALLBACK_DIR_NAME)
   }
 
   const xdgDataHome = normalizeOptionalEnv(command.env.XDG_DATA_HOME)
   if (xdgDataHome) {
-    return path.join(xdgDataHome, DEFAULT_DATA_DIR_NAME)
+    return linuxPath.join(xdgDataHome, DEFAULT_DATA_DIR_NAME)
   }
 
-  return path.join(os.homedir(), '.local', 'share', DEFAULT_DATA_DIR_NAME)
+  return linuxPath.join(os.homedir(), '.local', 'share', DEFAULT_DATA_DIR_NAME)
 }
 
 function removePathIfExists(targetPath: string): void {
@@ -101,20 +102,20 @@ export const linuxPlatformAdapter: AgentPlatformAdapter = {
     const dataDir = resolveDataDir(command)
     const bootstrapEnvPath =
       normalizeOptionalEnv(command.env.BOOTSTRAP_DOTENV_PATH) ??
-      path.join(dataDir, AGENT_PATH_LAYOUT.files.bootstrapEnv)
+      linuxPath.join(dataDir, AGENT_PATH_LAYOUT.files.bootstrapEnv)
     const configEnvPath =
       normalizeOptionalEnv(command.env.DOTENV_PATH) ??
-      path.join(dataDir, AGENT_PATH_LAYOUT.files.configEnv)
+      linuxPath.join(dataDir, AGENT_PATH_LAYOUT.files.configEnv)
     const publicStateDir =
       normalizeOptionalEnv(command.env.AGENT_PUBLIC_STATE_DIR) ??
-      path.join(dataDir, AGENT_PATH_LAYOUT.directories.publicState)
+      linuxPath.join(dataDir, AGENT_PATH_LAYOUT.directories.publicState)
 
     return resolveAgentPathLayoutPaths({
       dataDir,
       bootstrapEnvPath,
       publicStateDir,
       configEnvPath,
-      joinPath: path.join,
+      joinPath: linuxPath.join,
     })
   },
   ensureDirectories(command) {

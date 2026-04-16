@@ -9,7 +9,6 @@ import { fileURLToPath } from 'node:url'
 import { isWindowsPlatform, resolveDirectorySymlinkType } from './platform/os-branching.ts'
 
 const DEFAULT_NODE_WINDOWS_VERSION = 'v22.11.0'
-const DEFAULT_AGENT_DEPLOY_WORKSPACE = '@container-tracker/agent'
 const NODE_WINDOWS_SHA256_BY_VERSION: Readonly<Record<string, string>> = {
   'v22.11.0': '905373a059aecaf7f48c1ce10ffbd5334457ca00f678747f19db5ea7d256c236',
 }
@@ -355,67 +354,6 @@ function runCommand(command: string, args: readonly string[], cwd: string): Prom
       reject(new Error(`"${command}" exited with code ${code ?? 'unknown'}`))
     })
   })
-}
-
-async function runPnpmCommand(args: readonly string[], cwd: string): Promise<void> {
-  if (isWindowsPlatform()) {
-    let lastError: unknown = null
-    const comspec = process.env.ComSpec ?? 'cmd.exe'
-
-    try {
-      await runCommand(comspec, ['/d', '/s', '/c', 'pnpm.cmd', ...args], cwd)
-      return
-    } catch (error) {
-      lastError = error
-      console.warn(
-        `[agent:release] failed to run "pnpm.cmd" via cmd.exe (${toErrorMessage(error)}), trying direct binary...`,
-      )
-    }
-
-    try {
-      await runCommand('pnpm', args, cwd)
-      return
-    } catch (error) {
-      lastError = error
-    }
-
-    throw new Error(`failed to run pnpm command: ${toErrorMessage(lastError)}`)
-  }
-
-  await runCommand('pnpm', args, cwd)
-}
-
-async function runPnpmDeployWithLegacyFallback(command: {
-  readonly args: readonly string[]
-  readonly cwd: string
-}): Promise<void> {
-  const argsWithLegacy = [...command.args]
-  const deployIndex = argsWithLegacy.indexOf('deploy')
-  if (deployIndex < 0) {
-    await runPnpmCommand(command.args, command.cwd)
-    return
-  }
-
-  argsWithLegacy.splice(deployIndex + 1, 0, '--legacy')
-
-  try {
-    await runPnpmCommand(argsWithLegacy, command.cwd)
-    return
-  } catch (legacyError) {
-    console.warn(
-      `[agent:release] pnpm deploy with --legacy failed (${toErrorMessage(
-        legacyError,
-      )}); retrying without --legacy`,
-    )
-  }
-
-  try {
-    await runPnpmCommand(command.args, command.cwd)
-  } catch (defaultError) {
-    throw new Error(
-      `pnpm deploy failed both with and without --legacy (${toErrorMessage(defaultError)})`,
-    )
-  }
 }
 
 async function extractZip(zipPath: string, destinationDir: string, cwd: string): Promise<void> {
@@ -1020,6 +958,15 @@ async function pruneReleaseAppTopLevelEntries(releaseAppDir: string): Promise<vo
   }
 }
 
+async function prepareReleaseAppSkeleton(command: {
+  readonly releaseAppDir: string
+  readonly packageJsonSourcePath: string
+}): Promise<void> {
+  await fs.rm(command.releaseAppDir, { recursive: true, force: true })
+  await fs.mkdir(path.join(command.releaseAppDir, 'node_modules', '.pnpm'), { recursive: true })
+  await fs.copyFile(command.packageJsonSourcePath, path.join(command.releaseAppDir, 'package.json'))
+}
+
 async function pruneRuntimeNodeModules(
   releaseAppDir: string,
   runtimeSnapshot?: RuntimeDependencySnapshot,
@@ -1250,6 +1197,7 @@ async function normalizeAbsoluteRuntimeSymlinks(command: {
   readonly targetNodeModulesDir: string
 }): Promise<void> {
   const pendingDirs = [command.targetNodeModulesDir]
+  const targetPnpmAliasDir = path.join(command.targetNodeModulesDir, '.pnpm', 'node_modules')
   let normalizedCount = 0
 
   while (pendingDirs.length > 0) {
@@ -1268,6 +1216,9 @@ async function normalizeAbsoluteRuntimeSymlinks(command: {
       }
 
       if (!entry.isSymbolicLink()) {
+        continue
+      }
+      if (isInsideDirectory(targetPnpmAliasDir, entryPath)) {
         continue
       }
 
@@ -1464,7 +1415,7 @@ async function runPreflightChecks(command: {
       !linuxAdapterSource.includes('DEV_FALLBACK_DIR_NAME') ||
       !linuxAdapterSource.includes('.agent-runtime') ||
       !linuxAdapterSource.includes('AGENT_PUBLIC_STATE_DIR') ||
-      !linuxAdapterSource.includes("path.join(dataDir, 'run')")
+      !linuxAdapterSource.includes('AGENT_PATH_LAYOUT.directories.publicState')
     ) {
       errors.push(
         'linux.adapter.ts must resolve Linux paths with /var/lib/container-tracker-agent, .agent-runtime fallback, and DATA_DIR/run public-state default',
@@ -1528,22 +1479,25 @@ async function buildRelease(): Promise<void> {
   const distSharedSrcDir = path.join(distRootDir, 'src')
   const releaseDir = path.join(repoRoot, 'release')
   const releaseAppDir = path.join(releaseDir, 'app')
+  const packageLocalReleaseDir = path.join(appsAgentDir, 'release')
   const releaseAppDistDir = path.join(releaseAppDir, 'dist')
   const releaseNodeDir = path.join(releaseDir, 'node')
   const releaseConfigDir = path.join(releaseDir, 'config')
   const tempDownloadDir = path.join(releaseDir, '.downloads')
   const cacheDownloadDir = path.join(appsAgentDir, '.cache', 'downloads')
+  const agentPackageJsonPath = path.join(appsAgentDir, 'package.json')
 
   const nodeVersion = process.env.AGENT_NODE_WINDOWS_VERSION ?? DEFAULT_NODE_WINDOWS_VERSION
-  const agentDeployWorkspace = process.env.AGENT_DEPLOY_WORKSPACE ?? DEFAULT_AGENT_DEPLOY_WORKSPACE
 
   const compiledAgentFile = path.join(distAgentAppDir, 'agent.js')
   const compiledSupervisorFile = path.join(distAgentAppDir, 'supervisor.js')
 
   await ensurePathExists(compiledAgentFile, 'compiled agent')
   await ensurePathExists(compiledSupervisorFile, 'compiled supervisor')
+  await ensurePathExists(agentPackageJsonPath, 'agent package.json')
 
   await fs.rm(releaseDir, { recursive: true, force: true })
+  await fs.rm(packageLocalReleaseDir, { recursive: true, force: true })
   await fs.mkdir(releaseDir, { recursive: true })
   await fs.mkdir(tempDownloadDir, { recursive: true })
   await fs.mkdir(releaseConfigDir, { recursive: true })
@@ -1555,12 +1509,10 @@ async function buildRelease(): Promise<void> {
     'utf8',
   )
   console.log('[agent:release] generated release/config/bootstrap.env from effective environment')
-  console.log(
-    `[agent:release] deploying production dependencies from workspace "${agentDeployWorkspace}"`,
-  )
-  await runPnpmDeployWithLegacyFallback({
-    args: ['--filter', agentDeployWorkspace, 'deploy', '--prod', releaseAppDir],
-    cwd: repoRoot,
+  console.log('[agent:release] preparing portable release app runtime from workspace cache')
+  await prepareReleaseAppSkeleton({
+    releaseAppDir,
+    packageJsonSourcePath: agentPackageJsonPath,
   })
 
   await fs.mkdir(path.join(releaseAppDistDir, 'apps', 'agent'), { recursive: true })

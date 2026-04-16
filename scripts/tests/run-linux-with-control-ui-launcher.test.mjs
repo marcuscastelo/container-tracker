@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const launcherPath = path.join(repoRoot, 'scripts', 'agent', 'run-linux-with-control-ui.sh')
 const runtimeLauncherPath = path.join(repoRoot, 'scripts', 'agent', 'run-linux.sh')
+const describeOnLinuxShellHost = process.platform === 'win32' ? describe.skip : describe
 
 function makeTempDir(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix))
@@ -184,7 +185,7 @@ async function waitForExit(child, timeoutMs = 4000) {
   })
 }
 
-describe('run-linux-with-control-ui launcher', () => {
+describeOnLinuxShellHost('run-linux-with-control-ui launcher', () => {
   it('keeps runtime as main process when UI fails and keeps shared .agent-runtime env', () => {
     const { result, runtimeEnvCapturePath, uiEnvCapturePath, uiArgsCapturePath, agentDataDir } =
       runLauncherSync({

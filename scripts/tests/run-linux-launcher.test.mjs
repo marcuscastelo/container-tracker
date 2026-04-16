@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const launcherPath = path.join(repoRoot, 'scripts', 'agent', 'run-linux.sh')
+const describeOnLinuxShellHost = process.platform === 'win32' ? describe.skip : describe
 
 function makeTempDir(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix))
@@ -78,7 +79,7 @@ printf '%s\n' "$@" > "\${CAPTURE_ARGS_FILE}"
   }
 }
 
-describe('run-linux launcher', () => {
+describeOnLinuxShellHost('run-linux launcher', () => {
   it('defaults AGENT_UPDATE_MANIFEST_CHANNEL from config when no env override is present', () => {
     const { result, capturedChannel, capturedDisableFlag } = runLauncher({
       configChannel: 'stable',

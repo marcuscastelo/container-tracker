@@ -22,6 +22,19 @@ function readFile(targetPath) {
   return fs.readFile(targetPath, 'utf8')
 }
 
+function tomlBasicString(value) {
+  return `"${value
+    .replaceAll('\\', '\\\\')
+    .replaceAll('"', '\\"')
+    .replaceAll('\n', '\\n')
+    .replaceAll('\r', '\\r')
+    .replaceAll('\t', '\\t')}"`
+}
+
+function nodeEvalCommand(source) {
+  return `${JSON.stringify(process.execPath)} -e ${JSON.stringify(source)}`
+}
+
 async function runInitialize(worktreePath, options = {}) {
   try {
     const result = await execFileAsync(process.execPath, [scriptPath], {
@@ -85,7 +98,9 @@ function defaultConfig() {
     'overwrite = false',
     '',
     '[[run]]',
-    `command = "${process.execPath} -e \\"const fs = require('node:fs'); fs.writeFileSync('run.log', process.cwd())\\""`,
+    `command = ${tomlBasicString(
+      nodeEvalCommand("const fs = require('node:fs'); fs.writeFileSync('run.log', process.cwd())"),
+    )}`,
     'required = true',
     '',
   ].join('\n')
@@ -252,7 +267,7 @@ describe('initialize-worktree', () => {
     tempDirs.push(tempDir)
     const config = [
       '[[run]]',
-      `command = "${process.execPath} -e \\"process.exit(7)\\""`,
+      `command = ${tomlBasicString(nodeEvalCommand('process.exit(7)'))}`,
       'required = true',
       '',
     ].join('\n')
@@ -271,11 +286,15 @@ describe('initialize-worktree', () => {
     tempDirs.push(tempDir)
     const config = [
       '[[run]]',
-      `command = "${process.execPath} -e \\"process.exit(9)\\""`,
+      `command = ${tomlBasicString(nodeEvalCommand('process.exit(9)'))}`,
       'required = false',
       '',
       '[[run]]',
-      `command = "${process.execPath} -e \\"const fs = require('node:fs'); fs.writeFileSync('optional-ok.log', 'done')\\""`,
+      `command = ${tomlBasicString(
+        nodeEvalCommand(
+          "const fs = require('node:fs'); fs.writeFileSync('optional-ok.log', 'done')",
+        ),
+      )}`,
       'required = true',
       '',
     ].join('\n')
