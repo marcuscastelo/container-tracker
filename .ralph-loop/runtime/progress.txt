@@ -5,6 +5,7 @@
 - Canonical agent path names now live in `apps/agent/src/platform/agent-path-layout.ts`; when resolving platform runtime paths, call `resolveAgentPathLayoutPaths` with the OS-specific join function (`path.join` or `path.win32.join`) instead of duplicating literal file/directory names.
 - Keep cross-platform path-layout drift guarded by asserting adapter `resolvePaths()` outputs against `resolveAgentPathLayoutPaths` in integration tests (`apps/agent/src/tests/platform-layout-integration.test.ts`).
 - Agent source files enforce `noRestrictedImports`; use absolute `@agent/...` aliases even for sibling imports inside `apps/agent/src/**`.
+- `apps/agent/src/config/agent-config.mapper.ts` is linted with `noBarrelFile`; keep it as explicit compatibility wrappers (functions) instead of pure re-export barrels when delegating to canonical config modules.
 - Keep local-control behavior inside `apps/agent/src/platform/control/*` strategies and keep `apps/agent/src/platform/local-control.adapter.ts` as thin strategy composition/dispatch only.
 
 Started: 2026-04-16T00:59:05Z
@@ -110,4 +111,25 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Keep adapter factories composition-only; strategy modules should own command execution and mode-specific lifecycle semantics.
   - The Linux local dev strategy can remain testable by injecting pid-resolution/start/kill hooks instead of mocking `child_process` globally.
   - `pnpm sanity` runs Biome fix first; import-path lint violations in new agent files surface during this gate, so prefer `@agent/...` aliases from the start.
+---
+## 2026-04-15 23:00:26 -03 - US-006
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Centralized config responsibilities by introducing canonical modules: `apps/agent/src/config/agent-env.ts` (parse/serialize + env file IO) and `apps/agent/src/config/agent-config.policy.ts` (validation/defaults + placeholder policy + effective config resolution).
+- Converted `apps/agent/src/config/agent-config.mapper.ts` into an explicit compatibility facade that delegates to the new canonical modules without breaking existing imports.
+- Added focused unit coverage for the new APIs:
+  - `agent-env.test.ts` validates env loading, valid/invalid input parsing behavior, and serialization format.
+  - `agent-config.policy.test.ts` validates effective defaults, invalid runtime validation, and runtime/bootstrap placeholder rejection.
+- Ran quality gates: targeted `vitest` config suites, `pnpm --filter @container-tracker/agent run type-check`, and full `pnpm sanity` (green).
+- Files changed:
+  - apps/agent/src/config/agent-env.ts
+  - apps/agent/src/config/agent-config.policy.ts
+  - apps/agent/src/config/agent-config.mapper.ts
+  - apps/agent/src/tests/agent-env.test.ts
+  - apps/agent/src/tests/agent-config.policy.test.ts
+  - .ralph-loop/runtime/prd.json
+  - .ralph-loop/runtime/progress.txt
+- **Learnings for future iterations:**
+  - Keep parse/serialize logic in `agent-env.ts` and policy/default/placeholder logic in `agent-config.policy.ts`; avoid re-concentrating these concerns in `agent-config.mapper.ts`.
+  - If compatibility layers are required in agent source, implement explicit wrapper functions instead of re-export barrels to satisfy `noBarrelFile`.
+  - Injecting hostname via policy options enables deterministic tests for effective config resolution defaults.
 ---
