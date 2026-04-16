@@ -20,7 +20,11 @@ import {
   buildAgentReleaseInventory,
   writeAgentControlPublicState,
 } from '@agent/control-core/public-control-state'
-import { writeFileAtomic } from '@agent/state/file-io'
+import {
+  readStateJsonFile,
+  removeStateFile,
+  writeStateJsonFile,
+} from '@agent/state/infrastructure/json-state.file-store'
 import type { z } from 'zod/v4'
 
 const LOG_FILE_BY_CHANNEL = {
@@ -30,23 +34,6 @@ const LOG_FILE_BY_CHANNEL = {
 } as const
 
 type ManagedLogChannel = Exclude<keyof typeof LOG_FILE_BY_CHANNEL, 'all'>
-
-function readJsonFile<T>(command: {
-  readonly filePath: string
-  readonly parse: (value: unknown) => T
-}): T | null {
-  if (!fs.existsSync(command.filePath)) {
-    return null
-  }
-
-  try {
-    const raw = fs.readFileSync(command.filePath, 'utf8')
-    const parsed: unknown = JSON.parse(raw)
-    return command.parse(parsed)
-  } catch {
-    return null
-  }
-}
 
 function readLogLines(filePath: string, channel: ManagedLogChannel, tail: number) {
   if (!fs.existsSync(filePath)) {
@@ -92,9 +79,9 @@ export function selectAgentControlPublicLogs(
 export function readAgentControlPublicBackendState(
   filePath: string,
 ): AgentControlBackendState | null {
-  return readJsonFile({
+  return readStateJsonFile({
     filePath,
-    parse: (value) => AgentControlBackendStateSchema.parse(value),
+    schema: AgentControlBackendStateSchema,
   })
 }
 
@@ -102,10 +89,12 @@ export function writeAgentControlPublicBackendState(command: {
   readonly filePath: string
   readonly state: AgentControlBackendState
 }): AgentControlBackendState {
-  const state = AgentControlBackendStateSchema.parse(command.state)
-  writeFileAtomic(command.filePath, `${JSON.stringify(state, null, 2)}\n`)
-  fs.chmodSync(command.filePath, 0o644)
-  return state
+  return writeStateJsonFile({
+    filePath: command.filePath,
+    schema: AgentControlBackendStateSchema,
+    value: command.state,
+    mode: 0o644,
+  })
 }
 
 export function refreshAgentControlPublicBackendState(command: {
@@ -143,7 +132,7 @@ export async function publishAgentControlPublicSnapshot(command: {
         })()
 
   if (!controlSync) {
-    fs.rmSync(command.filePath, { force: true })
+    removeStateFile(command.filePath)
     writeAgentControlPublicBackendState({
       filePath: command.backendStatePath,
       state: {
@@ -179,9 +168,9 @@ export async function publishAgentControlPublicSnapshot(command: {
 }
 
 export function readAgentControlPublicLogs(filePath: string): AgentControlLogsResponse | null {
-  return readJsonFile({
+  return readStateJsonFile({
     filePath,
-    parse: (value) => AgentControlLogsResponseSchema.parse(value),
+    schema: AgentControlLogsResponseSchema,
   })
 }
 
@@ -189,10 +178,12 @@ export function writeAgentControlPublicLogs(command: {
   readonly filePath: string
   readonly logs: AgentControlLogsResponse
 }): AgentControlLogsResponse {
-  const logs = AgentControlLogsResponseSchema.parse(command.logs)
-  writeFileAtomic(command.filePath, `${JSON.stringify(logs, null, 2)}\n`)
-  fs.chmodSync(command.filePath, 0o644)
-  return logs
+  return writeStateJsonFile({
+    filePath: command.filePath,
+    schema: AgentControlLogsResponseSchema,
+    value: command.logs,
+    mode: 0o644,
+  })
 }
 
 export function refreshAgentControlPublicLogs(command: {

@@ -15,7 +15,7 @@ dotenv_path="${DOTENV_PATH:-$agent_data_dir/config.env}"
 bootstrap_path="${BOOTSTRAP_DOTENV_PATH:-$agent_data_dir/bootstrap.env}"
 disable_automatic_update_checks="${AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS:-}"
 register_path="$repo_root/dist/apps/agent/src/runtime/register-alias-loader.js"
-node_args=("$repo_root/dist/apps/agent/src/bootstrap/supervisor-entry.js")
+node_args=("$repo_root/dist/apps/agent/src/supervisor.js")
 
 mkdir -p "$agent_data_dir"
 

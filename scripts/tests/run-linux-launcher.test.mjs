@@ -126,7 +126,7 @@ describe('run-linux launcher', () => {
 
     expect(result.status).toBe(0)
     expect(capturedArgs.at(-1)).toBe(
-      path.join(repoRoot, 'dist', 'apps', 'agent', 'src', 'bootstrap', 'supervisor-entry.js'),
+      path.join(repoRoot, 'dist', 'apps', 'agent', 'src', 'supervisor.js'),
     )
 
     if (fs.existsSync(registerPath)) {

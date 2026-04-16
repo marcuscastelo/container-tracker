@@ -1,9 +1,9 @@
+import { validateAgentConfig } from '@agent/config/agent-config.policy'
 import {
   loadRawAgentEnvFromFile,
   parseAgentConfig,
   serializeAgentConfig,
-  validateAgentConfig,
-} from '@agent/config/agent-config.mapper'
+} from '@agent/config/agent-env'
 import type { ValidatedAgentConfig } from '@agent/core/contracts/agent-config.contract'
 import type { PlatformPathResolution } from '@agent/platform/platform.contract'
 import { writeFileAtomic } from '@agent/state/file-io'

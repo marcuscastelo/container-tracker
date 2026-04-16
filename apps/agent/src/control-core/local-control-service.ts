@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { readAgentEnvFileValues } from '@agent/config/agent-config.mapper'
+import { readAgentEnvFileValues } from '@agent/config/agent-env'
 import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   type ControlRuntimeConfig,
@@ -41,6 +41,10 @@ import {
   resolveAgentPublicStatePath,
 } from '@agent/runtime/paths'
 import { writeFileAtomic } from '@agent/state/file-io'
+import {
+  removeStateFile,
+  writeStateJsonFile,
+} from '@agent/state/infrastructure/json-state.file-store'
 import type { z } from 'zod/v4'
 
 const LOG_FILE_BY_CHANNEL = {
@@ -175,26 +179,13 @@ function upsertEnvFileValue(command: {
 }
 
 function clearPublicStateFiles(): void {
-  try {
-    fs.rmSync(resolveAgentPublicStatePath(), { force: true })
-  } catch {
-    // Ignore stale public state cleanup failures.
-  }
-
-  try {
-    fs.rmSync(resolveAgentPublicBackendStatePath(), { force: true })
-  } catch {
-    // Ignore stale public backend-state cleanup failures.
-  }
+  removeStateFile(resolveAgentPublicStatePath())
+  removeStateFile(resolveAgentPublicBackendStatePath())
 }
 
 function invalidateRemoteCaches(layout: AgentPathLayout): void {
   for (const cachePath of [layout.controlRemoteCachePath, layout.infraConfigPath]) {
-    try {
-      fs.rmSync(cachePath, { force: true })
-    } catch {
-      // Ignore cache cleanup failures and keep command best-effort.
-    }
+    removeStateFile(cachePath)
   }
 }
 
@@ -425,10 +416,11 @@ export function createAgentControlLocalService(
           ...currentConfig,
           BACKEND_URL: normalizedBackendUrl,
         })
-        writeFileAtomic(
-          deps.layout.baseRuntimeConfigPath,
-          `${JSON.stringify(nextConfig, null, 2)}\n`,
-        )
+        writeStateJsonFile({
+          filePath: deps.layout.baseRuntimeConfigPath,
+          schema: ControlRuntimeConfigSchema,
+          value: nextConfig,
+        })
         if (runtimeConfigMaterialized) {
           writeFileAtomic(deps.layout.configEnvPath, serializeRuntimeConfig(nextConfig))
         }

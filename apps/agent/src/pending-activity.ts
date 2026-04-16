@@ -1,5 +1,7 @@
-import fs from 'node:fs'
-import { writeFileAtomic } from '@agent/state/file-io'
+import {
+  readStateJsonFile,
+  writeStateJsonFile,
+} from '@agent/state/infrastructure/json-state.file-store'
 import { z } from 'zod/v4'
 
 const activityEventSchema = z.object({
@@ -41,21 +43,12 @@ const activityEventListSchema = z.array(activityEventSchema)
 export type PendingActivityEvent = z.infer<typeof activityEventSchema>
 
 function readEvents(filePath: string): readonly PendingActivityEvent[] {
-  if (!fs.existsSync(filePath)) {
-    return []
-  }
-
-  try {
-    const raw = fs.readFileSync(filePath, 'utf8')
-    const parsed: unknown = JSON.parse(raw)
-    const eventsResult = activityEventListSchema.safeParse(parsed)
-    if (!eventsResult.success) {
-      return []
-    }
-    return eventsResult.data
-  } catch {
-    return []
-  }
+  return (
+    readStateJsonFile({
+      filePath,
+      schema: activityEventListSchema,
+    }) ?? []
+  )
 }
 
 export function appendPendingActivityEvents(
@@ -67,8 +60,11 @@ export function appendPendingActivityEvents(
   }
 
   const existing = readEvents(filePath)
-  const normalized = activityEventListSchema.parse([...existing, ...events])
-  writeFileAtomic(filePath, `${JSON.stringify(normalized, null, 2)}\n`)
+  writeStateJsonFile({
+    filePath,
+    schema: activityEventListSchema,
+    value: [...existing, ...events],
+  })
 }
 
 export function drainPendingActivityEvents(filePath: string): readonly PendingActivityEvent[] {
@@ -77,6 +73,10 @@ export function drainPendingActivityEvents(filePath: string): readonly PendingAc
     return []
   }
 
-  writeFileAtomic(filePath, '[]\n')
+  writeStateJsonFile({
+    filePath,
+    schema: activityEventListSchema,
+    value: [],
+  })
   return events
 }
