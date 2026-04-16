@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-export RALPH_AGENT="${RALPH_AGENT:-codex}"
+export RALPH_AGENT="${RALPH_AGENT:-claude}"
 export RALPH_LOOP_ROOT="${RALPH_LOOP_ROOT:-$REPO_ROOT/tools/ralph-loop}"
 export RALPH_LOOP_WORKDIR="${RALPH_LOOP_WORKDIR:-$REPO_ROOT/.ralph-loop}"
 export RALPH_MAX_ITERATIONS="${RALPH_MAX_ITERATIONS:-10}"
