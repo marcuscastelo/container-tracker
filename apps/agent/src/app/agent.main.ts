@@ -49,6 +49,7 @@ import {
 import { clearSupervisorControl } from '@agent/runtime/infrastructure/supervisor-control.repository'
 import {
   EXIT_CONFIG_ERROR,
+  EXIT_FATAL,
   EXIT_OK,
   resolveSupervisorExitAction,
 } from '@agent/runtime/lifecycle-exit-codes'
@@ -823,4 +824,11 @@ export async function runAgentMain(): Promise<void> {
   }
   removeSupervisorPidFile(layout)
   process.exitCode = supervisorExitCode
+}
+
+export function launchAgentMain(): void {
+  void runAgentMain().catch((error) => {
+    console.error(`[supervisor] fatal startup error: ${toErrorMessage(error)}`)
+    process.exitCode = EXIT_FATAL
+  })
 }
