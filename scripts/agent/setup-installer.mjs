@@ -171,10 +171,14 @@ function checkCommandAvailability(command, args = ['--version']) {
   })
 }
 
-function runCommand(command, args, cwd) {
+function runCommand(command, args, cwd, extraEnv = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
+      env: {
+        ...process.env,
+        ...extraEnv,
+      },
       stdio: 'inherit',
       shell: false,
     })
@@ -195,19 +199,37 @@ function runCommand(command, args, cwd) {
 }
 
 async function resolveInstallerScriptPath(repoRoot, installerScriptPathArg) {
-  const absolutePath = path.isAbsolute(installerScriptPathArg)
-    ? installerScriptPathArg
-    : path.resolve(process.cwd(), installerScriptPathArg)
+  if (path.isAbsolute(installerScriptPathArg)) {
+    if (!(await pathExists(installerScriptPathArg))) {
+      throw new Error(`Installer script not found: ${installerScriptPathArg}`)
+    }
 
-  if (!(await pathExists(absolutePath))) {
-    throw new Error(`Installer script not found: ${absolutePath}`)
+    if (!isInsideDirectory(repoRoot, installerScriptPathArg)) {
+      throw new Error(`Installer script must be inside repository root: ${installerScriptPathArg}`)
+    }
+
+    return installerScriptPathArg
   }
 
-  if (!isInsideDirectory(repoRoot, absolutePath)) {
-    throw new Error(`Installer script must be inside repository root: ${absolutePath}`)
+  const fromRepoRoot = path.resolve(repoRoot, installerScriptPathArg)
+  const fromCwd = path.resolve(process.cwd(), installerScriptPathArg)
+  const preferredCandidates =
+    installerScriptPathArg === DEFAULT_INSTALLER_SCRIPT
+      ? [fromRepoRoot, fromCwd]
+      : [fromCwd, fromRepoRoot]
+  const candidatePaths = [...new Set(preferredCandidates)]
+
+  for (const candidatePath of candidatePaths) {
+    if (await pathExists(candidatePath)) {
+      if (!isInsideDirectory(repoRoot, candidatePath)) {
+        throw new Error(`Installer script must be inside repository root: ${candidatePath}`)
+      }
+
+      return candidatePath
+    }
   }
 
-  return absolutePath
+  throw new Error(`Installer script not found: ${candidatePaths.join(' or ')}`)
 }
 
 async function resolveWineIsccPath(explicitPath) {
@@ -365,7 +387,9 @@ async function main() {
   console.log(
     `[agent:setup] strategy=${selected.strategyName} installer=${path.relative(repoRoot, installerScriptPath)}`,
   )
-  await runCommand(selected.command, selected.args, repoRoot)
+  await runCommand(selected.command, selected.args, repoRoot, {
+    CONTAINER_TRACKER_REPO_ROOT: repoRoot,
+  })
 
   const defaultOutputPath = path.join(
     path.dirname(installerScriptPath),

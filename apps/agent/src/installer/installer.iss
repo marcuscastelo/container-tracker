@@ -3,7 +3,12 @@
 #define AppIdValue "{{0F1AE8D1-7B19-4B14-9A17-2EF197BBD5AA}}"
 #define AppDirName "ContainerTrackerAgent"
 #define AgentTaskName "ContainerTrackerAgent"
-#define RepoRoot "..\..\.."
+#define RepoRootEnv GetEnv("CONTAINER_TRACKER_REPO_ROOT")
+#if RepoRootEnv != ""
+  #define RepoRoot RepoRootEnv
+#else
+  #define RepoRoot "..\..\..\.."
+#endif
 #define ReleaseRoot RepoRoot + "\release"
 
 [Setup]
