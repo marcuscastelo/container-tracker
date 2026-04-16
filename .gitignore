@@ -3,9 +3,12 @@ node_modules/
 .vinxi/
 .output/
 /release/
+apps/agent/.cache/
+apps/agent/release/
 dist/
 tools/agent/dist/
 tools/agent/.cache/
+tools/agent/installer/Output/
 dist/agent-installer-bundle.zip
 **/.pnpm-store/**
 
