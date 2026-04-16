@@ -20,9 +20,21 @@ function createProcess(
     readonly carrier?: string | null
     readonly importerId?: string | null
     readonly importerName?: string | null
-    readonly highestAlertSeverity?: ProcessSummaryVM['highestAlertSeverity']
+    readonly dominantIncidentSeverity?: 'info' | 'warning' | 'danger' | null
+    readonly attentionSeverity?: ProcessSummaryVM['attentionSeverity']
   },
 ): ProcessSummaryVM {
+  const dominantIncident =
+    input.dominantIncidentSeverity === undefined || input.dominantIncidentSeverity === null
+      ? null
+      : {
+          type: 'ETA_PASSED' as const,
+          severity: input.dominantIncidentSeverity,
+          factMessageKey: 'incidents.fact.etaPassed',
+          factMessageParams: {},
+          triggeredAt: '2026-01-01T00:00:00.000Z',
+        }
+
   return {
     id: input.id,
     reference: null,
@@ -38,12 +50,22 @@ function createProcess(
     statusMicrobadge: null,
     statusRank: 0,
     eta: null,
+    etaDisplay: {
+      kind: 'unavailable',
+    },
     etaMsOrNull: null,
     carrier: input.carrier ?? null,
-    alertsCount: 0,
-    highestAlertSeverity: input.highestAlertSeverity ?? null,
-    dominantAlertCreatedAt: null,
-    hasTransshipment: false,
+    activeIncidentCount: 0,
+    affectedContainerCount: 0,
+    recognizedIncidentCount: 0,
+    dominantIncident,
+    attentionSeverity: input.attentionSeverity ?? input.dominantIncidentSeverity ?? null,
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      affectedContainerCount: 0,
+      topIssue: null,
+    },
     lastEventAt: null,
     syncStatus: 'idle',
     lastSyncAt: null,
@@ -213,18 +235,28 @@ describe('dashboard filter interactions', () => {
 
   it('derives severity options in canonical order from mixed process severities', () => {
     const processes = [
-      createProcess({ id: 'A', statusCode: 'UNKNOWN', highestAlertSeverity: 'warning' }),
-      createProcess({ id: 'B', statusCode: 'UNKNOWN', highestAlertSeverity: null }),
-      createProcess({ id: 'C', statusCode: 'UNKNOWN', highestAlertSeverity: 'danger' }),
-      createProcess({ id: 'D', statusCode: 'UNKNOWN', highestAlertSeverity: 'warning' }),
+      createProcess({
+        id: 'A',
+        statusCode: 'UNKNOWN',
+        dominantIncidentSeverity: 'warning',
+        attentionSeverity: 'danger',
+      }),
+      createProcess({ id: 'B', statusCode: 'UNKNOWN', attentionSeverity: null }),
+      createProcess({
+        id: 'C',
+        statusCode: 'UNKNOWN',
+        dominantIncidentSeverity: 'warning',
+        attentionSeverity: 'warning',
+      }),
+      createProcess({ id: 'D', statusCode: 'UNKNOWN', attentionSeverity: null }),
     ] as const
 
     const options = deriveDashboardSeverityFilterOptions(processes)
 
     expect(options).toEqual([
       { value: 'danger', count: 1 },
-      { value: 'warning', count: 2 },
-      { value: 'none', count: 1 },
+      { value: 'warning', count: 1 },
+      { value: 'none', count: 2 },
     ])
   })
 
@@ -385,9 +417,9 @@ describe('dashboard process filtering', () => {
 
   it('filters processes by selected severity and maps null to none', () => {
     const processes = [
-      createProcess({ id: 'A', statusCode: 'UNKNOWN', highestAlertSeverity: 'danger' }),
-      createProcess({ id: 'B', statusCode: 'UNKNOWN', highestAlertSeverity: 'warning' }),
-      createProcess({ id: 'C', statusCode: 'UNKNOWN', highestAlertSeverity: null }),
+      createProcess({ id: 'A', statusCode: 'UNKNOWN', attentionSeverity: 'danger' }),
+      createProcess({ id: 'B', statusCode: 'UNKNOWN', attentionSeverity: 'warning' }),
+      createProcess({ id: 'C', statusCode: 'UNKNOWN', attentionSeverity: null }),
     ] as const
 
     const byDanger = filterDashboardProcesses(processes, createFilters({ severity: 'danger' }))

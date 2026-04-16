@@ -1,23 +1,21 @@
 {
+  "extends": "@marcuscastelo/tsconfig/solid",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "allowImportingTsExtensions": true,
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
-    "allowJs": true,
-    "noEmit": true,
-    "resolveJsonModule": true,
-    "strict": true,
     "types": ["vinxi/types/client"],
-    "isolatedModules": true,
+
+    "baseUrl": ".",
     "paths": {
       "~/*": ["./src/*"],
+      "@agent/*": ["./apps/agent/src/*"],
       "@tools/*": ["./tools/*"]
     }
   },
-  "exclude": ["tools/ralph-loop/**/*", ".ralph-loop/**/*"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".output",
+    "tools/ralph-loop/**/*",
+    ".ralph-loop/**/*",
+    "packaging/arch/src/agent-app/**/*"
+  ]
 }

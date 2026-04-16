@@ -1,13 +1,19 @@
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
+import {
+  findStrongCompletionMilestones,
+  LIFECYCLE_CONTINUATION_TYPES_AFTER_DELIVERED,
+  LIFECYCLE_CONTINUATION_TYPES_AFTER_EMPTY_RETURNED,
+  type StrongCompletionMilestone,
+  toActualObservationChronology,
+} from '~/modules/tracking/features/status/domain/derive/strongCompletionMilestone'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
-import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 
 /**
  * Maps observation types to the status they imply.
  */
 const OBSERVATION_TO_STATUS: Partial<Record<ObservationType, ContainerStatus>> = {
-  GATE_IN: 'IN_PROGRESS',
+  GATE_IN: 'BOOKED',
   GATE_OUT: 'IN_PROGRESS',
   LOAD: 'LOADED',
   DEPARTURE: 'IN_TRANSIT',
@@ -19,17 +25,7 @@ const OBSERVATION_TO_STATUS: Partial<Record<ObservationType, ContainerStatus>> =
   CUSTOMS_RELEASE: 'DISCHARGED',
 }
 
-const LIFECYCLE_CONTINUATION_TYPES_AFTER_EMPTY_GATE_OUT: readonly ObservationType[] = [
-  'GATE_IN',
-  'GATE_OUT',
-  'LOAD',
-  'DEPARTURE',
-  'ARRIVAL',
-  'DISCHARGE',
-]
-
-const LIFECYCLE_CONTINUATION_TYPES_AFTER_DELIVERY_GATE_OUT: readonly ObservationType[] = [
-  'GATE_IN',
+const BOOKING_ROUTE_MILESTONE_TYPES: readonly ObservationType[] = [
   'LOAD',
   'DEPARTURE',
   'ARRIVAL',
@@ -43,8 +39,9 @@ const LIFECYCLE_CONTINUATION_TYPES_AFTER_DELIVERY_GATE_OUT: readonly Observation
  * The algorithm finds the highest-dominance status implied by any
  * **ACTUAL** observation in the timeline.
  *
- * CRITICAL RULE: Only ACTUAL observations can advance status.
- * EXPECTED observations are informational only and do NOT affect status.
+ * CRITICAL RULE: Strong lifecycle progression is driven by ACTUAL observations.
+ * EXPECTED observations do NOT advance vessel/transit/post-arrival states, but they
+ * may corroborate BOOKED when paired with ACTUAL pre-shipment handling facts.
  *
  * Pseudocode from master doc:
  *   if delivered (ACTUAL) → DELIVERED
@@ -52,6 +49,7 @@ const LIFECYCLE_CONTINUATION_TYPES_AFTER_DELIVERY_GATE_OUT: readonly Observation
  *   else if arrived_at_final (ACTUAL) → ARRIVED_AT_POD
  *   else if any_departure (ACTUAL) → IN_TRANSIT
  *   else if any_load (ACTUAL) → LOADED
+ *   else if pre-shipment evidence without confirmed embarkation → BOOKED
  *   else → IN_PROGRESS
  *
  * @param timeline - Derived timeline for the container
@@ -69,6 +67,8 @@ export function deriveStatus(timeline: Timeline): ContainerStatus {
   let finalLocation: string | null = null
   for (let i = timeline.observations.length - 1; i >= 0; i--) {
     const o = timeline.observations[i]
+    if (o === undefined) continue
+
     if (o.location_code) {
       if (o.type === 'DISCHARGE' || o.type === 'ARRIVAL' || o.type === 'DELIVERY') {
         finalLocation = o.location_code
@@ -83,15 +83,8 @@ export function deriveStatus(timeline: Timeline): ContainerStatus {
   // 1) event_time ordering
   // 2) ACTUAL/EXPECTED tie policy from timeline comparator
   // 3) stable timeline order fallback for complete ties
-  const actualObservations = timeline.observations
-    .map((observation, timelineIndex) => ({ observation, timelineIndex }))
-    .filter((entry) => entry.observation.event_time_type === 'ACTUAL')
-    .sort((a, b) => {
-      const chronologyCompare = compareObservationsChronologically(a.observation, b.observation)
-      if (chronologyCompare !== 0) return chronologyCompare
-      return a.timelineIndex - b.timelineIndex
-    })
-    .map((entry) => entry.observation)
+  const actualObservations = toActualObservationChronology(timeline.observations)
+  const completionMilestones = findStrongCompletionMilestones(timeline.observations)
 
   // Predicate helpers — only ACTUAL observations are considered for status progression
   const hasActualOfType = (type: keyof typeof OBSERVATION_TO_STATUS) =>
@@ -142,82 +135,64 @@ export function deriveStatus(timeline: Timeline): ContainerStatus {
     return !hasLaterLoad
   }
 
-  const hasTerminalEmptyGateOut = () => {
-    let lastEmptyGateOutIndex = -1
-    for (let i = actualObservations.length - 1; i >= 0; i--) {
-      const observation = actualObservations[i]
-      if (observation?.type === 'GATE_OUT' && observation.is_empty === true) {
-        lastEmptyGateOutIndex = i
-        break
-      }
-    }
-
-    if (lastEmptyGateOutIndex === -1) return false
-
-    const hasActualDischargeBeforeGateOut = actualObservations
-      .slice(0, lastEmptyGateOutIndex)
-      .some((observation) => observation.type === 'DISCHARGE')
-    if (!hasActualDischargeBeforeGateOut) return false
-
-    const laterActualObservations = actualObservations.slice(lastEmptyGateOutIndex + 1)
-
-    // Explicit guard: fallback must never override a later canonical terminal fact.
+  const isTerminalGateOutMilestone = (
+    milestone: StrongCompletionMilestone,
+    continuationTypes: readonly ObservationType[],
+  ): boolean => {
+    const laterActualObservations = actualObservations.slice(milestone.chronologyIndex + 1)
     const hasCanonicalTerminalAfterGateOut = laterActualObservations.some(
       (observation) => observation.type === 'DELIVERY' || observation.type === 'EMPTY_RETURN',
     )
     if (hasCanonicalTerminalAfterGateOut) return false
 
     const hasLifecycleContinuationAfterGateOut = laterActualObservations.some((observation) =>
-      LIFECYCLE_CONTINUATION_TYPES_AFTER_EMPTY_GATE_OUT.includes(observation.type),
+      continuationTypes.includes(observation.type),
     )
     if (hasLifecycleContinuationAfterGateOut) return false
 
     return true
   }
 
-  const hasTerminalDeliveryGateOut = () => {
-    let lastDeliveryGateOutIndex = -1
-    for (let i = actualObservations.length - 1; i >= 0; i--) {
-      const observation = actualObservations[i]
-      if (observation?.type === 'GATE_OUT' && observation.is_empty !== true) {
-        lastDeliveryGateOutIndex = i
-        break
-      }
-    }
+  const hasRelevantRouteExpectation = () =>
+    timeline.observations.some((observation) => {
+      if (observation.event_time_type !== 'EXPECTED') return false
+      return BOOKING_ROUTE_MILESTONE_TYPES.includes(observation.type)
+    })
 
-    if (lastDeliveryGateOutIndex === -1) return false
-
-    const hasActualDischargeBeforeGateOut = actualObservations
-      .slice(0, lastDeliveryGateOutIndex)
-      .some((observation) => observation.type === 'DISCHARGE')
-    if (!hasActualDischargeBeforeGateOut) return false
-
-    const laterActualObservations = actualObservations.slice(lastDeliveryGateOutIndex + 1)
-
-    const hasCanonicalTerminalAfterGateOut = laterActualObservations.some(
-      (observation) => observation.type === 'DELIVERY' || observation.type === 'EMPTY_RETURN',
-    )
-    if (hasCanonicalTerminalAfterGateOut) return false
-
-    const hasLifecycleContinuationAfterGateOut = laterActualObservations.some((observation) =>
-      LIFECYCLE_CONTINUATION_TYPES_AFTER_DELIVERY_GATE_OUT.includes(observation.type),
-    )
-    if (hasLifecycleContinuationAfterGateOut) return false
-
-    return true
-  }
+  const hasActualGateOutWithRelevantFutureChain = () =>
+    hasActualOfType('GATE_OUT') && hasRelevantRouteExpectation()
 
   // Follow the explicit dominance order requested by the product rules.
   // EMPTY_RETURN should take precedence over DELIVERY when present
   if (hasActualOfType('EMPTY_RETURN')) return 'EMPTY_RETURNED'
-  if (hasTerminalEmptyGateOut()) return 'EMPTY_RETURNED'
+  const latestEmptyReturnGateOut = [...completionMilestones]
+    .reverse()
+    .find((milestone) => milestone.source === 'EMPTY_RETURN_GATE_OUT')
+  if (
+    latestEmptyReturnGateOut !== undefined &&
+    isTerminalGateOutMilestone(
+      latestEmptyReturnGateOut,
+      LIFECYCLE_CONTINUATION_TYPES_AFTER_EMPTY_RETURNED,
+    )
+  ) {
+    return 'EMPTY_RETURNED'
+  }
   if (hasActualOfType('DELIVERY')) return 'DELIVERED'
-  if (hasTerminalDeliveryGateOut()) return 'DELIVERED'
+  const latestDeliveryGateOut = [...completionMilestones]
+    .reverse()
+    .find((milestone) => milestone.source === 'DELIVERY_GATE_OUT')
+  if (
+    latestDeliveryGateOut !== undefined &&
+    isTerminalGateOutMilestone(latestDeliveryGateOut, LIFECYCLE_CONTINUATION_TYPES_AFTER_DELIVERED)
+  ) {
+    return 'DELIVERED'
+  }
   if (hasActualDischargeAtFinal()) return 'DISCHARGED'
   if (hasActualArrivalAtFinal()) return 'ARRIVED_AT_POD'
   if (hasActualOfType('DEPARTURE')) return 'IN_TRANSIT'
   if (hasActualOfType('LOAD')) return 'LOADED'
-  if (hasActualOfType('GATE_IN')) return 'IN_PROGRESS'
+  if (hasActualOfType('GATE_IN')) return 'BOOKED'
+  if (hasActualGateOutWithRelevantFutureChain()) return 'BOOKED'
 
   // If there are any observations but none that advance status, report IN_PROGRESS
   if (timeline.observations.length > 0) return 'IN_PROGRESS'

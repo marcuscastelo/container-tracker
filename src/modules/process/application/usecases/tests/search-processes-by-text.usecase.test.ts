@@ -11,6 +11,7 @@ import { toProcessId } from '~/modules/process/domain/identity/process-id.vo'
 import { toProcessReference } from '~/modules/process/domain/identity/process-reference.vo'
 import { toProcessSource } from '~/modules/process/domain/identity/process-source.vo'
 import { createProcessEntity, type ProcessEntity } from '~/modules/process/domain/process.entity'
+import { Instant } from '~/shared/time/instant'
 
 function createProcess(overrides: {
   readonly id: string
@@ -34,8 +35,8 @@ function createProcess(overrides: {
     product: null,
     redestinationNumber: null,
     source: toProcessSource('manual'),
-    createdAt: new Date('2026-03-01T00:00:00.000Z'),
-    updatedAt: new Date('2026-03-01T00:00:00.000Z'),
+    createdAt: Instant.fromIso('2026-03-01T00:00:00.000Z'),
+    updatedAt: Instant.fromIso('2026-03-01T00:00:00.000Z'),
   })
 }
 

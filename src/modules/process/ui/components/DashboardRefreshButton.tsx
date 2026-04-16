@@ -6,6 +6,7 @@ import {
   toDashboardRefreshCooldownUntilMs,
 } from '~/modules/process/ui/utils/dashboard-refresh-button'
 import { useTranslation } from '~/shared/localization/i18n'
+import { systemClock } from '~/shared/time/clock'
 
 type RefreshVisualState = 'idle' | 'loading' | 'error'
 
@@ -34,6 +35,8 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
 
   let cooldownTimerId: ReturnType<typeof globalThis.setTimeout> | null = null
 
+  const nowMs = (): number => systemClock.now().toEpochMs()
+
   const clearCooldownTimer = (): void => {
     if (cooldownTimerId === null) return
     globalThis.clearTimeout(cooldownTimerId)
@@ -42,11 +45,11 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
 
   const scheduleCooldownRelease = (untilMs: number): void => {
     clearCooldownTimer()
-    const delayMs = Math.max(0, untilMs - Date.now())
+    const delayMs = Math.max(0, untilMs - nowMs())
     cooldownTimerId = globalThis.setTimeout(() => {
       setCooldownUntilMs((currentValue) => {
         if (currentValue === null) return currentValue
-        if (Date.now() >= currentValue) return null
+        if (nowMs() >= currentValue) return null
         return currentValue
       })
       cooldownTimerId = null
@@ -61,7 +64,7 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
     isDashboardRefreshBlocked({
       isLoading: isLoading(),
       cooldownUntilMs: cooldownUntilMs(),
-      nowMs: Date.now(),
+      nowMs: nowMs(),
     }),
   )
 
@@ -88,7 +91,7 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
       return
     }
 
-    const clickStartedAtMs = Date.now()
+    const clickStartedAtMs = nowMs()
     const nextCooldownUntilMs = toDashboardRefreshCooldownUntilMs(clickStartedAtMs)
     setCooldownUntilMs(nextCooldownUntilMs)
     scheduleCooldownRelease(nextCooldownUntilMs)
@@ -114,7 +117,8 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
       disabled={isBlocked()}
       aria-busy={isLoading()}
       title={buttonTitle()}
-      class="inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-3 text-sm-ui font-medium text-text-muted transition-colors hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-muted disabled:text-text-muted/50 disabled:opacity-100"
+      data-busy={isLoading() ? 'true' : 'false'}
+      class="motion-focus-surface motion-interactive inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-3 text-sm-ui font-medium text-text-muted hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-muted disabled:text-text-muted/50 disabled:opacity-100"
     >
       <RefreshIcon
         spinning={visualState() === 'loading'}

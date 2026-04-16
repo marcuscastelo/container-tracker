@@ -1,6 +1,10 @@
-import type { Provider } from '~/modules/tracking/domain/model/provider'
-import type { Confidence } from '~/modules/tracking/features/observation/domain/model/observationDraft'
+import type { PersistedProvider, Provider } from '~/modules/tracking/domain/model/provider'
+import type {
+  Confidence,
+  EventTimeSource,
+} from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
+import type { TemporalValue } from '~/shared/time/temporal-value'
 
 /**
  * EventTimeType — differentiates between confirmed facts and predictions.
@@ -45,8 +49,8 @@ export type Observation = {
   /** Semantic type */
   type: ObservationType
 
-  /** When the event occurred (UTC ISO), null if unknown */
-  event_time: string | null
+  /** When the event occurred, as an explicit temporal semantic value. */
+  event_time: TemporalValue | null
 
   /**
    * Whether this is an ACTUAL (confirmed) or EXPECTED (predicted) event.
@@ -78,13 +82,19 @@ export type Observation = {
   confidence: Confidence
 
   /** Provider that produced this data */
-  provider: Provider
+  provider: PersistedProvider
 
   /** Snapshot that first introduced this observation */
   created_from_snapshot_id: string
 
   /** Original provider event label preserved for auditability */
   carrier_label?: string | null
+
+  /** Raw provider temporal value preserved for auditability */
+  raw_event_time?: string | null
+
+  /** Temporal provenance decided by tracking during normalization */
+  event_time_source?: EventTimeSource | null
 
   /** When the observation was first persisted (UTC ISO) */
   created_at: string
@@ -96,4 +106,6 @@ export type Observation = {
 /**
  * Shape for inserting — omits server-generated fields.
  */
-export type NewObservation = Omit<Observation, 'id' | 'created_at'>
+export type NewObservation = Omit<Observation, 'id' | 'created_at' | 'provider'> & {
+  provider: Provider
+}

@@ -1,10 +1,20 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import solid from 'vite-plugin-solid'
 import { configDefaults, defineConfig } from 'vitest/config'
+
+const coverageScopePath = path.resolve(__dirname, 'docs/plans/coverage-scope.json')
+const coverageScope = JSON.parse(fs.readFileSync(coverageScopePath, 'utf8'))
 
 // biome-ignore lint/style/noDefaultExport: Needed for Vitest config
 export default defineConfig({
   plugins: [
+    solid({
+      ssr: true,
+      solid: {
+        generate: 'ssr',
+      },
+    }),
     {
       name: 'alias-tilde-fallback',
       async resolveId(source) {
@@ -21,6 +31,9 @@ export default defineConfig({
         if (source.startsWith('~')) {
           after = source.startsWith('~/') ? source.slice(2) : source.slice(1)
           roots = ['src']
+        } else if (source.startsWith('@agent/')) {
+          after = source.slice('@agent/'.length)
+          roots = ['apps/agent/src']
         } else if (source.startsWith('@tools/')) {
           after = source.slice('@tools/'.length)
           roots = ['tools']
@@ -63,6 +76,15 @@ export default defineConfig({
     environment: 'node',
     setupFiles: [path.resolve(__dirname, 'vitest.setup.ts')],
     // Playwright specs run via `pnpm test:playwright`, not Vitest.
-    exclude: [...configDefaults.exclude, 'e2e/**'],
+    exclude: [...configDefaults.exclude, 'e2e/**', 'packaging/arch/src/**'],
+    coverage: {
+      provider: 'v8',
+      all: true,
+      reportOnFailure: true,
+      reportsDirectory: 'coverage/vitest',
+      include: coverageScope.coverage.include,
+      exclude: coverageScope.coverage.exclude,
+      reporter: ['text-summary', 'json-summary', 'json', 'lcovonly', 'html'],
+    },
   },
 })

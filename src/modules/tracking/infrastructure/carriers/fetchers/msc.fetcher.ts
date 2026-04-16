@@ -1,12 +1,7 @@
 import zlib from 'node:zlib'
 import axios from 'axios'
-import type { Provider } from '~/modules/tracking/domain/model/provider'
-
-export type FetchResult = {
-  readonly provider: Provider
-  readonly payload: unknown
-  readonly fetchedAt: string
-}
+import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/fetch-result'
+import { systemClock } from '~/shared/time/clock'
 
 /**
  * Fetch tracking data from MSC's TrackingInfo API endpoint.
@@ -56,7 +51,7 @@ export async function fetchMscStatus(containerNumber: string): Promise<FetchResu
   return {
     provider: 'msc',
     payload,
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: systemClock.now().toIsoString(),
   }
 }
 

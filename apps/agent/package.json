@@ -1,0 +1,40 @@
+{
+  "name": "@container-tracker/agent",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm run control-ui:dev",
+    "build": "pnpm run build:core && pnpm run control-ui:build",
+    "start": "pnpm run run",
+    "run": "pnpm run build:core && AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS=1 bash ../../scripts/agent/run-linux-with-control-ui.sh",
+    "run:headless": "pnpm run build:core && AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS=1 bash ../../scripts/agent/run-linux.sh",
+    "build:core": "pnpm exec tsc -p tsconfig.json",
+    "type-check": "tsc -p tsconfig.json --noEmit --skipLibCheck",
+    "lint": "cd ../.. && pnpm exec biome check apps/agent/src --max-diagnostics=1000 --no-errors-on-unmatched && pnpm exec eslint --ext .ts,.tsx apps/agent/src --max-warnings=0",
+    "control-ui:build:main": "node ../../scripts/agent-control-ui/build-main.mjs",
+    "control-ui:build:renderer": "node ../../scripts/agent-control-ui/build-renderer.mjs",
+    "control-ui:build": "pnpm run control-ui:build:main && pnpm run control-ui:build:renderer",
+    "control-ui:dev": "node ../../scripts/agent-control-ui/dev.mjs",
+    "control-ui:start": "pnpm run control-ui:build && node ../../scripts/agent-control-ui/start.mjs",
+    "release": "pnpm run build:core && node ../../dist/apps/agent/src/build-release.js",
+    "bundle": "pnpm run release && node ../../dist/apps/agent/src/bundle-release.js",
+    "setup": "node ../../scripts/agent/setup-installer.mjs",
+    "setup:docker": "node ../../scripts/agent/setup-installer.mjs --mode=docker",
+    "setup:wine": "node ../../scripts/agent/setup-installer.mjs --mode=wine",
+    "setup:native": "node ../../scripts/agent/setup-installer.mjs --mode=native",
+    "e2e:linux": "pnpm run build:core && node ../../scripts/agent/e2e-install-linux.mjs",
+    "rebuild-restart:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File src/rebuild-reinstall.ps1",
+    "rebuild-restart:linux": "bash ../../scripts/agent/rebuild-restart-linux.sh"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.94.0",
+    "axios": "1.14.0",
+    "puppeteer": "^24.36.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "zod": "^4.3.6"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

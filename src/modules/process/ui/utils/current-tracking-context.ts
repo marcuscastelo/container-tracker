@@ -11,6 +11,8 @@ function findLatestPreferredTimelineValue(
 ): string | null {
   for (let i = timeline.length - 1; i >= 0; i--) {
     const event = timeline[i]
+    if (event === undefined) continue
+
     const value = pickValue(event)
     if (value && event.eventTimeType === 'ACTUAL') {
       return value
@@ -19,6 +21,8 @@ function findLatestPreferredTimelineValue(
 
   for (let i = timeline.length - 1; i >= 0; i--) {
     const event = timeline[i]
+    if (event === undefined) continue
+
     const value = pickValue(event)
     if (value) {
       return value
@@ -54,6 +58,8 @@ export function shouldHideCurrentVesselForCompletedLeg(
   let latestActualDischargeIndex = -1
   for (let i = timeline.length - 1; i >= 0; i--) {
     const event = timeline[i]
+    if (event === undefined) continue
+
     if (event.type === 'DISCHARGE' && event.eventTimeType === 'ACTUAL') {
       latestActualDischargeIndex = i
       break
@@ -64,6 +70,8 @@ export function shouldHideCurrentVesselForCompletedLeg(
 
   for (let i = latestActualDischargeIndex + 1; i < timeline.length; i++) {
     const event = timeline[i]
+    if (event === undefined) continue
+
     if (
       event.eventTimeType === 'ACTUAL' &&
       (event.type === 'LOAD' || event.type === 'DEPARTURE' || event.type === 'ARRIVAL')

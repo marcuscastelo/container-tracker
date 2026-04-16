@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  packages: read
 
 jobs:
   promote-stable:
@@ -70,7 +71,6 @@ jobs:
                     "checksum": $windows_checksum
                   }
                 }
-              | del(.download_url, .checksum)
               | .published_at = $published_at' \
             agent-manifests/canary.json > agent-manifests/stable.json
 

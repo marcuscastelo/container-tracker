@@ -85,6 +85,29 @@ codex_exec_mode_flag() {
   printf '%s\n' "--full-auto"
 }
 
+run_with_optional_timeout() {
+  local timeout_seconds="$1"
+  shift
+
+  if ! [[ "$timeout_seconds" =~ ^[0-9]+$ ]]; then
+    rl_error "Invalid RALPH_AGENT_TIMEOUT_SECONDS='$timeout_seconds'. Expected non-negative integer."
+    return 1
+  fi
+
+  if [ "$timeout_seconds" -le 0 ]; then
+    "$@"
+    return $?
+  fi
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --foreground "$timeout_seconds" "$@"
+    return $?
+  fi
+
+  rl_info "[ralph] timeout command not found; running without timeout."
+  "$@"
+}
+
 run_agent_prompt() {
   local prompt_file="$1"
   local output_file="$2"
@@ -124,24 +147,11 @@ run_agent_prompt() {
     codex)
       local mode_flag
       mode_flag="$(codex_exec_mode_flag)"
-      if [ "$RALPH_AGENT_TIMEOUT_SECONDS" -gt 0 ] && command -v timeout >/dev/null 2>&1; then
-        timeout --foreground "$RALPH_AGENT_TIMEOUT_SECONDS" \
-          codex exec --cd "$REPO_ROOT" --skip-git-repo-check "$mode_flag" -o "$output_file" - < "$prompt_file"
-      else
+      run_with_optional_timeout "$RALPH_AGENT_TIMEOUT_SECONDS" \
         codex exec --cd "$REPO_ROOT" --skip-git-repo-check "$mode_flag" -o "$output_file" - < "$prompt_file"
-      fi
       ;;
     claude)
-      if [ "$RALPH_AGENT_TIMEOUT_SECONDS" -gt 0 ] && command -v timeout >/dev/null 2>&1; then
-        timeout --foreground "$RALPH_AGENT_TIMEOUT_SECONDS" \
-          env \
-            ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-$RALPH_CLAUDE_BASE_URL}" \
-            ANTHROPIC_AUTH_TOKEN="${ANTHROPIC_AUTH_TOKEN:-$RALPH_CLAUDE_AUTH_TOKEN}" \
-          claude \
-            --model "$RALPH_CLAUDE_MODEL" \
-            --dangerously-skip-permissions \
-            --print < "$prompt_file" > "$output_file"
-      else
+      run_with_optional_timeout "$RALPH_AGENT_TIMEOUT_SECONDS" \
         env \
           ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-$RALPH_CLAUDE_BASE_URL}" \
           ANTHROPIC_AUTH_TOKEN="${ANTHROPIC_AUTH_TOKEN:-$RALPH_CLAUDE_AUTH_TOKEN}" \
@@ -149,15 +159,10 @@ run_agent_prompt() {
           --model "$RALPH_CLAUDE_MODEL" \
           --dangerously-skip-permissions \
           --print < "$prompt_file" > "$output_file"
-      fi
       ;;
     amp)
-      if [ "$RALPH_AGENT_TIMEOUT_SECONDS" -gt 0 ] && command -v timeout >/dev/null 2>&1; then
-        timeout --foreground "$RALPH_AGENT_TIMEOUT_SECONDS" \
-          amp --dangerously-allow-all < "$prompt_file" > "$output_file"
-      else
+      run_with_optional_timeout "$RALPH_AGENT_TIMEOUT_SECONDS" \
         amp --dangerously-allow-all < "$prompt_file" > "$output_file"
-      fi
       ;;
   esac
 

@@ -45,8 +45,8 @@ function maskAgentToken(token: string): string {
 }
 
 function toDefaultCapabilities(maerskEnabled: boolean): readonly string[] {
-  if (maerskEnabled) return ['msc', 'cmacgm', 'maersk']
-  return ['msc', 'cmacgm']
+  if (maerskEnabled) return ['msc', 'cmacgm', 'pil', 'one', 'maersk']
+  return ['msc', 'cmacgm', 'pil', 'one']
 }
 
 type RateLimitBucket = {

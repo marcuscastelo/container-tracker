@@ -1,5 +1,14 @@
 import { z } from 'zod'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
+import {
+  clearDashboardKpisPrefetchCache,
+  prefetchDashboardKpis,
+} from '~/modules/process/ui/fetchDashboardKpis'
+import {
+  clearDashboardProcessesCreatedByMonthPrefetchCache,
+  type DashboardChartWindowSize,
+  prefetchDashboardProcessesCreatedByMonth,
+} from '~/modules/process/ui/fetchDashboardProcessesCreatedByMonth'
 import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
 import { toProcessSummaryVMs } from '~/modules/process/ui/mappers/processList.ui-mapper'
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
@@ -9,6 +18,7 @@ import type {
   DashboardSortField,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import { fetchWithHttpDegradationReporting } from '~/shared/api/httpDegradationReporter'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DashboardOperationalSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
 import {
@@ -16,6 +26,7 @@ import {
   ProcessListResponseSchema,
   ProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
+import { systemClock } from '~/shared/time/clock'
 
 const DASHBOARD_PROCESSES_ENDPOINT = '/api/processes'
 const DASHBOARD_OPERATIONAL_SUMMARY_ENDPOINT = '/api/dashboard/operational-summary'
@@ -61,6 +72,10 @@ const inFlightDashboardProcessSummariesByPath = new Map<
 >()
 let dashboardGlobalAlertsCache: DashboardGlobalAlertsCacheRecord | null = null
 let inFlightDashboardGlobalAlerts: Promise<DashboardGlobalAlertsVM> | null = null
+
+function nowMs(): number {
+  return systemClock.now().toEpochMs()
+}
 
 function appendNonBlankQueryValues(
   searchParams: URLSearchParams,
@@ -112,7 +127,7 @@ function toDashboardProcessesPath(query?: DashboardProcessSummariesQuery): strin
 function readFreshDashboardProcessSummariesCache(path: string): readonly ProcessSummaryVM[] | null {
   const cached = dashboardProcessSummariesCacheByPath.get(path)
   if (!cached) return null
-  if (cached.expiresAtMs <= Date.now()) {
+  if (cached.expiresAtMs <= nowMs()) {
     dashboardProcessSummariesCacheByPath.delete(path)
     return null
   }
@@ -125,13 +140,13 @@ function writeDashboardProcessSummariesCache(
 ): void {
   dashboardProcessSummariesCacheByPath.set(path, {
     value,
-    expiresAtMs: Date.now() + DASHBOARD_PREFETCH_TTL_MS,
+    expiresAtMs: nowMs() + DASHBOARD_PREFETCH_TTL_MS,
   })
 }
 
 function readFreshDashboardGlobalAlertsCache(): DashboardGlobalAlertsVM | null {
   if (!dashboardGlobalAlertsCache) return null
-  if (dashboardGlobalAlertsCache.expiresAtMs <= Date.now()) {
+  if (dashboardGlobalAlertsCache.expiresAtMs <= nowMs()) {
     dashboardGlobalAlertsCache = null
     return null
   }
@@ -141,7 +156,7 @@ function readFreshDashboardGlobalAlertsCache(): DashboardGlobalAlertsVM | null {
 function writeDashboardGlobalAlertsCache(value: DashboardGlobalAlertsVM): void {
   dashboardGlobalAlertsCache = {
     value,
-    expiresAtMs: Date.now() + DASHBOARD_PREFETCH_TTL_MS,
+    expiresAtMs: nowMs() + DASHBOARD_PREFETCH_TTL_MS,
   }
 }
 
@@ -232,11 +247,26 @@ export async function prefetchDashboardGlobalAlertsSummary(): Promise<void> {
   await loadDashboardGlobalAlerts({ preferCached: true })
 }
 
+export async function prefetchDashboardData(command: {
+  readonly windowSize: DashboardChartWindowSize
+}): Promise<void> {
+  await Promise.all([
+    prefetchDashboardProcessSummaries(),
+    prefetchDashboardGlobalAlertsSummary(),
+    prefetchDashboardKpis(),
+    prefetchDashboardProcessesCreatedByMonth({
+      windowSize: command.windowSize,
+    }),
+  ])
+}
+
 export function clearDashboardPrefetchCache(): void {
   dashboardProcessSummariesCacheByPath.clear()
   inFlightDashboardProcessSummariesByPath.clear()
   dashboardGlobalAlertsCache = null
   inFlightDashboardGlobalAlerts = null
+  clearDashboardKpisPrefetchCache()
+  clearDashboardProcessesCreatedByMonthPrefetchCache()
 }
 
 export async function createProcessRequest(input: CreateProcessInput): Promise<string> {
@@ -266,9 +296,12 @@ export async function updateProcessRequest(id: string, input: CreateProcessInput
 }
 
 export async function deleteProcessRequest(processId: string): Promise<void> {
-  const response = await fetch(`/api/processes/${encodeURIComponent(processId)}`, {
-    method: 'DELETE',
-  })
+  const response = await fetchWithHttpDegradationReporting(
+    `/api/processes/${encodeURIComponent(processId)}`,
+    {
+      method: 'DELETE',
+    },
+  )
 
   if (response.ok) return
 

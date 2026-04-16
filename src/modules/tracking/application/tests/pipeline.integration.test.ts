@@ -10,13 +10,17 @@ import type {
   NewTrackingAlert,
   TrackingAlert,
   TrackingAlertAckSource,
+  TrackingAlertDerivationState,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type {
   NewObservation,
   Observation,
 } from '~/modules/tracking/features/observation/domain/model/observation'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
+import { Instant } from '~/shared/time/instant'
+import { temporalCanonicalText } from '~/shared/time/tests/helpers'
 
 // Note: repositories now throw on infra errors and return direct types.
 
@@ -60,11 +64,12 @@ class InMemoryObservationRepository implements ObservationRepository {
 
   async insertMany(newObservations: readonly NewObservation[]): Promise<readonly Observation[]> {
     const inserted: Observation[] = []
-    for (const obs of newObservations) {
+    const baseCreatedAt = Instant.fromIso('2026-02-03T20:00:00.000Z').toEpochMs()
+    for (const [index, obs] of newObservations.entries()) {
       const newObs: Observation = {
         ...obs,
         id: randomUUID(),
-        created_at: new Date().toISOString(),
+        created_at: Instant.fromEpochMs(baseCreatedAt + index).toIsoString(),
       }
       this.observations.set(newObs.id, newObs)
       inserted.push(newObs)
@@ -75,22 +80,19 @@ class InMemoryObservationRepository implements ObservationRepository {
   async findAllByContainerId(containerId: string): Promise<readonly Observation[]> {
     const list = Array.from(this.observations.values())
       .filter((o) => o.container_id === containerId)
-      .sort((a, b) => {
-        // Same sort logic as deriveTimeline
-        if (a.event_time === null && b.event_time === null) {
-          return a.created_at.localeCompare(b.created_at)
-        }
-        if (a.event_time === null) return 1
-        if (b.event_time === null) return -1
-        const cmp = a.event_time.localeCompare(b.event_time)
-        if (cmp !== 0) return cmp
-
-        if (a.event_time_type === 'ACTUAL' && b.event_time_type === 'EXPECTED') return -1
-        if (a.event_time_type === 'EXPECTED' && b.event_time_type === 'ACTUAL') return 1
-
-        return a.created_at.localeCompare(b.created_at)
-      })
+      .sort(compareObservationsChronologically)
     return list
+  }
+
+  async findAllByContainerIds(containerIds: readonly string[]): Promise<readonly Observation[]> {
+    const requestedIds = new Set(containerIds)
+    return Array.from(this.observations.values())
+      .filter((observation) => requestedIds.has(observation.container_id))
+      .sort((left, right) => {
+        const containerCompare = left.container_id.localeCompare(right.container_id)
+        if (containerCompare !== 0) return containerCompare
+        return compareObservationsChronologically(left, right)
+      })
   }
 
   async findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>> {
@@ -112,6 +114,17 @@ class InMemoryObservationRepository implements ObservationRepository {
 class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   private alerts: Map<string, TrackingAlert> = new Map()
 
+  private findByContainerIdCalls = 0
+  private findAlertDerivationStateByContainerIdCalls = 0
+
+  get fullAlertReadCalls(): number {
+    return this.findByContainerIdCalls
+  }
+
+  get derivationStateReadCalls(): number {
+    return this.findAlertDerivationStateByContainerIdCalls
+  }
+
   async insertMany(newAlerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
     const inserted: TrackingAlert[] = []
     for (const alert of newAlerts) {
@@ -130,9 +143,25 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
     )
     return list
   }
+  async findActiveByContainerIds(
+    containerIds: readonly string[],
+  ): Promise<readonly TrackingAlert[]> {
+    const requestedIds = new Set(containerIds)
+    return Array.from(this.alerts.values()).filter(
+      (alert) =>
+        requestedIds.has(alert.container_id) && resolveAlertLifecycleState(alert) === 'ACTIVE',
+    )
+  }
   async findByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
+    this.findByContainerIdCalls += 1
     const list = Array.from(this.alerts.values()).filter((a) => a.container_id === containerId)
     return list
+  }
+  async findAlertDerivationStateByContainerId(
+    containerId: string,
+  ): Promise<readonly TrackingAlertDerivationState[]> {
+    this.findAlertDerivationStateByContainerIdCalls += 1
+    return Array.from(this.alerts.values()).filter((alert) => alert.container_id === containerId)
   }
   async findContainerNumbersByIds(
     containerIds: readonly string[],
@@ -273,14 +302,13 @@ describe('Pipeline Integration Tests - Maersk', () => {
     // Assert - Timeline is sorted by event_time
     const times = result.timeline.observations
       .filter((o) => o.event_time !== null)
-      .map((o) => o.event_time)
+      .map((o) => temporalCanonicalText(o.event_time) ?? '')
     for (let i = 1; i < times.length; i++) {
       const current = times[i]
       const previous = times[i - 1]
-      if (current !== null && previous !== null) {
-        // Use string comparison for ISO datetime strings
-        expect(current >= previous).toBe(true)
-      }
+      if (current === undefined || previous === undefined) continue
+
+      expect(current >= previous).toBe(true)
     }
 
     // Assert - Status was derived
@@ -419,6 +447,16 @@ describe('Pipeline Integration Tests - Maersk', () => {
     const actualEvents = result.timeline.observations.filter((o) => o.event_time_type === 'ACTUAL')
     expect(actualEvents.length).toBeGreaterThan(0)
     for (const event of actualEvents) {
+      if (event.event_time === null) {
+        expect(event.confidence).toBe('low')
+        continue
+      }
+
+      if (event.location_code === null) {
+        expect(event.confidence).toBe('medium')
+        continue
+      }
+
       expect(event.confidence).toBe('high')
     }
 
@@ -427,7 +465,7 @@ describe('Pipeline Integration Tests - Maersk', () => {
       (o) => o.event_time_type === 'EXPECTED',
     )
     for (const event of expectedEvents) {
-      expect(event.confidence).toBe('medium')
+      expect(event.confidence).toBe(event.event_time === null ? 'low' : 'medium')
     }
   })
 
@@ -497,5 +535,28 @@ describe('Pipeline Integration Tests - Maersk', () => {
 
     // The timeline holes detection is working
     // (will vary based on actual event dates in the fixture)
+  })
+
+  it('uses lightweight alert derivation state during snapshot processing', async () => {
+    const containerId = randomUUID()
+    const containerNumber = 'MNBU3094033'
+    const snapshot: Snapshot = {
+      id: randomUUID(),
+      container_id: containerId,
+      provider: 'maersk',
+      fetched_at: '2026-02-03T15:00:00.000Z',
+      payload: maerskPayload,
+    }
+
+    const trackingAlertRepository = new InMemoryTrackingAlertRepository()
+
+    await processSnapshot(snapshot, containerId, containerNumber, {
+      snapshotRepository: new InMemorySnapshotRepository(),
+      observationRepository: new InMemoryObservationRepository(),
+      trackingAlertRepository,
+    })
+
+    expect(trackingAlertRepository.derivationStateReadCalls).toBe(1)
+    expect(trackingAlertRepository.fullAlertReadCalls).toBe(0)
   })
 })

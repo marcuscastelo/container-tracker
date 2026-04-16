@@ -10,6 +10,8 @@ describe('observation semantic audit helpers', () => {
     ' LADEN ',
     'EMPTY',
     ' EMPTY ',
+    'TBN',
+    ' TBN ',
   ])('detects invalid vessel placeholders (%s)', (invalidVesselName) => {
     const violations = collectObservationSemanticViolations([
       {
@@ -39,7 +41,7 @@ describe('observation semantic audit helpers', () => {
   it('passes for semantically clean observations', () => {
     const clean = [
       {
-        type: 'TERMINAL_MOVE' as const,
+        type: 'TRANSSHIPMENT_POSITIONED_IN' as const,
         carrier_label: 'Full Transshipment Positioned In',
         vessel_name: null,
       },

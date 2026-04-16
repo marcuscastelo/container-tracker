@@ -3,6 +3,7 @@ import type { SyncQueuePort } from '~/capabilities/sync/application/ports/sync-q
 import type { SyncStatusReadPort } from '~/capabilities/sync/application/ports/sync-status-read.port'
 import type { SyncTargetReadPort } from '~/capabilities/sync/application/ports/sync-target-read.port'
 import type { RefreshProcessDeps } from '~/capabilities/sync/application/usecases/refresh-process.usecase'
+import { normalizeProcessIdsScope } from '~/capabilities/sync/application/utils/normalizeProcessIdsScope'
 import { serverEnv } from '~/shared/config/server-env'
 import { supabaseServer } from '~/shared/supabase/supabase.server'
 import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'
@@ -45,11 +46,12 @@ type CreateSyncPortsDeps = {
   readonly containerUseCases: ContainerUseCasesDeps
 }
 
-const ActiveProcessIdRowSchema = z.object({
+const ActiveProcessForDashboardSyncRowSchema = z.object({
   id: z.string(),
+  reference: z.string().nullable(),
 })
 
-const ActiveProcessIdRowsSchema = z.array(ActiveProcessIdRowSchema)
+const ActiveProcessForDashboardSyncRowsSchema = z.array(ActiveProcessForDashboardSyncRowSchema)
 
 const ProcessSyncCandidateRowSchema = z.object({
   id: z.string(),
@@ -85,13 +87,40 @@ const SyncStatusByContainerRowSchema = z.object({
 
 const SyncStatusByContainerRowsSchema = z.array(SyncStatusByContainerRowSchema)
 
+const PROCESS_SYNC_RECENT_ARCHIVE_WINDOW_DAYS = 7
+
 function toPriority(mode: 'manual' | 'live' | 'backfill'): number {
   if (mode === 'live') return 1
   if (mode === 'backfill') return -1
   return 0
 }
 
+function getRecentArchivedProcessCutoff(now: Date): string {
+  return new Date(
+    now.getTime() - PROCESS_SYNC_RECENT_ARCHIVE_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString()
+}
+
 export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetReadPort {
+  const listActiveProcessesForDashboardSync = async () => {
+    const result = await supabaseServer
+      .from('processes')
+      .select('id,reference')
+      .is('archived_at', null)
+      .is('deleted_at', null)
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'list_active_processes_for_dashboard_sync',
+      table: 'processes',
+    })
+
+    const rows = ActiveProcessForDashboardSyncRowsSchema.parse(data)
+    return rows.map((row) => ({
+      processId: row.id,
+      processReference: row.reference,
+    }))
+  }
+
   return {
     async fetchProcessById(command) {
       const result = await deps.processUseCases.findProcessById({
@@ -105,20 +134,13 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
       }
     },
 
+    async listActiveProcessesForDashboardSync() {
+      return listActiveProcessesForDashboardSync()
+    },
+
     async listActiveProcessIds() {
-      const result = await supabaseServer
-        .from('processes')
-        .select('id')
-        .is('archived_at', null)
-        .is('deleted_at', null)
-
-      const data = unwrapSupabaseResultOrThrow(result, {
-        operation: 'list_active_process_ids',
-        table: 'processes',
-      })
-
-      const rows = ActiveProcessIdRowsSchema.parse(data)
-      return rows.map((row) => row.id)
+      const processes = await listActiveProcessesForDashboardSync()
+      return processes.map((process) => process.processId)
     },
 
     async listContainersByProcessId(command) {
@@ -197,6 +219,9 @@ export function createSyncQueuePort(deps: { readonly defaultTenantId: string }):
 
       const parsed = EnqueueSyncRequestRowsSchema.parse(data)
       const row = parsed[0]
+      if (row === undefined) {
+        throw new Error('enqueue_sync_request returned no rows')
+      }
 
       return {
         id: row.id,
@@ -266,13 +291,28 @@ export function createSyncQueuePort(deps: { readonly defaultTenantId: string }):
 export function createSyncStatusReadPort(deps: {
   readonly targetReadPort: SyncTargetReadPort
   readonly defaultTenantId: string
+  readonly nowFactory?: () => Date
 }): SyncStatusReadPort {
+  const nowFactory = deps.nowFactory ?? (() => new Date())
+
   return {
-    async listProcessSyncCandidates() {
-      const result = await supabaseServer
-        .from('processes')
-        .select('id,archived_at')
-        .is('deleted_at', null)
+    async listProcessSyncCandidates(command = {}) {
+      const scopedProcessIds = normalizeProcessIdsScope(command.processIds)
+      if (command.processIds && scopedProcessIds.length === 0) {
+        return []
+      }
+
+      let query = supabaseServer.from('processes').select('id,archived_at').is('deleted_at', null)
+
+      if (scopedProcessIds.length > 0) {
+        query = query.in('id', scopedProcessIds)
+      } else {
+        query = query.or(
+          `archived_at.is.null,archived_at.gt.${getRecentArchivedProcessCutoff(nowFactory())}`,
+        )
+      }
+
+      const result = await query
 
       const data = unwrapSupabaseResultOrThrow(result, {
         operation: 'list_process_sync_candidates',

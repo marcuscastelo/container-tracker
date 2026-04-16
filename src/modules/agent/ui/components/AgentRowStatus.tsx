@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createMemo, Show } from 'solid-js'
+import { createMemo } from 'solid-js'
 import type { AgentStatusTone } from '~/modules/agent/ui/vm/agent.vm'
 
 type Props = {
@@ -15,27 +15,14 @@ const toneBg: Record<AgentStatusTone, string> = {
   neutral: 'bg-text-muted',
 }
 
-const freshnessPulse: Record<string, boolean> = {
-  fresh: true,
-  recent: false,
-  stale: false,
-  offline: false,
-}
-
 export function AgentRowStatus(props: Props): JSX.Element {
   const dotClass = createMemo(() => toneBg[props.tone])
-  const shouldPulse = createMemo(() => freshnessPulse[props.freshness] ?? false)
 
   return (
-    <div class="flex items-center gap-2">
-      <span class="relative flex h-2.5 w-2.5">
-        <Show when={shouldPulse()}>
-          <span
-            class={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${dotClass()}`}
-          />
-        </Show>
-        <span class={`relative inline-flex h-2.5 w-2.5 rounded-full ${dotClass()}`} />
-      </span>
+    <div class="flex items-center gap-2" data-freshness={props.freshness}>
+      <span
+        class={`inline-flex h-2.5 w-2.5 rounded-full shadow-[0_0_0_3px_rgb(15_23_42_/0.06)] ${dotClass()}`}
+      />
       <span class="text-sm-ui font-medium">{props.status}</span>
     </div>
   )

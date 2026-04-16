@@ -1,21 +1,38 @@
 import type { Accessor } from 'solid-js'
 import { createMemo, createSignal, onCleanup } from 'solid-js'
 import {
+  fetchProcessesSyncStatus,
   syncAllProcessesRequest,
   syncProcessRequest,
 } from '~/modules/process/ui/api/processSync.api'
 import { useProcessSyncRealtime } from '~/modules/process/ui/hooks/useProcessSyncRealtime'
+import { toDashboardSyncBatchResultVm } from '~/modules/process/ui/mappers/dashboard-sync-batch-result.ui-mapper'
+import {
+  createLocalSyncFeedbackExpiryHandle,
+  createVisibleLocalSyncFeedbackExpiryHandle,
+  type LocalSyncFeedbackExpiryHandle,
+  schedulePerProcessLocalSyncExpiry,
+  schedulePerProcessVisibleLocalSyncExpiry,
+} from '~/modules/process/ui/screens/dashboard/hooks/dashboard-sync-feedback-expiry'
 import { refreshDashboardData } from '~/modules/process/ui/utils/dashboard-refresh'
 import {
   type DashboardLocalSyncStatus,
   resolveDashboardProcessSyncStatus,
 } from '~/modules/process/ui/utils/dashboard-sync-reconciliation'
+import type {
+  DashboardProcessRowVM,
+  DashboardProcessSyncIssueVM,
+  DashboardSyncBatchResultVM,
+} from '~/modules/process/ui/viewmodels/dashboard-sync-batch-result.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import { useTranslation } from '~/shared/localization/i18n'
 
-const LOCAL_SYNC_FEEDBACK_TTL_MS = 2_500
+const LOCAL_SYNC_ERROR_FEEDBACK_TTL_MS = 2_500
+const LOCAL_SYNC_SUCCESS_VISIBLE_TTL_MS = 30_000
 const REALTIME_RECONCILIATION_DEBOUNCE_MS = 250
 
 type LocalSyncStateByProcessId = Readonly<Record<string, DashboardLocalSyncStatus>>
+type SyncIssueByProcessId = Readonly<Record<string, DashboardProcessSyncIssueVM>>
 
 type UseDashboardSyncControllerCommand = {
   readonly allProcesses: Accessor<readonly ProcessSummaryVM[]>
@@ -27,27 +44,14 @@ type UseDashboardSyncControllerCommand = {
 }
 
 type DashboardSyncControllerResult = {
-  readonly processesWithSyncFeedback: Accessor<readonly ProcessSummaryVM[]>
+  readonly processesWithSyncFeedback: Accessor<readonly DashboardProcessRowVM[]>
+  readonly dashboardSyncBatchResult: Accessor<DashboardSyncBatchResultVM | null>
+  readonly dismissDashboardSyncBatchResult: () => void
   readonly handleDashboardRefresh: () => Promise<void>
   readonly handleProcessSync: (processId: string) => Promise<void>
 }
 
-export function schedulePerProcessLocalSyncExpiry(command: {
-  readonly processIds: readonly string[]
-  readonly ttlMs: number
-  readonly onExpire: (processId: string) => void
-}): ReadonlyMap<string, ReturnType<typeof setTimeout>> {
-  const timeoutByProcessId = new Map<string, ReturnType<typeof setTimeout>>()
-
-  for (const processId of command.processIds) {
-    const timeoutId = setTimeout(() => {
-      command.onExpire(processId)
-    }, command.ttlMs)
-    timeoutByProcessId.set(processId, timeoutId)
-  }
-
-  return timeoutByProcessId
-}
+type ProcessesSyncSnapshot = Awaited<ReturnType<typeof fetchProcessesSyncStatus>>
 
 function withProcessLocalSyncState(
   currentState: LocalSyncStateByProcessId,
@@ -94,22 +98,97 @@ function withoutProcessLocalSyncState(
   return nextState
 }
 
+function withoutManyProcessLocalSyncStates(
+  currentState: LocalSyncStateByProcessId,
+  processIds: readonly string[],
+): LocalSyncStateByProcessId {
+  let hasChanges = false
+  const nextState: Record<string, DashboardLocalSyncStatus> = { ...currentState }
+
+  for (const processId of processIds) {
+    if (!(processId in nextState)) continue
+    delete nextState[processId]
+    hasChanges = true
+  }
+
+  return hasChanges ? nextState : currentState
+}
+
+function toDashboardLocalSyncStateFromSnapshot(
+  syncStatus: 'idle' | 'syncing' | 'completed' | 'failed',
+): DashboardLocalSyncStatus | null {
+  if (syncStatus === 'syncing') return 'syncing'
+  if (syncStatus === 'completed') return 'success'
+  if (syncStatus === 'failed') return 'error'
+  return null
+}
+
+function applyLocalSyncStateFromServerSnapshot(command: {
+  readonly processIds: readonly string[]
+  readonly snapshot: ProcessesSyncSnapshot
+  readonly setLocalSyncState: (
+    processId: string,
+    syncStatus: DashboardLocalSyncStatus,
+    options?: { readonly ttlMs?: number; readonly pauseWhenHidden?: boolean },
+  ) => void
+  readonly clearLocalSyncState: (processId: string) => void
+}): void {
+  const syncStatusByProcessId = new Map(
+    command.snapshot.processes.map((process) => [process.process_id, process.sync_status] as const),
+  )
+
+  for (const processId of command.processIds) {
+    const syncStatus = syncStatusByProcessId.get(processId) ?? 'idle'
+    const localSyncStatus = toDashboardLocalSyncStateFromSnapshot(syncStatus)
+
+    if (localSyncStatus === 'syncing') {
+      command.setLocalSyncState(processId, localSyncStatus)
+      continue
+    }
+
+    if (localSyncStatus === null) {
+      command.clearLocalSyncState(processId)
+      continue
+    }
+
+    command.setLocalSyncState(
+      processId,
+      localSyncStatus,
+      localSyncStatus === 'success'
+        ? {
+            ttlMs: LOCAL_SYNC_SUCCESS_VISIBLE_TTL_MS,
+            pauseWhenHidden: true,
+          }
+        : {
+            ttlMs: LOCAL_SYNC_ERROR_FEEDBACK_TTL_MS,
+          },
+    )
+  }
+}
+
+// eslint-disable-next-line max-lines-per-function
 export function useDashboardSyncController(
   command: UseDashboardSyncControllerCommand,
 ): DashboardSyncControllerResult {
+  const { t, keys } = useTranslation()
   const [localSyncStateByProcessId, setLocalSyncStateByProcessId] =
     createSignal<LocalSyncStateByProcessId>({})
+  const [syncIssueByProcessId, setSyncIssueByProcessId] = createSignal<SyncIssueByProcessId>({})
+  const [dashboardSyncBatchResultState, setDashboardSyncBatchResultState] =
+    createSignal<DashboardSyncBatchResultVM | null>(null)
+  const [isDashboardSyncBatchResultDismissed, setIsDashboardSyncBatchResultDismissed] =
+    createSignal(false)
 
-  const localSyncFeedbackTimeoutByProcessId = new Map<string, ReturnType<typeof setTimeout>>()
+  const localSyncFeedbackExpiryByProcessId = new Map<string, LocalSyncFeedbackExpiryHandle>()
   let realtimeReconciliationTimeoutId: ReturnType<typeof setTimeout> | null = null
   let realtimeReconciliationInFlight = false
   let pendingRealtimeReconciliation = false
 
   const clearLocalSyncFeedbackTimer = (processId: string): void => {
-    const timeoutId = localSyncFeedbackTimeoutByProcessId.get(processId)
-    if (timeoutId === undefined) return
-    clearTimeout(timeoutId)
-    localSyncFeedbackTimeoutByProcessId.delete(processId)
+    const expiryHandle = localSyncFeedbackExpiryByProcessId.get(processId)
+    if (expiryHandle === undefined) return
+    expiryHandle.dispose()
+    localSyncFeedbackExpiryByProcessId.delete(processId)
   }
 
   const clearLocalSyncState = (processId: string): void => {
@@ -117,10 +196,20 @@ export function useDashboardSyncController(
     setLocalSyncStateByProcessId((previous) => withoutProcessLocalSyncState(previous, processId))
   }
 
+  const clearLocalSyncStates = (processIds: readonly string[]): void => {
+    for (const processId of processIds) {
+      clearLocalSyncFeedbackTimer(processId)
+    }
+
+    setLocalSyncStateByProcessId((previous) =>
+      withoutManyProcessLocalSyncStates(previous, processIds),
+    )
+  }
+
   const setLocalSyncState = (
     processId: string,
     syncStatus: DashboardLocalSyncStatus,
-    options?: { readonly ttlMs?: number },
+    options?: { readonly ttlMs?: number; readonly pauseWhenHidden?: boolean },
   ): void => {
     clearLocalSyncFeedbackTimer(processId)
     setLocalSyncStateByProcessId((previous) =>
@@ -129,16 +218,26 @@ export function useDashboardSyncController(
 
     if (options?.ttlMs === undefined) return
 
-    const timeoutId = setTimeout(() => {
-      clearLocalSyncState(processId)
-    }, options.ttlMs)
-    localSyncFeedbackTimeoutByProcessId.set(processId, timeoutId)
+    const expiryHandle = options.pauseWhenHidden
+      ? createVisibleLocalSyncFeedbackExpiryHandle({
+          ttlMs: options.ttlMs,
+          onExpire: () => {
+            clearLocalSyncState(processId)
+          },
+        })
+      : createLocalSyncFeedbackExpiryHandle({
+          ttlMs: options.ttlMs,
+          onExpire: () => {
+            clearLocalSyncState(processId)
+          },
+        })
+    localSyncFeedbackExpiryByProcessId.set(processId, expiryHandle)
   }
 
   const setLocalSyncStates = (
     processIds: readonly string[],
     syncStatus: DashboardLocalSyncStatus,
-    options?: { readonly ttlMs?: number },
+    options?: { readonly ttlMs?: number; readonly pauseWhenHidden?: boolean },
   ): void => {
     if (processIds.length === 0) return
 
@@ -152,16 +251,24 @@ export function useDashboardSyncController(
 
     if (options?.ttlMs === undefined) return
 
-    const timeoutByProcessId = schedulePerProcessLocalSyncExpiry({
-      processIds,
-      ttlMs: options.ttlMs,
-      onExpire: (processId) => {
-        clearLocalSyncState(processId)
-      },
-    })
+    const expiryByProcessId = options.pauseWhenHidden
+      ? schedulePerProcessVisibleLocalSyncExpiry({
+          processIds,
+          ttlMs: options.ttlMs,
+          onExpire: (processId) => {
+            clearLocalSyncState(processId)
+          },
+        })
+      : schedulePerProcessLocalSyncExpiry({
+          processIds,
+          ttlMs: options.ttlMs,
+          onExpire: (processId) => {
+            clearLocalSyncState(processId)
+          },
+        })
 
-    for (const [processId, timeoutId] of timeoutByProcessId.entries()) {
-      localSyncFeedbackTimeoutByProcessId.set(processId, timeoutId)
+    for (const [processId, expiryHandle] of expiryByProcessId.entries()) {
+      localSyncFeedbackExpiryByProcessId.set(processId, expiryHandle)
     }
   }
 
@@ -179,7 +286,16 @@ export function useDashboardSyncController(
 
     realtimeReconciliationInFlight = true
     try {
-      await Promise.resolve(command.refetchProcesses())
+      const currentProcessIds = command.allProcesses().map((process) => process.id)
+      if (currentProcessIds.length === 0) return
+
+      const snapshot = await fetchProcessesSyncStatus(currentProcessIds)
+      applyLocalSyncStateFromServerSnapshot({
+        processIds: currentProcessIds,
+        snapshot,
+        setLocalSyncState,
+        clearLocalSyncState,
+      })
     } catch (error) {
       console.error('Failed to reconcile dashboard process sync state from realtime:', error)
     } finally {
@@ -187,7 +303,7 @@ export function useDashboardSyncController(
       if (pendingRealtimeReconciliation) {
         pendingRealtimeReconciliation = false
         try {
-          await Promise.resolve(command.refetchProcesses())
+          await reconcileProcessesFromServerSnapshot()
         } catch (error) {
           console.error('Failed to perform pending realtime reconciliation:', error)
         }
@@ -205,10 +321,10 @@ export function useDashboardSyncController(
 
   onCleanup(() => {
     clearRealtimeReconciliationTimer()
-    for (const timeoutId of localSyncFeedbackTimeoutByProcessId.values()) {
-      clearTimeout(timeoutId)
+    for (const expiryHandle of localSyncFeedbackExpiryByProcessId.values()) {
+      expiryHandle.dispose()
     }
-    localSyncFeedbackTimeoutByProcessId.clear()
+    localSyncFeedbackExpiryByProcessId.clear()
   })
 
   const realtimeSyncStateByProcessId = useProcessSyncRealtime({
@@ -219,6 +335,7 @@ export function useDashboardSyncController(
   const processesWithSyncFeedback = createMemo(() => {
     const realtimeStateByProcessId = realtimeSyncStateByProcessId()
     const localStateByProcessId = localSyncStateByProcessId()
+    const issuesByProcessId = syncIssueByProcessId()
 
     return command.sortedProcesses().map((process) => {
       const resolvedSyncState = resolveDashboardProcessSyncStatus({
@@ -226,22 +343,34 @@ export function useDashboardSyncController(
         realtimeState: realtimeStateByProcessId[process.id] === 'syncing' ? 'syncing' : null,
         localState: localStateByProcessId[process.id] ?? null,
       })
-
-      if (resolvedSyncState === process.syncStatus) return process
+      const syncIssue = issuesByProcessId[process.id] ?? null
 
       return {
         ...process,
         syncStatus: resolvedSyncState,
+        syncIssue,
       }
     })
   })
+
+  const dashboardSyncBatchResult = createMemo(() => {
+    if (isDashboardSyncBatchResultDismissed()) {
+      return null
+    }
+
+    return dashboardSyncBatchResultState()
+  })
+
+  const dismissDashboardSyncBatchResult = (): void => {
+    setIsDashboardSyncBatchResultDismissed(true)
+  }
 
   const handleDashboardRefresh = async () => {
     const currentProcessIds = command.allProcesses().map((process) => process.id)
     setLocalSyncStates(currentProcessIds, 'syncing')
 
     try {
-      await refreshDashboardData({
+      const result = await refreshDashboardData({
         syncAllProcesses: syncAllProcessesRequest,
         refetchProcesses: command.refetchProcesses,
         refetchGlobalAlerts: command.refetchGlobalAlerts,
@@ -249,12 +378,32 @@ export function useDashboardSyncController(
         refetchDashboardProcessesCreatedByMonth: command.refetchDashboardProcessesCreatedByMonth,
       })
 
-      setLocalSyncStates(currentProcessIds, 'success', {
-        ttlMs: LOCAL_SYNC_FEEDBACK_TTL_MS,
+      const batchResultVm = toDashboardSyncBatchResultVm({
+        source: result,
+        t,
+        keys,
+      })
+
+      setSyncIssueByProcessId(batchResultVm.issueByProcessId)
+      setDashboardSyncBatchResultState(batchResultVm)
+      setIsDashboardSyncBatchResultDismissed(false)
+      clearLocalSyncStates(currentProcessIds)
+
+      const failedProcessIds = new Set(batchResultVm.failedProcessIds)
+      const successProcessIds = batchResultVm.enqueuedProcessIds.filter(
+        (processId) => !failedProcessIds.has(processId),
+      )
+
+      setLocalSyncStates(batchResultVm.failedProcessIds, 'error', {
+        ttlMs: LOCAL_SYNC_ERROR_FEEDBACK_TTL_MS,
+      })
+      setLocalSyncStates(successProcessIds, 'success', {
+        ttlMs: LOCAL_SYNC_SUCCESS_VISIBLE_TTL_MS,
+        pauseWhenHidden: true,
       })
     } catch (error) {
       setLocalSyncStates(currentProcessIds, 'error', {
-        ttlMs: LOCAL_SYNC_FEEDBACK_TTL_MS,
+        ttlMs: LOCAL_SYNC_ERROR_FEEDBACK_TTL_MS,
       })
       throw error
     }
@@ -270,7 +419,8 @@ export function useDashboardSyncController(
       await syncProcessRequest(processId)
       await Promise.resolve(command.refetchProcesses())
       setLocalSyncState(processId, 'success', {
-        ttlMs: LOCAL_SYNC_FEEDBACK_TTL_MS,
+        ttlMs: LOCAL_SYNC_SUCCESS_VISIBLE_TTL_MS,
+        pauseWhenHidden: true,
       })
     } catch (error) {
       console.error(`Dashboard process sync failed for ${processId}:`, error)
@@ -281,13 +431,15 @@ export function useDashboardSyncController(
         )
       })
       setLocalSyncState(processId, 'error', {
-        ttlMs: LOCAL_SYNC_FEEDBACK_TTL_MS,
+        ttlMs: LOCAL_SYNC_ERROR_FEEDBACK_TTL_MS,
       })
     }
   }
 
   return {
     processesWithSyncFeedback,
+    dashboardSyncBatchResult,
+    dismissDashboardSyncBatchResult,
     handleDashboardRefresh,
     handleProcessSync,
   }

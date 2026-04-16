@@ -4,7 +4,16 @@ import z from 'zod/v4'
  * Carrier Zod schema for HTTP-boundary validation.
  * This is the interface layer's own schema — domain types are plain.
  */
-const CarrierSchema = z.enum(['maersk', 'msc', 'cmacgm', 'hapag', 'one', 'evergreen', 'unknown'])
+const CarrierSchema = z.enum([
+  'maersk',
+  'msc',
+  'cmacgm',
+  'pil',
+  'hapag',
+  'one',
+  'evergreen',
+  'unknown',
+])
 /**
  * Schema for creating a new process (input from UI)
  */
@@ -28,6 +37,7 @@ export const CreateProcessInputSchema = z.object({
   importer_name: z.string().nullable().optional(),
   exporter_name: z.string().nullable().optional(),
   reference_importer: z.string().nullable().optional(),
+  depositary: z.string().nullable().optional(),
   product: z.string().nullable().optional(),
   redestination_number: z.string().nullable().optional(),
   containers: z

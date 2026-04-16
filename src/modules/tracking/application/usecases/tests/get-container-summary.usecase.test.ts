@@ -4,40 +4,67 @@ import {
   getContainerSummary,
 } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
+import {
+  computeLegacyFingerprint,
+  computePilLocationlessFingerprintAlias,
+} from '~/modules/tracking/domain/identity/fingerprint'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
-import { computeNoMovementAlertFingerprint } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
+import { normalizePilSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/pil.normalizer'
+import {
+  makePilSnapshot,
+  PIL_VALID_PAYLOAD,
+} from '~/modules/tracking/infrastructure/carriers/tests/helpers/pil.fixture'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
+import {
+  instantFromIsoText,
+  resolveTemporalValue,
+  temporalValueFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 type ObservationOverrides = {
   readonly type?: Observation['type']
   readonly fingerprint?: string
   readonly carrierLabel?: string | null
   readonly createdFromSnapshotId?: string
-  readonly eventTime?: string | null
+  readonly eventTime?: string | Observation['event_time']
   readonly eventTimeType?: Observation['event_time_type']
   readonly locationCode?: string | null
+  readonly locationDisplay?: string
+  readonly vesselName?: string | null
+  readonly voyage?: string | null
+  readonly provider?: Observation['provider']
 }
 
 function makeObservation(overrides: ObservationOverrides = {}): Observation {
+  const locationCode = overrides.locationCode === undefined ? 'BRSSZ' : overrides.locationCode
+  const locationDisplay =
+    overrides.locationDisplay === undefined ? 'Santos, BR' : overrides.locationDisplay
+  const vesselName = overrides.vesselName === undefined ? null : overrides.vesselName
+  const voyage = overrides.voyage === undefined ? null : overrides.voyage
+  const provider = overrides.provider === undefined ? 'maersk' : overrides.provider
+
   return {
     id: 'obs-1',
     fingerprint: overrides.fingerprint ?? 'fp-1',
     container_id: 'container-1',
     container_number: 'MSCU1234567',
     type: overrides.type ?? 'LOAD',
-    event_time: overrides.eventTime ?? '2026-02-10T10:00:00.000Z',
+    event_time: resolveTemporalValue(
+      overrides.eventTime,
+      temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
+    ),
     event_time_type: overrides.eventTimeType ?? 'ACTUAL',
-    location_code: overrides.locationCode ?? 'BRSSZ',
-    location_display: 'Santos, BR',
-    vessel_name: null,
-    voyage: null,
+    location_code: locationCode,
+    location_display: locationDisplay,
+    vessel_name: vesselName,
+    voyage,
     is_empty: true,
     confidence: 'high',
-    provider: 'maersk',
+    provider,
     created_from_snapshot_id: overrides.createdFromSnapshotId ?? 'snapshot-1',
     carrier_label: overrides.carrierLabel ?? null,
     created_at: '2026-02-10T10:00:00.000Z',
@@ -100,6 +127,7 @@ function createDeps(
     observationRepository: {
       insertMany: vi.fn(async () => []),
       findAllByContainerId: vi.fn(async () => observations),
+      findAllByContainerIds: vi.fn(async () => observations),
       findFingerprintsByContainerId: vi.fn(async () => new Set<string>()),
       listSearchObservations: vi.fn(async () => []),
     },
@@ -117,7 +145,9 @@ function createDeps(
         async (): Promise<readonly TrackingActiveAlertReadModel[]> => [],
       ),
       findActiveByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
+      findActiveByContainerIds: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
       findByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
+      findAlertDerivationStateByContainerId: vi.fn(async () => []),
       findContainerNumbersByIds: vi.fn(async () => new Map<string, string>()),
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge: vi.fn(async () => undefined),
@@ -137,7 +167,7 @@ function makeCommand(): GetContainerSummaryCommand {
     containerId: 'container-1',
     containerNumber: 'MSCU1234567',
     podLocationCode: 'BRSSZ',
-    now: new Date('2026-02-12T00:00:00.000Z'),
+    now: instantFromIsoText('2026-02-12T00:00:00.000Z'),
   }
 }
 
@@ -164,7 +194,7 @@ describe('getContainerSummary', () => {
     const legacyOtherDraft: ObservationDraft = {
       container_number: 'MSCU1234567',
       type: 'OTHER',
-      event_time: '2026-02-10T10:00:00.000Z',
+      event_time: resolveTemporalValue('2026-02-10T10:00:00.000Z', null),
       event_time_type: 'ACTUAL',
       location_code: 'BRSSZ',
       location_display: 'Santos, BR',
@@ -176,7 +206,7 @@ describe('getContainerSummary', () => {
       snapshot_id: 'snapshot-1',
       carrier_label: null,
     }
-    const legacyFingerprint = computeFingerprint(legacyOtherDraft)
+    const legacyFingerprint = computeLegacyFingerprint(legacyOtherDraft)
     const legacyObservation = makeObservation({
       type: 'OTHER',
       fingerprint: legacyFingerprint,
@@ -200,6 +230,42 @@ describe('getContainerSummary', () => {
     expect(result.observations[0]?.carrier_label).toBe('Container returned empty')
   })
 
+  it('enriches legacy PIL observations from raw snapshots without rewriting facts', async () => {
+    const snapshot = makePilSnapshot(PIL_VALID_PAYLOAD)
+    const loadDraft = normalizePilSnapshot(snapshot).find((draft) => draft.type === 'LOAD')
+    if (loadDraft === undefined) {
+      throw new Error('Expected a PIL load draft in fixture')
+    }
+
+    const fingerprint = computePilLocationlessFingerprintAlias(loadDraft)
+    if (fingerprint === null) {
+      throw new Error('Expected a locationless PIL fingerprint alias')
+    }
+
+    const legacyObservation = makeObservation({
+      provider: 'pil',
+      type: 'LOAD',
+      fingerprint,
+      createdFromSnapshotId: snapshot.id,
+      eventTime: '2026-03-14T04:10:00.000Z',
+      eventTimeType: 'ACTUAL',
+      locationCode: null,
+      locationDisplay: 'QINGDAO',
+      vesselName: 'CMA CGM KRYPTON',
+      voyage: 'VCGK0001W',
+    })
+    const { deps, findSnapshotsByIds } = createDeps([legacyObservation], [snapshot])
+
+    const result = await getContainerSummary(deps, makeCommand())
+
+    expect(findSnapshotsByIds).toHaveBeenCalledWith('container-1', [snapshot.id])
+    expect(result.observations[0]?.provider).toBe('pil')
+    expect(result.observations[0]?.location_code).toBe('CNTAO')
+    expect(result.observations[0]?.location_display).toBe('QINGDAO')
+    expect(result.observations[0]?.vessel_name).toBe('CMA CGM KRYPTON')
+    expect(result.observations[0]?.voyage).toBe('VCGK0001W')
+  })
+
   it('loads active + acknowledged alerts when includeAcknowledgedAlerts is enabled', async () => {
     const observation = makeObservation({
       type: 'LOAD',
@@ -214,19 +280,14 @@ describe('getContainerSummary', () => {
           id: 'alert-active',
           container_id: 'container-1',
           category: 'monitoring',
-          type: 'NO_MOVEMENT',
+          type: 'ETA_PASSED',
           severity: 'warning',
-          message_key: 'alerts.noMovementDetected',
-          message_params: {
-            threshold_days: 5,
-            days_without_movement: 7,
-            days: 7,
-            lastEventDate: '2026-03-05',
-          },
+          message_key: 'alerts.etaPassed',
+          message_params: {},
           detected_at: '2026-03-05T10:00:00.000Z',
           triggered_at: '2026-03-05T10:00:00.000Z',
           source_observation_fingerprints: ['fp-1'],
-          alert_fingerprint: computeNoMovementAlertFingerprint('container-1', 5, '2026-03-05'),
+          alert_fingerprint: 'ETA_PASSED:container-1',
           retroactive: false,
           provider: null,
           acked_at: null,
@@ -266,7 +327,37 @@ describe('getContainerSummary', () => {
     })
 
     expect(findAllAlerts).toHaveBeenCalledTimes(1)
+    expect(
+      deps.trackingAlertRepository.findAlertDerivationStateByContainerId,
+    ).not.toHaveBeenCalled()
     expect(result.alerts.length).toBe(2)
     expect(result.alerts.some((alert) => alert.acked_at !== null)).toBe(true)
+  })
+})
+
+describe('getContainerSummary alert resilience', () => {
+  it('keeps derived tracking data and marks dataIssue when alert reads fail', async () => {
+    const observation = makeObservation({
+      type: 'ARRIVAL',
+      carrierLabel: null,
+      createdFromSnapshotId: 'snapshot-1',
+      eventTime: '2026-02-14T10:00:00.000Z',
+      eventTimeType: 'EXPECTED',
+    })
+    const { deps } = createDeps([observation], [])
+
+    deps.trackingAlertRepository.findActiveByContainerId = vi.fn(async () => {
+      throw new InfrastructureError(
+        'Database error on tracking_alerts during findActiveByContainerId',
+      )
+    })
+
+    const result = await getContainerSummary(deps, makeCommand())
+
+    expect(result.status).toBe('IN_PROGRESS')
+    expect(result.timeline.observations).toHaveLength(1)
+    expect(result.alerts).toEqual([])
+    expect(result.operational.dataIssue).toBe(true)
+    expect(result.operational.eta?.eventTime.value).toBe('2026-02-14T10:00:00.000Z')
   })
 })

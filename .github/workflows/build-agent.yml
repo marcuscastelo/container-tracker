@@ -9,6 +9,10 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: read
+
 concurrency:
   group: build-agent-${{ github.ref }}
   cancel-in-progress: true
@@ -30,9 +34,21 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          registry-url: https://npm.pkg.github.com
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN }}
+
+      - name: Type-check agent
+        run: pnpm run type-check:agent
+
+      - name: Agent boundary gates
+        run: pnpm run agent:boundary-scan
+
+      - name: Agent smoke suites
+        run: pnpm run agent:smoke
 
       - name: Build release app
         env:
@@ -46,6 +62,12 @@ jobs:
           mkdir -p /tmp/agent-linux-x64
           cp -R release/app/. /tmp/agent-linux-x64
           test -f /tmp/agent-linux-x64/node_modules/@supabase/supabase-js/package.json
+          ABSOLUTE_SYMLINK_COUNT="$(find /tmp/agent-linux-x64/node_modules -type l -exec readlink {} \; | awk '/^\//{c++} END {print c+0}')"
+          if [ "$ABSOLUTE_SYMLINK_COUNT" -gt 0 ]; then
+            echo "Found $ABSOLUTE_SYMLINK_COUNT absolute symlink(s) in Linux runtime node_modules." >&2
+            find /tmp/agent-linux-x64/node_modules -type l -exec readlink {} \; | awk '/^\//{print; if (++n==20) exit}' >&2
+            exit 1
+          fi
           tar -C /tmp -czf agent-linux-x64.tar.gz agent-linux-x64
           sha256sum agent-linux-x64.tar.gz | awk '{print $1}' > agent-linux-x64.sha256
 

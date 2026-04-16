@@ -64,6 +64,7 @@ valid_json_file=""
 if jq empty "$tmp_clean_file" >/dev/null 2>&1; then
   valid_json_file="$tmp_clean_file"
 else
+  # Some agents return explanatory text + fenced JSON. Keep only the first fenced block.
   awk '
     BEGIN { in_fence=0 }
     /^[[:space:]]*```/ {

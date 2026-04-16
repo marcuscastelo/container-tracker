@@ -13,6 +13,7 @@ type ReconcileContainersCommand = {
   existing: {
     id: string
     containerNumber: string
+    carrierCode?: string | null
   }[]
   incoming: {
     containerNumber: string
@@ -26,8 +27,18 @@ type ReconcileContainersResult = {
     containerNumber: string
     carrierCode: string
   }[]
+  updated: {
+    id: string
+    containerNumber: string
+    carrierCode: string
+  }[]
   removed: string[] // container IDs
   warnings: string[]
+}
+
+function normalizeCarrierCodeForComparison(value: string | null | undefined): string {
+  if (typeof value !== 'string') return ''
+  return value.trim().toLowerCase()
 }
 
 export function createReconcileContainersUseCase(deps: { repository: ContainerRepository }) {
@@ -36,6 +47,7 @@ export function createReconcileContainersUseCase(deps: { repository: ContainerRe
   ): Promise<ReconcileContainersResult> {
     const warnings: string[] = []
     const added = []
+    const updated = []
     const removed: string[] = []
 
     const normalizedIncoming = command.incoming.map((i) => {
@@ -63,7 +75,9 @@ export function createReconcileContainersUseCase(deps: { repository: ContainerRe
 
     // ADD
     for (const inc of normalizedIncoming) {
-      if (!existingByNumber.has(inc.containerNumber)) {
+      const existing = existingByNumber.get(inc.containerNumber)
+
+      if (!existing) {
         const container = await deps.repository.insert({
           processId: command.processId,
           containerNumber: inc.containerNumber,
@@ -71,6 +85,20 @@ export function createReconcileContainersUseCase(deps: { repository: ContainerRe
         })
 
         added.push(container)
+        continue
+      }
+
+      if (
+        normalizeCarrierCodeForComparison(existing.carrierCode) !==
+        normalizeCarrierCodeForComparison(inc.carrierCode)
+      ) {
+        const container = await deps.repository.update({
+          id: existing.id,
+          containerNumber: inc.containerNumber,
+          carrierCode: inc.carrierCode,
+        })
+
+        updated.push(container)
       }
     }
 
@@ -90,6 +118,6 @@ export function createReconcileContainersUseCase(deps: { repository: ContainerRe
       removed.push(container.id)
     }
 
-    return { added, removed, warnings }
+    return { added, updated, removed, warnings }
   }
 }

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { reconcileForDisplay } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import {
+  instantFromIsoText,
+  resolveTemporalValue,
+  temporalCanonicalText,
+  temporalValueFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
 const CONTAINER_NUMBER = 'CXDU2058677'
@@ -8,7 +14,14 @@ const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
 
 let idCounter = 10
 
-function makeObs(overrides: Partial<Observation> = {}): Observation {
+type ObservationOverrides = Omit<Partial<Observation>, 'event_time'> & {
+  readonly event_time?: string | Observation['event_time']
+}
+
+const DEFAULT_EVENT_TIME = temporalValueFromCanonical('2026-01-10T00:00:00.000Z')
+
+function makeObs(overrides: ObservationOverrides = {}): Observation {
+  const { event_time, ...rest } = overrides
   const id = `00000000-0000-0000-0000-0000000000${String(idCounter++).padStart(2, '0')}`
   return {
     id,
@@ -16,7 +29,7 @@ function makeObs(overrides: Partial<Observation> = {}): Observation {
     container_id: CONTAINER_ID,
     container_number: CONTAINER_NUMBER,
     type: 'DEPARTURE',
-    event_time: '2026-01-10T00:00:00.000Z',
+    event_time: resolveTemporalValue(event_time, DEFAULT_EVENT_TIME),
     event_time_type: 'EXPECTED',
     location_code: 'ESBCN',
     location_display: 'BARCELONA, ES',
@@ -27,12 +40,12 @@ function makeObs(overrides: Partial<Observation> = {}): Observation {
     provider: 'msc',
     created_from_snapshot_id: SNAPSHOT_ID,
     created_at: '2026-01-01T00:00:00.000Z',
-    ...overrides,
+    ...rest,
   }
 }
 
 describe('reconcileForDisplay', () => {
-  const now = new Date('2026-02-01T00:00:00.000Z')
+  const now = instantFromIsoText('2026-02-01T00:00:00.000Z')
 
   describe('Case A: Multiple EXPECTED → keep only latest', () => {
     it('should collapse 3 future EXPECTED into only the most recent', () => {
@@ -43,7 +56,7 @@ describe('reconcileForDisplay', () => {
       ]
       const result = reconcileForDisplay(obs, now)
       expect(result).toHaveLength(1)
-      expect(result[0]?.event_time).toBe('2026-02-15T00:00:00.000Z')
+      expect(temporalCanonicalText(result[0]?.event_time ?? null)).toBe('2026-02-15T00:00:00.000Z')
     })
 
     it('should keep EXPECTED from different semantic groups independently', () => {
@@ -120,7 +133,7 @@ describe('reconcileForDisplay', () => {
       const result = reconcileForDisplay([actual, future1, future2], now)
       expect(result).toHaveLength(2)
       expect(result[0]?.event_time_type).toBe('ACTUAL')
-      expect(result[1]?.event_time).toBe('2026-02-20T00:00:00.000Z')
+      expect(temporalCanonicalText(result[1]?.event_time ?? null)).toBe('2026-02-20T00:00:00.000Z')
     })
   })
 
@@ -286,7 +299,7 @@ describe('reconcileForDisplay', () => {
       const result = reconcileForDisplay(obs, now)
       expect(result).toHaveLength(1)
       expect(result[0]?.event_time_type).toBe('ACTUAL')
-      expect(result[0]?.event_time).toBe('2026-02-07T00:00:00.000Z')
+      expect(temporalCanonicalText(result[0]?.event_time ?? null)).toBe('2026-02-07T00:00:00.000Z')
     })
   })
 })

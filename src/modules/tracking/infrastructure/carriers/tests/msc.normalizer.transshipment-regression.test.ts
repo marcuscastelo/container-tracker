@@ -6,6 +6,7 @@ import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/deri
 import { normalizeMscSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/msc.normalizer'
 import mscTransshipment0312Regression from '~/modules/tracking/infrastructure/carriers/tests/fixtures/msc/msc_transshipment_0312_regression.json'
 import { assertNoObservationSemanticViolations } from '~/modules/tracking/infrastructure/carriers/tests/helpers/observationSemanticAudit'
+import { instantFromIsoText, temporalCanonicalText } from '~/shared/time/tests/helpers'
 
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000641'
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000642'
@@ -42,7 +43,7 @@ function toDomainObservation(
     provider: draft.provider,
     created_from_snapshot_id: draft.snapshot_id,
     carrier_label: draft.carrier_label ?? null,
-    created_at: draft.event_time ?? `2026-03-12T08:50:5${index}.000Z`,
+    created_at: temporalCanonicalText(draft.event_time) ?? `2026-03-12T08:50:5${index}.000Z`,
   }
 }
 
@@ -57,8 +58,8 @@ describe('MSC transshipment regression (0312)', () => {
       'GATE_IN',
       'LOAD',
       'DISCHARGE',
-      'TERMINAL_MOVE',
-      'TERMINAL_MOVE',
+      'TRANSSHIPMENT_POSITIONED_OUT',
+      'TRANSSHIPMENT_POSITIONED_IN',
       'LOAD',
       'ARRIVAL',
     ])
@@ -69,7 +70,10 @@ describe('MSC transshipment regression (0312)', () => {
 
     const positionedDrafts = drafts.filter((draft) => draft.carrier_label?.includes('Positioned'))
     expect(positionedDrafts).toHaveLength(2)
-    expect(positionedDrafts.map((draft) => draft.type)).toEqual(['TERMINAL_MOVE', 'TERMINAL_MOVE'])
+    expect(positionedDrafts.map((draft) => draft.type)).toEqual([
+      'TRANSSHIPMENT_POSITIONED_OUT',
+      'TRANSSHIPMENT_POSITIONED_IN',
+    ])
 
     assertNoObservationSemanticViolations(drafts)
   })
@@ -82,7 +86,7 @@ describe('MSC transshipment regression (0312)', () => {
       CONTAINER_ID,
       CONTAINER_NUMBER,
       observations,
-      new Date('2026-03-12T12:00:00.000Z'),
+      instantFromIsoText('2026-03-12T12:00:00.000Z'),
     )
     const status = deriveStatus(timeline)
 

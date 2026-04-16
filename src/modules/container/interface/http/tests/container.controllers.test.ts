@@ -6,6 +6,7 @@ import { toContainerNumber } from '~/modules/container/domain/identity/container
 import { toProcessId } from '~/modules/container/domain/identity/process-id.vo'
 import { createContainerControllers } from '~/modules/container/interface/http/container.controllers'
 import { CheckContainersResponseSchema } from '~/modules/container/interface/http/container.schemas'
+import { Instant } from '~/shared/time/instant'
 
 describe('container controllers', () => {
   it('returns conflicts for existing container numbers', async () => {
@@ -18,7 +19,7 @@ describe('container controllers', () => {
               processId: toProcessId('process-1'),
               carrierCode: toCarrierCode('MAERSK'),
               containerNumber: toContainerNumber('MRKU1234567'),
-              createdAt: new Date('2026-01-01T10:00:00.000Z'),
+              createdAt: Instant.fromIso('2026-01-01T10:00:00.000Z'),
             }),
           ],
         })),

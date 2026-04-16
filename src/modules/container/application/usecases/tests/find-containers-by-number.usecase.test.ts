@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type {
   ContainerRepository,
   InsertContainerRecord,
+  UpdateContainerRecord,
 } from '~/modules/container/application/container.repository'
 import { createFindContainersByNumberUseCase } from '~/modules/container/application/usecases/find-containers-by-number.usecase'
 import {
@@ -13,6 +14,7 @@ import { toCarrierCode } from '~/modules/container/domain/identity/carrier-code.
 import { toContainerId } from '~/modules/container/domain/identity/container-id.vo'
 import { toContainerNumber } from '~/modules/container/domain/identity/container-number.vo'
 import { toProcessId } from '~/modules/container/domain/identity/process-id.vo'
+import { Instant } from '~/shared/time/instant'
 
 function createRepository(overrides: {
   readonly findByNumbers: ContainerRepository['findByNumbers']
@@ -22,6 +24,9 @@ function createRepository(overrides: {
       throw new Error('Not implemented in findByNumbers tests')
     }),
     insertMany: vi.fn(async (_records: InsertContainerRecord[]): Promise<ContainerEntity[]> => {
+      throw new Error('Not implemented in findByNumbers tests')
+    }),
+    update: vi.fn(async (_record: UpdateContainerRecord): Promise<ContainerEntity> => {
       throw new Error('Not implemented in findByNumbers tests')
     }),
     delete: vi.fn(async (_id: string): Promise<void> => {
@@ -57,7 +62,7 @@ describe('createFindContainersByNumberUseCase', () => {
       processId: toProcessId('process-1'),
       carrierCode: toCarrierCode('MAERSK'),
       containerNumber: toContainerNumber('MRKU1234567'),
-      createdAt: new Date('2026-03-03T00:00:00.000Z'),
+      createdAt: Instant.fromIso('2026-03-03T00:00:00.000Z'),
     })
 
     const findByNumbers = vi.fn(async (numbers: string[]) => {

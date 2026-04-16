@@ -1,5 +1,13 @@
 import { A } from '@solidjs/router'
-import { Check, ChevronDown, ChevronUp, CircleAlert, OctagonX, TriangleAlert } from 'lucide-solid'
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  CircleAlert,
+  OctagonX,
+  RefreshCw,
+  TriangleAlert,
+} from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import {
@@ -11,11 +19,24 @@ import {
   readColumnOrderFromLocalStorage,
   writeColumnOrderToLocalStorage,
 } from '~/modules/process/ui/components/dashboard-columns'
-import { toDashboardStatusCellDisplay } from '~/modules/process/ui/components/dashboard-status-cell.presenter'
+import {
+  toDashboardAdditionalIncidentsTooltipLine,
+  toDashboardEtaCellLabel,
+} from '~/modules/process/ui/components/dashboard-process-table.presenter'
+import { createDashboardStatusCellDisplayMemo } from '~/modules/process/ui/components/dashboard-status-cell.display'
 import {
   SyncCell as SyncCellComponent,
   type SyncCellState,
 } from '~/modules/process/ui/components/SyncCell'
+import {
+  type TrackingValidationCopyLabels,
+  toTrackingValidationTooltipText,
+} from '~/modules/process/ui/components/tracking-review-copy.presenter'
+import {
+  toTrackingValidationBadgeClasses,
+  toTrackingValidationDisplayState,
+} from '~/modules/process/ui/components/tracking-review-display.presenter'
+import { toDashboardProcessRowClass } from '~/modules/process/ui/utils/dashboard-process-row-style'
 import {
   hasDashboardRowSelectedText,
   isInteractiveDashboardRowTarget,
@@ -28,12 +49,13 @@ import type {
   DashboardSortField,
   DashboardSortSelection,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
+import type { DashboardProcessRowVM } from '~/modules/process/ui/viewmodels/dashboard-sync-batch-result.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { EmptyState } from '~/shared/ui/EmptyState'
 import { buildProcessHref } from '~/shared/ui/navigation/app-navigation'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
-import { formatDateForLocale } from '~/shared/utils/formatDate'
+import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,8 +64,10 @@ import { formatDateForLocale } from '~/shared/utils/formatDate'
 type DashboardProcessSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 
 type Props = {
-  readonly processes: readonly ProcessSummaryVM[]
-  readonly loading: boolean
+  readonly processes: readonly DashboardProcessRowVM[]
+  readonly highlightedProcessId: string | null
+  readonly initialLoading: boolean
+  readonly refreshing: boolean
   readonly hasError: boolean
   readonly hasActiveFilters: boolean
   readonly onCreateProcess: () => void
@@ -56,7 +80,8 @@ type Props = {
 }
 
 type RowProps = {
-  readonly process: ProcessSummaryVM
+  readonly process: DashboardProcessRowVM
+  readonly isHighlighted: boolean
   readonly columnOrder: readonly DashboardColumnId[]
   readonly gridStyle: string
   readonly onProcessSync: (processId: string) => Promise<void>
@@ -65,7 +90,8 @@ type RowProps = {
 }
 
 type TableRowsProps = {
-  readonly processes: readonly ProcessSummaryVM[]
+  readonly processes: readonly DashboardProcessRowVM[]
+  readonly highlightedProcessId: string | null
   readonly sortSelection: DashboardSortSelection
   readonly onSortToggle: (field: DashboardSortField) => void
   readonly onProcessSync: (processId: string) => Promise<void>
@@ -83,6 +109,14 @@ type SortHeaderProps = {
   readonly align?: 'left' | 'center' | 'right'
 }
 
+const DASHBOARD_TABLE_SKELETON_ROW_KEYS = [
+  'dashboard-row-skeleton-1',
+  'dashboard-row-skeleton-2',
+  'dashboard-row-skeleton-3',
+  'dashboard-row-skeleton-4',
+  'dashboard-row-skeleton-5',
+] as const
+
 // ---------------------------------------------------------------------------
 // Severity helpers
 // ---------------------------------------------------------------------------
@@ -97,11 +131,19 @@ const SEVERITY_ORDER: Record<DashboardProcessSeverity, number> = {
 }
 
 function toDominantSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
-  const highestSeverity = process.highestAlertSeverity
+  const attentionSeverity = process.attentionSeverity
+  if (attentionSeverity === 'danger') return 'danger'
+  if (attentionSeverity === 'warning') return 'warning'
+  if (attentionSeverity === 'info') return 'info'
+  return 'none'
+}
+
+function toAlertBadgeSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
+  const highestSeverity = process.dominantIncident?.severity ?? null
   if (highestSeverity === 'danger') return 'danger'
   if (highestSeverity === 'warning') return 'warning'
   if (highestSeverity === 'info') return 'info'
-  if (process.alertsCount > 0) return 'info'
+  if (process.activeIncidentCount > 0) return 'info'
   return 'none'
 }
 
@@ -110,9 +152,12 @@ function toDominantAlertLabel(
   t: (key: string, opts?: Record<string, unknown>) => string,
   keys: ReturnType<typeof useTranslation>['keys'],
 ): string {
-  if (process.alertsCount === 0) return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
-  if (process.hasTransshipment) return t(keys.dashboard.table.dominantAlertLabel.transshipment)
-  return t(keys.dashboard.table.dominantAlertLabel.alertsPresent, { count: process.alertsCount })
+  const dominantIncident = process.dominantIncident
+  if (dominantIncident === null) {
+    return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
+  }
+
+  return t(dominantIncident.factMessageKey, dominantIncident.factMessageParams)
 }
 
 function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
@@ -124,13 +169,6 @@ function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
   if (severity === 'success')
     return 'border-tone-success-border bg-tone-success-bg text-tone-success-fg'
   return 'border-border bg-surface-muted text-text-muted'
-}
-
-function getSeverityBorderClass(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-danger-strong)]'
-  if (severity === 'warning') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-warning-strong)]'
-  if (severity === 'info') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-info-strong)]'
-  return ''
 }
 
 function toUnifiedAlertIcon(severity: DashboardProcessSeverity): JSX.Element {
@@ -154,11 +192,6 @@ function displayRoute(process: ProcessSummaryVM): { origin: string; destination:
     origin: process.origin?.display_name ?? '—',
     destination: process.destination?.display_name ?? '—',
   }
-}
-
-function displayEta(eta: string | null): string {
-  if (!eta) return '—'
-  return formatDateForLocale(eta)
 }
 
 function displayTruncatedText(value: string | null): string {
@@ -273,11 +306,10 @@ function formatDashboardAlertAge(params: {
 // ---------------------------------------------------------------------------
 
 type CellContext = {
-  readonly process: ProcessSummaryVM
+  readonly process: DashboardProcessRowVM
   readonly processHref: string
   readonly handleProcessLinkClick: (event: MouseEvent) => void
-  readonly triggerProcessIntent: () => void
-  readonly t: ReturnType<typeof useTranslation>['t']
+  readonly t: (key: string, opts?: Record<string, unknown>) => string
   readonly keys: ReturnType<typeof useTranslation>['keys']
   readonly onProcessSync: (processId: string) => Promise<void>
 }
@@ -289,9 +321,6 @@ function ProcessRefCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link block truncate text-sm-ui font-semibold leading-tight tracking-[-0.01em] text-primary hover:text-primary-hover"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
         {displayProcessRef(ctx.process)}
       </A>
@@ -306,11 +335,8 @@ function CarrierCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link block truncate text-sm-ui leading-tight text-foreground"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
-        {displayTruncatedText(ctx.process.carrier?.toUpperCase() ?? null)}
+        {displayTruncatedText(toCarrierDisplayLabel(ctx.process.carrier))}
       </A>
     </div>
   )
@@ -323,9 +349,6 @@ function ImporterCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link block truncate text-sm-ui leading-tight text-foreground"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
         {displayTruncatedText(ctx.process.importerName)}
       </A>
@@ -340,9 +363,6 @@ function ExporterCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link block truncate text-sm-ui leading-tight text-foreground"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
         {displayTruncatedText(ctx.process.exporterName)}
       </A>
@@ -354,14 +374,7 @@ function RouteCell(ctx: CellContext): JSX.Element {
   const route = () => displayRoute(ctx.process)
   return (
     <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
-      <A
-        href={ctx.processHref}
-        class="row-link block"
-        onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
-      >
+      <A href={ctx.processHref} class="row-link block" onClick={ctx.handleProcessLinkClick}>
         <div class="flex min-w-0 items-center gap-1.5 text-xs-ui leading-tight text-text-muted">
           <span class="truncate">{route().origin}</span>
           <ArrowIcon />
@@ -378,10 +391,8 @@ function RouteCell(ctx: CellContext): JSX.Element {
 }
 
 function StatusCell(ctx: CellContext): JSX.Element {
-  // compute display data once per render to avoid recomputing translations and
-  // microbadge mapping multiple times during JSX evaluation
-  const display = createMemo(() =>
-    toDashboardStatusCellDisplay({
+  const display = createDashboardStatusCellDisplayMemo({
+    getCommand: () => ({
       source: {
         status: ctx.process.status,
         statusCode: ctx.process.statusCode,
@@ -390,7 +401,9 @@ function StatusCell(ctx: CellContext): JSX.Element {
       t: ctx.t,
       keys: ctx.keys,
     }),
-  )
+  })
+  const primary = () => display().primary
+  const subtitle = () => display().subtitle
 
   return (
     <div class="flex min-w-0 items-center justify-center overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
@@ -398,18 +411,15 @@ function StatusCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link inline-flex max-w-full items-center"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
         <div class="inline-flex max-w-full flex-col items-start leading-tight">
-          <StatusBadge variant={display().primary.variant} label={display().primary.label} />
-          <Show when={display().subtitle}>
-            {(subtitle) => (
+          <StatusBadge variant={primary().variant} label={primary().label} />
+          <Show when={subtitle()}>
+            {(subtitleDisplay) => (
               <span
-                class={`mt-1 max-w-full truncate whitespace-nowrap text-xs-ui font-medium leading-tight ${subtitle().textClass}`}
+                class={`mt-1 max-w-full truncate whitespace-nowrap text-xs-ui font-medium leading-tight ${subtitleDisplay().textClass}`}
               >
-                {subtitle().label}
+                {subtitleDisplay().label}
               </span>
             )}
           </Show>
@@ -420,24 +430,24 @@ function StatusCell(ctx: CellContext): JSX.Element {
 }
 
 function EtaCell(ctx: CellContext): JSX.Element {
+  const isDateEta = () => ctx.process.etaDisplay.kind === 'date'
+  const isDelayedDateEta = () => isDateEta() && ctx.process.status === 'delayed'
+
   return (
     <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py) text-center">
-      <A
-        href={ctx.processHref}
-        class="row-link block"
-        onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
-      >
+      <A href={ctx.processHref} class="row-link block" onClick={ctx.handleProcessLinkClick}>
         <Show
-          when={ctx.process.eta}
-          fallback={<span class="text-xs-ui leading-tight text-text-muted">—</span>}
+          when={isDateEta()}
+          fallback={
+            <span class="text-xs-ui font-medium leading-tight text-text-muted">
+              {toDashboardEtaCellLabel(ctx.process.etaDisplay, ctx.t, ctx.keys)}
+            </span>
+          }
         >
           <span
-            class={`text-sm-ui font-semibold tabular-nums ${ctx.process.status === 'delayed' ? 'text-tone-danger-fg' : 'text-foreground'}`}
+            class={`text-sm-ui font-semibold tabular-nums ${isDelayedDateEta() ? 'text-tone-danger-fg' : 'text-foreground'}`}
           >
-            {displayEta(ctx.process.eta)}
+            {toDashboardEtaCellLabel(ctx.process.etaDisplay, ctx.t, ctx.keys)}
           </span>
         </Show>
       </A>
@@ -456,6 +466,7 @@ function SyncCell(ctx: CellContext): JSX.Element {
   return (
     <SyncCellComponent
       state={cellState()}
+      issue={ctx.process.syncIssue}
       onSync={() => {
         void ctx.onProcessSync(ctx.process.id)
       }}
@@ -463,9 +474,103 @@ function SyncCell(ctx: CellContext): JSX.Element {
   )
 }
 
+function AlertsSummaryBadge(props: {
+  readonly dominantSeverity: DashboardProcessSeverity
+  readonly dominantAlertLabel: string
+  readonly severityLabel: string
+  readonly alertTooltip: string | undefined
+  readonly incidentCount: number
+}): JSX.Element {
+  return (
+    <Show
+      when={props.dominantSeverity !== 'none'}
+      fallback={
+        <span
+          class="text-xs-ui text-tone-success-strong"
+          role="img"
+          aria-label={props.dominantAlertLabel}
+        >
+          <Check class="w-3.5 h-3.5" aria-hidden="true" />
+        </span>
+      }
+    >
+      <span
+        class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(
+          props.dominantSeverity,
+        )}`}
+        title={props.alertTooltip}
+      >
+        <span aria-hidden="true">{toUnifiedAlertIcon(props.dominantSeverity)}</span>
+        {props.incidentCount}
+        <span class="sr-only">{`${props.severityLabel}: ${props.dominantAlertLabel}`}</span>
+      </span>
+    </Show>
+  )
+}
+
+function TrackingValidationChip(props: {
+  readonly visible: boolean
+  readonly label: string
+  readonly chipLabel: string
+  readonly severity: ProcessSummaryVM['trackingValidation']['highestSeverity']
+}): JSX.Element {
+  const displayState = () =>
+    toTrackingValidationDisplayState({
+      hasIssues: props.visible,
+      highestSeverity: props.severity,
+    })
+
+  return (
+    <Show when={props.visible}>
+      <span
+        class={`inline-flex items-center rounded border px-1.5 py-0.5 text-micro font-semibold leading-none whitespace-nowrap ${toTrackingValidationBadgeClasses(
+          displayState(),
+        )}`}
+        title={props.label}
+      >
+        {props.chipLabel}
+      </span>
+    </Show>
+  )
+}
+
 function AlertsCell(ctx: CellContext): JSX.Element {
-  const dominantSeverity = () => toDominantSeverity(ctx.process)
+  const dominantSeverity = () => toAlertBadgeSeverity(ctx.process)
   const dominantAlertLabel = () => toDominantAlertLabel(ctx.process, ctx.t, ctx.keys)
+  const hasTrackingValidation = () => ctx.process.trackingValidation.hasIssues
+  const trackingValidationLabel = () => {
+    const affectedCount = ctx.process.trackingValidation.affectedContainerCount
+    if (affectedCount > 1) {
+      return ctx.t(ctx.keys.dashboard.table.trackingValidation.affectedMultiple, {
+        count: affectedCount,
+      })
+    }
+
+    return ctx.t(ctx.keys.dashboard.table.trackingValidation.affectedSingle)
+  }
+  const trackingValidationTooltip = () => {
+    const trackingValidationCopyLabels: TrackingValidationCopyLabels = {
+      areaLabel: ctx.t(ctx.keys.shipmentView.validation.labels.area),
+      blockLabel: ctx.t(ctx.keys.shipmentView.validation.labels.block),
+      locationLabel: ctx.t(ctx.keys.shipmentView.validation.labels.location),
+      affectedAreaLabels: {
+        container: ctx.t(ctx.keys.shipmentView.validation.areas.container),
+        operational: ctx.t(ctx.keys.shipmentView.validation.areas.operational),
+        process: ctx.t(ctx.keys.shipmentView.validation.areas.process),
+        series: ctx.t(ctx.keys.shipmentView.validation.areas.series),
+        status: ctx.t(ctx.keys.shipmentView.validation.areas.status),
+        timeline: ctx.t(ctx.keys.shipmentView.validation.areas.timeline),
+      },
+    }
+
+    return toTrackingValidationTooltipText({
+      aggregateLabel: trackingValidationLabel(),
+      issue: ctx.process.trackingValidation.topIssue,
+      labels: trackingValidationCopyLabels,
+      resolveBlockLabel: (key) => ctx.t(key),
+      resolveReason: (key) => ctx.t(key),
+    })
+  }
 
   const severityLabel = () => {
     if (dominantSeverity() === 'danger')
@@ -481,7 +586,7 @@ function AlertsCell(ctx: CellContext): JSX.Element {
 
   const alertAge = () =>
     formatDashboardAlertAge({
-      triggeredAtIso: ctx.process.dominantAlertCreatedAt,
+      triggeredAtIso: ctx.process.dominantIncident?.triggeredAt ?? null,
       t: ctx.t,
       keys: ctx.keys,
     })
@@ -491,9 +596,13 @@ function AlertsCell(ctx: CellContext): JSX.Element {
     const parts: string[] = [dominantAlertLabel()]
     const age = alertAge()
     if (age) parts.push(`· ${age.label}`)
-    const extra = ctx.process.alertsCount - 1
-    if (extra > 0) {
-      parts.push(ctx.t(ctx.keys.dashboard.table.alertTooltip.additionalAlerts, { count: extra }))
+    const additionalIncidentsLine = toDashboardAdditionalIncidentsTooltipLine(
+      ctx.process.activeIncidentCount,
+      ctx.t,
+      ctx.keys,
+    )
+    if (additionalIncidentsLine !== null) {
+      parts.push(additionalIncidentsLine)
     }
     return parts.join('\n')
   }
@@ -504,31 +613,22 @@ function AlertsCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link flex justify-center"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
-        <Show
-          when={dominantSeverity() !== 'none'}
-          fallback={
-            <span
-              class="text-xs-ui text-tone-success-strong"
-              role="img"
-              aria-label={dominantAlertLabel()}
-            >
-              <Check class="w-3.5 h-3.5" aria-hidden="true" />
-            </span>
-          }
-        >
-          <span
-            class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(dominantSeverity())}`}
-            title={alertTooltip()}
-          >
-            <span aria-hidden="true">{toUnifiedAlertIcon(dominantSeverity())}</span>
-            {ctx.process.alertsCount}
-            <span class="sr-only">{`${severityLabel()}: ${dominantAlertLabel()}`}</span>
-          </span>
-        </Show>
+        <div class="flex items-center justify-center gap-1">
+          <AlertsSummaryBadge
+            dominantSeverity={dominantSeverity()}
+            dominantAlertLabel={dominantAlertLabel()}
+            severityLabel={severityLabel()}
+            alertTooltip={alertTooltip()}
+            incidentCount={ctx.process.activeIncidentCount}
+          />
+          <TrackingValidationChip
+            visible={hasTrackingValidation()}
+            label={trackingValidationTooltip()}
+            chipLabel={ctx.t(ctx.keys.dashboard.table.trackingValidation.chip)}
+            severity={ctx.process.trackingValidation.highestSeverity}
+          />
+        </div>
       </A>
     </div>
   )
@@ -556,6 +656,8 @@ const CELL_RENDERERS: Record<DashboardColumnId, (ctx: CellContext) => JSX.Elemen
 
 function DashboardProcessRow(props: RowProps): JSX.Element {
   const { t, keys } = useTranslation()
+  const translate = (key: string, options?: Record<string, unknown>): string =>
+    options === undefined ? t(key) : t(key, options)
   const processHref = () => buildProcessHref(props.process.id)
   const dominantSeverity = () => toDominantSeverity(props.process)
 
@@ -606,8 +708,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     process: props.process,
     processHref: processHref(),
     handleProcessLinkClick,
-    triggerProcessIntent,
-    t,
+    t: translate,
     keys,
     onProcessSync: props.onProcessSync,
   })
@@ -617,7 +718,12 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     <div
       role="button"
       tabIndex={0}
-      class={`grid min-h-(--dashboard-table-row-height) cursor-pointer items-center border-b border-border/50 bg-surface transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 last:border-b-0 ${getSeverityBorderClass(dominantSeverity())}`}
+      data-dashboard-process-id={props.process.id}
+      data-dashboard-last-opened={props.isHighlighted ? 'true' : undefined}
+      class={toDashboardProcessRowClass({
+        severity: dominantSeverity(),
+        isHighlighted: props.isHighlighted,
+      })}
       style={{ 'grid-template-columns': props.gridStyle }}
       onClick={handleRowClick}
       onKeyDown={handleRowKeydown}
@@ -761,13 +867,15 @@ function DashboardTableHeader(props: {
 function DashboardProcessRows(props: TableRowsProps): JSX.Element {
   const gridStyle = createMemo(() => buildGridTemplate(props.columnOrder))
 
-  /** Default priority ordering: severity desc → alert count desc → preserve API order. */
-  const prioritySorted = (): readonly ProcessSummaryVM[] => {
+  /** Default priority ordering: severity desc → incident count desc → affected containers desc. */
+  const prioritySorted = (): readonly DashboardProcessRowVM[] => {
     if (props.sortSelection !== null) return props.processes
     return [...props.processes].sort((a, b) => {
       const sevDiff = SEVERITY_ORDER[toDominantSeverity(a)] - SEVERITY_ORDER[toDominantSeverity(b)]
       if (sevDiff !== 0) return sevDiff
-      return b.alertsCount - a.alertsCount
+      const incidentDiff = b.activeIncidentCount - a.activeIncidentCount
+      if (incidentDiff !== 0) return incidentDiff
+      return b.affectedContainerCount - a.affectedContainerCount
     })
   }
 
@@ -785,6 +893,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
           {(process) => (
             <DashboardProcessRow
               process={process}
+              isHighlighted={process.id === props.highlightedProcessId}
               columnOrder={props.columnOrder}
               gridStyle={gridStyle()}
               onProcessSync={props.onProcessSync}
@@ -794,6 +903,73 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
           )}
         </For>
       </div>
+    </div>
+  )
+}
+
+function toTableSkeletonWidth(columnId: DashboardColumnId): string {
+  switch (columnId) {
+    case 'processRef':
+      return 'w-24'
+    case 'carrier':
+      return 'w-20'
+    case 'importer':
+    case 'exporter':
+      return 'w-28'
+    case 'route':
+      return 'w-32'
+    case 'status':
+      return 'w-24'
+    case 'eta':
+      return 'w-20'
+    case 'sync':
+      return 'mx-auto w-8'
+    case 'alerts':
+      return 'mx-auto w-10'
+  }
+}
+
+function DashboardProcessTableSkeleton(props: {
+  readonly columnOrder: readonly DashboardColumnId[]
+}): JSX.Element {
+  const gridStyle = createMemo(() => buildGridTemplate(props.columnOrder))
+
+  return (
+    <div class="overflow-x-auto" aria-hidden="true">
+      <div
+        class="grid min-h-(--dashboard-table-header-height) border-b border-border bg-surface-muted"
+        style={{ 'grid-template-columns': gridStyle() }}
+      >
+        <For each={props.columnOrder}>
+          {(columnId) => (
+            <div class="min-h-(--dashboard-table-header-height) px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
+              <div
+                class={`dashboard-skeleton-shimmer h-3 rounded bg-surface ${toTableSkeletonWidth(columnId)}`}
+              />
+            </div>
+          )}
+        </For>
+      </div>
+
+      <For each={DASHBOARD_TABLE_SKELETON_ROW_KEYS}>
+        {(rowKey) => (
+          <div
+            class="grid min-h-(--dashboard-table-row-height) items-center border-b border-border/50 bg-surface last:border-b-0"
+            style={{ 'grid-template-columns': gridStyle() }}
+            data-skeleton-row={rowKey}
+          >
+            <For each={props.columnOrder}>
+              {(columnId) => (
+                <div class="px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
+                  <div
+                    class={`dashboard-skeleton-shimmer h-4 rounded bg-surface-muted ${toTableSkeletonWidth(columnId)}`}
+                  />
+                </div>
+              )}
+            </For>
+          </div>
+        )}
+      </For>
     </div>
   )
 }
@@ -816,12 +992,8 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   }
 
   const content = () => {
-    if (props.loading) {
-      return (
-        <div class="px-6 py-12 text-center text-md-ui text-text-muted">
-          {t(keys.dashboard.loading)}
-        </div>
-      )
+    if (props.initialLoading) {
+      return <DashboardProcessTableSkeleton columnOrder={columnOrder()} />
     }
 
     if (props.hasError) {
@@ -857,6 +1029,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     return (
       <DashboardProcessRows
         processes={props.processes}
+        highlightedProcessId={props.highlightedProcessId}
         sortSelection={props.sortSelection}
         onSortToggle={props.onSortToggle}
         onProcessSync={props.onProcessSync}
@@ -869,11 +1042,19 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   }
 
   return (
-    <section class="overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgb(0_0_0_/8%)]">
+    <section
+      class="overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgb(0_0_0_/8%)]"
+      aria-busy={props.initialLoading || props.refreshing}
+    >
       <header class="border-b border-border bg-surface-muted px-6 py-4">
-        <h2 class="text-lg-ui font-semibold leading-tight tracking-[-0.01em] text-foreground">
-          {t(keys.dashboard.table.title)}
-        </h2>
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg-ui font-semibold leading-tight tracking-[-0.01em] text-foreground">
+            {t(keys.dashboard.table.title)}
+          </h2>
+          <Show when={props.initialLoading || props.refreshing}>
+            <RefreshCw class="h-4 w-4 animate-spin text-text-muted" aria-hidden="true" />
+          </Show>
+        </div>
       </header>
       {content()}
     </section>

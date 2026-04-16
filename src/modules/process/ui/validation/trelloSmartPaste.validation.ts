@@ -22,6 +22,7 @@ export type ParsedProcessDraft = {
     readonly redestinationNumber?: string
     readonly origin?: string
     readonly destination?: string
+    readonly depositary?: string
     readonly billOfLading?: string
     readonly bookingNumber?: string
     readonly carrier?: string
@@ -36,6 +37,7 @@ type ParsedTitleFields = {
   readonly importerName?: string
   readonly exporterName?: string
   readonly product?: string
+  readonly unmappedFields: readonly ParsedUnmappedField[]
 }
 
 type ParsedLineFields = {
@@ -48,6 +50,7 @@ type ParsedLineFields = {
     readonly redestinationNumber?: string
     readonly origin?: string
     readonly destination?: string
+    readonly depositary?: string
     readonly billOfLading?: string
     readonly bookingNumber?: string
     readonly carrier?: string
@@ -98,6 +101,24 @@ function extractContainerNumbers(rawText: string): readonly string[] {
   )
 }
 
+function splitProductValueFromInlineVessel(rawValue: string): {
+  readonly productValue: string
+  readonly vesselValue?: string
+} {
+  const productWithInlineVesselMatch = rawValue.match(
+    /^(?<productValue>.+?)\s*NAVIO\s*:\s*(?<vesselValue>.+)$/i,
+  )
+  const productValue = normalizeWhitespace(
+    productWithInlineVesselMatch?.groups?.productValue ?? rawValue,
+  )
+  const vesselValue = normalizeWhitespace(productWithInlineVesselMatch?.groups?.vesselValue ?? '')
+
+  return {
+    productValue,
+    ...(vesselValue.length === 0 ? {} : { vesselValue }),
+  }
+}
+
 function toLabelClassification(rawLabel: string): LabelClassification {
   const normalized = normalizeLabelKey(rawLabel)
 
@@ -123,8 +144,11 @@ function toLabelClassification(rawLabel: string): LabelClassification {
   if (normalized === 'ORIGEM') {
     return { type: 'mapped', key: 'origin' }
   }
-  if (normalized === 'DESTINO' || normalized === 'DEPOSITARIO') {
+  if (normalized === 'DESTINO') {
     return { type: 'mapped', key: 'destination' }
+  }
+  if (normalized === 'DEPOSITARIO') {
+    return { type: 'mapped', key: 'depositary' }
   }
   if (normalized === 'BL' || normalized === 'B/L' || normalized === 'BILL OF LADING') {
     return { type: 'mapped', key: 'billOfLading' }
@@ -167,7 +191,7 @@ function toLabelClassification(rawLabel: string): LabelClassification {
 function parseTitleFields(rawTitle: string): ParsedTitleFields {
   const title = normalizeWhitespace(rawTitle)
   if (title.length === 0) {
-    return {}
+    return { unmappedFields: [] }
   }
 
   const segments = title
@@ -175,13 +199,14 @@ function parseTitleFields(rawTitle: string): ParsedTitleFields {
     .map((segment) => normalizeWhitespace(segment))
     .filter((segment) => segment.length > 0)
 
-  if (segments.length === 0) return {}
+  if (segments.length === 0) return { unmappedFields: [] }
 
   let reference: string | undefined
   let importerName: string | undefined
   let exporterName: string | undefined
   let product: string | undefined
   const leftovers: string[] = []
+  const unmappedFields: ParsedUnmappedField[] = []
 
   for (const segment of segments) {
     const referenceMatch = segment.match(/^REF\.?(?:\s+[^:]+)?\s*:\s*(.+)$/i)
@@ -204,7 +229,13 @@ function parseTitleFields(rawTitle: string): ParsedTitleFields {
 
     const productMatch = segment.match(/^PRODUTO\s*:\s*(.+)$/i)
     if (productMatch?.[1]) {
-      product = normalizeWhitespace(productMatch[1])
+      const productField = splitProductValueFromInlineVessel(productMatch[1])
+      product = productField.productValue
+
+      if (productField.vesselValue !== undefined) {
+        unmappedFields.push({ label: 'NAVIO', value: productField.vesselValue })
+      }
+
       continue
     }
 
@@ -212,14 +243,20 @@ function parseTitleFields(rawTitle: string): ParsedTitleFields {
   }
 
   if (!product && leftovers.length > 0) {
-    product = leftovers[leftovers.length - 1]
+    const fallbackProduct = splitProductValueFromInlineVessel(leftovers[leftovers.length - 1] ?? '')
+    product = fallbackProduct.productValue
+
+    if (fallbackProduct.vesselValue !== undefined) {
+      unmappedFields.push({ label: 'NAVIO', value: fallbackProduct.vesselValue })
+    }
   }
 
   return {
-    reference,
-    importerName,
-    exporterName,
-    product,
+    ...(reference === undefined ? {} : { reference }),
+    ...(importerName === undefined ? {} : { importerName }),
+    ...(exporterName === undefined ? {} : { exporterName }),
+    ...(product === undefined ? {} : { product }),
+    unmappedFields,
   }
 }
 
@@ -263,6 +300,7 @@ function parseLineFields(lines: readonly string[]): ParsedLineFields {
     redestinationNumber?: string
     origin?: string
     destination?: string
+    depositary?: string
     billOfLading?: string
     bookingNumber?: string
     carrier?: string
@@ -299,6 +337,18 @@ function parseLineFields(lines: readonly string[]): ParsedLineFields {
 
     if (rawValue.length === 0) continue
     if (scalar[classification.key] !== undefined) continue
+
+    if (classification.key === 'product') {
+      const productField = splitProductValueFromInlineVessel(rawValue)
+      scalar.product = productField.productValue
+
+      if (productField.vesselValue !== undefined) {
+        unmappedFields.push({ label: 'NAVIO', value: productField.vesselValue })
+      }
+
+      continue
+    }
+
     scalar[classification.key] = rawValue
   }
 
@@ -335,25 +385,42 @@ export function parseTrelloSmartPaste(rawInput: string): ParsedProcessDraft {
   const globalContainers = extractContainerNumbers(normalizedInput)
 
   const mergedContainers = dedupeStrings([...lineFields.containers, ...globalContainers])
+  const reference = titleFields.reference ?? lineFields.scalar.reference
+  const importerName = titleFields.importerName ?? lineFields.scalar.importerName
+  const exporterName = titleFields.exporterName ?? lineFields.scalar.exporterName
+  const product = titleFields.product ?? lineFields.scalar.product
 
   const fields: ParsedProcessDraft['fields'] = {
-    reference: titleFields.reference ?? lineFields.scalar.reference,
-    importerName: titleFields.importerName ?? lineFields.scalar.importerName,
-    exporterName: titleFields.exporterName ?? lineFields.scalar.exporterName,
-    product: titleFields.product ?? lineFields.scalar.product,
-    referenceImporter: lineFields.scalar.referenceImporter,
-    redestinationNumber: lineFields.scalar.redestinationNumber,
-    origin: lineFields.scalar.origin,
-    destination: lineFields.scalar.destination,
-    billOfLading: lineFields.scalar.billOfLading,
-    bookingNumber: lineFields.scalar.bookingNumber,
-    carrier: lineFields.scalar.carrier,
     containers: mergedContainers,
+    ...(reference === undefined ? {} : { reference }),
+    ...(importerName === undefined ? {} : { importerName }),
+    ...(exporterName === undefined ? {} : { exporterName }),
+    ...(product === undefined ? {} : { product }),
+    ...(lineFields.scalar.referenceImporter === undefined
+      ? {}
+      : { referenceImporter: lineFields.scalar.referenceImporter }),
+    ...(lineFields.scalar.redestinationNumber === undefined
+      ? {}
+      : { redestinationNumber: lineFields.scalar.redestinationNumber }),
+    ...(lineFields.scalar.origin === undefined ? {} : { origin: lineFields.scalar.origin }),
+    ...(lineFields.scalar.destination === undefined
+      ? {}
+      : { destination: lineFields.scalar.destination }),
+    ...(lineFields.scalar.depositary === undefined
+      ? {}
+      : { depositary: lineFields.scalar.depositary }),
+    ...(lineFields.scalar.billOfLading === undefined
+      ? {}
+      : { billOfLading: lineFields.scalar.billOfLading }),
+    ...(lineFields.scalar.bookingNumber === undefined
+      ? {}
+      : { bookingNumber: lineFields.scalar.bookingNumber }),
+    ...(lineFields.scalar.carrier === undefined ? {} : { carrier: lineFields.scalar.carrier }),
   }
 
   return {
     fields,
-    unmappedFields: lineFields.unmappedFields,
+    unmappedFields: [...titleFields.unmappedFields, ...lineFields.unmappedFields],
     warnings: buildWarnings({
       hasCarrier: Boolean(fields.carrier && fields.carrier.trim().length > 0),
       containers: mergedContainers,

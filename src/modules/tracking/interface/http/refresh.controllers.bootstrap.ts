@@ -1,6 +1,7 @@
 import { z } from 'zod/v4'
 
 import { containerUseCases } from '~/modules/container/infrastructure/bootstrap/container.bootstrap'
+import { processUseCases } from '~/modules/process/infrastructure/bootstrap/process.bootstrap'
 import {
   createRefreshRestContainerUseCase,
   type RefreshRestContainerDeps,
@@ -42,6 +43,8 @@ export function bootstrapRefreshControllers(
 ): RefreshControllers {
   const refreshRestDeps: RefreshRestContainerDeps = overrides.refreshRestDeps ?? {
     containerLookup: containerUseCases,
+    processLookup: processUseCases,
+    containerCarrierMutation: containerUseCases,
     enqueueSyncRequest: {
       async enqueueSyncRequest(command) {
         const result = await supabaseServer.rpc('enqueue_sync_request', {
@@ -59,6 +62,9 @@ export function bootstrapRefreshControllers(
 
         const parsed = EnqueueSyncRequestRowsSchema.parse(data)
         const row = parsed[0]
+        if (row === undefined) {
+          throw new Error('enqueue_sync_request returned no rows')
+        }
 
         return {
           id: row.id,

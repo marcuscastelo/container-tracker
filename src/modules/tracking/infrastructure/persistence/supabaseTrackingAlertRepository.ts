@@ -7,13 +7,11 @@ import type {
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import {
-  toNoMovementDedupKeysFromAlert,
-  toNoMovementDedupKeysFromRow,
-} from '~/modules/tracking/infrastructure/persistence/tracking.alert-no-movement.dedup'
-import {
+  alertRowToDerivationState,
   alertRowToDomain,
   alertToInsertRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.persistence.mappers'
+import { measureAuditedReadQuery } from '~/shared/observability/readRequestMetrics'
 import { supabase } from '~/shared/supabase/supabase'
 import {
   unwrapSupabaseResultOrThrow,
@@ -22,10 +20,27 @@ import {
 
 const TABLE = 'tracking_alerts' as const
 const CONTAINERS_TABLE = 'containers' as const
+const TRACKING_ALERT_DOMAIN_SELECT =
+  'id,container_id,category,type,severity,message_key,message_params,created_at,detected_at,triggered_at,source_observation_fingerprints,alert_fingerprint,retroactive,provider,acked_at,acked_by,acked_source,resolved_at,resolved_reason,lifecycle_state'
 
 // NOTE: enum validation and normalization for alert rows is implemented in
 // `alertRowToDomain` (tracking.persistence.mappers). We prefer reusing that
 // centralized mapper to avoid duplication of enum logic here.
+
+type LegacyNoMovementAlertRow = {
+  readonly type?: unknown
+  readonly message_key?: unknown
+}
+
+function isLegacyNoMovementAlertRow(row: LegacyNoMovementAlertRow): boolean {
+  return row.type === 'NO_MOVEMENT' || row.message_key === 'alerts.noMovementDetected'
+}
+
+function filterLegacyNoMovementAlertRows<TRow extends LegacyNoMovementAlertRow>(
+  rows: readonly TRow[],
+): readonly TRow[] {
+  return rows.filter((row) => !isLegacyNoMovementAlertRow(row))
+}
 
 export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   async insertMany(alerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
@@ -33,7 +48,6 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
 
     // Deduplicate inside the same batch before hitting the DB.
     const seenFingerprintKeysInBatch = new Set<string>()
-    const seenNoMovementKeysInBatch = new Set<string>()
     const dedupedAlerts: NewTrackingAlert[] = []
     for (const alert of alerts) {
       const fingerprint = alert.alert_fingerprint
@@ -43,15 +57,6 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
         seenFingerprintKeysInBatch.add(fingerprintKey)
       }
 
-      const noMovementKeys = toNoMovementDedupKeysFromAlert(alert)
-      if (noMovementKeys.length > 0) {
-        const alreadySeen = noMovementKeys.some((key) => seenNoMovementKeysInBatch.has(key))
-        if (alreadySeen) continue
-        for (const key of noMovementKeys) {
-          seenNoMovementKeysInBatch.add(key)
-        }
-      }
-
       dedupedAlerts.push(alert)
     }
 
@@ -59,15 +64,10 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
 
     const containerIds = Array.from(new Set(dedupedAlerts.map((alert) => alert.container_id)))
     const incomingFingerprintKeys = new Set<string>()
-    const incomingNoMovementKeys = new Set<string>()
 
     for (const alert of dedupedAlerts) {
       if (alert.alert_fingerprint !== null) {
         incomingFingerprintKeys.add(`${alert.container_id}|${alert.alert_fingerprint}`)
-      }
-      const noMovementKeys = toNoMovementDedupKeysFromAlert(alert)
-      for (const key of noMovementKeys) {
-        incomingNoMovementKeys.add(key)
       }
     }
 
@@ -81,11 +81,17 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       ),
     )
     if (containerIds.length > 0 && factFingerprints.length > 0) {
-      const existingFingerprintRowsResult = await supabase
-        .from(TABLE)
-        .select('container_id, alert_fingerprint')
-        .in('container_id', containerIds)
-        .in('alert_fingerprint', factFingerprints)
+      const existingFingerprintRowsResult = await measureAuditedReadQuery({
+        table: TABLE,
+        operation: 'insertMany.findExistingFingerprints',
+        query: () =>
+          supabase
+            .from(TABLE)
+            .select('container_id, alert_fingerprint')
+            .in('container_id', containerIds)
+            .in('alert_fingerprint', factFingerprints),
+        resultSelector: (queryResult) => queryResult.data ?? [],
+      })
 
       const existingFingerprintRows =
         unwrapSupabaseResultOrThrow(existingFingerprintRowsResult, {
@@ -99,33 +105,6 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       }
     }
 
-    const existingNoMovementKeys = new Set<string>()
-    if (containerIds.length > 0 && incomingNoMovementKeys.size > 0) {
-      const existingNoMovementRowsResult = await supabase
-        .from(TABLE)
-        .select(
-          'container_id, category, type, message_key, message_params, source_observation_fingerprints',
-        )
-        .in('container_id', containerIds)
-        .eq('category', 'monitoring')
-        .eq('type', 'NO_MOVEMENT')
-        .eq('message_key', 'alerts.noMovementDetected')
-        .eq('lifecycle_state', 'ACTIVE')
-
-      const existingNoMovementRows =
-        unwrapSupabaseResultOrThrow(existingNoMovementRowsResult, {
-          operation: 'insertMany.findExistingNoMovement',
-          table: TABLE,
-        }) ?? []
-
-      for (const row of existingNoMovementRows) {
-        const dedupKeys = toNoMovementDedupKeysFromRow(row)
-        for (const key of dedupKeys) {
-          existingNoMovementKeys.add(key)
-        }
-      }
-    }
-
     const alertsToInsert = dedupedAlerts.filter((alert) => {
       if (alert.category !== 'monitoring' && alert.alert_fingerprint !== null) {
         const fingerprintKey = `${alert.container_id}|${alert.alert_fingerprint}`
@@ -135,11 +114,6 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
         ) {
           return false
         }
-      }
-
-      const noMovementKeys = toNoMovementDedupKeysFromAlert(alert)
-      if (noMovementKeys.some((key) => existingNoMovementKeys.has(key))) {
-        return false
       }
 
       return true
@@ -158,30 +132,64 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     // option with types, replace this call with an "on conflict do nothing"
     // insert (or `.upsert(..., { onConflict: [...] })`) to make the operation
     // atomic.
-    const result = await supabase.from(TABLE).insert(rows).select('*')
+    const result = await supabase.from(TABLE).insert(rows).select(TRACKING_ALERT_DOMAIN_SELECT)
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'insertMany',
       table: TABLE,
     })
 
-    return (data ?? []).map(alertRowToDomain)
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDomain)
   },
 
   async findActiveByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
-    const result = await supabase
-      .from(TABLE)
-      .select('*')
-      .eq('container_id', containerId)
-      .eq('lifecycle_state', 'ACTIVE')
-      .order('triggered_at', { ascending: false })
-      .order('id', { ascending: false })
+    const result = await measureAuditedReadQuery({
+      table: TABLE,
+      operation: 'findActiveByContainerId',
+      query: () =>
+        supabase
+          .from(TABLE)
+          .select(TRACKING_ALERT_DOMAIN_SELECT)
+          .eq('container_id', containerId)
+          .eq('lifecycle_state', 'ACTIVE')
+          .order('triggered_at', { ascending: false })
+          .order('id', { ascending: false }),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findActiveByContainerId',
       table: TABLE,
     })
 
-    return (data ?? []).map(alertRowToDomain)
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDomain)
+  },
+
+  async findActiveByContainerIds(
+    containerIds: readonly string[],
+  ): Promise<readonly TrackingAlert[]> {
+    if (containerIds.length === 0) return []
+
+    const uniqueContainerIds = Array.from(new Set(containerIds))
+    const result = await measureAuditedReadQuery({
+      table: TABLE,
+      operation: 'findActiveByContainerIds',
+      query: () =>
+        supabase
+          .from(TABLE)
+          .select(TRACKING_ALERT_DOMAIN_SELECT)
+          .in('container_id', uniqueContainerIds)
+          .eq('lifecycle_state', 'ACTIVE')
+          .order('triggered_at', { ascending: false })
+          .order('id', { ascending: false }),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'findActiveByContainerIds',
+      table: TABLE,
+    })
+
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDomain)
   },
 
   async findActiveTypesByContainerId(containerId: string): Promise<ReadonlySet<string>> {
@@ -197,26 +205,75 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     })
 
     const types = new Set<string>()
-    for (const row of data ?? []) {
+    for (const row of filterLegacyNoMovementAlertRows(data ?? [])) {
       if (row && typeof row.type === 'string') types.add(row.type)
     }
     return types
   },
 
   async findByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
-    const result = await supabase
-      .from(TABLE)
-      .select('*')
-      .eq('container_id', containerId)
-      .order('triggered_at', { ascending: false })
-      .order('id', { ascending: false })
+    const result = await measureAuditedReadQuery({
+      table: TABLE,
+      operation: 'findByContainerId',
+      query: () =>
+        supabase
+          .from(TABLE)
+          .select(TRACKING_ALERT_DOMAIN_SELECT)
+          .eq('container_id', containerId)
+          .order('triggered_at', { ascending: false })
+          .order('id', { ascending: false }),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findByContainerId',
       table: TABLE,
     })
 
-    return (data ?? []).map(alertRowToDomain)
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDomain)
+  },
+
+  async findByContainerIds(containerIds: readonly string[]): Promise<readonly TrackingAlert[]> {
+    if (containerIds.length === 0) return []
+
+    const uniqueContainerIds = Array.from(new Set(containerIds))
+    const result = await measureAuditedReadQuery({
+      table: TABLE,
+      operation: 'findByContainerIds',
+      query: () =>
+        supabase
+          .from(TABLE)
+          .select(TRACKING_ALERT_DOMAIN_SELECT)
+          .in('container_id', uniqueContainerIds)
+          .order('triggered_at', { ascending: false })
+          .order('id', { ascending: false }),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'findByContainerIds',
+      table: TABLE,
+    })
+
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDomain)
+  },
+
+  async findAlertDerivationStateByContainerId(containerId: string) {
+    const result = await supabase
+      .from(TABLE)
+      .select(
+        'id, category, type, message_key, message_params, detected_at, source_observation_fingerprints, alert_fingerprint, acked_at, resolved_at',
+      )
+      .eq('container_id', containerId)
+      .order('triggered_at', { ascending: false })
+      .order('id', { ascending: false })
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'findAlertDerivationStateByContainerId',
+      table: TABLE,
+    })
+
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDerivationState)
   },
 
   async findContainerNumbersByIds(
@@ -227,10 +284,13 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     }
 
     const uniqueContainerIds = Array.from(new Set(containerIds))
-    const result = await supabase
-      .from(CONTAINERS_TABLE)
-      .select('id, container_number')
-      .in('id', uniqueContainerIds)
+    const result = await measureAuditedReadQuery({
+      table: CONTAINERS_TABLE,
+      operation: 'findContainerNumbersByIds',
+      query: () =>
+        supabase.from(CONTAINERS_TABLE).select('id, container_number').in('id', uniqueContainerIds),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
 
     const rows =
       unwrapSupabaseResultOrThrow(result, {
@@ -247,29 +307,38 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   },
 
   async listActiveAlertReadModel(): Promise<readonly TrackingActiveAlertReadModel[]> {
-    const alertsResult = await supabase
-      .from(TABLE)
-      .select('*')
-      .eq('lifecycle_state', 'ACTIVE')
-      .order('triggered_at', { ascending: false })
-      .order('id', { ascending: false })
+    const alertsResult = await measureAuditedReadQuery({
+      table: TABLE,
+      operation: 'listActiveAlertReadModel.alerts',
+      query: () =>
+        supabase
+          .from(TABLE)
+          .select(TRACKING_ALERT_DOMAIN_SELECT)
+          .eq('lifecycle_state', 'ACTIVE')
+          .order('triggered_at', { ascending: false })
+          .order('id', { ascending: false }),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
 
     const alertRows =
       unwrapSupabaseResultOrThrow(alertsResult, {
         operation: 'listActiveAlertReadModel.alerts',
         table: TABLE,
       }) ?? []
+    const visibleAlertRows = filterLegacyNoMovementAlertRows(alertRows)
 
-    if (alertRows.length === 0) {
+    if (visibleAlertRows.length === 0) {
       return []
     }
 
-    const containerIds = Array.from(new Set(alertRows.map((row) => row.container_id)))
+    const containerIds = Array.from(new Set(visibleAlertRows.map((row) => row.container_id)))
 
-    const containersResult = await supabase
-      .from(CONTAINERS_TABLE)
-      .select('id, process_id')
-      .in('id', containerIds)
+    const containersResult = await measureAuditedReadQuery({
+      table: CONTAINERS_TABLE,
+      operation: 'listActiveAlertReadModel.containers',
+      query: () => supabase.from(CONTAINERS_TABLE).select('id, process_id').in('id', containerIds),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
 
     const containerRows =
       unwrapSupabaseResultOrThrow(containersResult, {
@@ -283,7 +352,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     }
 
     const readModel: TrackingActiveAlertReadModel[] = []
-    for (const row of alertRows) {
+    for (const row of visibleAlertRows) {
       const processId = processIdByContainerId.get(row.container_id)
       if (!processId) {
         // Fail fast: missing container/process mapping indicates a data integrity
@@ -387,6 +456,9 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       .eq('category', 'monitoring')
       .eq('lifecycle_state', 'ACTIVE')
 
-    unwrapSupabaseResultOrThrow(result, { operation: 'autoResolveMany', table: TABLE })
+    // Supabase update without .select() returns 204 + data=null on success.
+    if (result.error) {
+      unwrapSupabaseResultOrThrow(result, { operation: 'autoResolveMany', table: TABLE })
+    }
   },
 }

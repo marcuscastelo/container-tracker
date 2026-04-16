@@ -1,4 +1,8 @@
-import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
+import {
+  computeFingerprint,
+  computeLegacyFingerprint,
+  computePilLocationlessFingerprintAlias,
+} from '~/modules/tracking/domain/identity/fingerprint'
 import type { NewObservation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 
@@ -31,9 +35,18 @@ export function diffObservations(
 
   for (const draft of drafts) {
     const fingerprint = computeFingerprint(draft)
+    const legacyFingerprint = computeLegacyFingerprint(draft)
+    const pilLocationlessAliasFingerprint = computePilLocationlessFingerprintAlias(draft)
 
     // Skip if already persisted or already seen in this batch
     if (existingFingerprints.has(fingerprint)) continue
+    if (existingFingerprints.has(legacyFingerprint)) continue
+    if (
+      pilLocationlessAliasFingerprint !== null &&
+      existingFingerprints.has(pilLocationlessAliasFingerprint)
+    ) {
+      continue
+    }
     if (seenInBatch.has(fingerprint)) continue
     seenInBatch.add(fingerprint)
 
@@ -53,6 +66,8 @@ export function diffObservations(
       provider: draft.provider,
       created_from_snapshot_id: draft.snapshot_id,
       carrier_label: draft.carrier_label ?? null,
+      raw_event_time: draft.raw_event_time ?? null,
+      event_time_source: draft.event_time_source ?? null,
       retroactive: false,
     }
 

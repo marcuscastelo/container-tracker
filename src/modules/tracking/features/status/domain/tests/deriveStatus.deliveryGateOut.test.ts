@@ -2,19 +2,28 @@ import { describe, expect, it } from 'vitest'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { resolveTemporalValue, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000502'
 const CONTAINER_NUMBER = 'CA08325GATEOUT'
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000501'
 
-function makeObs(overrides: Partial<Observation> = {}): Observation {
+type ObservationOverrides = Omit<Partial<Observation>, 'event_time'> & {
+  readonly event_time?: string | Observation['event_time']
+}
+
+const DEFAULT_EVENT_TIME = temporalValueFromCanonical('2026-02-01T00:00:00.000Z')
+
+function makeObs(overrides: ObservationOverrides = {}): Observation {
+  const { event_time, ...rest } = overrides
+
   return {
     id: '00000000-0000-0000-0000-000000000599',
     fingerprint: 'fp-base',
     container_id: CONTAINER_ID,
     container_number: CONTAINER_NUMBER,
     type: 'OTHER',
-    event_time: '2026-02-01T00:00:00.000Z',
+    event_time: resolveTemporalValue(event_time, DEFAULT_EVENT_TIME),
     event_time_type: 'ACTUAL',
     location_code: 'BRSSZ',
     location_display: 'SANTOS, BR',
@@ -25,7 +34,7 @@ function makeObs(overrides: Partial<Observation> = {}): Observation {
     provider: 'maersk',
     created_from_snapshot_id: SNAPSHOT_ID,
     created_at: '2026-02-01T00:00:00.000Z',
-    ...overrides,
+    ...rest,
   }
 }
 
@@ -102,5 +111,42 @@ describe('deriveStatus terminal delivery gate-out fallback', () => {
     ])
 
     expect(deriveStatus(timeline)).toBe('EMPTY_RETURNED')
+  })
+
+  it('does not keep DELIVERED when a new lifecycle continuation appears after delivery gate-out', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000540',
+        fingerprint: 'fp-discharge',
+        type: 'DISCHARGE',
+        event_time: '2026-02-03T09:00:00.000Z',
+        created_at: '2026-02-03T09:00:00.000Z',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS, BR',
+      }),
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000541',
+        fingerprint: 'fp-delivery-gate-out',
+        type: 'GATE_OUT',
+        event_time: '2026-02-04T10:00:00.000Z',
+        created_at: '2026-02-04T10:00:00.000Z',
+        location_code: 'BRIOA',
+        location_display: 'ITAPOA, BR',
+        is_empty: false,
+      }),
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000542',
+        fingerprint: 'fp-load-after-completion',
+        type: 'LOAD',
+        event_time: '2026-02-07T08:00:00.000Z',
+        created_at: '2026-02-07T08:00:00.000Z',
+        location_code: 'ITNAP',
+        location_display: 'NAPLES, IT',
+        vessel_name: 'MSC RESUME',
+        voyage: '777E',
+      }),
+    ])
+
+    expect(deriveStatus(timeline)).toBe('LOADED')
   })
 })

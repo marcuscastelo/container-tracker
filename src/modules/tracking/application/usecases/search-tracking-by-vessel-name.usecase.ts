@@ -1,11 +1,12 @@
 import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
 import { listTrackingSearchProjections } from '~/modules/tracking/application/usecases/list-tracking-search-projections.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
+import type { Instant } from '~/shared/time/instant'
 
 type SearchTrackingByVesselNameCommand = Readonly<{
   query: string
   limit: number
-  now?: Date
+  now?: Instant
 }>
 
 function normalizeText(value: string): string {
@@ -25,7 +26,10 @@ export async function searchTrackingByVesselName(
     return []
   }
 
-  const projections = await listTrackingSearchProjections(deps, { now: cmd.now })
+  const projections = await listTrackingSearchProjections(
+    deps,
+    cmd.now === undefined ? {} : { now: cmd.now },
+  )
   const matches = projections.filter((projection) =>
     hasVesselMatch(projection.vesselName, normalizedQuery),
   )

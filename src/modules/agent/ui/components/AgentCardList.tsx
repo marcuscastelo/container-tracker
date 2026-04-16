@@ -6,8 +6,10 @@ import type { AgentListItemVM } from '~/modules/agent/ui/vm/agent.vm'
 type Props = {
   readonly agents: readonly AgentListItemVM[]
   readonly loading: boolean
+  readonly refreshing?: boolean
   readonly hasError: boolean
   readonly onAgentClick: (agentId: string) => void
+  readonly onLogsClick: (agentId: string) => void
   readonly onRetry: () => void
 }
 
@@ -50,6 +52,7 @@ function EmptyStateCard(): JSX.Element {
 function AgentCard(props: {
   readonly agent: AgentListItemVM
   readonly onAgentClick: (agentId: string) => void
+  readonly onLogsClick: (agentId: string) => void
 }): JSX.Element {
   const cardBorder = () => {
     if (props.agent.statusTone === 'danger') return 'border-tone-danger-border bg-tone-danger-bg/30'
@@ -59,58 +62,77 @@ function AgentCard(props: {
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => props.onAgentClick(props.agent.agentId)}
-      class={`w-full rounded-lg border p-3 text-left transition-colors hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-ring/40 ${cardBorder()}`}
-    >
-      <div class="mb-1.5 flex items-center justify-between gap-2">
-        <AgentStatusBadge label={props.agent.status} tone={props.agent.statusTone} />
-        <span class="truncate text-sm-ui font-medium text-foreground">
-          {props.agent.tenantName}
-        </span>
-      </div>
-
-      <p class="mb-1 truncate text-micro font-mono text-text-muted">{props.agent.hostname}</p>
-
-      <div class="flex flex-wrap gap-x-4 gap-y-0.5 text-micro text-text-muted">
-        <span>
-          Last seen: <span class="font-medium text-foreground">{props.agent.lastSeenRelative}</span>
-        </span>
-        <span>
-          Active: <span class="font-medium text-foreground">{props.agent.activeJobs}</span>
-        </span>
-        <span>
-          Failures:{' '}
-          <span
-            class={`font-medium ${props.agent.failuresLastHour > 0 ? 'text-tone-danger-fg' : 'text-foreground'}`}
-          >
-            {props.agent.failuresLastHour}
+    <div class={`w-full rounded-lg border p-3 ${cardBorder()}`}>
+      <button
+        type="button"
+        onClick={() => props.onAgentClick(props.agent.agentId)}
+        class="motion-focus-surface motion-interactive w-full rounded-md text-left hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-ring/40"
+      >
+        <div class="mb-1.5 flex items-center justify-between gap-2">
+          <AgentStatusBadge label={props.agent.status} tone={props.agent.statusTone} />
+          <span class="truncate text-sm-ui font-medium text-foreground">
+            {props.agent.tenantName}
           </span>
-        </span>
-        <span>
-          Lag: <span class="font-medium text-foreground">{props.agent.queueLagDisplay}</span>
-        </span>
-        <span>
-          Update:{' '}
-          <span
-            class={`font-medium ${props.agent.updateAvailable ? 'text-tone-warning-fg' : 'text-foreground'}`}
-          >
-            {props.agent.updaterStateLabel}
-          </span>
-        </span>
-      </div>
+        </div>
 
-      <Show when={props.agent.capabilitiesDisplay}>
-        <p class="mt-1 truncate text-micro text-text-muted">{props.agent.capabilitiesDisplay}</p>
-      </Show>
-    </button>
+        <p class="mb-1 truncate text-micro font-mono text-text-muted">{props.agent.hostname}</p>
+
+        <div class="flex flex-wrap gap-x-4 gap-y-0.5 text-micro text-text-muted">
+          <span>
+            Last seen:{' '}
+            <span class="font-medium text-foreground">{props.agent.lastSeenRelative}</span>
+          </span>
+          <span>
+            Active: <span class="font-medium text-foreground">{props.agent.activeJobs}</span>
+          </span>
+          <span>
+            Failures:{' '}
+            <span
+              class={`font-medium ${props.agent.failuresLastHour > 0 ? 'text-tone-danger-fg' : 'text-foreground'}`}
+            >
+              {props.agent.failuresLastHour}
+            </span>
+          </span>
+          <span>
+            Lag: <span class="font-medium text-foreground">{props.agent.queueLagDisplay}</span>
+          </span>
+          <span>
+            Update:{' '}
+            <span
+              class={`font-medium ${props.agent.updateAvailable ? 'text-tone-warning-fg' : 'text-foreground'}`}
+            >
+              {props.agent.updaterStateLabel}
+            </span>
+          </span>
+        </div>
+
+        <Show when={props.agent.capabilitiesDisplay}>
+          <p class="mt-1 truncate text-micro text-text-muted">{props.agent.capabilitiesDisplay}</p>
+        </Show>
+      </button>
+
+      <div class="mt-2">
+        <button
+          type="button"
+          onClick={() => props.onLogsClick(props.agent.agentId)}
+          class="motion-focus-surface motion-interactive rounded border border-control-border bg-control-bg px-2 py-0.5 text-micro text-control-foreground hover:bg-control-bg-hover"
+        >
+          Logs
+        </button>
+      </div>
+    </div>
   )
 }
 
 export function AgentCardList(props: Props): JSX.Element {
   return (
     <div class="flex flex-col gap-2 md:hidden">
+      <Show when={props.refreshing === true}>
+        <div class="rounded-lg border border-border bg-surface px-3 py-1.5 text-micro text-text-muted">
+          Updating agents...
+        </div>
+      </Show>
+
       <Show when={props.hasError}>
         <ErrorCard onRetry={props.onRetry} />
       </Show>
@@ -127,7 +149,13 @@ export function AgentCardList(props: Props): JSX.Element {
 
       <Show when={!props.hasError && !props.loading && props.agents.length > 0}>
         <For each={props.agents}>
-          {(agent) => <AgentCard agent={agent} onAgentClick={props.onAgentClick} />}
+          {(agent) => (
+            <AgentCard
+              agent={agent}
+              onAgentClick={props.onAgentClick}
+              onLogsClick={props.onLogsClick}
+            />
+          )}
         </For>
       </Show>
     </div>

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
+import {
+  computeFingerprint,
+  computeLegacyFingerprint,
+  computePilLocationlessFingerprintAlias,
+} from '~/modules/tracking/domain/identity/fingerprint'
 import { diffObservations } from '~/modules/tracking/features/observation/application/orchestration/diffObservations'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
+import { resolveTemporalValue, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
@@ -10,7 +15,10 @@ function makeDraft(overrides: Partial<ObservationDraft> = {}): ObservationDraft 
   return {
     container_number: 'CXDU2058677',
     type: 'LOAD',
-    event_time: '2025-11-26T00:00:00.000Z',
+    event_time: resolveTemporalValue(
+      overrides.event_time,
+      temporalValueFromCanonical('2025-11-26T00:00:00.000Z'),
+    ),
     event_time_type: 'ACTUAL',
     location_code: 'ITNAP',
     location_display: 'NAPLES, IT',
@@ -36,6 +44,36 @@ describe('diffObservations', () => {
     const fingerprint = computeFingerprint(draft)
     const existing = new Set([fingerprint])
     const result = diffObservations(existing, [draft], CONTAINER_ID)
+    expect(result).toHaveLength(0)
+  })
+
+  it('should skip drafts whose legacy fingerprints are already known', () => {
+    const draft = makeDraft({
+      provider: 'pil',
+      location_code: null,
+      location_display: 'QINGDAO',
+      carrier_label: 'Vessel Loading',
+    })
+    const existing = new Set([computeLegacyFingerprint(draft)])
+
+    const result = diffObservations(existing, [draft], CONTAINER_ID)
+
+    expect(result).toHaveLength(0)
+  })
+
+  it('should skip PIL drafts whose locationless alias fingerprint is already known', () => {
+    const draft = makeDraft({
+      provider: 'pil',
+      location_code: 'CNTAO',
+      location_display: 'QINGDAO',
+      carrier_label: 'Vessel Loading',
+    })
+    const alias = computePilLocationlessFingerprintAlias(draft)
+
+    expect(alias).not.toBeNull()
+
+    const result = diffObservations(new Set(alias ? [alias] : []), [draft], CONTAINER_ID)
+
     expect(result).toHaveLength(0)
   })
 

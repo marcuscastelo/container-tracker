@@ -77,6 +77,103 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_log_events: {
+        Row: {
+          agent_id: string
+          channel: string
+          created_at: string
+          id: string
+          message: string
+          occurred_at: string
+          sequence: number
+          tenant_id: string
+          truncated: boolean
+        }
+        Insert: {
+          agent_id: string
+          channel: string
+          created_at?: string
+          id?: string
+          message: string
+          occurred_at?: string
+          sequence: number
+          tenant_id: string
+          truncated?: boolean
+        }
+        Update: {
+          agent_id?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          message?: string
+          occurred_at?: string
+          sequence?: number
+          tenant_id?: string
+          truncated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'agent_log_events_agent_id_fkey'
+            columns: ['agent_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_agents'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      agent_control_commands: {
+        Row: {
+          acknowledgement_detail: string | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          acknowledged_status: string | null
+          agent_id: string
+          command_type: string
+          created_at: string
+          id: string
+          payload: Json
+          requested_at: string
+          requested_by: string | null
+          tenant_id: string
+        }
+        Insert: {
+          acknowledgement_detail?: string | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          acknowledged_status?: string | null
+          agent_id: string
+          command_type: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          requested_at?: string
+          requested_by?: string | null
+          tenant_id: string
+        }
+        Update: {
+          acknowledgement_detail?: string | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          acknowledged_status?: string | null
+          agent_id?: string
+          command_type?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          requested_at?: string
+          requested_by?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'agent_control_commands_agent_id_fkey'
+            columns: ['agent_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_agents'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       container_observations: {
         Row: {
           carrier_label: string | null
@@ -85,7 +182,15 @@ export type Database = {
           container_number: string
           created_at: string
           created_from_snapshot_id: string | null
+          event_date: string | null
+          event_time_local: string | null
+          event_time_source: string | null
+          event_time_zone: string | null
+          /**
+           * @deprecated
+           */
           event_time: string | null
+          event_time_instant: string | null
           event_time_type: string
           fingerprint: string
           id: string
@@ -93,7 +198,9 @@ export type Database = {
           location_code: string | null
           location_display: string | null
           provider: string
+          raw_event_time: string | null
           retroactive: boolean
+          temporal_kind: string | null
           type: string
           vessel_name: string | null
           voyage: string | null
@@ -105,7 +212,12 @@ export type Database = {
           container_number: string
           created_at?: string
           created_from_snapshot_id?: string | null
+          event_date?: string | null
+          event_time_local?: string | null
+          event_time_source?: string | null
+          event_time_zone?: string | null
           event_time?: string | null
+          event_time_instant?: string | null
           event_time_type: string
           fingerprint: string
           id?: string
@@ -113,7 +225,9 @@ export type Database = {
           location_code?: string | null
           location_display?: string | null
           provider: string
+          raw_event_time?: string | null
           retroactive?: boolean
+          temporal_kind?: string | null
           type: string
           vessel_name?: string | null
           voyage?: string | null
@@ -125,7 +239,12 @@ export type Database = {
           container_number?: string
           created_at?: string
           created_from_snapshot_id?: string | null
+          event_date?: string | null
+          event_time_local?: string | null
+          event_time_source?: string | null
+          event_time_zone?: string | null
           event_time?: string | null
+          event_time_instant?: string | null
           event_time_type?: string
           fingerprint?: string
           id?: string
@@ -133,7 +252,9 @@ export type Database = {
           location_code?: string | null
           location_display?: string | null
           provider?: string
+          raw_event_time?: string | null
           retroactive?: boolean
+          temporal_kind?: string | null
           type?: string
           vessel_name?: string | null
           voyage?: string | null
@@ -242,6 +363,7 @@ export type Database = {
           created_at: string | null
           deleted_at: string | null
           destination: Json | null
+          depositary: string | null
           exporter_name: string | null
           id: string
           importer_name: string | null
@@ -263,6 +385,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           destination?: Json | null
+          depositary?: string | null
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
@@ -284,6 +407,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           destination?: Json | null
+          depositary?: string | null
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
@@ -400,14 +524,16 @@ export type Database = {
           current_version: string
           desired_version: string | null
           enrolled_at: string
-          enrollment_method: string
+          enrollment_method: string | null
           hostname: string
           id: string
           interval_sec: number
           last_enrolled_at: string
           last_error: string | null
+          last_log_at: string | null
           last_seen_at: string | null
           lease_health: string
+          logs_supported: boolean
           machine_fingerprint: string
           maersk_enabled: boolean
           maersk_headless: boolean
@@ -418,6 +544,8 @@ export type Database = {
           processing_state: string
           queue_lag_seconds: number | null
           realtime_state: string
+          remote_blocked_versions: string[]
+          remote_updates_paused: boolean
           restart_requested_at: string | null
           revoked_at: string | null
           status: string
@@ -442,14 +570,16 @@ export type Database = {
           current_version?: string
           desired_version?: string | null
           enrolled_at?: string
-          enrollment_method?: string
+          enrollment_method?: string | null
           hostname: string
           id?: string
           interval_sec?: number
           last_enrolled_at?: string
           last_error?: string | null
+          last_log_at?: string | null
           last_seen_at?: string | null
           lease_health?: string
+          logs_supported?: boolean
           machine_fingerprint: string
           maersk_enabled?: boolean
           maersk_headless?: boolean
@@ -460,6 +590,8 @@ export type Database = {
           processing_state?: string
           queue_lag_seconds?: number | null
           realtime_state?: string
+          remote_blocked_versions?: string[]
+          remote_updates_paused?: boolean
           restart_requested_at?: string | null
           revoked_at?: string | null
           status?: string
@@ -484,14 +616,16 @@ export type Database = {
           current_version?: string
           desired_version?: string | null
           enrolled_at?: string
-          enrollment_method?: string
+          enrollment_method?: string | null
           hostname?: string
           id?: string
           interval_sec?: number
           last_enrolled_at?: string
           last_error?: string | null
+          last_log_at?: string | null
           last_seen_at?: string | null
           lease_health?: string
+          logs_supported?: boolean
           machine_fingerprint?: string
           maersk_enabled?: boolean
           maersk_headless?: boolean
@@ -502,6 +636,8 @@ export type Database = {
           processing_state?: string
           queue_lag_seconds?: number | null
           realtime_state?: string
+          remote_blocked_versions?: string[]
+          remote_updates_paused?: boolean
           restart_requested_at?: string | null
           revoked_at?: string | null
           status?: string
@@ -595,11 +731,103 @@ export type Database = {
           },
         ]
       }
+      tracking_validation_issue_transitions: {
+        Row: {
+          affected_scope: string
+          container_id: string
+          created_at: string
+          detector_id: string
+          detector_version: string
+          evidence_summary: string
+          id: string
+          issue_code: string
+          lifecycle_key: string
+          occurred_at: string
+          process_id: string
+          provider: string
+          severity: string
+          snapshot_id: string
+          state_fingerprint: string
+          transition_type: string
+        }
+        Insert: {
+          affected_scope: string
+          container_id: string
+          created_at?: string
+          detector_id: string
+          detector_version: string
+          evidence_summary: string
+          id?: string
+          issue_code: string
+          lifecycle_key: string
+          occurred_at: string
+          process_id: string
+          provider: string
+          severity: string
+          snapshot_id: string
+          state_fingerprint: string
+          transition_type: string
+        }
+        Update: {
+          affected_scope?: string
+          container_id?: string
+          created_at?: string
+          detector_id?: string
+          detector_version?: string
+          evidence_summary?: string
+          id?: string
+          issue_code?: string
+          lifecycle_key?: string
+          occurred_at?: string
+          process_id?: string
+          provider?: string
+          severity?: string
+          snapshot_id?: string
+          state_fingerprint?: string
+          transition_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tracking_validation_issue_transitions_container_id_fkey'
+            columns: ['container_id']
+            isOneToOne: false
+            referencedRelation: 'containers'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_validation_issue_transitions_process_id_fkey'
+            columns: ['process_id']
+            isOneToOne: false
+            referencedRelation: 'processes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_validation_issue_transitions_snapshot_id_fkey'
+            columns: ['snapshot_id']
+            isOneToOne: false
+            referencedRelation: 'container_snapshots'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      enqueue_container_sync_batch: {
+        Args: {
+          p_due_window?: string
+          p_limit_per_provider?: number
+          p_recent_window?: string
+        }
+        Returns: {
+          deduped_open_count: number
+          enqueued_new_count: number
+          provider: string
+          selected_count: number
+        }[]
+      }
       enqueue_sync_request: {
         Args: {
           p_priority?: number
@@ -617,8 +845,10 @@ export type Database = {
       lease_sync_requests: {
         Args: {
           p_agent_id: string
+          p_include_owned_active_leases?: boolean
           p_lease_minutes?: number
           p_limit?: number
+          p_processable_providers?: string[]
           p_tenant_id: string
         }
         Returns: {
@@ -643,6 +873,9 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      prune_agent_log_events: { Args: never; Returns: number }
+      prune_sync_requests: { Args: never; Returns: number }
+      prune_tracking_agent_activity_events: { Args: never; Returns: number }
     }
     Enums: {
       sync_request_status: 'PENDING' | 'LEASED' | 'DONE' | 'FAILED'

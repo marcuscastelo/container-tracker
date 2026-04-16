@@ -6,6 +6,7 @@ import type {
 import type { SyncEnqueuePolicyService } from '~/capabilities/sync/application/services/sync-enqueue-policy.service'
 import type { SyncTargetResolverService } from '~/capabilities/sync/application/services/sync-target-resolver.service'
 import { HttpError } from '~/shared/errors/httpErrors'
+import { systemClock } from '~/shared/time/clock'
 
 const DEFAULT_SYNC_TIMEOUT_MS = 180_000
 const DEFAULT_SYNC_POLL_INTERVAL_MS = 5_000
@@ -96,7 +97,7 @@ async function waitForTerminalStatuses(command: {
 }
 
 export function createSyncProcessUseCase(deps: SyncProcessDeps) {
-  const nowMs = deps.nowMs ?? Date.now
+  const nowMs = deps.nowMs ?? (() => systemClock.now().toEpochMs())
   const sleep = deps.sleep ?? defaultSleep
   const timeoutMs = deps.timeoutMs ?? DEFAULT_SYNC_TIMEOUT_MS
   const pollIntervalMs = deps.pollIntervalMs ?? DEFAULT_SYNC_POLL_INTERVAL_MS
@@ -142,8 +143,8 @@ export function createSyncProcessUseCase(deps: SyncProcessDeps) {
       return request.status === 'FAILED' || request.status === 'NOT_FOUND'
     })
 
-    if (failures.length > 0) {
-      const firstFailure = failures[0]
+    const firstFailure = failures[0]
+    if (firstFailure !== undefined) {
       const firstError =
         firstFailure.lastError ??
         `${firstFailure.status.toLowerCase()}_${firstFailure.syncRequestId}`

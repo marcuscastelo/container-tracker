@@ -1,15 +1,13 @@
 import type {
-  DashboardContainerRecordProjection,
-  DashboardProcessRecordProjection,
   DashboardProcessUseCases,
   DashboardProcessWithOperationalSummaryProjection,
 } from '~/capabilities/dashboard/application/dashboard.processes.projection'
 import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
-import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
-import {
-  type TrackingOperationalAlertCategory,
-  toTrackingOperationalAlertCategory,
-} from '~/modules/tracking/features/alerts/application/projection/tracking.operational-alert-category.readmodel'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
+import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
+import { systemClock } from '~/shared/time/clock'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 type DashboardDominantSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 
@@ -17,55 +15,28 @@ type DashboardGlobalAlertsBySeverityReadModel = {
   readonly danger: number
   readonly warning: number
   readonly info: number
-  readonly success: number
 }
 
 type DashboardGlobalAlertsByCategoryReadModel = {
   readonly eta: number
   readonly movement: number
   readonly customs: number
-  readonly status: number
   readonly data: number
 }
 
 type DashboardGlobalAlertsSummaryReadModel = {
-  readonly totalActiveAlerts: number
+  readonly totalActiveIncidents: number
+  readonly affectedContainersCount: number
+  readonly recognizedIncidentsCount: number
   readonly bySeverity: DashboardGlobalAlertsBySeverityReadModel
   readonly byCategory: DashboardGlobalAlertsByCategoryReadModel
 }
 
-type DashboardOperationalAlertProcessReadModel = {
-  readonly processId: string
-  readonly reference: string | null
-  readonly origin: string | null
-  readonly destination: string | null
-}
-
-type DashboardOperationalAlertContainerReadModel = {
-  readonly containerId: string
-  readonly containerNumber: string
-}
-
-type DashboardOperationalAlertReadModel = {
-  readonly process: DashboardOperationalAlertProcessReadModel
-  readonly container: DashboardOperationalAlertContainerReadModel | null
-  readonly category: TrackingOperationalAlertCategory
-  readonly severity: TrackingActiveAlertReadModel['severity']
-  readonly type: TrackingActiveAlertReadModel['category']
-  readonly description: TrackingActiveAlertReadModel['type']
-  readonly generated_at: string
-  readonly retroactive: boolean
-}
-
-type DashboardTrackingUseCases = {
-  listActiveAlertReadModel(): Promise<{
-    readonly alerts: readonly TrackingActiveAlertReadModel[]
-  }>
-}
-
-export type DashboardOperationalSummaryReadModelDeps = {
-  readonly processUseCases: DashboardProcessUseCases
-  readonly trackingUseCases: DashboardTrackingUseCases
+type DashboardDominantIncidentReadModel = {
+  readonly type: OperationalIncidentReadModel['type']
+  readonly severity: OperationalIncidentReadModel['severity']
+  readonly fact: OperationalIncidentReadModel['fact']
+  readonly triggeredAt: string
 }
 
 type DashboardOperationalProcessReadModel = {
@@ -74,339 +45,272 @@ type DashboardOperationalProcessReadModel = {
   readonly origin: string | null
   readonly destination: string | null
   readonly status: ProcessAggregatedStatus
-  readonly eta: string | null
+  readonly eta: TemporalValueDto | null
   readonly dominantSeverity: DashboardDominantSeverity
-  readonly dominantAlertCreatedAt: string | null
-  readonly activeAlertsCount: number
-  readonly activeAlerts: readonly TrackingActiveAlertReadModel[]
+  readonly activeIncidentCount: number
+  readonly affectedContainerCount: number
+  readonly dominantIncident: DashboardDominantIncidentReadModel | null
+}
+
+type DashboardTrackingUseCases = {
+  findContainersHotReadProjection(command: {
+    readonly containers: readonly {
+      readonly containerId: string
+      readonly containerNumber: string
+    }[]
+    readonly now: ReturnType<typeof systemClock.now>
+  }): Promise<FindContainersHotReadProjectionResult>
+}
+
+export type DashboardOperationalSummaryReadModelDeps = {
+  readonly processUseCases: DashboardProcessUseCases
+  readonly trackingUseCases: DashboardTrackingUseCases
 }
 
 export type DashboardOperationalSummaryReadModel = {
   readonly processes: readonly DashboardOperationalProcessReadModel[]
   readonly globalAlerts: DashboardGlobalAlertsSummaryReadModel
-  readonly activeAlertsPanel: readonly DashboardOperationalAlertReadModel[]
 }
 
-const DASHBOARD_SEVERITY_ORDER: Readonly<Record<DashboardDominantSeverity, number>> = {
-  none: 0,
-  success: 1,
-  info: 2,
-  warning: 3,
-  danger: 4,
-}
-
-function normalizeDashboardSeverity(severity: string): DashboardDominantSeverity {
+function normalizeDashboardSeverity(
+  severity: OperationalIncidentReadModel['severity'] | null | undefined,
+): DashboardDominantSeverity {
   if (severity === 'danger') return 'danger'
   if (severity === 'warning') return 'warning'
   if (severity === 'info') return 'info'
-  if (severity === 'success') return 'success'
   return 'none'
 }
 
-function isAlertGeneratedAfter(
-  candidate: TrackingActiveAlertReadModel,
-  current: TrackingActiveAlertReadModel,
-): boolean {
-  const candidateTimestamp = Date.parse(candidate.generated_at)
-  const currentTimestamp = Date.parse(current.generated_at)
-
-  if (!Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
-    if (candidateTimestamp !== currentTimestamp) {
-      return candidateTimestamp > currentTimestamp
-    }
-  } else if (!Number.isNaN(candidateTimestamp) && Number.isNaN(currentTimestamp)) {
-    return true
-  } else if (Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
-    return false
-  }
-
-  if (candidate.generated_at !== current.generated_at) {
-    return candidate.generated_at > current.generated_at
-  }
-
-  return candidate.alert_id < current.alert_id
+function toIncidentSeverityRank(severity: OperationalIncidentReadModel['severity']): number {
+  if (severity === 'danger') return 3
+  if (severity === 'warning') return 2
+  return 1
 }
 
-function resolveDashboardDominantAlertInfo(
-  alerts: readonly TrackingActiveAlertReadModel[],
-): Readonly<{
-  severity: DashboardDominantSeverity
-  createdAt: string | null
-}> {
-  let dominantAlert: TrackingActiveAlertReadModel | null = null
-  let dominantSeverity: DashboardDominantSeverity = 'none'
+function compareIncidentTriggeredAtDesc(
+  left: OperationalIncidentReadModel,
+  right: OperationalIncidentReadModel,
+): number {
+  const leftTimestamp = parseInstantFromIso(left.triggeredAt)?.toEpochMs()
+  const rightTimestamp = parseInstantFromIso(right.triggeredAt)?.toEpochMs()
 
-  for (const alert of alerts) {
-    const severity = normalizeDashboardSeverity(alert.severity)
-    if (severity === 'none') continue
+  if (leftTimestamp !== undefined && rightTimestamp !== undefined) {
+    if (leftTimestamp !== rightTimestamp) return rightTimestamp - leftTimestamp
+  } else if (leftTimestamp !== undefined && rightTimestamp === undefined) {
+    return -1
+  } else if (leftTimestamp === undefined && rightTimestamp !== undefined) {
+    return 1
+  }
 
-    if (dominantAlert === null) {
-      dominantAlert = alert
-      dominantSeverity = severity
+  if (left.triggeredAt === right.triggeredAt) return 0
+  return right.triggeredAt.localeCompare(left.triggeredAt)
+}
+
+function pickDominantIncident(
+  incidents: readonly OperationalIncidentReadModel[],
+): OperationalIncidentReadModel | null {
+  let dominant: OperationalIncidentReadModel | null = null
+
+  for (const incident of incidents) {
+    if (dominant === null) {
+      dominant = incident
       continue
     }
 
-    const severityScore = DASHBOARD_SEVERITY_ORDER[severity]
-    const dominantSeverityScore = DASHBOARD_SEVERITY_ORDER[dominantSeverity]
-
-    if (severityScore > dominantSeverityScore) {
-      dominantAlert = alert
-      dominantSeverity = severity
+    const severityDiff =
+      toIncidentSeverityRank(incident.severity) - toIncidentSeverityRank(dominant.severity)
+    if (severityDiff > 0) {
+      dominant = incident
+      continue
+    }
+    if (severityDiff < 0) {
       continue
     }
 
-    if (severityScore === dominantSeverityScore && isAlertGeneratedAfter(alert, dominantAlert)) {
-      dominantAlert = alert
+    if (compareIncidentTriggeredAtDesc(incident, dominant) < 0) {
+      dominant = incident
     }
   }
+
+  return dominant
+}
+
+function summarizeProcessActiveIncidents(incidents: readonly OperationalIncidentReadModel[]): {
+  readonly dominantSeverity: DashboardDominantSeverity
+  readonly activeIncidentCount: number
+  readonly affectedContainerCount: number
+  readonly dominantIncident: DashboardDominantIncidentReadModel | null
+} {
+  if (incidents.length === 0) {
+    return {
+      dominantSeverity: 'none',
+      activeIncidentCount: 0,
+      affectedContainerCount: 0,
+      dominantIncident: null,
+    }
+  }
+
+  const affectedContainerCount = new Set(
+    incidents.flatMap((incident) =>
+      incident.scope.containers.map((container) => container.containerId),
+    ),
+  ).size
+  const dominant = pickDominantIncident(incidents)
 
   return {
-    severity: dominantSeverity,
-    createdAt: dominantAlert?.generated_at ?? null,
+    dominantSeverity: normalizeDashboardSeverity(dominant?.severity ?? null),
+    activeIncidentCount: incidents.length,
+    affectedContainerCount,
+    dominantIncident:
+      dominant === null
+        ? null
+        : {
+            type: dominant.type,
+            severity: dominant.severity,
+            fact: dominant.fact,
+            triggeredAt: dominant.triggeredAt,
+          },
   }
+}
+
+function groupIncidentsByProcessId(command: {
+  readonly incidents: readonly OperationalIncidentReadModel[]
+  readonly processes: readonly DashboardProcessWithOperationalSummaryProjection[]
+}): ReadonlyMap<string, readonly OperationalIncidentReadModel[]> {
+  const processIdByContainerId = new Map<string, string>()
+  for (const process of command.processes) {
+    for (const container of process.pwc.containers) {
+      processIdByContainerId.set(container.id, process.pwc.process.id)
+    }
+  }
+
+  const grouped = new Map<string, OperationalIncidentReadModel[]>()
+  for (const incident of command.incidents) {
+    const processId = incident.triggerRefs
+      .map((triggerRef) => processIdByContainerId.get(triggerRef.containerId) ?? null)
+      .find((candidate) => candidate !== null)
+
+    if (processId === undefined || processId === null) {
+      continue
+    }
+
+    const existing = grouped.get(processId)
+    if (existing === undefined) {
+      grouped.set(processId, [incident])
+      continue
+    }
+
+    existing.push(incident)
+  }
+
+  return grouped
 }
 
 function countBySeverity(
-  alerts: readonly TrackingActiveAlertReadModel[],
+  incidents: readonly OperationalIncidentReadModel[],
 ): DashboardGlobalAlertsBySeverityReadModel {
   let danger = 0
   let warning = 0
   let info = 0
-  let success = 0
 
-  for (const alert of alerts) {
-    const severity = normalizeDashboardSeverity(alert.severity)
-    if (severity === 'danger') {
+  for (const incident of incidents) {
+    if (incident.severity === 'danger') {
       danger += 1
       continue
     }
-    if (severity === 'warning') {
+    if (incident.severity === 'warning') {
       warning += 1
       continue
     }
-    if (severity === 'info') {
-      info += 1
-      continue
-    }
-    if (severity === 'success') {
-      success += 1
-    }
+    info += 1
   }
 
-  return { danger, warning, info, success }
+  return { danger, warning, info }
 }
 
-function countByOperationalCategory(
-  alerts: readonly TrackingActiveAlertReadModel[],
+function countByCategory(
+  incidents: readonly OperationalIncidentReadModel[],
 ): DashboardGlobalAlertsByCategoryReadModel {
   let eta = 0
   let movement = 0
   let customs = 0
-  let status = 0
   let data = 0
 
-  for (const alert of alerts) {
-    const category: TrackingOperationalAlertCategory = toTrackingOperationalAlertCategory(
-      alert.type,
-    )
-    if (category === 'eta') {
+  for (const incident of incidents) {
+    if (incident.category === 'eta') {
       eta += 1
       continue
     }
-    if (category === 'movement') {
+    if (incident.category === 'movement') {
       movement += 1
       continue
     }
-    if (category === 'customs') {
+    if (incident.category === 'customs') {
       customs += 1
-      continue
-    }
-    if (category === 'status') {
-      status += 1
       continue
     }
     data += 1
   }
 
-  return { eta, movement, customs, status, data }
+  return { eta, movement, customs, data }
 }
 
-function summarizeGlobalActiveAlerts(
-  alerts: readonly TrackingActiveAlertReadModel[],
+function summarizeGlobalActiveIncidents(
+  incidents: readonly OperationalIncidentReadModel[],
 ): DashboardGlobalAlertsSummaryReadModel {
-  return {
-    totalActiveAlerts: alerts.length,
-    bySeverity: countBySeverity(alerts),
-    byCategory: countByOperationalCategory(alerts),
-  }
-}
-
-function groupAlertsByProcessId(
-  alerts: readonly TrackingActiveAlertReadModel[],
-): ReadonlyMap<string, readonly TrackingActiveAlertReadModel[]> {
-  const groupedAlerts = new Map<string, TrackingActiveAlertReadModel[]>()
-
-  for (const alert of alerts) {
-    const alertsForProcess = groupedAlerts.get(alert.process_id)
-    if (alertsForProcess) {
-      alertsForProcess.push(alert)
-      continue
-    }
-
-    groupedAlerts.set(alert.process_id, [alert])
-  }
-
-  return groupedAlerts
-}
-
-type DashboardProcessContext = {
-  readonly process: DashboardProcessRecordProjection
-  readonly containersById: ReadonlyMap<string, DashboardContainerRecordProjection>
-}
-
-function indexDashboardProcessContextById(
-  processes: readonly DashboardProcessWithOperationalSummaryProjection[],
-): ReadonlyMap<string, DashboardProcessContext> {
-  const contextByProcessId = new Map<string, DashboardProcessContext>()
-
-  for (const processWithSummary of processes) {
-    const processId = String(processWithSummary.pwc.process.id)
-    const containersById = new Map<string, DashboardContainerRecordProjection>()
-
-    for (const container of processWithSummary.pwc.containers) {
-      containersById.set(String(container.id), container)
-    }
-
-    contextByProcessId.set(processId, {
-      process: processWithSummary.pwc.process,
-      containersById,
-    })
-  }
-
-  return contextByProcessId
-}
-
-function toDashboardAlertProcessReadModel(
-  alertProcessId: string,
-  context: DashboardProcessContext | undefined,
-): DashboardOperationalAlertProcessReadModel {
-  if (!context) {
-    return {
-      processId: alertProcessId,
-      reference: null,
-      origin: null,
-      destination: null,
-    }
-  }
+  const affectedContainerIds = new Set(
+    incidents.flatMap((incident) =>
+      incident.scope.containers.map((container) => container.containerId),
+    ),
+  )
 
   return {
-    processId: alertProcessId,
-    reference: context.process.reference ?? null,
-    origin: context.process.origin ?? null,
-    destination: context.process.destination ?? null,
+    totalActiveIncidents: incidents.length,
+    affectedContainersCount: affectedContainerIds.size,
+    recognizedIncidentsCount: 0,
+    bySeverity: countBySeverity(incidents),
+    byCategory: countByCategory(incidents),
   }
 }
 
-function toDashboardAlertContainerReadModel(
-  alertContainerId: string,
-  context: DashboardProcessContext | undefined,
-): DashboardOperationalAlertContainerReadModel | null {
-  if (!context) {
-    return null
-  }
-
-  const container = context.containersById.get(alertContainerId)
-  if (!container) {
-    return null
-  }
-
-  return {
-    containerId: alertContainerId,
-    containerNumber: container.containerNumber,
-  }
-}
-
-function buildDashboardActiveAlertsPanel(
-  alerts: readonly TrackingActiveAlertReadModel[],
-  contextByProcessId: ReadonlyMap<string, DashboardProcessContext>,
-): readonly DashboardOperationalAlertReadModel[] {
-  return [...alerts]
-    .sort((left, right) => {
-      const rightTimestamp = Date.parse(right.generated_at)
-      const leftTimestamp = Date.parse(left.generated_at)
-      if (!Number.isNaN(rightTimestamp) && !Number.isNaN(leftTimestamp)) {
-        const byTimestamp = rightTimestamp - leftTimestamp
-        if (byTimestamp !== 0) {
-          return byTimestamp
+function toDashboardProcessReadModel(
+  process: DashboardProcessWithOperationalSummaryProjection,
+  processActiveIncidents: readonly OperationalIncidentReadModel[],
+): DashboardOperationalProcessReadModel {
+  const summary = process.summary
+  const summaryDominantIncident = summary.operational_incidents?.dominant ?? null
+  const derivedIncidentSummary = summarizeProcessActiveIncidents(processActiveIncidents)
+  const incidentSummary =
+    processActiveIncidents.length === 0
+      ? {
+          dominantSeverity: normalizeDashboardSeverity(summaryDominantIncident?.severity ?? null),
+          activeIncidentCount: summary.operational_incidents?.summary.active_incidents_count ?? 0,
+          affectedContainerCount:
+            summary.operational_incidents?.summary.affected_containers_count ?? 0,
+          dominantIncident:
+            summaryDominantIncident === null
+              ? null
+              : {
+                  type: summaryDominantIncident.type,
+                  severity: summaryDominantIncident.severity,
+                  fact: summaryDominantIncident.fact,
+                  triggeredAt: summaryDominantIncident.triggeredAt,
+                },
         }
-      }
+      : derivedIncidentSummary
 
-      if (left.generated_at !== right.generated_at) {
-        return left.generated_at < right.generated_at ? 1 : -1
-      }
-
-      const byProcessId = left.process_id.localeCompare(right.process_id)
-      if (byProcessId !== 0) {
-        return byProcessId
-      }
-
-      const byContainerId = left.container_id.localeCompare(right.container_id)
-      if (byContainerId !== 0) {
-        return byContainerId
-      }
-
-      return left.alert_id.localeCompare(right.alert_id)
-    })
-    .map((alert) => {
-      const context = contextByProcessId.get(alert.process_id)
-
-      return {
-        process: toDashboardAlertProcessReadModel(alert.process_id, context),
-        container: toDashboardAlertContainerReadModel(alert.container_id, context),
-        category: toTrackingOperationalAlertCategory(alert.type),
-        severity: alert.severity,
-        type: alert.category,
-        description: alert.type,
-        generated_at: alert.generated_at,
-        retroactive: alert.retroactive,
-      }
-    })
-}
-
-function sortDashboardProcessesByDominantSeverity(
-  processes: readonly DashboardOperationalProcessReadModel[],
-): readonly DashboardOperationalProcessReadModel[] {
-  function normalizeReference(reference: string | null): string {
-    if (reference === null) {
-      return '~'
-    }
-
-    return reference.trim().toUpperCase()
+  return {
+    processId: process.pwc.process.id,
+    reference: process.pwc.process.reference ?? null,
+    origin: process.pwc.process.origin ?? null,
+    destination: process.pwc.process.destination ?? null,
+    status: summary.process_status ?? 'UNKNOWN',
+    eta: summary.eta ?? null,
+    dominantSeverity: incidentSummary.dominantSeverity,
+    activeIncidentCount: incidentSummary.activeIncidentCount,
+    affectedContainerCount: incidentSummary.affectedContainerCount,
+    dominantIncident: incidentSummary.dominantIncident,
   }
-
-  return processes
-    .map((process, index) => ({ process, index }))
-    .sort((left, right) => {
-      const rightPriority = DASHBOARD_SEVERITY_ORDER[right.process.dominantSeverity]
-      const leftPriority = DASHBOARD_SEVERITY_ORDER[left.process.dominantSeverity]
-      if (rightPriority !== leftPriority) {
-        return rightPriority - leftPriority
-      }
-
-      const leftReference = normalizeReference(left.process.reference)
-      const rightReference = normalizeReference(right.process.reference)
-      if (leftReference !== rightReference) {
-        return leftReference < rightReference ? -1 : 1
-      }
-
-      const byProcessId = left.process.processId.localeCompare(right.process.processId)
-      if (byProcessId !== 0) {
-        return byProcessId
-      }
-
-      return left.index - right.index
-    })
-    .map(({ process }) => process)
 }
 
 export function createDashboardOperationalSummaryReadModelUseCase(
@@ -414,41 +318,46 @@ export function createDashboardOperationalSummaryReadModelUseCase(
 ) {
   return async function execute(): Promise<DashboardOperationalSummaryReadModel> {
     const { processes } = await deps.processUseCases.listProcessesWithOperationalSummary()
-    const activeAlertsResult = await deps.trackingUseCases.listActiveAlertReadModel()
+    const allContainers = processes.flatMap((process) =>
+      process.pwc.containers.map((container) => ({
+        containerId: container.id,
+        containerNumber: container.containerNumber,
+      })),
+    )
+    const hotReadProjection =
+      allContainers.length === 0
+        ? ({
+            containers: [],
+            activeOperationalIncidents: {
+              summary: {
+                activeIncidentCount: 0,
+                affectedContainerCount: 0,
+                recognizedIncidentCount: 0,
+              },
+              active: [],
+              recognized: [],
+            },
+            activeAlerts: [],
+          } satisfies FindContainersHotReadProjectionResult)
+        : await deps.trackingUseCases.findContainersHotReadProjection({
+            containers: allContainers,
+            now: systemClock.now(),
+          })
 
-    const activeAlerts = activeAlertsResult.alerts
-    // ensure we only consider alerts that are currently active
-    const activeOnly = activeAlerts.filter((a) => a.is_active === true)
-    const globalAlerts = summarizeGlobalActiveAlerts(activeOnly)
-    const processContextById = indexDashboardProcessContextById(processes)
-    const activeAlertsPanel = buildDashboardActiveAlertsPanel(activeOnly, processContextById)
-    const alertsByProcessId = groupAlertsByProcessId(activeOnly)
-    const dashboardProcesses: readonly DashboardOperationalProcessReadModel[] =
-      sortDashboardProcessesByDominantSeverity(
-        processes.map((entry) => {
-          const processId = String(entry.pwc.process.id)
-          const activeAlerts = alertsByProcessId.get(processId) ?? []
-          const dominantAlert = resolveDashboardDominantAlertInfo(activeAlerts)
+    const groupedIncidents = groupIncidentsByProcessId({
+      incidents: hotReadProjection.activeOperationalIncidents.active,
+      processes,
+    })
 
-          return {
-            processId,
-            reference: entry.pwc.process.reference ?? null,
-            origin: entry.pwc.process.origin ?? null,
-            destination: entry.pwc.process.destination ?? null,
-            status: entry.summary.process_status ?? 'UNKNOWN',
-            eta: entry.summary.eta ?? null,
-            dominantSeverity: dominantAlert.severity,
-            dominantAlertCreatedAt: dominantAlert.createdAt,
-            activeAlertsCount: activeAlerts.length,
-            activeAlerts,
-          }
-        }),
-      )
+    const processReadModels = processes.map((process) =>
+      toDashboardProcessReadModel(process, groupedIncidents.get(process.pwc.process.id) ?? []),
+    )
 
     return {
-      processes: dashboardProcesses,
-      globalAlerts,
-      activeAlertsPanel,
+      processes: processReadModels,
+      globalAlerts: summarizeGlobalActiveIncidents(
+        hotReadProjection.activeOperationalIncidents.active,
+      ),
     }
   }
 }

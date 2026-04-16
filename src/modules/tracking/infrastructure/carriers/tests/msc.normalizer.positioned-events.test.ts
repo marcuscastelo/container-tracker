@@ -17,9 +17,9 @@ function makeSnapshot(payload: unknown, fetchedAt: string = '2026-02-05T00:00:00
 
 describe('MSC positioned transshipment mapping', () => {
   it.each([
-    'Full Transshipment Positioned In',
-    'Full Transshipment Positioned Out',
-  ])('maps "%s" to TERMINAL_MOVE with null vessel and voyage', (description) => {
+    ['Full Transshipment Positioned In', 'TRANSSHIPMENT_POSITIONED_IN'],
+    ['Full Transshipment Positioned Out', 'TRANSSHIPMENT_POSITIONED_OUT'],
+  ])('maps "%s" to %s with null vessel and voyage', (description, expectedType) => {
     const payload = {
       Data: {
         CurrentDate: '05/02/2026',
@@ -49,7 +49,7 @@ describe('MSC positioned transshipment mapping', () => {
     expect(drafts).toHaveLength(1)
 
     const positioned = drafts[0]
-    expect(positioned?.type).toBe('TERMINAL_MOVE')
+    expect(positioned?.type).toBe(expectedType)
     expect(positioned?.carrier_label).toBe(description)
     expect(positioned?.vessel_name).toBeNull()
     expect(positioned?.voyage).toBeNull()

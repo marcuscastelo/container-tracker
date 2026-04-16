@@ -1,0 +1,4 @@
+interface:
+  display_name: "Issue Refresh"
+  short_description: "Close, refine, and auto-label GitHub issues"
+  default_prompt: "Use $gh-refine-or-close-issue to compare GitHub issue #45 with the current repo, close it if outdated, or rewrite the issue body and labels so it is implementation-ready."

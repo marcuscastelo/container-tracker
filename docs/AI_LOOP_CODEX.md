@@ -50,9 +50,30 @@ Useful options:
 # Prepare files only (no execution)
 pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --prepare-only
 
-# Limit iterations, planning retries and exec retries
+# Limit iterations and retries
 pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --max-iterations 5 --plan-retries 2 --exec-retries 3
 ```
+
+## One Command Flow (Pasted PRD Text -> Ralph)
+
+If you want to paste the full PRD text directly in terminal:
+
+```bash
+pnpm run ai:ralph -- "# PRD title
+...texto completo do PRD..."
+```
+
+Or via stdin:
+
+```bash
+cat tasks/prd-docs-ralph-loop.md | pnpm run ai:ralph --
+```
+
+This wrapper will:
+
+1. Infer a feature key from PRD title (or use `--feature-key`).
+2. Save markdown under `tasks/prd-<feature-key>.md` (or `-2`, `-3`, ... if needed).
+3. Call `pnpm run ai:loop:start` automatically.
 
 ## Build Execution Input
 

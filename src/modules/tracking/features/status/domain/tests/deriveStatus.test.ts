@@ -2,19 +2,28 @@ import { describe, expect, it } from 'vitest'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { resolveTemporalValue, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
 const CONTAINER_NUMBER = 'CXDU2058677'
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
 
-function makeObs(overrides: Partial<Observation> = {}): Observation {
+type ObservationOverrides = Omit<Partial<Observation>, 'event_time'> & {
+  readonly event_time?: string | Observation['event_time']
+}
+
+const DEFAULT_EVENT_TIME = temporalValueFromCanonical('2025-11-17T00:00:00.000Z')
+
+function makeObs(overrides: ObservationOverrides = {}): Observation {
+  const { event_time, ...rest } = overrides
+
   return {
     id: '00000000-0000-0000-0000-000000000010',
     fingerprint: 'test-fingerprint',
     container_id: CONTAINER_ID,
     container_number: CONTAINER_NUMBER,
     type: 'OTHER',
-    event_time: '2025-11-17T00:00:00.000Z',
+    event_time: resolveTemporalValue(event_time, DEFAULT_EVENT_TIME),
     event_time_type: 'ACTUAL', // Default to ACTUAL for tests (confirmed events)
     location_code: 'ITNAP',
     location_display: 'NAPLES, IT',
@@ -25,7 +34,7 @@ function makeObs(overrides: Partial<Observation> = {}): Observation {
     provider: 'msc',
     created_from_snapshot_id: SNAPSHOT_ID,
     created_at: '2025-11-17T00:00:00.000Z',
-    ...overrides,
+    ...rest,
   }
 }
 
@@ -40,10 +49,48 @@ describe('deriveStatus', () => {
     expect(deriveStatus(timeline)).toBe('IN_PROGRESS')
   })
 
-  it('should return IN_PROGRESS for GATE_IN events', () => {
+  it('should return BOOKED for GATE_IN events', () => {
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
       makeObs({ type: 'GATE_IN', id: '00000000-0000-0000-0000-000000000011', fingerprint: 'fp1' }),
     ])
+    expect(deriveStatus(timeline)).toBe('BOOKED')
+  })
+
+  it('should return BOOKED for ACTUAL GATE_OUT when a relevant future route chain exists', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'GATE_OUT',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+      }),
+      makeObs({
+        type: 'DEPARTURE',
+        event_time_type: 'EXPECTED',
+        id: '00000000-0000-0000-0000-000000000012',
+        fingerprint: 'fp2',
+        event_time: '2027-11-26T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'ARRIVAL',
+        event_time_type: 'EXPECTED',
+        id: '00000000-0000-0000-0000-000000000013',
+        fingerprint: 'fp3',
+        event_time: '2027-12-05T00:00:00.000Z',
+      }),
+    ])
+
+    expect(deriveStatus(timeline)).toBe('BOOKED')
+  })
+
+  it('should keep IN_PROGRESS for isolated ACTUAL GATE_OUT without future route chain', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'GATE_OUT',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+      }),
+    ])
+
     expect(deriveStatus(timeline)).toBe('IN_PROGRESS')
   })
 

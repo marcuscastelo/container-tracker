@@ -86,7 +86,11 @@ Algorithm:
 1. If any ACTUAL exists:
    - Select the latest ACTUAL as primary.
 2. Else:
-   - Select the latest non-expired EXPECTED as primary.
+   - Select the latest observed EXPECTED revision as primary only while it is non-expired.
+   - "Latest observed" means observation recency (`created_at`/observed-at), not
+     the largest predicted event date.
+   - Do not fall back to an older EXPECTED revision just because it has a later
+     predicted event date.
 
 This ensures monotonic correctness and operator safety.
 

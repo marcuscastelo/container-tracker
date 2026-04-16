@@ -3,6 +3,7 @@ import {
   createGetSyncStatusUseCase,
   type GetSyncStatusDeps,
 } from '~/capabilities/sync/application/usecases/get-sync-status.usecase'
+import { Instant } from '~/shared/time/instant'
 
 type ProcessCandidates = Awaited<
   ReturnType<GetSyncStatusDeps['statusReadPort']['listProcessSyncCandidates']>
@@ -20,7 +21,7 @@ function createDeps(command: {
     readonly createdAt: string
     readonly updatedAt: string
   }[]
-  readonly now?: Date
+  readonly nowIso?: string
 }): GetSyncStatusDeps {
   return {
     statusReadPort: {
@@ -30,7 +31,9 @@ function createDeps(command: {
       })),
       listSyncRequestsByContainerNumbers: vi.fn(async () => command.syncRequests),
     },
-    nowFactory: () => command.now ?? new Date('2026-03-06T15:00:00.000Z'),
+    clock: {
+      now: () => Instant.fromIso(command.nowIso ?? '2026-03-06T15:00:00.000Z'),
+    },
   }
 }
 
@@ -68,7 +71,7 @@ describe('get-sync-status.usecase', () => {
           updatedAt: '2026-03-06T11:05:00.000Z',
         },
       ],
-      now: new Date('2026-03-06T12:00:00.000Z'),
+      nowIso: '2026-03-06T12:00:00.000Z',
     })
 
     const execute = createGetSyncStatusUseCase(deps)
@@ -156,5 +159,23 @@ describe('get-sync-status.usecase', () => {
         visibility: 'active',
       },
     ])
+  })
+
+  it('forwards scoped process ids to candidate selection', async () => {
+    const deps = createDeps({
+      candidates: [{ processId: 'process-1', archivedAt: null }],
+      containersByProcessId: new Map([['process-1', [{ containerNumber: 'MSCU1234567' }]]]),
+      syncRequests: [],
+    })
+
+    const execute = createGetSyncStatusUseCase(deps)
+
+    await execute({
+      processIds: ['process-1', 'process-2'],
+    })
+
+    expect(deps.statusReadPort.listProcessSyncCandidates).toHaveBeenCalledWith({
+      processIds: ['process-1', 'process-2'],
+    })
   })
 })

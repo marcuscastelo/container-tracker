@@ -5,10 +5,16 @@ import {
   deleteProcessRequest,
   fetchDashboardGlobalAlertsSummary,
   fetchDashboardProcessSummaries,
+  prefetchDashboardData,
   prefetchDashboardGlobalAlertsSummary,
   prefetchDashboardProcessSummaries,
   unacknowledgeTrackingAlertRequest,
 } from '~/modules/process/ui/api/process.api'
+import { fetchDashboardKpis, prefetchDashboardKpis } from '~/modules/process/ui/fetchDashboardKpis'
+import {
+  fetchDashboardProcessesCreatedByMonth,
+  prefetchDashboardProcessesCreatedByMonth,
+} from '~/modules/process/ui/fetchDashboardProcessesCreatedByMonth'
 import { toCreateProcessInput } from '~/modules/process/ui/validation/processApi.validation'
 
 function mockProcessListFetch() {
@@ -29,18 +35,18 @@ function mockDashboardOperationalSummaryFetch() {
       new Response(
         JSON.stringify({
           generated_at: '2026-01-15T10:00:00.000Z',
-          total_active_alerts: 0,
+          total_active_incidents: 0,
+          affected_containers_count: 0,
+          recognized_incidents_count: 0,
           by_severity: {
             danger: 0,
             warning: 0,
             info: 0,
-            success: 0,
           },
           by_category: {
             eta: 0,
             movement: 0,
             customs: 0,
-            status: 0,
             data: 0,
           },
           process_exceptions: [],
@@ -53,6 +59,138 @@ function mockDashboardOperationalSummaryFetch() {
         },
       ),
   )
+}
+
+function mockDashboardKpisFetch() {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(
+    async () =>
+      new Response(
+        JSON.stringify({
+          activeProcesses: 12,
+          trackedContainers: 34,
+          activeIncidents: 5,
+          affectedContainers: 8,
+          lastSyncAt: '2026-01-15T10:00:00.000Z',
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      ),
+  )
+}
+
+function mockDashboardProcessesCreatedByMonthFetch() {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = input instanceof Request ? input.url : String(input)
+    const windowSize = new URL(url, 'https://container-tracker.test').searchParams.get('window')
+
+    return new Response(
+      JSON.stringify({
+        months: [
+          {
+            month: '2026-01',
+            label: `${windowSize ?? 'default'}-2026-01`,
+            count: 3,
+          },
+        ],
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
+    )
+  })
+}
+
+function mockAllDashboardFetches() {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = input instanceof Request ? input.url : String(input)
+
+    if (url.startsWith('/api/processes')) {
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+    }
+
+    if (url === '/api/dashboard/operational-summary') {
+      return new Response(
+        JSON.stringify({
+          generated_at: '2026-01-15T10:00:00.000Z',
+          total_active_incidents: 0,
+          affected_containers_count: 0,
+          recognized_incidents_count: 0,
+          by_severity: {
+            danger: 0,
+            warning: 0,
+            info: 0,
+          },
+          by_category: {
+            eta: 0,
+            movement: 0,
+            customs: 0,
+            data: 0,
+          },
+          process_exceptions: [],
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+    }
+
+    if (url === '/api/dashboard/kpis') {
+      return new Response(
+        JSON.stringify({
+          activeProcesses: 12,
+          trackedContainers: 34,
+          activeIncidents: 5,
+          affectedContainers: 8,
+          lastSyncAt: '2026-01-15T10:00:00.000Z',
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+    }
+
+    if (url.startsWith('/api/dashboard/charts/processes-created-by-month')) {
+      const windowSize = new URL(url, 'https://container-tracker.test').searchParams.get('window')
+
+      return new Response(
+        JSON.stringify({
+          months: [
+            {
+              month: '2026-01',
+              label: `${windowSize ?? 'default'}-2026-01`,
+              count: 3,
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+    }
+
+    throw new Error(`Unexpected fetch URL in dashboard prefetch test: ${url}`)
+  })
 }
 
 describe('toCreateProcessInput', () => {
@@ -71,6 +209,7 @@ describe('toCreateProcessInput', () => {
       importerName: 'Importer Co',
       exporterName: 'Exporter Co',
       referenceImporter: 'IMP-REF',
+      depositary: '  Santos Brasil  ',
       product: 'Coffee',
       redestinationNumber: 'RD-9',
     })
@@ -85,6 +224,7 @@ describe('toCreateProcessInput', () => {
       importer_name: 'Importer Co',
       exporter_name: 'Exporter Co',
       reference_importer: 'IMP-REF',
+      depositary: 'Santos Brasil',
       product: 'Coffee',
       redestination_number: 'RD-9',
       containers: [
@@ -106,6 +246,7 @@ describe('toCreateProcessInput', () => {
       importerName: '',
       exporterName: '',
       referenceImporter: '',
+      depositary: '   ',
       product: '',
       redestinationNumber: '',
     })
@@ -115,6 +256,7 @@ describe('toCreateProcessInput', () => {
     expect(payload.importer_name).toBeNull()
     expect(payload.exporter_name).toBeNull()
     expect(payload.reference_importer).toBeNull()
+    expect(payload.depositary).toBeNull()
     expect(payload.product).toBeNull()
     expect(payload.redestination_number).toBeNull()
   })
@@ -257,6 +399,135 @@ describe('fetchDashboardGlobalAlertsSummary', () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(1)
     expect(fetchSpy).toHaveBeenCalledWith('/api/dashboard/operational-summary', undefined)
+  })
+})
+
+describe('fetchDashboardKpis', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    clearDashboardPrefetchCache()
+  })
+
+  it('uses prefetched dashboard KPIs when preferPrefetched is enabled', async () => {
+    const fetchSpy = mockDashboardKpisFetch()
+
+    await prefetchDashboardKpis()
+    fetchSpy.mockClear()
+
+    await fetchDashboardKpis({ preferPrefetched: true })
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('dedupes concurrent dashboard KPI prefetch calls', async () => {
+    const fetchSpy = mockDashboardKpisFetch()
+
+    await Promise.all([prefetchDashboardKpis(), prefetchDashboardKpis()])
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).toHaveBeenCalledWith('/api/dashboard/kpis', undefined)
+  })
+})
+
+describe('fetchDashboardProcessesCreatedByMonth', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    clearDashboardPrefetchCache()
+  })
+
+  it('uses prefetched chart data when preferPrefetched is enabled', async () => {
+    const fetchSpy = mockDashboardProcessesCreatedByMonthFetch()
+
+    await prefetchDashboardProcessesCreatedByMonth({
+      windowSize: 12,
+    })
+    fetchSpy.mockClear()
+
+    await fetchDashboardProcessesCreatedByMonth(
+      {
+        windowSize: 12,
+      },
+      {
+        preferPrefetched: true,
+      },
+    )
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('dedupes concurrent chart prefetch calls per window size', async () => {
+    const fetchSpy = mockDashboardProcessesCreatedByMonthFetch()
+
+    await Promise.all([
+      prefetchDashboardProcessesCreatedByMonth({
+        windowSize: 24,
+      }),
+      prefetchDashboardProcessesCreatedByMonth({
+        windowSize: 24,
+      }),
+    ])
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/dashboard/charts/processes-created-by-month?window=24',
+      undefined,
+    )
+  })
+
+  it('keeps chart cache entries isolated by window size', async () => {
+    const fetchSpy = mockDashboardProcessesCreatedByMonthFetch()
+
+    await prefetchDashboardProcessesCreatedByMonth({
+      windowSize: 6,
+    })
+    await prefetchDashboardProcessesCreatedByMonth({
+      windowSize: 12,
+    })
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      1,
+      '/api/dashboard/charts/processes-created-by-month?window=6',
+      undefined,
+    )
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      '/api/dashboard/charts/processes-created-by-month?window=12',
+      undefined,
+    )
+  })
+})
+
+describe('prefetchDashboardData', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    clearDashboardPrefetchCache()
+  })
+
+  it('clears prefetched data for all dashboard resources', async () => {
+    const fetchSpy = mockAllDashboardFetches()
+
+    await prefetchDashboardData({
+      windowSize: 12,
+    })
+    clearDashboardPrefetchCache()
+    fetchSpy.mockClear()
+
+    await Promise.all([
+      fetchDashboardProcessSummaries(undefined, { preferPrefetched: true }),
+      fetchDashboardGlobalAlertsSummary({ preferPrefetched: true }),
+      fetchDashboardKpis({ preferPrefetched: true }),
+      fetchDashboardProcessesCreatedByMonth(
+        {
+          windowSize: 12,
+        },
+        {
+          preferPrefetched: true,
+        },
+      ),
+    ])
+
+    expect(fetchSpy).toHaveBeenCalledTimes(4)
   })
 })
 

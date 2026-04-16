@@ -5,6 +5,7 @@ import type {
   SyncMetadataRepository,
 } from '~/modules/tracking/application/ports/tracking.sync-metadata.repository'
 import { serverEnv } from '~/shared/config/server-env'
+import { measureAuditedReadQuery } from '~/shared/observability/readRequestMetrics'
 import { supabaseServer } from '~/shared/supabase/supabase.server'
 import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'
 import { normalizeContainerNumber } from '~/shared/utils/normalizeContainerNumber'
@@ -32,12 +33,18 @@ export const supabaseSyncMetadataRepository: SyncMetadataRepository = {
 
     if (normalizedContainerNumbers.length === 0) return []
 
-    const result = await supabaseServer
-      .from('sync_requests')
-      .select('ref_value,provider,status,created_at,updated_at,last_error')
-      .eq('tenant_id', serverEnv.SYNC_DEFAULT_TENANT_ID)
-      .eq('ref_type', 'container')
-      .in('ref_value', normalizedContainerNumbers)
+    const result = await measureAuditedReadQuery({
+      table: 'sync_requests',
+      operation: 'list_sync_metadata_by_container_numbers',
+      query: () =>
+        supabaseServer
+          .from('sync_requests')
+          .select('ref_value,provider,status,created_at,updated_at,last_error')
+          .eq('tenant_id', serverEnv.SYNC_DEFAULT_TENANT_ID)
+          .eq('ref_type', 'container')
+          .in('ref_value', normalizedContainerNumbers),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'list_sync_metadata_by_container_numbers',

@@ -9,6 +9,19 @@
   --font-size-md-ui: 14px;
   --font-size-lg-ui: 18px;
   --font-size-xl-ui: 24px;
+  --theme-transition-duration-ms: 220ms;
+  --motion-duration-fast: 90ms;
+  --motion-duration-base: 140ms;
+  --motion-duration-slow: 180ms;
+  --motion-duration-panel: 220ms;
+  --motion-duration-highlight: 1200ms;
+  --motion-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --motion-ease-press: cubic-bezier(0.2, 0, 0, 1);
+  --motion-lift-y: -1px;
+  --motion-slide-y-sm: 4px;
+  --motion-scale-press: 0.985;
+  --motion-scale-enter-from: 0.985;
 
   --color-background: #ffffff;
   --color-foreground: #0a0a0a;
@@ -56,7 +69,7 @@
   --color-tone-info-border: #bfdbfe;
   --color-tone-info-strong: #2563eb;
 
-  --color-tone-warning-bg: #fffbeb;
+  --color-tone-warning-bg: #fff9e0;
   --color-tone-warning-fg: #a16207;
   --color-tone-warning-border: #fde68a;
   --color-tone-warning-strong: #d97706;
@@ -110,6 +123,7 @@
 }
 
 html.dark {
+  color-scheme: dark;
   --color-background: #0a0a0a;
   --color-foreground: #ededed;
   --color-card: #141414;
@@ -192,6 +206,12 @@ html.dark {
 }
 
 @layer base {
+  html {
+    color-scheme: light;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);

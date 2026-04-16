@@ -12,14 +12,17 @@ import {
   toLatestDoneAtOrNow,
   toRefreshStatusResponseFromMap,
 } from '~/modules/process/ui/screens/shipment/lib/shipmentRefresh.status'
-import type { RefreshRetryState } from '~/modules/process/ui/screens/shipment/types/shipmentScreen.types'
 import {
   REFRESH_SYNC_INITIAL_DELAY_MS,
   REFRESH_SYNC_MAX_RETRIES,
+  type RefreshRetryState,
 } from '~/modules/process/ui/screens/shipment/types/shipmentScreen.types'
 import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import { fetchWithHttpDegradationReporting } from '~/shared/api/httpDegradationReporter'
 import { subscribeToSyncRequestsRealtimeByIds } from '~/shared/api/sync-requests.realtime.client'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
 
 // ── API helpers ──────────────────────────────────────────────────────────────
 
@@ -27,7 +30,7 @@ async function enqueueContainerRefresh(
   containerNumber: string,
   carrier: string | null | undefined,
 ): Promise<{ readonly syncRequestId: string }> {
-  const response = await fetch('/api/refresh', {
+  const response = await fetchWithHttpDegradationReporting('/api/refresh', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ container: containerNumber, carrier: carrier ?? null }),
@@ -53,15 +56,18 @@ async function fetchRefreshSyncStatuses(syncRequestIds: readonly string[]) {
   for (const syncRequestId of syncRequestIds) {
     params.append('sync_request_id', syncRequestId)
   }
-  params.set('_ts', String(Date.now()))
+  params.set('_ts', String(systemClock.now().toEpochMs()))
 
-  const response = await fetch(`/api/refresh/status?${params.toString()}`, {
-    cache: 'no-store',
-    headers: {
-      'cache-control': 'no-cache',
-      pragma: 'no-cache',
+  const response = await fetchWithHttpDegradationReporting(
+    `/api/refresh/status?${params.toString()}`,
+    {
+      cache: 'no-store',
+      headers: {
+        'cache-control': 'no-cache',
+        pragma: 'no-cache',
+      },
     },
-  })
+  )
   const body: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {
@@ -205,13 +211,13 @@ async function waitForTerminalSyncRequests(
 
 // ── Main refresh usecase ─────────────────────────────────────────────────────
 
-export type RefreshShipmentTrackingCommand = {
+type RefreshShipmentTrackingCommand = {
   readonly data: ShipmentDetailVM | null | undefined
   readonly setIsRefreshing: (value: boolean) => void
   readonly setRefreshError: (value: string | null) => void
   readonly setRefreshHint: (value: string | null) => void
   readonly setRefreshRetry: (value: RefreshRetryState | null) => void
-  readonly setLastRefreshDoneAt: (value: Date | null) => void
+  readonly setLastRefreshDoneAt: (value: Instant | null) => void
   readonly setRealtimeCleanup: (cleanup: (() => void) | null) => void
   readonly refreshTrackingData: () => Promise<void> // i18n-enforce-ignore
   readonly isDisposed: () => boolean
@@ -296,7 +302,9 @@ export async function refreshShipmentTracking(
 
     const allErrors = [...enqueueErrors, ...statusErrors]
     if (allErrors.length > 0) {
-      params.setRefreshError(params.toFailedMessage(allErrors.length, allErrors[0]))
+      params.setRefreshError(
+        params.toFailedMessage(allErrors.length, allErrors[0] ?? 'Refresh failed'),
+      )
       return
     }
 

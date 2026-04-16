@@ -20,6 +20,17 @@ const TrackingAgentActivityRealtimeRowSchema = z
   })
   .passthrough()
 
+const AgentLogEventRealtimeRowSchema = z
+  .object({
+    id: z.string().uuid(),
+    agent_id: z.string().uuid(),
+    tenant_id: z.string().uuid(),
+    sequence: z.number().int().min(0),
+    channel: z.enum(['stdout', 'stderr']),
+    occurred_at: z.string().nullable().optional().default(null),
+  })
+  .passthrough()
+
 const RealtimePayloadSchema = z.object({
   eventType: RealtimeEventTypeSchema,
   old: z.unknown().optional(),
@@ -29,7 +40,7 @@ const RealtimePayloadSchema = z.object({
 type PostgresChangesFilter = {
   readonly event: '*'
   readonly schema: 'public'
-  readonly table: 'tracking_agents' | 'tracking_agent_activity_events'
+  readonly table: 'tracking_agents' | 'tracking_agent_activity_events' | 'agent_log_events'
   readonly filter: string
 }
 
@@ -53,7 +64,7 @@ type DefaultAgentMonitoringRealtimeChannel = {
   ) => DefaultAgentMonitoringRealtimeChannel
 }
 
-export type AgentMonitoringRealtimeClient<
+type AgentMonitoringRealtimeClient<
   TChannel extends
     AgentMonitoringRealtimeChannelLike<TChannel> = DefaultAgentMonitoringRealtimeChannel,
 > = {
@@ -61,7 +72,7 @@ export type AgentMonitoringRealtimeClient<
   removeChannel: (channel: TChannel) => Promise<unknown>
 }
 
-type SubscriptionScope = 'tenant_agents' | 'agent_activity'
+type SubscriptionScope = 'tenant_agents' | 'agent_activity' | 'agent_logs'
 
 export type AgentMonitoringRealtimeStatusUpdate = {
   readonly state: z.infer<typeof RealtimeChannelStateSchema>
@@ -71,7 +82,7 @@ export type AgentMonitoringRealtimeStatusUpdate = {
 }
 
 export type AgentMonitoringRealtimeEvent = {
-  readonly table: 'tracking_agents' | 'tracking_agent_activity_events'
+  readonly table: 'tracking_agents' | 'tracking_agent_activity_events' | 'agent_log_events'
   readonly eventType: z.infer<typeof RealtimeEventTypeSchema>
   readonly row: unknown | null
   readonly oldRow: unknown | null
@@ -106,17 +117,23 @@ function emitChannelStatus(command: {
 }
 
 function normalizeRealtimeEvent(command: {
-  readonly table: 'tracking_agents' | 'tracking_agent_activity_events'
+  readonly table: 'tracking_agents' | 'tracking_agent_activity_events' | 'agent_log_events'
   readonly payload: unknown
 }): AgentMonitoringRealtimeEvent | null {
   const payloadResult = RealtimePayloadSchema.safeParse(command.payload)
   if (!payloadResult.success) return null
   const payload = payloadResult.data
 
-  const parser =
-    command.table === 'tracking_agents'
-      ? TrackingAgentRealtimeRowSchema
-      : TrackingAgentActivityRealtimeRowSchema
+  let parser:
+    | typeof TrackingAgentRealtimeRowSchema
+    | typeof TrackingAgentActivityRealtimeRowSchema
+    | typeof AgentLogEventRealtimeRowSchema = TrackingAgentRealtimeRowSchema
+  if (command.table === 'tracking_agent_activity_events') {
+    parser = TrackingAgentActivityRealtimeRowSchema
+  }
+  if (command.table === 'agent_log_events') {
+    parser = AgentLogEventRealtimeRowSchema
+  }
 
   const rowResult = parser.safeParse(payload.new)
   const oldRowResult = parser.safeParse(payload.old)
@@ -135,7 +152,7 @@ function subscribeToTableFilters<
   TChannel extends AgentMonitoringRealtimeChannelLike<TChannel>,
 >(command: {
   readonly client: AgentMonitoringRealtimeClient<TChannel>
-  readonly table: 'tracking_agents' | 'tracking_agent_activity_events'
+  readonly table: 'tracking_agents' | 'tracking_agent_activity_events' | 'agent_log_events'
   readonly scope: SubscriptionScope
   readonly filters: readonly string[]
   readonly onEvent: (event: AgentMonitoringRealtimeEvent) => void
@@ -203,7 +220,7 @@ export function subscribeTrackingAgentsByTenant<
     scope: 'tenant_agents',
     filters: [`tenant_id=eq.${tenantId}`],
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }
 
@@ -223,6 +240,26 @@ export function subscribeTrackingAgentActivityByAgentId<
     scope: 'agent_activity',
     filters: [`agent_id=eq.${agentId}`],
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
+  })
+}
+
+export function subscribeAgentLogsByAgentId<
+  TChannel extends AgentMonitoringRealtimeChannelLike<TChannel>,
+>(command: {
+  readonly client: AgentMonitoringRealtimeClient<TChannel>
+  readonly agentId: string
+  readonly onEvent: (event: AgentMonitoringRealtimeEvent) => void
+  readonly onStatus?: (status: AgentMonitoringRealtimeStatusUpdate) => void
+}): { readonly unsubscribe: () => void } {
+  const agentId = z.string().uuid().parse(command.agentId)
+
+  return subscribeToTableFilters({
+    client: command.client,
+    table: 'agent_log_events',
+    scope: 'agent_logs',
+    filters: [`agent_id=eq.${agentId}`],
+    onEvent: command.onEvent,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }

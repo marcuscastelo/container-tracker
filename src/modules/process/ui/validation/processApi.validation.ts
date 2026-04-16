@@ -12,6 +12,7 @@ export function toCreateProcessInput(data: CreateProcessDialogFormData): CreateP
     importer_name: data.importerName || null,
     exporter_name: data.exporterName || null,
     reference_importer: data.referenceImporter || null,
+    depositary: data.depositary.trim().length > 0 ? data.depositary.trim() : null,
     product: data.product || null,
     redestination_number: data.redestinationNumber || null,
     containers: data.containers.map((container) => ({

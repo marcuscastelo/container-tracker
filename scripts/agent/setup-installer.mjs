@@ -8,7 +8,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const DEFAULT_DOCKER_IMAGE = 'amake/innosetup'
-const DEFAULT_INSTALLER_SCRIPT = 'tools/agent/installer/installer.iss'
+const DEFAULT_INSTALLER_SCRIPT = 'apps/agent/src/installer/installer.iss'
 const VALID_MODES = ['auto', 'native', 'docker', 'wine']
 
 function toErrorMessage(error) {
@@ -23,7 +23,7 @@ function resolveRepoRoot(startDir) {
   let cursor = startDir
 
   for (;;) {
-    const marker = path.join(cursor, 'tools', 'agent', 'agent.ts')
+    const marker = path.join(cursor, 'apps', 'agent', 'src', 'runtime', 'runtime.entry.ts')
     if (fsSync.existsSync(marker)) {
       return cursor
     }

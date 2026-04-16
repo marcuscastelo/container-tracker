@@ -7,7 +7,7 @@ Status: Accepted
 
 O agent do Container Tracker atualmente possui um runtime cross-platform baseado em Node:
 
-- `tools/agent/agent.ts`
+- `apps/agent/src/agent.ts`
 - bootstrap/enroll
 - scheduler interval + realtime wake
 - scraping providers

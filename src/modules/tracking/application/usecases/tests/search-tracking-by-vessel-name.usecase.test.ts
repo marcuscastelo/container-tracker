@@ -4,13 +4,18 @@ import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecas
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import {
+  instantFromIsoText,
+  resolveTemporalValue,
+  temporalDtoFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 type ObservationParams = Readonly<{
   id: string
   containerId: string
   containerNumber: string
   type: Observation['type']
-  eventTime: string | null
+  eventTime: string | Observation['event_time']
   eventTimeType: Observation['event_time_type']
   vesselName: string | null
   createdAt: string
@@ -25,7 +30,7 @@ function makeObservation(params: ObservationParams): Observation {
     container_id: params.containerId,
     container_number: params.containerNumber,
     type: params.type,
-    event_time: params.eventTime,
+    event_time: resolveTemporalValue(params.eventTime, null),
     event_time_type: params.eventTimeType,
     location_code: params.locationCode ?? null,
     location_display: params.locationDisplay ?? null,
@@ -47,6 +52,7 @@ function createDeps(
     observationRepository: {
       insertMany: vi.fn(async () => []),
       findAllByContainerId: vi.fn(async () => []),
+      findAllByContainerIds: vi.fn(async () => []),
       findFingerprintsByContainerId: vi.fn(async () => new Set<string>()),
       listSearchObservations,
     },
@@ -60,7 +66,9 @@ function createDeps(
     trackingAlertRepository: {
       insertMany: vi.fn(async () => []),
       findActiveByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
+      findActiveByContainerIds: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
       findByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
+      findAlertDerivationStateByContainerId: vi.fn(async () => []),
       findContainerNumbersByIds: vi.fn(async () => new Map<string, string>()),
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       listActiveAlertReadModel: vi.fn(async () => []),
@@ -142,7 +150,7 @@ describe('searchTrackingByVesselName', () => {
     const result = await searchTrackingByVesselName(deps, {
       query: 'brown',
       limit: 30,
-      now: new Date('2026-03-01T00:00:00.000Z'),
+      now: instantFromIsoText('2026-03-01T00:00:00.000Z'),
     })
 
     expect(result).toEqual([
@@ -150,7 +158,7 @@ describe('searchTrackingByVesselName', () => {
         processId: 'process-1',
         vesselName: 'MAERSK BROWNSVILLE',
         latestDerivedStatus: 'LOADED',
-        latestEta: '2026-03-20T00:00:00.000Z',
+        latestEta: temporalDtoFromCanonical('2026-03-20T00:00:00.000Z'),
       },
     ])
   })
@@ -188,7 +196,7 @@ describe('searchTrackingByVesselName', () => {
     const result = await searchTrackingByVesselName(deps, {
       query: 'vessel',
       limit: 1,
-      now: new Date('2026-03-01T00:00:00.000Z'),
+      now: instantFromIsoText('2026-03-01T00:00:00.000Z'),
     })
 
     expect(result).toHaveLength(1)
@@ -201,7 +209,7 @@ describe('searchTrackingByVesselName', () => {
     const result = await searchTrackingByVesselName(deps, {
       query: '   ',
       limit: 30,
-      now: new Date('2026-03-01T00:00:00.000Z'),
+      now: instantFromIsoText('2026-03-01T00:00:00.000Z'),
     })
 
     expect(result).toEqual([])

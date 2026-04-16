@@ -23,6 +23,7 @@ Before implementing anything non-trivial, consult:
 - UI philosophy: `docs/UI_PHILOSOPHY.md`
 - UI design prompt baseline: `docs/UI_DESIGN_PROMPT.md`
 - Roadmap: `docs/ROADMAP.md`
+- Carrier/provider integration guide: `docs/PROVIDER_INTEGRATION_GUIDE.md`
 
 If any canonical file is missing/renamed, stop and ask for the correct path.
 
@@ -181,6 +182,7 @@ If you modify:
 - boundaries/dependencies -> re-read `docs/BOUNDARIES.md`
 - type/DTO contracts -> re-read `docs/TYPE_ARCHITECTURE.md`
 - product/domain wording -> re-read `docs/MASTER_v2.md`
+- carrier/provider integration, fetchers, normalizers, sync provider registries, or agent capability wiring -> re-read `docs/PROVIDER_INTEGRATION_GUIDE.md` and `docs/SYNC_ARCHITECTURE_BOUNDARIES.md`
 
 ---
 
@@ -192,8 +194,41 @@ If you modify:
 - Kept module/capability boundaries intact?
 - Avoided `any`, unsafe `as`, and `Partial<Entity>` contracts?
 - Kept `snake_case` confined to persistence?
+- Ran the mandatory `pnpm sanity` close-out gate and compared baseline vs final state?
 
 If any answer is "not sure", stop and re-check canonical docs.
+
+---
+
+## 11.1) Mandatory `pnpm sanity` Gate (Canonical)
+
+Definition:
+
+- A **commit-ready package** is any change set the agent considers ready for commit, PR, or technical handoff.
+
+Policy:
+
+- For every commit-ready package, running `pnpm sanity` before closure is mandatory.
+- This gate is non-optional, even when `pnpm sanity` is slow or expensive.
+
+Rules:
+
+- Capture the initial `pnpm sanity` state before implementation (`green` or `non-green` + failing checks).
+- If the initial state is `green`, the final state must be `green`.
+- If the initial state is `non-green`, the final state must be at least as good as baseline.
+- Never introduce new failures, newly-gated warnings, or any baseline regression.
+- When safe and local to scope, fix trivial pre-existing failures found during implementation.
+- Do not use a pre-broken baseline as justification to worsen repository health.
+- The package cannot be declared final/commit-ready without this verification.
+
+Mandatory closing report:
+
+- Initial `pnpm sanity` state (green/non-green + pre-existing failures).
+- Final `pnpm sanity` state.
+- Delta vs baseline:
+  - failures fixed
+  - failures that remained
+  - explicit confirmation that no worsening occurred
 
 ---
 
@@ -384,7 +419,7 @@ Execution guideline for PR-suggestion tasks:
 1. Fetch feedback with `ai:pr:feedback`.
 2. Prioritize actionable code suggestions (correctness/performance/tests/clarity).
 3. Implement what is technically sound and aligned with architecture/invariants.
-4. Run required checks/build and keep it green before commit.
+4. Run the mandatory close-out `pnpm sanity` gate (section `11.1`) before commit.
 
 ---
 

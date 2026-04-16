@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Container Tracker Agent UI
+Comment=Open the Container Tracker agent desktop control UI
+Exec=/usr/bin/ct-agent-ui
+Icon=container-tracker-agent
+Terminal=false
+Categories=System;Utility;

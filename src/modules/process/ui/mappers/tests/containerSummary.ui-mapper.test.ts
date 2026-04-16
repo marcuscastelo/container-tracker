@@ -3,6 +3,8 @@ import { toContainerSummaryRowVMs } from '~/modules/process/ui/mappers/container
 import { formatRelativeTime } from '~/modules/process/ui/utils/formatRelativeTime'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import { Instant } from '~/shared/time/instant'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 type ContainerOverrides = {
   readonly number?: string
@@ -37,6 +39,14 @@ function makeContainer(overrides: ContainerOverrides = {}): ContainerDetailVM {
       date: '2026-03-10',
     },
     selectedEtaVm: null,
+    currentContext: {
+      locationCode: null,
+      locationDisplay: null,
+      vesselName: null,
+      voyage: null,
+      vesselVisible: true,
+    },
+    nextLocation: null,
     tsChipVm: {
       visible: false,
       count: 0,
@@ -45,19 +55,25 @@ function makeContainer(overrides: ContainerOverrides = {}): ContainerDetailVM {
     dataIssueChipVm: {
       visible: false,
     },
+    trackingContainment: null,
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      findingCount: 0,
+      activeIssues: [],
+    },
     transshipment: {
       hasTransshipment: false,
       count: 0,
       ports: [],
     },
-    observations: [],
     timeline: [],
   }
 }
 
 function makeMapperCommand(containers: readonly ContainerDetailVM[]) {
   const { keys } = useTranslation()
-  const now = new Date('2026-03-07T10:00:00.000Z')
+  const now = Instant.fromIso('2026-03-07T10:00:00.000Z')
   const locale = 'en-US'
 
   return {
@@ -66,9 +82,11 @@ function makeMapperCommand(containers: readonly ContainerDetailVM[]) {
     locale,
     keys,
     t: (key: string): string => {
+      if (key === keys.tracking.status.BOOKED) return 'Aguardando embarque'
       if (key === keys.shipmentView.operational.chips.etaArrived) return 'Arrived'
       if (key === keys.shipmentView.operational.chips.etaExpected) return 'ETA'
       if (key === keys.shipmentView.operational.chips.etaDelayedSuffix) return 'delayed'
+      if (key === keys.tracking.status.DELIVERED) return 'Delivered'
       if (key === keys.tracking.status.DISCHARGED) return 'Discharged'
       if (key === keys.tracking.status.IN_TRANSIT) return 'In transit'
       return `tx:${key}`
@@ -76,6 +94,14 @@ function makeMapperCommand(containers: readonly ContainerDetailVM[]) {
     noEtaLabel: 'ETA —',
     updatedLabel: (relative: string) => `updated ${relative}`,
   }
+}
+
+function requireAt<T>(items: readonly T[], index: number): T {
+  const item = items[index]
+  if (item === undefined) {
+    throw new Error(`Expected item at index ${index}`)
+  }
+  return item
 }
 
 describe('toContainerSummaryRowVMs', () => {
@@ -86,9 +112,23 @@ describe('toContainerSummaryRowVMs', () => {
     })
     const command = makeMapperCommand([container])
     const [row] = toContainerSummaryRowVMs(command)
+    if (!row) throw new Error('Expected row at index 0')
 
     expect(row.statusVariant).toBe('orange-500')
     expect(row.statusLabel).toBe(command.t(command.keys.tracking.status.DISCHARGED))
+  })
+
+  it('renders BOOKED containers with the operational waiting label', () => {
+    const container = makeContainer({
+      status: 'slate-400',
+      statusCode: 'BOOKED',
+    })
+    const command = makeMapperCommand([container])
+    const [row] = toContainerSummaryRowVMs(command)
+    if (!row) throw new Error('Expected row at index 0')
+
+    expect(row.statusVariant).toBe('slate-400')
+    expect(row.statusLabel).toBe('Aguardando embarque')
   })
 
   it('maps ETA label using eta chip semantics', () => {
@@ -108,10 +148,22 @@ describe('toContainerSummaryRowVMs', () => {
         date: null,
       },
     })
-    const rows = toContainerSummaryRowVMs(makeMapperCommand([delayed, unavailable]))
+    const delivered = makeContainer({
+      number: 'MSCU3333333',
+      etaChipVm: {
+        state: 'DELIVERED',
+        tone: 'positive',
+        date: null,
+      },
+    })
+    const rows = toContainerSummaryRowVMs(makeMapperCommand([delayed, unavailable, delivered]))
+    const delayedRow = requireAt(rows, 0)
+    const unavailableRow = requireAt(rows, 1)
+    const deliveredRow = requireAt(rows, 2)
 
-    expect(rows[0].etaLabel).toBe('ETA 2026-03-10 · delayed')
-    expect(rows[1].etaLabel).toBe('ETA —')
+    expect(delayedRow.etaLabel).toBe('ETA 2026-03-10 · delayed')
+    expect(unavailableRow.etaLabel).toBe('ETA —')
+    expect(deliveredRow.etaLabel).toBe('Delivered')
   })
 
   it('formats updatedAgoLabel from relative time and keeps null when missing', () => {
@@ -125,14 +177,16 @@ describe('toContainerSummaryRowVMs', () => {
     })
     const command = makeMapperCommand([withSyncTime, withoutSyncTime])
     const rows = toContainerSummaryRowVMs(command)
+    const withSyncRow = requireAt(rows, 0)
+    const withoutSyncRow = requireAt(rows, 1)
 
     const expectedRelative = formatRelativeTime(
-      withSyncTime.sync.relativeTimeAt ?? '',
+      parseInstantFromIso(withSyncTime.sync.relativeTimeAt ?? '') ?? command.now,
       command.now,
       command.locale,
     )
 
-    expect(rows[0].updatedAgoLabel).toBe(command.updatedLabel(expectedRelative))
-    expect(rows[1].updatedAgoLabel).toBeNull()
+    expect(withSyncRow.updatedAgoLabel).toBe(command.updatedLabel(expectedRelative))
+    expect(withoutSyncRow.updatedAgoLabel).toBeNull()
   })
 })

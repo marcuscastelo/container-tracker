@@ -11,7 +11,7 @@ import type { ObservationDraft } from '~/modules/tracking/features/observation/d
  *   - container_number: identifies the physical entity
  *   - type: semantic category of the event
  *   - event_time_type: ACTUAL vs EXPECTED — different semantic facts
- *   - event_time: when it happened (normalized to date-only UTC to avoid timezone drift)
+ *   - event_time: temporal kind + canonical value
  *   - location_code: where it happened
  *   - vessel_name: on which vessel (important for LOAD/DISCHARGE)
  *   - voyage: which voyage
@@ -24,29 +24,103 @@ import type { ObservationDraft } from '~/modules/tracking/features/observation/d
  *   They must not collide during deduplication.
  *   Including event_time_type ensures stable differentiation.
  *
- * NOTE: This is a breaking change from the previous implementation.
- *       Existing fingerprints in the database will differ from newly computed ones.
- *       A migration may be required to recompute fingerprints for historical data.
- *
  * @see docs/master-consolidated-0209.md §4.2.1
  * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
  */
-export function computeFingerprint(draft: ObservationDraft): string {
-  // Normalize event_time to date-only (YYYY-MM-DD) to handle timezone variations.
-  // If event_time is null, use empty string — two observations with null event_time
-  // and identical other fields will collide (which is correct).
-  const dateOnly = draft.event_time ? draft.event_time.slice(0, 10) : ''
+function normalizeDisplayText(value: string | null | undefined): string {
+  return (
+    value
+      ?.normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/gu, ' ')
+      .trim()
+      .toUpperCase() ?? ''
+  )
+}
 
-  const parts = [
+function normalizeCarrierLabel(value: string | null | undefined): string {
+  return (
+    value
+      ?.normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/gu, ' ')
+      .trim()
+      .toLowerCase() ?? ''
+  )
+}
+
+function toTemporalFingerprintParts(draft: ObservationDraft): {
+  readonly temporalKind: string
+  readonly temporalValue: string
+  readonly temporalTimezone: string
+} {
+  const temporalKind = draft.event_time?.kind ?? ''
+  let temporalValue = ''
+  let temporalTimezone = ''
+  if (draft.event_time !== null) {
+    if (draft.event_time.kind === 'instant') {
+      temporalValue = draft.event_time.value.toIsoString()
+    } else if (draft.event_time.kind === 'local-datetime') {
+      temporalValue = draft.event_time.value.toIsoLocalString()
+      temporalTimezone = draft.event_time.value.timezone
+    } else {
+      temporalValue = draft.event_time.value.toIsoDate()
+      temporalTimezone = draft.event_time.timezone ?? ''
+    }
+  }
+
+  return {
+    temporalKind,
+    temporalValue,
+    temporalTimezone,
+  }
+}
+
+function digestFingerprint(parts: readonly string[]): string {
+  const canonical = parts.join('|')
+  return createHash('sha256').update(canonical).digest('hex').slice(0, 32)
+}
+
+export function computeLegacyFingerprint(draft: ObservationDraft): string {
+  const temporal = toTemporalFingerprintParts(draft)
+
+  return digestFingerprint([
     draft.container_number.toUpperCase().trim(),
     draft.type,
-    draft.event_time_type, // NEW: differentiate ACTUAL from EXPECTED
-    dateOnly,
+    draft.event_time_type,
+    temporal.temporalKind,
+    temporal.temporalValue,
+    temporal.temporalTimezone,
     (draft.location_code ?? '').toUpperCase().trim(),
     (draft.vessel_name ?? '').toUpperCase().trim(),
     (draft.voyage ?? '').toUpperCase().trim(),
-  ]
+  ])
+}
 
-  const canonical = parts.join('|')
-  return createHash('sha256').update(canonical).digest('hex').slice(0, 32)
+export function computeFingerprint(draft: ObservationDraft): string {
+  const temporal = toTemporalFingerprintParts(draft)
+
+  return digestFingerprint([
+    draft.provider,
+    draft.container_number.toUpperCase().trim(),
+    draft.type,
+    draft.event_time_type,
+    temporal.temporalKind,
+    temporal.temporalValue,
+    temporal.temporalTimezone,
+    (draft.location_code ?? '').toUpperCase().trim(),
+    normalizeDisplayText(draft.location_display),
+    (draft.vessel_name ?? '').toUpperCase().trim(),
+    (draft.voyage ?? '').toUpperCase().trim(),
+    normalizeCarrierLabel(draft.carrier_label),
+  ])
+}
+
+export function computePilLocationlessFingerprintAlias(draft: ObservationDraft): string | null {
+  if (draft.provider !== 'pil') return null
+
+  return computeFingerprint({
+    ...draft,
+    location_code: null,
+  })
 }

@@ -33,12 +33,21 @@ function parseSyncRequestRow(raw: unknown): SyncRequestRow {
 
 export function bootstrapAgentSyncControllers(): AgentSyncControllers {
   return createAgentSyncControllers({
-    async leaseSyncRequests({ tenantId, agentId, limit, leaseMinutes }) {
+    async leaseSyncRequests({
+      tenantId,
+      agentId,
+      limit,
+      leaseMinutes,
+      includeOwnedActiveLeases,
+      processableProviders,
+    }) {
       const result = await supabaseServer.rpc('lease_sync_requests', {
         p_tenant_id: tenantId,
         p_agent_id: agentId,
         p_limit: limit,
         p_lease_minutes: leaseMinutes,
+        p_include_owned_active_leases: includeOwnedActiveLeases,
+        p_processable_providers: [...processableProviders],
       })
 
       const data = unwrapSupabaseResultOrThrow(result, {
@@ -129,17 +138,28 @@ export function bootstrapAgentSyncControllers(): AgentSyncControllers {
       }))
     },
 
-    async saveAndProcess({ containerId, containerNumber, provider, payload, fetchedAt }) {
+    async saveAndProcess({
+      containerId,
+      containerNumber,
+      provider,
+      payload,
+      parseError,
+      fetchedAt,
+    }) {
       const result = await trackingUseCases.saveAndProcess(
         containerId,
         containerNumber,
         provider,
         payload,
-        null,
+        parseError ?? null,
         fetchedAt,
       )
 
-      return { snapshotId: result.snapshot.id }
+      return {
+        snapshotId: result.snapshot.id,
+        newObservationsCount: result.pipeline.newObservations.length,
+        newAlertsCount: result.pipeline.newAlerts.length,
+      }
     },
 
     async authenticateAgentToken({ token }) {

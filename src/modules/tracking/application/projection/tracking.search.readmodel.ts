@@ -1,3 +1,4 @@
+import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import { deriveTrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
@@ -8,6 +9,8 @@ import {
   compareObservationsChronologically,
   deriveTimeline,
 } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import type { Instant } from '~/shared/time/instant'
 
 export type TrackingSearchObservationProjection = Readonly<{
   processId: string
@@ -18,12 +21,12 @@ export type TrackingSearchProjection = Readonly<{
   processId: string
   vesselName: string | null
   latestDerivedStatus: ContainerStatus
-  latestEta: string | null
+  latestEta: TemporalValueDto | null
 }>
 
 type DeriveTrackingSearchProjectionsArgs = Readonly<{
   observations: readonly TrackingSearchObservationProjection[]
-  now: Date
+  now: Instant
 }>
 
 type ContainerObservationGroup = {
@@ -33,7 +36,8 @@ type ContainerObservationGroup = {
   observations: Observation[]
 }
 
-function normalizeVesselName(vesselName: string | null): string | null {
+function trimVesselName(vesselName: string | null): string | null {
+  // Search projection keeps provider casing for display while dropping blank values.
   if (vesselName === null) return null
   const normalized = vesselName.trim()
   return normalized.length > 0 ? normalized : null
@@ -69,7 +73,7 @@ function deriveLatestVesselName(observations: readonly Observation[]): string | 
     const observation = ordered[idx]
     if (!observation) continue
 
-    const vesselName = normalizeVesselName(observation.vessel_name)
+    const vesselName = trimVesselName(observation.vessel_name)
     if (vesselName !== null) {
       return vesselName
     }
@@ -85,16 +89,17 @@ export function deriveTrackingSearchProjections(
   const projections: TrackingSearchProjection[] = []
 
   for (const group of grouped.values()) {
+    const projectionObservations = suppressSupersededObservationsForProjection(group.observations)
     const timeline = deriveTimeline(
       group.containerId,
       group.containerNumber,
-      group.observations,
+      projectionObservations,
       args.now,
     )
     const latestDerivedStatus = deriveStatus(timeline)
     const transshipment = deriveTransshipment(timeline)
     const operational = deriveTrackingOperationalSummary({
-      observations: toTrackingObservationProjections(group.observations),
+      observations: toTrackingObservationProjections(projectionObservations),
       status: latestDerivedStatus,
       transshipment,
       now: args.now,
@@ -102,9 +107,9 @@ export function deriveTrackingSearchProjections(
 
     projections.push({
       processId: group.processId,
-      vesselName: deriveLatestVesselName(group.observations),
+      vesselName: deriveLatestVesselName(projectionObservations),
       latestDerivedStatus,
-      latestEta: operational.eta?.eventTimeIso ?? null,
+      latestEta: operational.eta?.eventTime ?? null,
     })
   }
 

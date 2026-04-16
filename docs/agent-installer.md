@@ -21,7 +21,7 @@ pnpm run agent:release
 
 `agent:release` runs:
 
-1. TypeScript build for `tools/agent/*`
+1. TypeScript build for `apps/agent/src/*`
 2. `release/` assembly (Node runtime + app + bootstrap config)
 3. preflight checks (`preflight ok` only when all checks pass)
 
@@ -33,7 +33,7 @@ pnpm run agent:bundle
 
 Output: `dist/agent-installer-bundle.zip`
 
-Bundle content: `release/` plus `tools/agent/installer/*`.
+Bundle content: `release/` plus `apps/agent/src/installer/*`.
 
 ### 3) Build `Setup.exe` (Windows or Linux)
 
@@ -41,7 +41,7 @@ Bundle content: `release/` plus `tools/agent/installer/*`.
 pnpm run agent:setup
 ```
 
-Installer script: `tools/agent/installer/installer.iss`
+Installer script: `apps/agent/src/installer/installer.iss`
 
 Default strategy (`agent:setup`) is:
 
@@ -86,16 +86,16 @@ If automatic Chrome install is selected on the dependency page, setup calls `win
 - Copies binaries to `%LOCALAPPDATA%\Programs\ContainerTrackerAgent\`
 - Ensures `%LOCALAPPDATA%\ContainerTracker\`
 - Ensures `%LOCALAPPDATA%\ContainerTracker\logs\`
-- Ensures `%LOCALAPPDATA%\ContainerTracker\data\`
-- Ensures `%LOCALAPPDATA%\ContainerTracker\cache\`
+- Ensures `%LOCALAPPDATA%\ContainerTracker\releases\`
+- Ensures `%LOCALAPPDATA%\ContainerTracker\downloads\`
+- Ensures `%LOCALAPPDATA%\ContainerTracker\run\`
 - Copies `bootstrap.env` to `%LOCALAPPDATA%\ContainerTracker\bootstrap.env`
 - Creates per-user startup task `ContainerTrackerAgent`:
   - `Trigger=At logon`
   - `LogonType=InteractiveToken`
   - `RunLevel=LeastPrivilege`
-- Creates per-user startup task `ContainerTrackerAgentUpdater` with the same constraints
-- Triggers both tasks once after install
-- On uninstall: removes both tasks and installed binaries (user data directory is preserved)
+- Triggers the supervisor task once after install
+- On uninstall: removes the supervisor task and installed binaries (user data directory is preserved)
 
 ## Runtime startup behavior
 
@@ -132,6 +132,8 @@ Default retry policy for enrollment:
 - Consumed bootstrap: `%LOCALAPPDATA%\ContainerTracker\bootstrap.env.consumed`
 - Effective config: `%LOCALAPPDATA%\ContainerTracker\config.env`
 - Logs: `%LOCALAPPDATA%\ContainerTracker\logs\`
+- Runtime state: `%LOCALAPPDATA%\ContainerTracker\runtime-state.json`
+- Release state: `%LOCALAPPDATA%\ContainerTracker\release-state.json`
 
 ## States and troubleshooting
 
@@ -167,7 +169,6 @@ Default retry policy for enrollment:
 
 ```bat
 schtasks /Query /TN ContainerTrackerAgent /V /FO LIST
-schtasks /Query /TN ContainerTrackerAgentUpdater /V /FO LIST
 ```
 
 ## Coherence checklist
@@ -181,5 +182,5 @@ schtasks /Query /TN ContainerTrackerAgentUpdater /V /FO LIST
 ## Important notes
 
 - Installer is x64-only.
-- Updater is still stub in MVP.
+- Update orchestration is handled by supervisor/release flow (no parallel updater task).
 - Without code signing, Windows SmartScreen warnings may appear.

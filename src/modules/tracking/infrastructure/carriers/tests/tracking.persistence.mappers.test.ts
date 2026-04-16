@@ -12,6 +12,7 @@ import type {
   TrackingObservationRow,
   TrackingSnapshotRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.row'
+import { temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 // ---------------------------------------------------------------------------
 // Observation mappers
@@ -25,7 +26,13 @@ describe('observationRowToDomain', () => {
     container_number: 'MSKU1234567',
     event_time_type: 'ACTUAL',
     type: 'LOAD',
+    temporal_kind: 'instant',
+    event_time_instant: '2026-01-15T10:00:00.000Z',
     event_time: '2026-01-15T10:00:00.000Z',
+    event_date: null,
+    event_time_local: null,
+    event_time_zone: null,
+    event_time_source: null,
     location_code: 'USNYC',
     location_display: 'New York',
     vessel_name: 'MSC Fantasy',
@@ -35,6 +42,7 @@ describe('observationRowToDomain', () => {
     provider: 'maersk',
     created_from_snapshot_id: '33333333-3333-3333-3333-333333333333',
     carrier_label: 'Loaded on board',
+    raw_event_time: null,
     created_at: '2026-01-15T12:00:00.000Z',
     retroactive: false,
   }
@@ -49,15 +57,28 @@ describe('observationRowToDomain', () => {
     expect(result.carrier_label).toBe('Loaded on board')
   })
 
+  it('should accept PIL as a valid provider', () => {
+    const result = observationRowToDomain({ ...validRow, provider: 'pil' })
+    expect(result.provider).toBe('pil')
+  })
+
   it('should accept TERMINAL_MOVE observation type', () => {
     const result = observationRowToDomain({ ...validRow, type: 'TERMINAL_MOVE' })
     expect(result.type).toBe('TERMINAL_MOVE')
   })
 
-  it('should throw for invalid provider', () => {
-    expect(() => observationRowToDomain({ ...validRow, provider: 'invalid' })).toThrow(
-      'not a valid provider',
-    )
+  it.each([
+    'TRANSSHIPMENT_INTENDED',
+    'TRANSSHIPMENT_POSITIONED_IN',
+    'TRANSSHIPMENT_POSITIONED_OUT',
+  ] as const)('should accept %s observation type', (type) => {
+    const result = observationRowToDomain({ ...validRow, type })
+    expect(result.type).toBe(type)
+  })
+
+  it('should degrade unknown persisted provider to unknown', () => {
+    const result = observationRowToDomain({ ...validRow, provider: 'invalid' })
+    expect(result.provider).toBe('unknown')
   })
 
   it('should throw for invalid observation type', () => {
@@ -79,7 +100,16 @@ describe('observationRowToDomain', () => {
   })
 
   it('should handle null event_time', () => {
-    const result = observationRowToDomain({ ...validRow, event_time: null })
+    const result = observationRowToDomain({
+      ...validRow,
+      temporal_kind: null,
+      event_time_instant: null,
+      event_date: null,
+      event_time_local: null,
+      event_time_zone: null,
+      event_time_source: null,
+      event_time: null,
+    })
     expect(result.event_time).toBeNull()
   })
 })
@@ -92,7 +122,7 @@ describe('observationToInsertRow', () => {
       container_number: 'MSKU1234567',
       event_time_type: 'ACTUAL' as const,
       type: 'LOAD' as const,
-      event_time: '2026-01-15T10:00:00.000Z',
+      event_time: temporalValueFromCanonical('2026-01-15T10:00:00.000Z'),
       location_code: 'USNYC',
       location_display: 'New York',
       vessel_name: 'MSC Fantasy',
@@ -102,6 +132,8 @@ describe('observationToInsertRow', () => {
       provider: 'maersk' as const,
       created_from_snapshot_id: '33333333-3333-3333-3333-333333333333',
       carrier_label: 'Loaded on board',
+      raw_event_time: null,
+      event_time_source: null,
       retroactive: false,
     }
 
@@ -110,6 +142,66 @@ describe('observationToInsertRow', () => {
     expect(row.type).toBe('LOAD')
     expect(row.provider).toBe('maersk')
     expect(row.carrier_label).toBe('Loaded on board')
+  })
+
+  it('should map local datetime observations to persistence columns', () => {
+    const obs = {
+      fingerprint: 'fp-local',
+      container_id: '22222222-2222-2222-2222-222222222222',
+      container_number: 'MSKU1234567',
+      event_time_type: 'EXPECTED' as const,
+      type: 'ARRIVAL' as const,
+      event_time: temporalValueFromCanonical('2026-04-24T19:00:00.000[America/Sao_Paulo]'),
+      location_code: 'BRSSZ',
+      location_display: 'SANTOS',
+      vessel_name: 'MSC Fantasy',
+      voyage: 'V001',
+      is_empty: null,
+      confidence: 'high' as const,
+      provider: 'cmacgm' as const,
+      created_from_snapshot_id: '33333333-3333-3333-3333-333333333333',
+      carrier_label: 'Vessel Arrival',
+      raw_event_time: 'Fri 24-APR-2026 07:00 PM',
+      event_time_source: 'carrier_local_port_time' as const,
+      retroactive: false,
+    }
+
+    const row = observationToInsertRow(obs)
+
+    expect(row.temporal_kind).toBe('local_datetime')
+    expect(row.event_time_instant).toBeNull()
+    expect(row.event_date).toBeNull()
+    expect(row.event_time_local).toBe('2026-04-24T19:00:00.000')
+    expect(row.event_time_zone).toBe('America/Sao_Paulo')
+    expect(row.raw_event_time).toBe('Fri 24-APR-2026 07:00 PM')
+    expect(row.event_time_source).toBe('carrier_local_port_time')
+  })
+
+  it('should persist tracking-only transshipment helper types', () => {
+    const obs = {
+      fingerprint: 'fp-ts',
+      container_id: '22222222-2222-2222-2222-222222222222',
+      container_number: 'MSKU1234567',
+      event_time_type: 'EXPECTED' as const,
+      type: 'TRANSSHIPMENT_INTENDED' as const,
+      event_time: temporalValueFromCanonical('2026-05-15'),
+      location_code: 'SGSIN',
+      location_display: 'SINGAPORE, SG',
+      vessel_name: null,
+      voyage: null,
+      is_empty: null,
+      confidence: 'medium' as const,
+      provider: 'msc' as const,
+      created_from_snapshot_id: '33333333-3333-3333-3333-333333333333',
+      carrier_label: 'Full Intended Transshipment',
+      raw_event_time: null,
+      event_time_source: null,
+      retroactive: false,
+    }
+
+    const row = observationToInsertRow(obs)
+    expect(row.type).toBe('TRANSSHIPMENT_INTENDED')
+    expect(row.event_date).toBe('2026-05-15')
   })
 })
 
@@ -134,10 +226,19 @@ describe('snapshotRowToDomain', () => {
     expect(result.payload).toEqual({ test: 'data' })
   })
 
-  it('should throw for invalid provider', () => {
-    expect(() => snapshotRowToDomain({ ...validRow, provider: 'unknown_carrier' })).toThrow(
-      'not a valid provider',
-    )
+  it('should accept PIL snapshot provider', () => {
+    const result = snapshotRowToDomain({ ...validRow, provider: 'pil' })
+    expect(result.provider).toBe('pil')
+  })
+
+  it('should accept PIL snapshot provider', () => {
+    const result = snapshotRowToDomain({ ...validRow, provider: 'pil' })
+    expect(result.provider).toBe('pil')
+  })
+
+  it('should degrade unknown persisted provider to unknown', () => {
+    const result = snapshotRowToDomain({ ...validRow, provider: 'unknown_carrier' })
+    expect(result.provider).toBe('unknown')
   })
 
   it('should throw for invalid timestamp', () => {
@@ -234,6 +335,11 @@ describe('alertRowToDomain', () => {
     expect(result.provider).toBeNull()
   })
 
+  it('should degrade unknown persisted alert provider to unknown', () => {
+    const result = alertRowToDomain({ ...validRow, provider: 'thisproviderwillneverexist' })
+    expect(result.provider).toBe('unknown')
+  })
+
   it('should normalize space-separated timestamps', () => {
     const result = alertRowToDomain({
       ...validRow,
@@ -252,48 +358,17 @@ describe('alertRowToDomain', () => {
     expect(result.source_observation_fingerprints).toEqual([])
   })
 
-  it('should map NO_MOVEMENT message metadata fields', () => {
+  it('should map ETA_PASSED message metadata fields', () => {
     const result = alertRowToDomain({
       ...validRow,
       category: 'monitoring',
-      type: 'NO_MOVEMENT',
-      message_key: 'alerts.noMovementDetected',
-      message_params: {
-        threshold_days: 10,
-        days_without_movement: 12,
-        days: 12,
-        lastEventDate: '2026-01-03',
-      },
+      type: 'ETA_PASSED',
+      message_key: 'alerts.etaPassed',
+      message_params: {},
     })
 
-    expect(result.message_key).toBe('alerts.noMovementDetected')
-    expect(result.message_params).toEqual({
-      threshold_days: 10,
-      days_without_movement: 12,
-      days: 12,
-      lastEventDate: '2026-01-03',
-    })
-  })
-
-  it('should fallback NO_MOVEMENT metadata when reading legacy message params', () => {
-    const result = alertRowToDomain({
-      ...validRow,
-      category: 'monitoring',
-      type: 'NO_MOVEMENT',
-      message_key: 'alerts.noMovementDetected',
-      message_params: {
-        days: 9,
-        lastEventDate: '2026-01-04',
-      },
-    })
-
-    expect(result.message_key).toBe('alerts.noMovementDetected')
-    expect(result.message_params).toEqual({
-      threshold_days: 5,
-      days_without_movement: 9,
-      days: 9,
-      lastEventDate: '2026-01-04',
-    })
+    expect(result.message_key).toBe('alerts.etaPassed')
+    expect(result.message_params).toEqual({})
   })
 })
 

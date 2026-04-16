@@ -6,6 +6,7 @@ import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/d
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import { normalizeMaerskSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/maersk.normalizer'
+import { instantFromIsoText, temporalCanonicalText } from '~/shared/time/tests/helpers'
 
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000041'
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000042'
@@ -60,16 +61,16 @@ describe('empty-return mapping invariants', () => {
       drafts.map((draft, index) => ({
         id: `obs-${index + 1}`,
         type: draft.type,
-        carrier_label: draft.carrier_label ?? undefined,
+        carrier_label: draft.carrier_label ?? null,
         event_time: draft.event_time,
         event_time_type: draft.event_time_type,
         location_code: draft.location_code,
         location_display: draft.location_display,
         vessel_name: draft.vessel_name,
         voyage: draft.voyage,
-        created_at: draft.event_time ?? `2026-02-03T10:00:0${index}.000Z`,
+        created_at: temporalCanonicalText(draft.event_time) ?? `2026-02-03T10:00:0${index}.000Z`,
       })),
-      new Date('2026-02-03T11:00:00.000Z'),
+      instantFromIsoText('2026-02-03T11:00:00.000Z'),
     )
 
     expect(timeline).toHaveLength(2)
@@ -100,15 +101,15 @@ describe('empty-return mapping invariants', () => {
       confidence: draft.confidence,
       provider: draft.provider,
       created_from_snapshot_id: SNAPSHOT_ID,
-      carrier_label: draft.carrier_label,
-      created_at: draft.event_time ?? `2026-02-03T10:00:0${index}.000Z`,
+      carrier_label: draft.carrier_label ?? null,
+      created_at: temporalCanonicalText(draft.event_time) ?? `2026-02-03T10:00:0${index}.000Z`,
     }))
 
     const domainTimeline = deriveTimeline(
       CONTAINER_ID,
       CONTAINER_NUMBER,
       domainObservations,
-      new Date('2026-02-03T11:00:00.000Z'),
+      instantFromIsoText('2026-02-03T11:00:00.000Z'),
     )
     const status = deriveStatus(domainTimeline)
     expect(status).toBe('EMPTY_RETURNED')
@@ -118,7 +119,7 @@ describe('empty-return mapping invariants', () => {
       status,
       [],
       false,
-      new Date('2026-02-03T11:00:00.000Z'),
+      instantFromIsoText('2026-02-03T11:00:00.000Z'),
     )
     expect(alerts).toEqual([])
   })

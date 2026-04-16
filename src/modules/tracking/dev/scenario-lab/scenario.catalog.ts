@@ -58,10 +58,6 @@ function toMscDate(iso: string): string {
   return `${day}/${month}/${year}`
 }
 
-function toLabelFromId(id: string): string {
-  return id.replace(/[_.]/g, ' ')
-}
-
 function buildLocationName(city: string, countryCode: string): string {
   return `${city}, ${countryCode}`
 }
@@ -542,6 +538,42 @@ const EVT_EMPTY_RETURN_ACTUAL = maerskEvent({
   isEmpty: true,
 })
 
+const EVT_POST_COMPLETION_LOAD_ACTUAL = maerskEvent({
+  activity: 'LOAD',
+  eventTime: atPast(15, 8),
+  eventTimeType: 'ACTUAL',
+  location: LOC_POL,
+  vesselName: 'LAB GAMMA',
+  voyage: 'LG309E',
+})
+
+const EVT_POST_CARRIAGE_DEPARTURE_ACTUAL = maerskEvent({
+  activity: 'CONTAINER DEPARTURE',
+  eventTime: atPast(10, 18),
+  eventTimeType: 'ACTUAL',
+  location: LOC_POD,
+  vesselName: 'LAB SIGMA',
+  voyage: 'LS401W',
+})
+
+const EVT_POST_CARRIAGE_ARRIVAL_ACTUAL = maerskEvent({
+  activity: 'CONTAINER ARRIVAL',
+  eventTime: atPast(11, 6),
+  eventTimeType: 'ACTUAL',
+  location: LOC_DELIVERY,
+  vesselName: 'LAB SIGMA',
+  voyage: 'LS401W',
+})
+
+const EVT_POST_CARRIAGE_LOAD_ACTUAL = maerskEvent({
+  activity: 'LOAD',
+  eventTime: atPast(10, 12),
+  eventTimeType: 'ACTUAL',
+  location: LOC_POD,
+  vesselName: 'LAB SIGMA',
+  voyage: 'LS401W',
+})
+
 const EVT_CUSTOMS_HOLD = maerskEvent({
   activity: 'CUSTOMS HOLD',
   eventTime: atPast(9, 16),
@@ -555,6 +587,65 @@ const MSC_EMPTY_TO_SHIPPER = mscEvent({
   locationCode: 'ITNAP',
   locationDisplay: 'NAPLES, IT',
   detail: ['EMPTY'],
+})
+
+const MSC_LEG_AWARE_KARACHI_LOAD = mscEvent({
+  description: 'Export Loaded on Vessel',
+  eventTime: atPast(18, 10),
+  locationCode: 'PKKHI',
+  locationDisplay: 'KARACHI, PK',
+  vesselName: 'MSC ARICA',
+  voyage: 'OB610R',
+})
+
+const MSC_LEG_AWARE_COLOMBO_DISCHARGE = mscEvent({
+  description: 'Full Transshipment Discharged',
+  eventTime: atPast(27, 10),
+  locationCode: 'LKCMB',
+  locationDisplay: 'COLOMBO, LK',
+  vesselName: 'MSC ARICA',
+  voyage: 'IV610A',
+})
+
+const MSC_LEG_AWARE_COLOMBO_DISCHARGE_DUPLICATE = mscEvent({
+  description: 'Full Transshipment Discharged',
+  eventTime: atPast(27, 10),
+  locationCode: 'LKCMB',
+  locationDisplay: 'COLOMBO, LK',
+  vesselName: 'MSC ARICA',
+  voyage: 'OB610R',
+})
+
+const MSC_LEG_AWARE_COLOMBO_POSITIONED_IN = mscEvent({
+  description: 'Full Transshipment Positioned In',
+  eventTime: atPast(28, 8),
+  locationCode: 'LKCMB',
+  locationDisplay: 'COLOMBO, LK',
+})
+
+const MSC_LEG_AWARE_COLOMBO_POSITIONED_OUT = mscEvent({
+  description: 'Full Transshipment Positioned Out',
+  eventTime: atPast(28, 18),
+  locationCode: 'LKCMB',
+  locationDisplay: 'COLOMBO, LK',
+})
+
+const MSC_LEG_AWARE_COLOMBO_LOAD = mscEvent({
+  description: 'Full Transshipment Loaded',
+  eventTime: atPast(30, 10),
+  locationCode: 'LKCMB',
+  locationDisplay: 'COLOMBO, LK',
+  vesselName: 'GSL VIOLETTA',
+  voyage: 'ZF609R',
+})
+
+const MSC_LEG_AWARE_SINGAPORE_DISCHARGE = mscEvent({
+  description: 'Import Discharged from Vessel',
+  eventTime: atPast(37, 10),
+  locationCode: 'SGSIN',
+  locationDisplay: 'SINGAPORE, SG',
+  vesselName: 'GSL VIOLETTA',
+  voyage: 'ZF609R',
 })
 
 const CMACGM_EMPTY_TO_SHIPPER = cmaMove({
@@ -1407,6 +1498,110 @@ function buildLifecycleScenarios(): readonly TrackingScenario[] {
         },
       ]),
     }),
+    createScenario({
+      id: 'delivery_post_completion_continued',
+      title: 'Pathology · Delivered With Continued Tracking',
+      description: 'A delivered container starts a new incompatible load cycle.',
+      category: 'data_pathologies',
+      stage: 9,
+      tags: ['pathology', 'post-completion', 'delivery', 'reused-container'],
+      containers: singleContainer('maersk'),
+      steps: buildProgressiveMaerskSteps('c1', [
+        {
+          id: 'step-1',
+          title: 'Delivered',
+          description: 'Container reaches strong delivery completion.',
+          newEvents: [
+            EVT_GATE_IN_ACTUAL,
+            EVT_LOAD_ACTUAL,
+            EVT_DEPARTURE_ACTUAL,
+            EVT_ARRIVAL_ACTUAL,
+            EVT_DISCHARGE_ACTUAL,
+            EVT_DELIVERY_ACTUAL,
+          ],
+        },
+        {
+          id: 'step-2',
+          title: 'Incompatible new cycle',
+          description: 'A later load appears as if the same process resumed.',
+          newEvents: [EVT_POST_COMPLETION_LOAD_ACTUAL],
+        },
+      ]),
+    }),
+    createScenario({
+      id: 'empty_return_post_completion_continued',
+      title: 'Pathology · Empty Return With Continued Tracking',
+      description: 'An empty returned container starts a new incompatible load cycle.',
+      category: 'data_pathologies',
+      stage: 10,
+      tags: ['pathology', 'post-completion', 'empty-return', 'reused-container'],
+      containers: singleContainer('maersk'),
+      steps: buildProgressiveMaerskSteps('c1', [
+        {
+          id: 'step-1',
+          title: 'Empty returned',
+          description: 'Container reaches strong empty-return completion.',
+          newEvents: [
+            EVT_GATE_IN_ACTUAL,
+            EVT_LOAD_ACTUAL,
+            EVT_DEPARTURE_ACTUAL,
+            EVT_ARRIVAL_ACTUAL,
+            EVT_DISCHARGE_ACTUAL,
+            EVT_DELIVERY_ACTUAL,
+            EVT_EMPTY_RETURN_ACTUAL,
+          ],
+        },
+        {
+          id: 'step-2',
+          title: 'Incompatible new cycle',
+          description: 'A later load appears as if the same process resumed.',
+          newEvents: [EVT_POST_COMPLETION_LOAD_ACTUAL],
+        },
+      ]),
+    }),
+    createScenario({
+      id: 'post_carriage_maritime_inconsistent',
+      title: 'Pathology · Post-Carriage Maritime Event',
+      description:
+        'A maritime departure appears after discharge, then evolves and is later reconciled into a new predicted leg.',
+      category: 'data_pathologies',
+      stage: 10,
+      tags: ['pathology', 'advisory', 'post-carriage', 'timeline-classification'],
+      containers: singleContainer('maersk'),
+      steps: buildProgressiveMaerskSteps('c1', [
+        {
+          id: 'step-1',
+          title: 'Discharged',
+          description: 'Container finishes the last maritime leg with a discharge.',
+          newEvents: [
+            EVT_GATE_IN_ACTUAL,
+            EVT_LOAD_ACTUAL,
+            EVT_DEPARTURE_ACTUAL,
+            EVT_ARRIVAL_ACTUAL,
+            EVT_DISCHARGE_ACTUAL,
+          ],
+        },
+        {
+          id: 'step-2',
+          title: 'Stray maritime departure',
+          description: 'A departure appears in post-carriage without a new canonical voyage leg.',
+          newEvents: [EVT_POST_CARRIAGE_DEPARTURE_ACTUAL],
+        },
+        {
+          id: 'step-3',
+          title: 'Stray arrival joins the anomaly',
+          description: 'A follow-up arrival changes the advisory evidence without resolving it.',
+          newEvents: [EVT_POST_CARRIAGE_ARRIVAL_ACTUAL],
+        },
+        {
+          id: 'step-4',
+          title: 'Retroactive load legitimizes the leg',
+          description:
+            'A retroactive load anchors the events into a canonical voyage leg and resolves the advisory.',
+          newEvents: [EVT_POST_CARRIAGE_LOAD_ACTUAL],
+        },
+      ]),
+    }),
   ]
 }
 
@@ -1689,6 +1884,41 @@ function buildPathologyScenarios(): readonly TrackingScenario[] {
       ]),
     }),
     createScenario({
+      id: 'msc.leg_aware_missing_milestone',
+      title: 'Pathology · Split Maritime Legs (MSC)',
+      description:
+        'Valid MSC transshipment across Colombo must not trigger missing critical milestone.',
+      category: 'data_pathologies',
+      stage: 6,
+      tags: ['pathology', 'msc', 'transshipment', 'leg-aware'],
+      containers: singleContainer('msc'),
+      steps: [
+        {
+          id: 'step-1',
+          title: 'Two ACTUAL maritime legs around Colombo',
+          description: 'Reload at Colombo opens a new maritime leg before Singapore discharge.',
+          snapshots: [
+            mscSnapshot({
+              containerKey: 'c1',
+              fetchedAt: addMinutes(MSC_LEG_AWARE_SINGAPORE_DISCHARGE.eventTime, 45),
+              currentDate: toMscDate(addMinutes(MSC_LEG_AWARE_SINGAPORE_DISCHARGE.eventTime, 45)),
+              events: [
+                MSC_LEG_AWARE_KARACHI_LOAD,
+                MSC_LEG_AWARE_COLOMBO_DISCHARGE,
+                MSC_LEG_AWARE_COLOMBO_DISCHARGE_DUPLICATE,
+                MSC_LEG_AWARE_COLOMBO_POSITIONED_IN,
+                MSC_LEG_AWARE_COLOMBO_POSITIONED_OUT,
+                MSC_LEG_AWARE_COLOMBO_LOAD,
+                MSC_LEG_AWARE_SINGAPORE_DISCHARGE,
+              ],
+              podEtaDate: toMscDate(atFuture(20, 8)),
+              podLocation: buildLocationName(LOC_POD.city, LOC_POD.countryCode),
+            }),
+          ],
+        },
+      ],
+    }),
+    createScenario({
       id: 'carrier_time_travel',
       title: 'Pathology · Carrier Time Travel',
       description: 'Late snapshot introduces older event_time facts.',
@@ -1784,7 +2014,7 @@ const groups: readonly ScenarioCatalogGroup[] = [
   },
 ]
 
-export const trackingScenarioCatalog: ScenarioCatalog = {
+const trackingScenarioCatalog: ScenarioCatalog = {
   scenarios: allScenarios,
   groups,
 }
@@ -1812,10 +2042,4 @@ export function listTrackingScenarioSummaries(): readonly TrackingScenarioSummar
 
 export function getTrackingScenarioById(id: string): TrackingScenario | null {
   return scenarioById.get(id) ?? null
-}
-
-export function getTrackingScenarioStageLabel(stage: ScenarioStage): string {
-  const stageDef = SCENARIO_STAGES.find((item) => item.stage === stage)
-  if (stageDef === undefined) return toLabelFromId(String(stage))
-  return stageDef.title
 }

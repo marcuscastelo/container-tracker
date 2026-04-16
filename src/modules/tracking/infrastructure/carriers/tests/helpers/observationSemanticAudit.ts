@@ -1,19 +1,19 @@
 import { expect } from 'vitest'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 
-export type ObservationSemanticAuditInput = Pick<
+type ObservationSemanticAuditInput = Pick<
   ObservationDraft,
   'type' | 'carrier_label' | 'vessel_name'
 >
 
-export type ObservationSemanticViolation = {
+type ObservationSemanticViolation = {
   readonly code: 'invalid_vessel_name' | 'positioned_arrival_misclassification'
   readonly type: ObservationDraft['type']
   readonly carrier_label: string | null
   readonly vessel_name: string | null
 }
 
-const INVALID_VESSEL_NAMES = new Set(['LADEN', 'EMPTY'])
+const INVALID_VESSEL_NAMES = new Set(['LADEN', 'EMPTY', 'TBN'])
 
 function isPositionedLabel(label: string | null): boolean {
   if (typeof label !== 'string') return false

@@ -60,8 +60,8 @@ ShipmentView refresh button
    - bootstraps current queue state with `GET /api/refresh/status`
    - runs `pollRefreshSyncStatus()` as a watchdog with `maxRetries=5` and `initialDelayMs=5000`
    (`src/modules/process/ui/ShipmentView.tsx:39-40`, `src/modules/process/ui/ShipmentView.tsx:406-515`, `src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`).
-4. The agent is woken either by its interval scheduler or by tenant-level realtime on `sync_requests` rows that become `PENDING` (`tools/agent/agent.scheduler.ts:18-89`, `tools/agent/agent.ts:776-831`).
-5. The agent leases targets via `GET /api/agent/targets`, scrapes the provider, and posts the raw payload to `POST /api/tracking/snapshots/ingest` (`tools/agent/agent.ts:630-733`).
+4. The agent is woken either by its interval scheduler or by tenant-level realtime on `sync_requests` rows that become `PENDING` (`apps/agent/src/agent.scheduler.ts:18-89`, `apps/agent/src/agent.ts:776-831`).
+5. The agent leases targets via `GET /api/agent/targets`, scrapes the provider, and posts the raw payload to `POST /api/tracking/snapshots/ingest` (`apps/agent/src/agent.ts:630-733`).
 6. The server validates the lease, resolves the container, calls `trackingUseCases.saveAndProcess()`, then marks the request `DONE`; container resolution failures are marked `FAILED` (`src/modules/tracking/interface/http/agent-sync.controllers.ts:185-263`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:53-144`).
 
 ## Scenario 2B: User clicks refresh on Dashboard / process row
@@ -106,10 +106,10 @@ agent start
 
 ### What actually happens
 
-1. The agent can self-enroll using `POST /api/agent/enroll` and persists/updates its runtime config locally after successful enrollment (`tools/agent/agent.ts:535-596`, `src/routes/api/agent/enroll.ts:1-13`, `src/modules/tracking/interface/http/agent-enroll.controllers.ts:207-321`).
-2. The scheduler fires on startup and every configured interval (`tools/agent/agent.scheduler.ts:69-88`).
-3. Realtime wake is optional. If `SUPABASE_URL` or `SUPABASE_ANON_KEY` is missing, the agent keeps only the interval sweep (`tools/agent/agent.ts:787-837`).
-4. A cycle currently processes one leased target at a time until `LIMIT` is reached (`tools/agent/agent.ts:751-774`).
+1. The agent can self-enroll using `POST /api/agent/enroll` and persists/updates its runtime config locally after successful enrollment (`apps/agent/src/agent.ts:535-596`, `src/routes/api/agent/enroll.ts:1-13`, `src/modules/tracking/interface/http/agent-enroll.controllers.ts:207-321`).
+2. The scheduler fires on startup and every configured interval (`apps/agent/src/agent.scheduler.ts:69-88`).
+3. Realtime wake is optional. If `SUPABASE_URL` or `SUPABASE_ANON_KEY` is missing, the agent keeps only the interval sweep (`apps/agent/src/agent.ts:787-837`).
+4. A cycle currently processes one leased target at a time until `LIMIT` is reached (`apps/agent/src/agent.ts:751-774`).
 
 ### What was not found
 
@@ -134,7 +134,7 @@ agent leases request
 ### Confirmed behavior
 
 1. `lease_sync_requests()` can lease both `PENDING` rows and expired `LEASED` rows, and increments `attempts` when it does so (`supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`).
-2. The agent currently logs most target failures and explicitly says the target will be available again after lease expiration; it does not call a dedicated "fail this target now" endpoint (`tools/agent/agent.ts:735-748`).
+2. The agent currently logs most target failures and explicitly says the target will be available again after lease expiration; it does not call a dedicated "fail this target now" endpoint (`apps/agent/src/agent.ts:735-748`).
 3. Immediate `FAILED` state is only confirmed on the server ingest path for container-resolution problems and similar validated failures (`src/modules/tracking/interface/http/agent-sync.controllers.ts:211-229`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:97-118`).
 4. The synchronous process sync endpoints time out after 180 seconds with fixed 5-second polling (`src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:3-5`, `src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:113-150`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:4-5`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:110-147`).
 5. The detail refresh watchdog uses exponential backoff in the UI: 5s, 10s, 20s, 40s, 80s for the default five retries (`src/modules/process/ui/ShipmentView.tsx:39-40`, `src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`).
@@ -154,7 +154,7 @@ The tracking pipeline and alert derivation support an `isBackfill` flag, and fac
 
 ### Where to look next
 
-- future backfill command in `tools/agent/*`
+- future backfill command in `apps/agent/src/*`
 - future HTTP/admin endpoint under `src/routes/api/*`
 - migrations adding a dedicated backfill job type to `sync_requests`
 

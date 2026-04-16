@@ -17,7 +17,7 @@ export function subscribeToSyncRequestsRealtimeByIds(command: {
     client: supabase,
     syncRequestIds: command.syncRequestIds,
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }
 
@@ -30,6 +30,6 @@ export function subscribeToSyncRequestsRealtimeByContainerRefs(command: {
     client: supabase,
     containerNumbers: command.containerNumbers,
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }

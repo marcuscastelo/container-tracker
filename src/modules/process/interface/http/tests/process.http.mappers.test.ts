@@ -7,11 +7,14 @@ import { toProcessSource } from '~/modules/process/domain/identity/process-sourc
 import { createProcessEntity } from '~/modules/process/domain/process.entity'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
 import {
+  toInsertProcessRecord,
   toProcessResponseWithSummary,
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
+import { createEmptyTrackingValidationProcessProjectionSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { ProcessResponseSchema } from '~/shared/api-schemas/processes.schemas'
+import { Instant } from '~/shared/time/instant'
 
 function createProcessWithContainers() {
   const process = createProcessEntity({
@@ -25,11 +28,12 @@ function createProcessWithContainers() {
     importerName: 'Importer A',
     exporterName: 'Exporter B',
     referenceImporter: null,
+    depositary: 'Santos Brasil',
     product: null,
     redestinationNumber: null,
     source: toProcessSource('manual'),
-    createdAt: new Date('2026-03-10T10:00:00.000Z'),
-    updatedAt: new Date('2026-03-10T10:00:00.000Z'),
+    createdAt: Instant.fromIso('2026-03-10T10:00:00.000Z'),
+    updatedAt: Instant.fromIso('2026-03-10T10:00:00.000Z'),
   })
 
   return {
@@ -64,6 +68,7 @@ function createSummary(
     status_counts: {
       UNKNOWN: 0,
       IN_PROGRESS: 0,
+      BOOKED: 0,
       LOADED: 0,
       IN_TRANSIT: 1,
       ARRIVED_AT_POD: 0,
@@ -86,10 +91,20 @@ function createSummary(
       eligible_total: 2,
       with_eta: 0,
     },
-    alerts_count: 0,
-    highest_alert_severity: null,
-    dominant_alert_created_at: null,
-    has_transshipment: false,
+    eta_display: {
+      kind: 'unavailable',
+    },
+    operational_incidents: {
+      summary: {
+        active_incidents_count: 0,
+        affected_containers_count: 0,
+        recognized_incidents_count: 0,
+      },
+      dominant: null,
+    },
+    attention_severity: null,
+    tracking_validation: createEmptyTrackingValidationProcessProjectionSummary(),
+    tracking_validation_top_issue: null,
     last_event_at: null,
     ...overrides,
   }
@@ -116,6 +131,7 @@ describe('process.http.mappers', () => {
       importer_name: null,
       exporter_name: null,
       reference_importer: null,
+      depositary: null,
       product: null,
       redestination_number: null,
     }
@@ -129,8 +145,29 @@ describe('process.http.mappers', () => {
       importer_name: null,
       exporter_name: null,
       reference_importer: null,
+      depositary: null,
       product: null,
       redestination_number: null,
+    })
+  })
+
+  it('normalizes depositary for insert and update request mappers', () => {
+    expect(
+      toInsertProcessRecord({
+        carrier: 'msc',
+        containers: [],
+        depositary: '  Santos Brasil  ',
+      } satisfies CreateProcessInput),
+    ).toMatchObject({
+      depositary: 'Santos Brasil',
+    })
+
+    expect(
+      toUpdateProcessRecord({
+        depositary: '   ',
+      }),
+    ).toEqual({
+      depositary: null,
     })
   })
 
@@ -152,6 +189,7 @@ describe('process.http.mappers', () => {
 
     const parsed = ProcessResponseSchema.parse(response)
 
+    expect(parsed.depositary).toBe('Santos Brasil')
     expect(parsed.process_status).toBe('IN_TRANSIT')
     expect(parsed.highest_container_status).toBe('DISCHARGED')
     expect(parsed.status_counts?.DISCHARGED).toBe(1)
@@ -159,6 +197,206 @@ describe('process.http.mappers', () => {
     expect(parsed.status_microbadge).toEqual({
       status: 'DISCHARGED',
       count: 2,
+    })
+  })
+
+  it('maps delivered eta_display into process list response DTO', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        process_status: 'DELIVERED',
+        highest_container_status: 'DELIVERED',
+        status_counts: {
+          UNKNOWN: 0,
+          IN_PROGRESS: 0,
+          BOOKED: 0,
+          LOADED: 0,
+          IN_TRANSIT: 0,
+          ARRIVED_AT_POD: 0,
+          DISCHARGED: 0,
+          AVAILABLE_FOR_PICKUP: 0,
+          DELIVERED: 2,
+          EMPTY_RETURNED: 0,
+        },
+        status_microbadge: null,
+        has_status_dispersion: false,
+        lifecycle_bucket: 'final_delivery',
+        final_delivery_complete: true,
+        eta: null,
+        eta_display: {
+          kind: 'delivered',
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(parsed.eta).toBeNull()
+    expect(parsed.eta_display).toEqual({
+      kind: 'delivered',
+    })
+  })
+
+  it('maps arrived eta_display into process list response DTO', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        eta: null,
+        eta_display: {
+          kind: 'arrived',
+          value: {
+            kind: 'instant',
+            value: '2026-03-28T12:00:00.000Z',
+          },
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(parsed.eta).toBeNull()
+    expect(parsed.eta_display).toEqual({
+      kind: 'arrived',
+      value: {
+        kind: 'instant',
+        value: '2026-03-28T12:00:00.000Z',
+      },
+    })
+  })
+
+  it('maps internal CRITICAL validation severity to danger only at the HTTP boundary', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        attention_severity: 'danger',
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'CRITICAL',
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(parsed.tracking_validation).toEqual({
+      has_issues: true,
+      highest_severity: 'danger',
+      affected_container_count: 1,
+      top_issue: null,
+    })
+    expect(parsed.attention_severity).toBe('danger')
+  })
+
+  it('maps internal ADVISORY validation severity to warning only at the HTTP boundary', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'ADVISORY',
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(parsed.tracking_validation).toEqual({
+      has_issues: true,
+      highest_severity: 'warning',
+      affected_container_count: 1,
+      top_issue: null,
+    })
+    expect(parsed.attention_severity).toBeNull()
+  })
+
+  it('keeps critical validation issues on the compact process response contract', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'CRITICAL',
+        },
+        tracking_validation_top_issue: {
+          code: 'CONFLICTING_CRITICAL_ACTUALS',
+          severity: 'CRITICAL',
+          reasonKey: 'tracking.validation.conflictingCriticalActuals',
+          affectedArea: 'series',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(Object.keys(parsed.tracking_validation).sort()).toEqual([
+      'affected_container_count',
+      'has_issues',
+      'highest_severity',
+      'top_issue',
+    ])
+    expect(parsed.tracking_validation).not.toHaveProperty('debug_evidence')
+    expect(parsed.tracking_validation.highest_severity).toBe('danger')
+    expect(parsed.tracking_validation.top_issue).toEqual({
+      code: 'CONFLICTING_CRITICAL_ACTUALS',
+      severity: 'danger',
+      reason_key: 'tracking.validation.conflictingCriticalActuals',
+      affected_area: 'series',
+      affected_location: 'BRSSZ',
+      affected_block_label_key: null,
+    })
+  })
+
+  it('maps the new advisory validation detector without changing the compact response shape', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'ADVISORY',
+        },
+        tracking_validation_top_issue: {
+          code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+          severity: 'ADVISORY',
+          reasonKey: 'tracking.validation.expectedPlanNotReconcilable',
+          affectedArea: 'series',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(Object.keys(parsed.tracking_validation).sort()).toEqual([
+      'affected_container_count',
+      'has_issues',
+      'highest_severity',
+      'top_issue',
+    ])
+    expect(parsed.tracking_validation).not.toHaveProperty('debug_evidence')
+    expect(parsed.tracking_validation.top_issue).toEqual({
+      code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+      severity: 'warning',
+      reason_key: 'tracking.validation.expectedPlanNotReconcilable',
+      affected_area: 'series',
+      affected_location: 'BRSSZ',
+      affected_block_label_key: null,
     })
   })
 
@@ -171,6 +409,7 @@ describe('process.http.mappers', () => {
         status_counts: {
           UNKNOWN: 2,
           IN_PROGRESS: 0,
+          BOOKED: 0,
           LOADED: 0,
           IN_TRANSIT: 0,
           ARRIVED_AT_POD: 0,

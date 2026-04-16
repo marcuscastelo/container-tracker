@@ -26,10 +26,16 @@ export function bootstrapAgentMonitoringModule(
   const agentMonitoringUseCases = createAgentMonitoringUseCases({
     repository,
     updateManifestConfig: {
-      version: serverEnv.AGENT_UPDATE_MANIFEST_VERSION ?? undefined,
-      downloadUrl: serverEnv.AGENT_UPDATE_MANIFEST_DOWNLOAD_URL ?? undefined,
-      checksum: serverEnv.AGENT_UPDATE_MANIFEST_CHECKSUM ?? undefined,
       channel: serverEnv.AGENT_UPDATE_MANIFEST_CHANNEL,
+      ...(serverEnv.AGENT_UPDATE_MANIFEST_VERSION === undefined
+        ? {}
+        : { version: serverEnv.AGENT_UPDATE_MANIFEST_VERSION }),
+      ...(serverEnv.AGENT_UPDATE_MANIFEST_DOWNLOAD_URL === undefined
+        ? {}
+        : { downloadUrl: serverEnv.AGENT_UPDATE_MANIFEST_DOWNLOAD_URL }),
+      ...(serverEnv.AGENT_UPDATE_MANIFEST_CHECKSUM === undefined
+        ? {}
+        : { checksum: serverEnv.AGENT_UPDATE_MANIFEST_CHECKSUM }),
     },
   })
   const updateManifestService = createAgentUpdateManifestService({

@@ -34,7 +34,7 @@ Add explicit lease renewal/heartbeat from the agent runtime without moving seman
 
 **What**
 
-`processTarget()` logs errors and waits for lease expiration; it does not immediately terminalize the job in the normal scrape failure path (`tools/agent/agent.ts:735-748`).
+`processTarget()` logs errors and waits for lease expiration; it does not immediately terminalize the job in the normal scrape failure path (`apps/agent/src/agent.ts:735-748`).
 
 **Impact**
 
@@ -159,7 +159,7 @@ Observed mechanisms:
 - `agent_enrollment_audit_events`
 - `sync_requests` timestamps/statuses for operational inspection
 
-But no metrics, tracing, or job lifecycle analytics pipeline was found (`src/modules/tracking/interface/http/agent-enroll.controllers.ts:156-173`, `src/modules/tracking/interface/http/agent-enroll.controllers.bootstrap.ts:238-257`, `tools/agent/agent.ts:740-855`).
+But no metrics, tracing, or job lifecycle analytics pipeline was found (`src/modules/tracking/interface/http/agent-enroll.controllers.ts:156-173`, `src/modules/tracking/interface/http/agent-enroll.controllers.bootstrap.ts:238-257`, `apps/agent/src/agent.ts:740-855`).
 
 **Impact**
 
@@ -206,7 +206,7 @@ Design backfill as a first-class sync mode before any bulk onboarding/backfill f
 ## Quick Wins
 
 1. Migrate `ShipmentView` to `POST /api/processes/:id/refresh` and reduce endpoint fragmentation (`src/modules/process/ui/ShipmentView.tsx:333-356`, `src/routes/api/processes/[id]/refresh.ts:1-5`).
-2. Add immediate failure marking for agent scrape/ingest failures instead of waiting for lease expiry (`tools/agent/agent.ts:735-748`).
+2. Add immediate failure marking for agent scrape/ingest failures instead of waiting for lease expiry (`apps/agent/src/agent.ts:735-748`).
 3. Add lease heartbeat/renewal for long-running jobs (`supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`).
 4. Add a focused sync ops panel on top of `GET /api/processes/sync-status` and `sync_requests` timestamps (`src/modules/process/interface/http/process.controllers.ts:163-186`, `supabase/migrations/20260306_02_process_sync_observability_and_alert_ack_metadata.sql:28-31`).
 5. Remove or quarantine unused direct server fetch API surface (`src/modules/tracking/application/tracking.usecases.ts:67-90`).

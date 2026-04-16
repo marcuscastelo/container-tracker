@@ -3,6 +3,7 @@ node_modules/
 .vinxi/
 .output/
 /release/
+dist/
 tools/agent/dist/
 tools/agent/.cache/
 dist/agent-installer-bundle.zip
@@ -15,7 +16,10 @@ marucs-src/
 .playwright-mcp/
 supabase/.temp/
 /.tmp*/
+tmp/
 test-results/
 packaging/arch/pkg/
 packaging/arch/src/agent-app/
 packaging/arch/*.pkg.tar.zst
+.vercel
+coverage/

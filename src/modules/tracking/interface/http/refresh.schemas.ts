@@ -4,7 +4,7 @@ import z from 'zod/v4'
  * Provider Zod schema for HTTP-boundary validation.
  * This is the interface layer's own schema — domain types are plain.
  */
-const ProviderSchema = z.enum(['msc', 'maersk', 'cmacgm'])
+const ProviderSchema = z.enum(['msc', 'maersk', 'cmacgm', 'pil', 'one'])
 
 const RefreshRequestSchema = z
   .object({

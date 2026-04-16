@@ -13,7 +13,7 @@ No. Manual refresh is queue + agent, but `POST /api/processes/sync` and `POST /a
 - Process detail manual refresh button: per-container `POST /api/refresh` (`src/modules/process/ui/ShipmentView.tsx:333-356`)
 - Dashboard global sync button: `POST /api/processes/sync` (`src/modules/process/ui/api/processSync.api.ts:7-18`, `src/modules/process/ui/components/DashboardRefreshButton.tsx:117-158`)
 - Dashboard per-process sync button: `POST /api/processes/:id/sync` (`src/modules/process/ui/api/processSync.api.ts:21-32`, `src/modules/process/ui/components/ProcessSyncButton.tsx:143-160`)
-- Agent automatic interval scheduler and realtime wake (`tools/agent/agent.scheduler.ts:69-88`, `tools/agent/agent.ts:787-831`)
+- Agent automatic interval scheduler and realtime wake (`apps/agent/src/agent.scheduler.ts:69-88`, `apps/agent/src/agent.ts:787-831`)
 
 ## Where is `sync_requests` written?
 
@@ -40,11 +40,11 @@ Both.
 
 ## Does the server poll providers?
 
-No active server-side provider polling flow was found. Provider fetch execution is in the agent runtime (`tools/agent/agent.ts:656-767`).
+No active server-side provider polling flow was found. Provider fetch execution is in the agent runtime (`apps/agent/src/agent.ts:656-767`).
 
 ## What is "realtime" today exactly?
 
-Supabase Realtime watching `public.sync_requests` via Postgres changes. The frontend subscribes by sync request ids or container refs; the agent subscribes by tenant id to wake sooner when new `PENDING` work appears (`src/shared/supabase/sync-requests.realtime.ts:151-285`, `tools/agent/agent.ts:776-831`).
+Supabase Realtime watching `public.sync_requests` via Postgres changes. The frontend subscribes by sync request ids or container refs; the agent subscribes by tenant id to wake sooner when new `PENDING` work appears (`src/shared/supabase/sync-requests.realtime.ts:151-285`, `apps/agent/src/agent.ts:776-831`).
 
 ## What does `GET /api/processes/:id` aggregate?
 
@@ -64,11 +64,11 @@ Mostly in the process HTTP controller for process detail, and in the process app
 
 ## Does the server and agent share code?
 
-Yes. The agent shares provider fetchers and the realtime helper from the main repo. The server and agent do not maintain separate tracking normalization stacks; the server remains the canonical ingestion/derivation runtime (`tools/agent/agent.ts:11-22`, `src/modules/tracking/infrastructure/bootstrap/tracking.bootstrap.ts:36-52`, `src/modules/tracking/application/tracking.usecases.ts:62-154`).
+Yes. The agent shares provider fetchers and the realtime helper from the main repo. The server and agent do not maintain separate tracking normalization stacks; the server remains the canonical ingestion/derivation runtime (`apps/agent/src/agent.ts:11-22`, `src/modules/tracking/infrastructure/bootstrap/tracking.bootstrap.ts:36-52`, `src/modules/tracking/application/tracking.usecases.ts:62-154`).
 
 ## Does the server execute tracking ingestion/derivation?
 
-Yes. In the active runtime, the agent fetches raw payloads but the server persists snapshots and runs the tracking pipeline via `/api/tracking/snapshots/ingest` (`tools/agent/agent.ts:689-733`, `src/modules/tracking/interface/http/agent-sync.controllers.ts:167-263`, `src/modules/tracking/application/orchestration/pipeline.ts:70-130`).
+Yes. In the active runtime, the agent fetches raw payloads but the server persists snapshots and runs the tracking pipeline via `/api/tracking/snapshots/ingest` (`apps/agent/src/agent.ts:689-733`, `src/modules/tracking/interface/http/agent-sync.controllers.ts:167-263`, `src/modules/tracking/application/orchestration/pipeline.ts:70-130`).
 
 ## Where are raw snapshots, observations, timeline, alerts, and sync metadata stored?
 
@@ -95,4 +95,4 @@ Yes. In the active runtime, the agent fetches raw payloads but the server persis
   - agent enrollment backoff
 - Explicit per-job retry policy, provider rate limiter, dead-letter queue, metrics, and tracing were not found in the audited sync runtime.
 
-Sources: `supabase/migrations/20260225_01_agent_sync_mvp.sql:80-98`, `src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`, `tools/agent/backoff.ts:1-31`, `tools/agent/agent.ts:740-855`, `src/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher.ts:17-60`, `src/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher.ts:10-58`, `src/modules/tracking/infrastructure/carriers/fetchers/maersk.puppeteer.fetcher.ts:277-339`.
+Sources: `supabase/migrations/20260225_01_agent_sync_mvp.sql:80-98`, `src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`, `apps/agent/src/backoff.ts:1-31`, `apps/agent/src/agent.ts:740-855`, `src/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher.ts:17-60`, `src/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher.ts:10-58`, `src/modules/tracking/infrastructure/carriers/fetchers/maersk.puppeteer.fetcher.ts:277-339`.

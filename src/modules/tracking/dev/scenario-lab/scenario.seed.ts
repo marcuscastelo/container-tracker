@@ -1,7 +1,6 @@
 import {
   buildScenario,
   buildScenarioContainerInputs,
-  buildScenarioContainerNumbers,
   buildScenarioProcessReference,
   buildScenarioProviderByContainerKey,
   generateScenarioRunToken,
@@ -46,6 +45,7 @@ type CreatedProcessContainer = Readonly<{
 
 type CreatedProcess = Readonly<{
   id: string
+  reference: string | null
 }>
 
 type CreateProcessResult = Readonly<{
@@ -58,6 +58,10 @@ type ScenarioSeedDeps = Readonly<{
     record: ProcessInsertRecord
     containers: readonly ScenarioContainerInput[]
   }) => Promise<CreateProcessResult>
+  findProcessByIdWithContainers: (command: { processId: string }) => Promise<{
+    process: CreatedProcess | null
+    containers: readonly CreatedProcessContainer[]
+  }>
   saveAndProcess: (command: {
     containerId: string
     containerNumber: string
@@ -67,7 +71,7 @@ type ScenarioSeedDeps = Readonly<{
   }) => Promise<void>
 }>
 
-export type ScenarioCatalogResponse = Readonly<{
+type ScenarioCatalogResponse = Readonly<{
   stages: typeof SCENARIO_STAGES
   groups: ReturnType<typeof listTrackingScenarioGroups>
   scenarios: ReturnType<typeof listTrackingScenarioSummaries>
@@ -138,38 +142,82 @@ function resolveContainerIdsByKey(params: {
   return containerIdByKey
 }
 
+function resolveReusedContainerNumbersByKey(params: {
+  scenario: TrackingScenario
+  existingContainers: readonly CreatedProcessContainer[]
+}): ReadonlyMap<string, string> {
+  if (params.existingContainers.length !== params.scenario.containers.length) {
+    throw new Error(
+      `Scenario reuse requires ${params.scenario.containers.length} containers but process has ${params.existingContainers.length}`,
+    )
+  }
+
+  const containerNumbersByKey = new Map<string, string>()
+  for (const [index, scenarioContainer] of params.scenario.containers.entries()) {
+    const existingContainer = params.existingContainers[index]
+    if (existingContainer === undefined) {
+      throw new Error(`Missing existing container at index ${index} for scenario reuse`)
+    }
+
+    containerNumbersByKey.set(scenarioContainer.key, existingContainer.containerNumber)
+  }
+
+  return containerNumbersByKey
+}
+
 export function createScenarioSeeder(deps: ScenarioSeedDeps) {
   async function loadScenario(command: ScenarioLoadCommand): Promise<ScenarioSeedResult> {
     const runToken = generateScenarioRunToken()
-    const buildResult = buildScenario({ command, runToken })
-
-    const containerNumbersByKey = buildScenarioContainerNumbers({
-      scenario: buildResult.scenario,
-      appliedStep: buildResult.appliedStep,
-      runToken,
-    })
-
-    const processReference = buildScenarioProcessReference(
+    let reusedExistingProcess = false
+    let buildResult = buildScenario({ command, runToken })
+    let containerNumbersByKey = buildResult.containerNumbersByKey
+    let processResult: CreateProcessResult
+    let processReference = buildScenarioProcessReference(
       buildResult.scenario.id,
       buildResult.appliedStep,
       runToken,
     )
 
-    const createProcessResult = await deps.createProcess({
-      record: buildProcessInsertRecord({
+    if (command.reuseProcessId) {
+      const existingProcessResult = await deps.findProcessByIdWithContainers({
+        processId: command.reuseProcessId,
+      })
+      if (existingProcessResult.process === null) {
+        throw new Error(`Scenario reuse process not found: ${command.reuseProcessId}`)
+      }
+
+      containerNumbersByKey = resolveReusedContainerNumbersByKey({
         scenario: buildResult.scenario,
-        processReference,
+        existingContainers: existingProcessResult.containers,
+      })
+      buildResult = buildScenario({
+        command,
         runToken,
-      }),
-      containers: buildScenarioContainerInputs({
-        scenario: buildResult.scenario,
         containerNumbersByKey,
-      }),
-    })
+      })
+      processResult = {
+        process: existingProcessResult.process,
+        containers: existingProcessResult.containers,
+      }
+      processReference = existingProcessResult.process.reference ?? existingProcessResult.process.id
+      reusedExistingProcess = true
+    } else {
+      processResult = await deps.createProcess({
+        record: buildProcessInsertRecord({
+          scenario: buildResult.scenario,
+          processReference,
+          runToken,
+        }),
+        containers: buildScenarioContainerInputs({
+          scenario: buildResult.scenario,
+          containerNumbersByKey,
+        }),
+      })
+    }
 
     const containerIdsByKey = resolveContainerIdsByKey({
       scenario: buildResult.scenario,
-      createdContainers: createProcessResult.containers,
+      createdContainers: processResult.containers,
       containerNumbersByKey,
     })
 
@@ -204,10 +252,11 @@ export function createScenarioSeeder(deps: ScenarioSeedDeps) {
     return {
       scenarioId: buildResult.scenario.id,
       appliedStep: buildResult.appliedStep,
-      processId: createProcessResult.process.id,
+      processId: processResult.process.id,
       processReference,
+      reusedExistingProcess,
       stage: buildResult.scenario.stage,
-      containerIds: createProcessResult.containers.map((container) => container.id),
+      containerIds: processResult.containers.map((container) => container.id),
       containerNumbers: buildResult.scenario.containers.map((container) => {
         const value = containerNumbersByKey.get(container.key)
         if (!value) {

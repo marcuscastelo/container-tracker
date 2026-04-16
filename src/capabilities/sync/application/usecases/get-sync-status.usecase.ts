@@ -3,10 +3,11 @@ import {
   createSyncStatusAggregationService,
   type SyncStatusAggregationService,
 } from '~/capabilities/sync/application/services/sync-status-aggregation.service'
+import { type Clock, systemClock } from '~/shared/time/clock'
 
-export type ProcessSyncState = 'idle' | 'syncing' | 'completed' | 'failed'
+type ProcessSyncState = 'idle' | 'syncing' | 'completed' | 'failed'
 
-export type ProcessSyncVisibility = 'active' | 'archived_in_flight'
+type ProcessSyncVisibility = 'active' | 'archived_in_flight'
 
 export type ProcessSyncStateReadModel = {
   readonly processId: string
@@ -27,18 +28,24 @@ export type GetSyncStatusResult = {
 export type GetSyncStatusDeps = {
   readonly statusReadPort: SyncStatusReadPort
   readonly statusAggregationService?: SyncStatusAggregationService
-  readonly nowFactory?: () => Date
+  readonly clock?: Clock
+}
+
+type GetSyncStatusCommand = {
+  readonly processIds?: readonly string[]
 }
 
 export function createGetSyncStatusUseCase(deps: GetSyncStatusDeps) {
-  const nowFactory = deps.nowFactory ?? (() => new Date())
+  const clock = deps.clock ?? systemClock
   const aggregationService = deps.statusAggregationService ?? createSyncStatusAggregationService()
 
-  return async function execute(): Promise<GetSyncStatusResult> {
-    const candidates = await deps.statusReadPort.listProcessSyncCandidates()
+  return async function execute(command: GetSyncStatusCommand = {}): Promise<GetSyncStatusResult> {
+    const candidates = await deps.statusReadPort.listProcessSyncCandidates(
+      command.processIds === undefined ? {} : { processIds: command.processIds },
+    )
     if (candidates.length === 0) {
       return {
-        generatedAt: nowFactory().toISOString(),
+        generatedAt: clock.now().toIsoString(),
         processes: [],
       }
     }
@@ -94,7 +101,7 @@ export function createGetSyncStatusUseCase(deps: GetSyncStatusDeps) {
     }
 
     return {
-      generatedAt: nowFactory().toISOString(),
+      generatedAt: clock.now().toIsoString(),
       processes,
     }
   }

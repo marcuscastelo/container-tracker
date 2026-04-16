@@ -13,7 +13,8 @@ describe('fetchDashboardKpis', () => {
           JSON.stringify({
             activeProcesses: 24,
             trackedContainers: 61,
-            processesWithAlerts: 8,
+            activeIncidents: 8,
+            affectedContainers: 13,
             lastSyncAt: '2026-03-12T13:42:00.000Z',
           }),
           {
@@ -31,7 +32,8 @@ describe('fetchDashboardKpis', () => {
     expect(result).toEqual({
       activeProcesses: 24,
       trackedContainers: 61,
-      processesWithAlerts: 8,
+      activeIncidents: 8,
+      affectedContainers: 13,
       lastSyncAt: '2026-03-12T13:42:00.000Z',
     })
   })

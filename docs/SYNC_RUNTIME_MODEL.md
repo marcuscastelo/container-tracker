@@ -5,14 +5,14 @@
 | Runtime | What it does today | What it does not do today |
 | --- | --- | --- |
 | HTTP server | exposes enqueue/status/lease/ingest/read-model endpoints; authenticates agents; runs `saveAndProcess()` and the deterministic tracking pipeline; maps DTOs for UI (`src/routes/api/refresh.ts:8-15`, `src/routes/api/agent/targets.ts:1-13`, `src/routes/api/tracking/snapshots/ingest.ts:1-13`, `src/modules/tracking/interface/http/agent-sync.controllers.ts:123-263`, `src/modules/tracking/application/orchestration/pipeline.ts:70-130`, `src/modules/process/interface/http/process.controllers.ts:225-315`) | no active provider scheduler/cron; no active direct Maersk route; no confirmed webhook receiver (`src/routes/api/refresh-maersk/[container].ts:1-16`) |
-| agent | enrolls, schedules cycles, leases queue work, fetches provider payloads, posts raw payload back to server, subscribes to tenant realtime wake when configured (`tools/agent/agent.ts:535-866`, `tools/agent/agent.scheduler.ts:18-89`) | does not run normalize/diff/timeline/status/alerts locally; does not write snapshots/observations/alerts directly to DB |
+| agent | enrolls, schedules cycles, leases queue work, fetches provider payloads, posts raw payload back to server, subscribes to tenant realtime wake when configured (`apps/agent/src/agent.ts:535-866`, `apps/agent/src/agent.scheduler.ts:18-89`) | does not run normalize/diff/timeline/status/alerts locally; does not write snapshots/observations/alerts directly to DB |
 
 ## Shared Code Between Server and Agent
 
 ### Confirmed shared code
 
-- The agent imports provider fetchers from `src/modules/tracking/infrastructure/carriers/fetchers/*` (`tools/agent/agent.ts:11-18`).
-- The agent imports the shared realtime subscription helper from `src/shared/supabase/sync-requests.realtime.ts` (`tools/agent/agent.ts:18`, `src/shared/supabase/sync-requests.realtime.ts:151-285`).
+- The agent imports provider fetchers from `src/modules/tracking/infrastructure/carriers/fetchers/*` (`apps/agent/src/agent.ts:11-18`).
+- The agent imports the shared realtime subscription helper from `src/shared/supabase/sync-requests.realtime.ts` (`apps/agent/src/agent.ts:18`, `src/shared/supabase/sync-requests.realtime.ts:151-285`).
 - The server bootstraps the tracking use case facade from shared tracking repositories and pipeline code (`src/modules/tracking/infrastructure/bootstrap/tracking.bootstrap.ts:36-52`, `src/modules/tracking/application/tracking.usecases.ts:62-154`).
 
 ### Boundary interpretation
@@ -51,7 +51,7 @@ Realtime is Supabase Postgres changes on `public.sync_requests`, implemented thr
 
 - by `syncRequestId` for manual refresh waiting (`src/shared/api/sync-requests.realtime.client.ts:11-22`, `src/modules/process/ui/ShipmentView.tsx:436-455`)
 - by `ref_type=container` + `ref_value` for process detail auto-refresh and dashboard row state (`src/shared/supabase/sync-requests.realtime.ts:229-262`, `src/modules/process/ui/utils/sync-realtime-coordinator.ts:115-162`, `src/modules/process/ui/hooks/useProcessSyncRealtime.ts:115-197`)
-- by `tenant_id` for agent wake-up (`src/shared/supabase/sync-requests.realtime.ts:264-285`, `tools/agent/agent.ts:787-831`)
+- by `tenant_id` for agent wake-up (`src/shared/supabase/sync-requests.realtime.ts:264-285`, `apps/agent/src/agent.ts:787-831`)
 
 ### What triggers UI updates
 

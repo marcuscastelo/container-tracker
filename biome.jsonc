@@ -14,17 +14,23 @@
       "!.vinxi",
       "!dist",
       "!release/app/dist",
-      "!tools/agent/dist",
+      "!apps/agent/dist",
       "!build",
       "!out",
       "!.output",
       "!tools/ralph-loop",
       "!.ralph-loop",
       "!coverage",
+      "!dep-graph.dot",
+      "!dep-graph.html",
+      "!dep-graph.json",
       "!public",
       "!out",
       "!.output",
-      "!.agent-runtime"
+      "!.agent-runtime",
+      "!packaging/arch/src/agent-app",
+      "!packaging/arch/src",
+      "!packaging/arch/pkg"
     ]
   },
   "linter": {

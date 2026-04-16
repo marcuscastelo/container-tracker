@@ -7,3 +7,12 @@ export type TrackingAgentActivityEventRow =
   Database['public']['Tables']['tracking_agent_activity_events']['Row']
 export type TrackingAgentActivityEventInsert =
   Database['public']['Tables']['tracking_agent_activity_events']['Insert']
+
+export type AgentControlCommandRow = Database['public']['Tables']['agent_control_commands']['Row']
+export type AgentControlCommandInsert =
+  Database['public']['Tables']['agent_control_commands']['Insert']
+export type AgentControlCommandUpdate =
+  Database['public']['Tables']['agent_control_commands']['Update']
+
+export type AgentLogEventRow = Database['public']['Tables']['agent_log_events']['Row']
+export type AgentLogEventInsert = Database['public']['Tables']['agent_log_events']['Insert']

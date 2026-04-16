@@ -6,11 +6,15 @@ import {
   toTrackingAlertProjections,
 } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
+import { systemClock } from '~/shared/time/clock'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 function projectionToAlertDisplayVM(
   projection: TrackingAlertProjection,
   locale: string,
 ): AlertDisplayVM {
+  const triggeredAt = parseInstantFromIso(projection.triggeredAtIso)
+
   return {
     id: projection.id,
     type: projection.type,
@@ -18,7 +22,7 @@ function projectionToAlertDisplayVM(
     containerNumber: projection.containerNumber,
     messageKey: projection.messageKey,
     messageParams: projection.messageParams,
-    timestamp: formatRelativeTime(projection.triggeredAtIso, new Date(), locale),
+    timestamp: triggeredAt ? formatRelativeTime(triggeredAt, systemClock.now(), locale) : '',
     triggeredAtIso: projection.triggeredAtIso,
     ackedAtIso: projection.ackedAtIso,
     resolvedAtIso: projection.resolvedAtIso,
