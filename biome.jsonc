@@ -106,7 +106,7 @@
     "lineWidth": 100,
     "indentStyle": "space",
     "indentWidth": 2,
-    "lineEnding": "auto"
+    "lineEnding": "lf"
   },
   "javascript": {
     "formatter": {
