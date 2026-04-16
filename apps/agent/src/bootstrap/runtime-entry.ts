@@ -1,3 +1,6 @@
 #!/usr/bin/env node
 
-import '@agent/runtime/runtime.entry'
+import { launchRuntimeMain } from '@agent/runtime/runtime.entry'
+
+// Compatibility wrapper for historical bootstrap path usage.
+launchRuntimeMain()

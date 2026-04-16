@@ -1,22 +1,15 @@
 #!/usr/bin/env node
 
-import path from 'node:path'
-
-import { runSupervisorMain } from '@agent/supervisor/supervisor.entry'
+import {
+  isSupervisorEntrypoint as isSupervisorEntrypointFromEntry,
+  launchSupervisorMain,
+} from '@agent/supervisor/supervisor.entry'
 
 export function isSupervisorEntrypoint(entrypoint = process.argv[1]): boolean {
-  if (!entrypoint) {
-    return false
-  }
-
-  const entrypointName = path.basename(entrypoint).toLowerCase()
-  return entrypointName === 'supervisor.js' || entrypointName === 'supervisor.ts'
+  return isSupervisorEntrypointFromEntry(entrypoint)
 }
 
+// Wrapper entrypoint kept for compatibility with release/runtime launchers.
 if (isSupervisorEntrypoint()) {
-  void runSupervisorMain().catch((error) => {
-    const message = error instanceof Error ? error.message : String(error)
-    console.error(`[supervisor] fatal error: ${message}`)
-    process.exitCode = 1
-  })
+  launchSupervisorMain()
 }

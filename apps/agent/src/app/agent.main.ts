@@ -15,7 +15,6 @@ import {
   refreshAgentControlPublicLogs,
 } from '@agent/control-core/public-control-files'
 import { appendPendingActivityEvents } from '@agent/pending-activity'
-import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
 import {
   activatePendingRelease,
   confirmActivatedRelease,
@@ -50,7 +49,6 @@ import {
 import { clearSupervisorControl } from '@agent/runtime/infrastructure/supervisor-control.repository'
 import {
   EXIT_CONFIG_ERROR,
-  EXIT_FATAL,
   EXIT_OK,
   resolveSupervisorExitAction,
 } from '@agent/runtime/lifecycle-exit-codes'
@@ -159,11 +157,6 @@ function startPublicSnapshotRefreshLoop(
   }, PUBLIC_SNAPSHOT_REFRESH_INTERVAL_MS)
   timer.unref?.()
   return timer
-}
-
-function normalizePathForEntryComparison(targetPath: string): string {
-  const normalized = path.resolve(targetPath).replaceAll('\\', '/')
-  return resolvePlatformAdapter().key === 'windows-x64' ? normalized.toLowerCase() : normalized
 }
 
 function resolveNumberEnv(value: string | undefined, fallback: number): number {
@@ -371,6 +364,7 @@ function startReleaseCheckLoop(command: {
   }
 }
 
+// Canonical supervisor loop entrypoint. Wrappers must delegate to this function.
 export async function runAgentMain(): Promise<void> {
   const scriptPath = fileURLToPath(import.meta.url)
   const scriptDir = path.dirname(scriptPath)
@@ -829,21 +823,4 @@ export async function runAgentMain(): Promise<void> {
   }
   removeSupervisorPidFile(layout)
   process.exitCode = supervisorExitCode
-}
-
-function isDirectExecution(moduleUrl: string): boolean {
-  const entryArg = process.argv[1]
-  if (!entryArg) {
-    return false
-  }
-
-  const modulePath = fileURLToPath(moduleUrl)
-  return normalizePathForEntryComparison(entryArg) === normalizePathForEntryComparison(modulePath)
-}
-
-if (isDirectExecution(import.meta.url)) {
-  void runAgentMain().catch((error) => {
-    console.error(`[supervisor] fatal error: ${toErrorMessage(error)}`)
-    process.exitCode = EXIT_FATAL
-  })
 }

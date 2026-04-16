@@ -7,11 +7,12 @@ import { resolveRuntimeExecArgv } from '@agent/runtime/application/supervise-run
 
 export { resolveRuntimeExecArgv }
 
+// Compatibility adapter. Canonical supervisor loop ownership is in @agent/app/agent.main.
 export async function runSupervisorMain(): Promise<void> {
   await runAgentMain()
 }
 
-function isDirectExecution(entrypoint = process.argv[1]): boolean {
+export function isSupervisorEntrypoint(entrypoint = process.argv[1]): boolean {
   if (!entrypoint) {
     return false
   }
@@ -20,7 +21,7 @@ function isDirectExecution(entrypoint = process.argv[1]): boolean {
   return entrypointName === 'supervisor.js' || entrypointName === 'supervisor.ts'
 }
 
-if (isDirectExecution()) {
+export function launchSupervisorMain(): void {
   void runSupervisorMain().catch((error) => {
     const message = error instanceof Error ? error.message : String(error)
     console.error(`[supervisor] fatal error: ${message}`)
