@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 
-import { resolveAgentPathLayoutPaths } from '@agent/platform/agent-path-layout'
+import { AGENT_PATH_LAYOUT, resolveAgentPathLayoutPaths } from '@agent/platform/agent-path-layout'
 import { ensureDirectory, runCommand, tryCommand } from '@agent/platform/common'
 import { createWindowsLocalControlAdapter } from '@agent/platform/local-control.adapter'
 import type { AgentPlatformAdapter } from '@agent/platform/platform.types'
@@ -94,11 +94,13 @@ export const windowsPlatformAdapter: AgentPlatformAdapter = {
     const dataDir = resolveDataDir(command.env)
     const bootstrapEnvPath =
       normalizeOptionalEnv(command.env.BOOTSTRAP_DOTENV_PATH) ??
-      path.win32.join(dataDir, 'bootstrap.env')
+      path.win32.join(dataDir, AGENT_PATH_LAYOUT.files.bootstrapEnv)
     const configEnvPath =
-      normalizeOptionalEnv(command.env.DOTENV_PATH) ?? path.win32.join(dataDir, 'config.env')
+      normalizeOptionalEnv(command.env.DOTENV_PATH) ??
+      path.win32.join(dataDir, AGENT_PATH_LAYOUT.files.configEnv)
     const publicStateDir =
-      normalizeOptionalEnv(command.env.AGENT_PUBLIC_STATE_DIR) ?? path.win32.join(dataDir, 'run')
+      normalizeOptionalEnv(command.env.AGENT_PUBLIC_STATE_DIR) ??
+      path.win32.join(dataDir, AGENT_PATH_LAYOUT.directories.publicState)
 
     return resolveAgentPathLayoutPaths({
       dataDir,
