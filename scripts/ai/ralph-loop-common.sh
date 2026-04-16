@@ -4,11 +4,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-export RALPH_AGENT="${RALPH_AGENT:-codex}"
+export RALPH_AGENT="${RALPH_AGENT:-claude}"
 export RALPH_LOOP_ROOT="${RALPH_LOOP_ROOT:-$REPO_ROOT/tools/ralph-loop}"
 export RALPH_LOOP_WORKDIR="${RALPH_LOOP_WORKDIR:-$REPO_ROOT/.ralph-loop}"
 export RALPH_MAX_ITERATIONS="${RALPH_MAX_ITERATIONS:-10}"
 export RALPH_ALLOW_DANGEROUS_EXEC="${RALPH_ALLOW_DANGEROUS_EXEC:-1}"
+export RALPH_AGENT_TIMEOUT_SECONDS="${RALPH_AGENT_TIMEOUT_SECONDS:-0}"
+export RALPH_CLAUDE_MODEL="${RALPH_CLAUDE_MODEL:-google/gemma-4-e4b}"
+export RALPH_CLAUDE_BASE_URL="${RALPH_CLAUDE_BASE_URL:-http://localhost:1234}"
+export RALPH_CLAUDE_AUTH_TOKEN="${RALPH_CLAUDE_AUTH_TOKEN:-lmstudio}"
 
 rl_info() {
   printf '%s\n' "$*"
@@ -80,21 +84,105 @@ codex_exec_mode_flag() {
   printf '%s\n' "--full-auto"
 }
 
+run_with_optional_timeout() {
+  local timeout_seconds="$1"
+  shift
+
+  if ! [[ "$timeout_seconds" =~ ^[0-9]+$ ]]; then
+    rl_error "Invalid RALPH_AGENT_TIMEOUT_SECONDS='$timeout_seconds'. Expected non-negative integer."
+    return 1
+  fi
+
+  if [ "$timeout_seconds" -le 0 ]; then
+    "$@"
+    return $?
+  fi
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --foreground "$timeout_seconds" "$@"
+    return $?
+  fi
+
+  rl_info "[ralph] timeout command not found; running without timeout."
+  "$@"
+}
+
 run_agent_prompt() {
   local prompt_file="$1"
   local output_file="$2"
+  local phase_label="${3:-agent prompt}"
+  local start_epoch
+  local elapsed_seconds
+  local timeout_note
+  local heartbeat_pid=""
+  local status
+
+  if ! [[ "$RALPH_AGENT_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
+    rl_error "Invalid RALPH_AGENT_TIMEOUT_SECONDS='$RALPH_AGENT_TIMEOUT_SECONDS'. Expected non-negative integer."
+    return 1
+  fi
+
+  if [ "$RALPH_AGENT_TIMEOUT_SECONDS" -gt 0 ]; then
+    timeout_note="${RALPH_AGENT_TIMEOUT_SECONDS}s"
+  else
+    timeout_note="disabled"
+  fi
+
+  start_epoch="$(date +%s)"
+  rl_info "[ralph][$RALPH_AGENT] $phase_label started (timeout: $timeout_note)"
+
+  (
+    while :; do
+      sleep 20
+      elapsed_seconds="$(( $(date +%s) - start_epoch ))"
+      rl_info "[ralph][$RALPH_AGENT] $phase_label still running (${elapsed_seconds}s)..."
+    done
+  ) &
+  heartbeat_pid="$!"
+
+  set +e
 
   case "$RALPH_AGENT" in
     codex)
       local mode_flag
       mode_flag="$(codex_exec_mode_flag)"
-      codex exec --cd "$REPO_ROOT" --skip-git-repo-check "$mode_flag" -o "$output_file" - < "$prompt_file"
+      run_with_optional_timeout "$RALPH_AGENT_TIMEOUT_SECONDS" \
+        codex exec --cd "$REPO_ROOT" --skip-git-repo-check "$mode_flag" -o "$output_file" - < "$prompt_file"
       ;;
     claude)
-      claude --dangerously-skip-permissions --print < "$prompt_file" > "$output_file"
+      run_with_optional_timeout "$RALPH_AGENT_TIMEOUT_SECONDS" \
+        env \
+          ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-$RALPH_CLAUDE_BASE_URL}" \
+          ANTHROPIC_AUTH_TOKEN="${ANTHROPIC_AUTH_TOKEN:-$RALPH_CLAUDE_AUTH_TOKEN}" \
+        claude \
+          --model "$RALPH_CLAUDE_MODEL" \
+          --dangerously-skip-permissions \
+          --print < "$prompt_file" > "$output_file"
       ;;
     amp)
-      amp --dangerously-allow-all < "$prompt_file" > "$output_file"
+      run_with_optional_timeout "$RALPH_AGENT_TIMEOUT_SECONDS" \
+        amp --dangerously-allow-all < "$prompt_file" > "$output_file"
       ;;
   esac
+
+  status="$?"
+  set -e
+
+  if [ -n "$heartbeat_pid" ]; then
+    kill "$heartbeat_pid" >/dev/null 2>&1 || true
+    wait "$heartbeat_pid" 2>/dev/null || true
+  fi
+
+  elapsed_seconds="$(( $(date +%s) - start_epoch ))"
+
+  if [ "$status" -ne 0 ]; then
+    if [ "$status" -eq 124 ] && [ "$RALPH_AGENT_TIMEOUT_SECONDS" -gt 0 ]; then
+      rl_error "[ralph][$RALPH_AGENT] $phase_label timed out after ${RALPH_AGENT_TIMEOUT_SECONDS}s"
+    else
+      rl_error "[ralph][$RALPH_AGENT] $phase_label failed with exit code $status"
+    fi
+    return "$status"
+  fi
+
+  rl_info "[ralph][$RALPH_AGENT] $phase_label completed in ${elapsed_seconds}s"
 }

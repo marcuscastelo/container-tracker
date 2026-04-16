@@ -1,5 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import {
+  readStateJsonFile,
+  writeStateJsonFile,
+} from '@agent/state/infrastructure/json-state.file-store'
+import { z } from 'zod/v4'
 
 const DEFAULT_QUEUE_CAPACITY = 5000
 const DEFAULT_FLUSH_INTERVAL_MS = 1000
@@ -25,9 +30,11 @@ type LogTailState = {
   inode: number | null
 }
 
-type ForwarderStateFile = {
-  readonly nextSequence: number
-}
+const forwarderStateFileSchema = z.object({
+  nextSequence: z.number().int().positive(),
+})
+
+type ForwarderStateFile = z.infer<typeof forwarderStateFileSchema>
 
 function resetTailState(state: LogTailState): void {
   state.offset = 0
@@ -49,42 +56,23 @@ function normalizeOptionalText(value: string | undefined): string | undefined {
 }
 
 function safeReadForwarderState(filePath: string): ForwarderStateFile | null {
-  try {
-    if (!fs.existsSync(filePath)) return null
-    const raw = fs.readFileSync(filePath, 'utf8')
-    const parsed: unknown = JSON.parse(raw)
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      'nextSequence' in parsed &&
-      typeof parsed.nextSequence === 'number' &&
-      Number.isInteger(parsed.nextSequence) &&
-      parsed.nextSequence > 0
-    ) {
-      return {
-        nextSequence: parsed.nextSequence,
-      }
-    }
-  } catch {
-    // forwarder state corruption should not prevent runtime startup
-  }
-
-  return null
+  return readStateJsonFile({
+    filePath,
+    schema: forwarderStateFileSchema,
+  })
 }
 
 function writeForwarderState(command: {
   readonly filePath: string
   readonly nextSequence: number
 }): void {
-  const dir = path.dirname(command.filePath)
-  fs.mkdirSync(dir, { recursive: true })
-  const tempPath = `${command.filePath}.tmp`
-  fs.writeFileSync(
-    tempPath,
-    `${JSON.stringify({ nextSequence: command.nextSequence }, null, 2)}\n`,
-    'utf8',
-  )
-  fs.renameSync(tempPath, command.filePath)
+  writeStateJsonFile({
+    filePath: command.filePath,
+    schema: forwarderStateFileSchema,
+    value: {
+      nextSequence: command.nextSequence,
+    },
+  })
 }
 
 function initializeTailState(command: {

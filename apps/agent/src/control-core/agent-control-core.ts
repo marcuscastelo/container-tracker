@@ -1,11 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { validateAgentConfig } from '@agent/config/agent-config.policy'
 import {
   loadRawAgentEnvFromFile,
   parseAgentConfig,
   serializeAgentConfig,
-  validateAgentConfig,
-} from '@agent/config/agent-config.mapper'
+} from '@agent/config/agent-env'
 import type { AgentPathLayout } from '@agent/config/config.contract'
 import {
   AgentControlAuditEventSchema,
@@ -28,7 +28,11 @@ import {
   writeReleaseState,
 } from '@agent/release/infrastructure/release-state.file-repository'
 import { readRuntimeHealth } from '@agent/runtime/infrastructure/runtime-health.repository'
-import { readJsonFileWithSchema, writeFileAtomic } from '@agent/state/file-io'
+import { writeFileAtomic } from '@agent/state/file-io'
+import {
+  readStateJsonFile,
+  writeStateJsonFile,
+} from '@agent/state/infrastructure/json-state.file-store'
 import { z } from 'zod/v4'
 
 export const ControlRuntimeConfigSchema = z.object({
@@ -97,15 +101,6 @@ function defaultLocalOverrides() {
   return LocalOverrideStateSchema.parse({})
 }
 
-function readJsonFile<T extends z.ZodType>(filePath: string, schema: T): z.infer<T> | null {
-  return readJsonFileWithSchema(filePath, schema)
-}
-
-function writeJsonFile<T extends z.ZodType>(filePath: string, schema: T, value: unknown): void {
-  const normalized = schema.parse(value)
-  writeFileAtomic(filePath, `${JSON.stringify(normalized, null, 2)}\n`)
-}
-
 function booleanToEnvString(value: boolean): string {
   return value ? 'true' : 'false'
 }
@@ -134,19 +129,29 @@ function readBaseConfig(
   layout: AgentPathLayout,
   fallback: ControlRuntimeConfig,
 ): ControlRuntimeConfig {
-  const existing = readJsonFile(layout.baseRuntimeConfigPath, ControlRuntimeConfigSchema)
+  const existing = readStateJsonFile({
+    filePath: layout.baseRuntimeConfigPath,
+    schema: ControlRuntimeConfigSchema,
+  })
   if (existing) {
     return existing
   }
 
-  writeJsonFile(layout.baseRuntimeConfigPath, ControlRuntimeConfigSchema, fallback)
+  writeStateJsonFile({
+    filePath: layout.baseRuntimeConfigPath,
+    schema: ControlRuntimeConfigSchema,
+    value: fallback,
+  })
   return fallback
 }
 
 export function readCurrentControlRuntimeConfig(
   layout: AgentPathLayout,
 ): ControlRuntimeConfig | null {
-  const existingBaseConfig = readJsonFile(layout.baseRuntimeConfigPath, ControlRuntimeConfigSchema)
+  const existingBaseConfig = readStateJsonFile({
+    filePath: layout.baseRuntimeConfigPath,
+    schema: ControlRuntimeConfigSchema,
+  })
   if (existingBaseConfig) {
     return existingBaseConfig
   }
@@ -193,7 +198,10 @@ export function ensureBaseRuntimeConfig(
 
 export function readLocalOverrideState(layout: AgentPathLayout) {
   return (
-    readJsonFile(layout.controlOverridesPath, LocalOverrideStateSchema) ?? defaultLocalOverrides()
+    readStateJsonFile({
+      filePath: layout.controlOverridesPath,
+      schema: LocalOverrideStateSchema,
+    }) ?? defaultLocalOverrides()
   )
 }
 
@@ -201,25 +209,41 @@ function writeLocalOverrideState(
   layout: AgentPathLayout,
   value: unknown,
 ): z.infer<typeof LocalOverrideStateSchema> {
-  const normalized = LocalOverrideStateSchema.parse(value)
-  writeJsonFile(layout.controlOverridesPath, LocalOverrideStateSchema, normalized)
-  return normalized
+  return writeStateJsonFile({
+    filePath: layout.controlOverridesPath,
+    schema: LocalOverrideStateSchema,
+    value,
+  })
 }
 
 function readRemoteControlCache(layout: AgentPathLayout) {
-  return readJsonFile(layout.controlRemoteCachePath, AgentControlRemoteCacheSchema)
+  return readStateJsonFile({
+    filePath: layout.controlRemoteCachePath,
+    schema: AgentControlRemoteCacheSchema,
+  })
 }
 
 function writeRemoteControlCache(layout: AgentPathLayout, value: unknown): void {
-  writeJsonFile(layout.controlRemoteCachePath, AgentControlRemoteCacheSchema, value)
+  writeStateJsonFile({
+    filePath: layout.controlRemoteCachePath,
+    schema: AgentControlRemoteCacheSchema,
+    value,
+  })
 }
 
 function readInfraConfigCache(layout: AgentPathLayout) {
-  return readJsonFile(layout.infraConfigPath, AgentInfraConfigCacheSchema)
+  return readStateJsonFile({
+    filePath: layout.infraConfigPath,
+    schema: AgentInfraConfigCacheSchema,
+  })
 }
 
 function writeInfraConfigCache(layout: AgentPathLayout, value: unknown): void {
-  writeJsonFile(layout.infraConfigPath, AgentInfraConfigCacheSchema, value)
+  writeStateJsonFile({
+    filePath: layout.infraConfigPath,
+    schema: AgentInfraConfigCacheSchema,
+    value,
+  })
 }
 
 function isRecentCache(fetchedAt: string, maxAgeMs: number): boolean {

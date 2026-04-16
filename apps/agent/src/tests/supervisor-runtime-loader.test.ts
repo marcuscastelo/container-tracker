@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { resolveRuntimeExecArgv } from '@agent/supervisor/supervisor.entry'
+import { resolveRuntimeExecArgv } from '@agent/runtime/application/supervise-runtime'
 import { describe, expect, it } from 'vitest'
 
 describe('supervisor runtime alias loader resolution', () => {

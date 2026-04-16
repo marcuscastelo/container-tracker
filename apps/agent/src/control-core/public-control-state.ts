@@ -13,7 +13,10 @@ import {
 } from '@agent/control-core/contracts'
 import type { ReleaseState } from '@agent/core/contracts/release-state.contract'
 import { resolveReleaseEntrypoint } from '@agent/release/application/release-layout'
-import { readJsonFileWithSchema, writeFileAtomic } from '@agent/state/file-io'
+import {
+  readStateJsonFile,
+  writeStateJsonFile,
+} from '@agent/state/infrastructure/json-state.file-store'
 
 export function buildAgentControlPaths(layout: AgentPathLayout): AgentControlPaths {
   return AgentControlPathsSchema.parse({
@@ -67,22 +70,22 @@ export function writeAgentControlPublicState(command: {
   readonly paths: AgentControlPaths
   readonly backendState?: AgentControlBackendState
 }): AgentControlPublicState {
-  const state = AgentControlPublicStateSchema.parse({
-    snapshot: command.snapshot,
-    releaseInventory: command.releaseInventory,
-    paths: command.paths,
-    backendState: command.backendState,
+  return writeStateJsonFile({
+    filePath: command.filePath,
+    schema: AgentControlPublicStateSchema,
+    value: {
+      snapshot: command.snapshot,
+      releaseInventory: command.releaseInventory,
+      paths: command.paths,
+      backendState: command.backendState,
+    },
+    mode: 0o644,
   })
-
-  writeFileAtomic(command.filePath, `${JSON.stringify(state, null, 2)}\n`)
-  fs.chmodSync(command.filePath, 0o644)
-  return state
 }
 
 export function readAgentControlPublicState(filePath: string): AgentControlPublicState | null {
-  if (!fs.existsSync(filePath)) {
-    return null
-  }
-
-  return readJsonFileWithSchema(filePath, AgentControlPublicStateSchema)
+  return readStateJsonFile({
+    filePath,
+    schema: AgentControlPublicStateSchema,
+  })
 }

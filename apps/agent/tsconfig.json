@@ -60,9 +60,6 @@
     "./src/cli/ct-agent.ts",
     "./src/cli/ct-agent-admin.ts",
     "./src/build-release.ts",
-    "./src/bundle-release.ts",
-    "./src/bootstrap/runtime-entry.ts",
-    "./src/bootstrap/supervisor-entry.ts",
-    "./src/bootstrap/electron-entry.ts"
+    "./src/bundle-release.ts"
   ]
 }

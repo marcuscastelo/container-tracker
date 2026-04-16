@@ -1,3 +1,6 @@
 #!/usr/bin/env node
 
-import '@agent/runtime/runtime.entry'
+import { launchRuntimeMain } from '@agent/runtime/runtime.entry'
+
+// Wrapper entrypoint kept for compatibility with existing runtime launch scripts.
+launchRuntimeMain()

@@ -1,5 +1,7 @@
-import fs from 'node:fs'
-import { readJsonFileWithSchema, writeFileAtomic } from '@agent/state/file-io'
+import {
+  readStateJsonFile,
+  writeStateJsonFile,
+} from '@agent/state/infrastructure/json-state.file-store'
 import { z } from 'zod/v4'
 
 const supervisorControlSchema = z.object({
@@ -11,16 +13,18 @@ const supervisorControlSchema = z.object({
 export type SupervisorControl = z.infer<typeof supervisorControlSchema>
 
 export function writeSupervisorControl(filePath: string, value: SupervisorControl): void {
-  const normalized = supervisorControlSchema.parse(value)
-  writeFileAtomic(filePath, `${JSON.stringify(normalized, null, 2)}\n`)
+  writeStateJsonFile({
+    filePath,
+    schema: supervisorControlSchema,
+    value,
+  })
 }
 
 export function readSupervisorControl(filePath: string): SupervisorControl | null {
-  if (!fs.existsSync(filePath)) {
-    return null
-  }
-
-  return readJsonFileWithSchema(filePath, supervisorControlSchema)
+  return readStateJsonFile({
+    filePath,
+    schema: supervisorControlSchema,
+  })
 }
 
 export function clearSupervisorControl(filePath: string): void {

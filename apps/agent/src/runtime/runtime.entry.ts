@@ -834,7 +834,8 @@ function subscribeToRealtimeIfConfigured(command: {
   }
 }
 
-async function main(): Promise<void> {
+// Canonical runtime entrypoint. All executable wrappers must delegate to this function.
+export async function runRuntimeMain(): Promise<void> {
   const agentLayout = resolveAgentPathLayout()
   ensureAgentPathLayout(agentLayout)
   let runtimeConfig = await resolveRuntimeConfigWithBootstrap(agentLayout)
@@ -1104,7 +1105,9 @@ async function main(): Promise<void> {
   process.once('SIGTERM', () => shutdown('SIGTERM'))
 }
 
-void main().catch((error) => {
-  console.error(`[agent] fatal startup error: ${toErrorMessage(error)}`)
-  process.exitCode = EXIT_FATAL
-})
+export function launchRuntimeMain(): void {
+  void runRuntimeMain().catch((error) => {
+    console.error(`[agent] fatal startup error: ${toErrorMessage(error)}`)
+    process.exitCode = EXIT_FATAL
+  })
+}

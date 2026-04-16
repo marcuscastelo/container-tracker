@@ -1,16 +1,13 @@
-import { isSupervisorEntrypoint } from '@agent/supervisor'
+import fs from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 describe('supervisor entry wrapper', () => {
-  it('recognizes the compiled supervisor entrypoint', () => {
-    expect(isSupervisorEntrypoint('/tmp/container-tracker/apps/agent/src/supervisor.js')).toBe(true)
-  })
+  it('delegates directly to the canonical supervisor main launcher', () => {
+    const content = fs.readFileSync(new URL('../supervisor.ts', import.meta.url), 'utf8')
 
-  it('recognizes the TypeScript supervisor entrypoint', () => {
-    expect(isSupervisorEntrypoint('/tmp/container-tracker/apps/agent/src/supervisor.ts')).toBe(true)
-  })
-
-  it('does not run for unrelated entrypoints', () => {
-    expect(isSupervisorEntrypoint('/tmp/container-tracker/apps/agent/src/agent.js')).toBe(false)
+    expect(content).toContain("import { launchAgentMain } from '@agent/app/agent.main'")
+    expect(content).toContain('launchAgentMain()')
+    expect(content).not.toContain('isSupervisorEntrypoint')
+    expect(content).not.toContain('path.basename')
   })
 })
