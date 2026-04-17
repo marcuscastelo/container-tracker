@@ -15,6 +15,8 @@ export const NODE_SEA_RESOURCE_NAME = 'NODE_SEA_BLOB'
 export const NODE_SEA_SENTINEL_FUSE = 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2'
 export const DEFAULT_ENTRY_RELATIVE_PATH = 'apps/agent/src/installer/ct-agent-startup.entry.ts'
 export const DEFAULT_OUTPUT_RELATIVE_PATH = 'apps/agent/src/installer/bin/ct-agent-startup.exe'
+export const IMAGE_SUBSYSTEM_WINDOWS_GUI = 2
+export const IMAGE_SUBSYSTEM_WINDOWS_CUI = 3
 const DEFAULT_CACHE_RELATIVE_PATH = 'apps/agent/.cache/startup-launcher'
 
 const NODE_RUNTIME_TARGETS = {
@@ -413,6 +415,55 @@ async function assertPortableExecutable(filePath) {
   }
 }
 
+export function resolvePortableExecutableSubsystemOffset(executableBuffer) {
+  if (!Buffer.isBuffer(executableBuffer)) {
+    throw new Error('Portable executable parsing requires a Buffer')
+  }
+
+  if (executableBuffer.length < 0x40) {
+    throw new Error('Portable executable header is too small')
+  }
+
+  if (executableBuffer[0] !== 0x4d || executableBuffer[1] !== 0x5a) {
+    throw new Error('Portable executable is missing the MZ header')
+  }
+
+  const peHeaderOffset = executableBuffer.readUInt32LE(0x3c)
+  const optionalHeaderOffset = peHeaderOffset + 4 + 20
+  const subsystemOffset = optionalHeaderOffset + 68
+
+  if (subsystemOffset + 2 > executableBuffer.length) {
+    throw new Error('Portable executable optional header is truncated')
+  }
+
+  if (executableBuffer.toString('ascii', peHeaderOffset, peHeaderOffset + 4) !== 'PE\0\0') {
+    throw new Error('Portable executable is missing the PE signature')
+  }
+
+  return subsystemOffset
+}
+
+export function readPortableExecutableSubsystem(executableBuffer) {
+  return executableBuffer.readUInt16LE(resolvePortableExecutableSubsystemOffset(executableBuffer))
+}
+
+export function setPortableExecutableSubsystem(executableBuffer, subsystem) {
+  const subsystemOffset = resolvePortableExecutableSubsystemOffset(executableBuffer)
+  executableBuffer.writeUInt16LE(subsystem, subsystemOffset)
+  return executableBuffer
+}
+
+async function rewritePortableExecutableSubsystem(command) {
+  const executableBuffer = await fs.readFile(command.filePath)
+  const currentSubsystem = readPortableExecutableSubsystem(executableBuffer)
+  if (currentSubsystem === command.subsystem) {
+    return
+  }
+
+  setPortableExecutableSubsystem(executableBuffer, command.subsystem)
+  await fs.writeFile(command.filePath, executableBuffer)
+}
+
 function resolvePostjectCliPath() {
   const require = createRequire(import.meta.url)
   return require.resolve('postject/dist/cli.js')
@@ -535,6 +586,10 @@ export async function buildWindowsStartupLauncher(command = {}) {
       repoRoot,
       outputPath,
       blobPath,
+    })
+    await rewritePortableExecutableSubsystem({
+      filePath: outputPath,
+      subsystem: IMAGE_SUBSYSTEM_WINDOWS_GUI,
     })
     await assertPortableExecutable(outputPath)
   } finally {

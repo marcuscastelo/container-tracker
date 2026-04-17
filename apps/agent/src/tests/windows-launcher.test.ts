@@ -55,8 +55,10 @@ describe('windows supervisor launcher', () => {
 
     expect(content).toContain("'esbuild'")
     expect(content).toContain('NODE_SEA_BLOB')
+    expect(content).toContain('IMAGE_SUBSYSTEM_WINDOWS_GUI')
     expect(content).toContain('--experimental-sea-config')
     expect(content).toContain('postject')
+    expect(content).toContain('rewritePortableExecutableSubsystem')
     expect(content).toContain('ct-agent-startup.exe')
     expect(content).not.toContain('x86_64-w64-mingw32-gcc')
     expect(content).not.toContain("['-municode'")

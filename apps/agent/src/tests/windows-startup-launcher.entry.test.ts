@@ -2,7 +2,9 @@ import fs from 'node:fs'
 
 import {
   buildWindowsStartupLauncherNodeArgs,
+  buildWindowsStartupLauncherSpawnOptions,
   launchWindowsStartupLauncher,
+  resolveWindowsStartupLauncherLaunchMode,
   resolveWindowsStartupLauncherPaths,
 } from '@agent/installer/ct-agent-startup.lib'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -53,7 +55,7 @@ describe('windows startup launcher entry', () => {
 
   it('launches node.exe detached and forwards runtime/tray flags unchanged', () => {
     vi.spyOn(fs, 'existsSync').mockReturnValue(true)
-    const spawnDetached = vi.fn()
+    const spawnLauncher = vi.fn()
 
     const result = launchWindowsStartupLauncher({
       execPath:
@@ -61,11 +63,16 @@ describe('windows startup launcher entry', () => {
       argv0:
         'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent\\ct-agent-startup.exe',
       argv: ['--runtime-only', '--tray-only'],
-      spawnDetached,
+      spawnLauncher,
+      stdioInfo: {
+        stdinIsTTY: false,
+        stdoutIsTTY: false,
+        stderrIsTTY: false,
+      },
     })
 
-    expect(spawnDetached).toHaveBeenCalledTimes(1)
-    expect(spawnDetached).toHaveBeenCalledWith(
+    expect(spawnLauncher).toHaveBeenCalledTimes(1)
+    expect(spawnLauncher).toHaveBeenCalledWith(
       'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent\\node\\node.exe',
       expect.arrayContaining(['--runtime-only', '--tray-only']),
       expect.objectContaining({
@@ -81,6 +88,7 @@ describe('windows startup launcher entry', () => {
       }),
     )
     expect(result.forwardedArgv).toEqual(['--runtime-only', '--tray-only'])
+    expect(result.launchMode).toBe('detached')
   })
 
   it('prefers argv0 when the SEA runtime is copied to a new install root', () => {
@@ -93,25 +101,113 @@ describe('windows startup launcher entry', () => {
         normalized.endsWith('startup.js')
       )
     })
-    const spawnDetached = vi.fn()
+    const spawnLauncher = vi.fn()
 
     const result = launchWindowsStartupLauncher({
       execPath: 'C:\\Users\\Admin\\Repo\\container-tracker\\release\\ct-agent-startup.exe',
       argv0:
         'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent\\ct-agent-startup.exe',
       argv: [],
-      spawnDetached,
+      spawnLauncher,
+      stdioInfo: {
+        stdinIsTTY: false,
+        stdoutIsTTY: false,
+        stderrIsTTY: false,
+      },
     })
 
     expect(result.installRoot).toBe(
       'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent',
     )
-    expect(spawnDetached).toHaveBeenCalledWith(
+    expect(spawnLauncher).toHaveBeenCalledWith(
       'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent\\node\\node.exe',
       expect.any(Array),
       expect.objectContaining({
         cwd: 'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent',
       }),
     )
+  })
+
+  it('reuses the parent terminal when the launcher inherits tty handles', () => {
+    vi.spyOn(fs, 'existsSync').mockReturnValue(true)
+    const spawnLauncher = vi.fn()
+
+    const result = launchWindowsStartupLauncher({
+      execPath:
+        'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent\\ct-agent-startup.exe',
+      argv0:
+        'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent\\ct-agent-startup.exe',
+      argv: [],
+      spawnLauncher,
+      stdioInfo: {
+        stdinIsTTY: false,
+        stdoutIsTTY: true,
+        stderrIsTTY: false,
+      },
+    })
+
+    expect(spawnLauncher).toHaveBeenCalledWith(
+      'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent\\node\\node.exe',
+      expect.any(Array),
+      expect.objectContaining({
+        detached: false,
+        stdio: 'inherit',
+        windowsHide: false,
+      }),
+    )
+    expect(result.launchMode).toBe('attached')
+  })
+
+  it('detects attached mode when any inherited stdio handle is interactive', () => {
+    expect(
+      resolveWindowsStartupLauncherLaunchMode({
+        stdinIsTTY: false,
+        stdoutIsTTY: true,
+        stderrIsTTY: false,
+      }),
+    ).toBe('attached')
+    expect(
+      resolveWindowsStartupLauncherLaunchMode({
+        stdinIsTTY: false,
+        stdoutIsTTY: false,
+        stderrIsTTY: false,
+      }),
+    ).toBe('detached')
+  })
+
+  it('builds spawn options that stay hidden only for detached launches', () => {
+    expect(
+      buildWindowsStartupLauncherSpawnOptions({
+        installRoot: 'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent',
+        env: {},
+        launchMode: 'detached',
+      }),
+    ).toEqual({
+      cwd: 'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent',
+      detached: true,
+      env: {
+        CT_AGENT_INSTALL_ROOT: 'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent',
+      },
+      shell: false,
+      stdio: 'ignore',
+      windowsHide: true,
+    })
+
+    expect(
+      buildWindowsStartupLauncherSpawnOptions({
+        installRoot: 'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent',
+        env: {},
+        launchMode: 'attached',
+      }),
+    ).toEqual({
+      cwd: 'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent',
+      detached: false,
+      env: {
+        CT_AGENT_INSTALL_ROOT: 'C:\\Users\\Admin\\AppData\\Local\\Programs\\ContainerTrackerAgent',
+      },
+      shell: false,
+      stdio: 'inherit',
+      windowsHide: false,
+    })
   })
 })

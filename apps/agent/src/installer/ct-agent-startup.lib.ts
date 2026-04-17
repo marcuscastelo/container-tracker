@@ -14,9 +14,12 @@ export type WindowsStartupLauncherPaths = {
 export type WindowsStartupLauncherResult = WindowsStartupLauncherPaths & {
   readonly forwardedArgv: readonly string[]
   readonly nodeArgs: readonly string[]
+  readonly launchMode: WindowsStartupLauncherLaunchMode
 }
 
-export type WindowsStartupLauncherSpawnOptions = {
+export type WindowsStartupLauncherLaunchMode = 'attached' | 'detached'
+
+type WindowsStartupLauncherDetachedSpawnOptions = {
   readonly cwd: string
   readonly detached: true
   readonly env: NodeJS.ProcessEnv
@@ -25,7 +28,26 @@ export type WindowsStartupLauncherSpawnOptions = {
   readonly windowsHide: true
 }
 
-type SpawnDetached = (
+type WindowsStartupLauncherAttachedSpawnOptions = {
+  readonly cwd: string
+  readonly detached: false
+  readonly env: NodeJS.ProcessEnv
+  readonly stdio: 'inherit'
+  readonly shell: false
+  readonly windowsHide: false
+}
+
+export type WindowsStartupLauncherSpawnOptions =
+  | WindowsStartupLauncherAttachedSpawnOptions
+  | WindowsStartupLauncherDetachedSpawnOptions
+
+export type WindowsStartupLauncherStdioInfo = {
+  readonly stdinIsTTY: boolean
+  readonly stdoutIsTTY: boolean
+  readonly stderrIsTTY: boolean
+}
+
+type SpawnLauncher = (
   command: string,
   args: readonly string[],
   options: WindowsStartupLauncherSpawnOptions,
@@ -35,7 +57,8 @@ type LaunchWindowsStartupLauncherDeps = {
   readonly execPath?: string
   readonly argv0?: string
   readonly argv?: readonly string[]
-  readonly spawnDetached?: SpawnDetached
+  readonly spawnLauncher?: SpawnLauncher
+  readonly stdioInfo?: WindowsStartupLauncherStdioInfo
 }
 
 function resolveInstalledExecutablePath(command: {
@@ -50,13 +73,62 @@ function resolveInstalledExecutablePath(command: {
   return command.execPath
 }
 
-function spawnDetached(
+function spawnLauncher(
   command: string,
   args: readonly string[],
   options: WindowsStartupLauncherSpawnOptions,
 ): void {
   const child = spawn(command, [...args], options)
-  child.unref()
+  if (options.detached) {
+    child.unref()
+  }
+}
+
+function resolveWindowsStartupLauncherStdioInfo(): WindowsStartupLauncherStdioInfo {
+  return {
+    stdinIsTTY: process.stdin.isTTY === true,
+    stdoutIsTTY: process.stdout.isTTY === true,
+    stderrIsTTY: process.stderr.isTTY === true,
+  }
+}
+
+export function resolveWindowsStartupLauncherLaunchMode(
+  stdioInfo: WindowsStartupLauncherStdioInfo,
+): WindowsStartupLauncherLaunchMode {
+  return stdioInfo.stdinIsTTY || stdioInfo.stdoutIsTTY || stdioInfo.stderrIsTTY
+    ? 'attached'
+    : 'detached'
+}
+
+export function buildWindowsStartupLauncherSpawnOptions(command: {
+  readonly installRoot: string
+  readonly env: NodeJS.ProcessEnv
+  readonly launchMode: WindowsStartupLauncherLaunchMode
+}): WindowsStartupLauncherSpawnOptions {
+  const baseOptions = {
+    cwd: command.installRoot,
+    env: {
+      ...command.env,
+      CT_AGENT_INSTALL_ROOT: command.installRoot,
+    },
+    shell: false as const,
+  }
+
+  if (command.launchMode === 'attached') {
+    return {
+      ...baseOptions,
+      detached: false,
+      stdio: 'inherit',
+      windowsHide: false,
+    }
+  }
+
+  return {
+    ...baseOptions,
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+  }
 }
 
 export function resolveWindowsStartupLauncherPaths(execPath: string): WindowsStartupLauncherPaths {
@@ -107,7 +179,8 @@ export function launchWindowsStartupLauncher(
   const execPath = providedDeps?.execPath ?? process.execPath
   const argv0 = providedDeps?.argv0 ?? process.argv[0]
   const argv = providedDeps?.argv ?? process.argv.slice(2)
-  const spawnDetachedFn = providedDeps?.spawnDetached ?? spawnDetached
+  const spawnLauncherFn = providedDeps?.spawnLauncher ?? spawnLauncher
+  const stdioInfo = providedDeps?.stdioInfo ?? resolveWindowsStartupLauncherStdioInfo()
   const paths = resolveWindowsStartupLauncherPaths(
     resolveInstalledExecutablePath({ execPath, argv0 }),
   )
@@ -124,22 +197,22 @@ export function launchWindowsStartupLauncher(
     paths,
     forwardedArgv: argv,
   })
+  const launchMode = resolveWindowsStartupLauncherLaunchMode(stdioInfo)
 
-  spawnDetachedFn(paths.nodePath, nodeArgs, {
-    cwd: paths.installRoot,
-    detached: true,
-    env: {
-      ...process.env,
-      CT_AGENT_INSTALL_ROOT: paths.installRoot,
-    },
-    stdio: 'ignore',
-    shell: false,
-    windowsHide: true,
-  })
+  spawnLauncherFn(
+    paths.nodePath,
+    nodeArgs,
+    buildWindowsStartupLauncherSpawnOptions({
+      installRoot: paths.installRoot,
+      env: process.env,
+      launchMode,
+    }),
+  )
 
   return {
     ...paths,
     forwardedArgv: argv,
     nodeArgs,
+    launchMode,
   }
 }
