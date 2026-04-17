@@ -5,6 +5,8 @@ import type { PlatformPathResolution } from '@agent/platform/platform.contract'
 import { launchWindowsAgentStartup } from '@agent/platform/windows/startup'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+const describeOnWindowsHost = process.platform === 'win32' ? describe : describe.skip
+
 function createLayout(rootDir: string): PlatformPathResolution {
   const dataDir = path.join(rootDir, 'data')
   return {
@@ -33,7 +35,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('windows startup', () => {
+describeOnWindowsHost('windows startup', () => {
   it('clears ELECTRON_RUN_AS_NODE before launching the tray runtime', () => {
     const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-agent-windows-startup-'))
     const installRoot = path.join(rootDir, 'install')

@@ -14,6 +14,54 @@ agent_data_dir="/var/lib/container-tracker-agent"
 service_name="container-tracker-agent.service"
 tray_app_dir="/usr/lib/container-tracker-agent/dist/apps/agent/control-ui"
 
+run_pnpm() {
+  if command -v pnpm >/dev/null 2>&1; then
+    pnpm "$@"
+    return $?
+  fi
+
+  if command -v corepack >/dev/null 2>&1; then
+    corepack pnpm "$@"
+    return $?
+  fi
+
+  echo "[agent:rebuild-restart:linux] pnpm not found. Install pnpm or enable Corepack." >&2
+  return 1
+}
+
+normalize_packaging_source_links() {
+  local link_name
+  local link_target
+
+  # makepkg can rewrite these repo-local symlinks with absolute targets during
+  # the package build. Restore the tracked relative form so the worktree stays clean.
+  for link_name in \
+    container-tracker-agent-admin.launcher \
+    container-tracker-agent-tray.desktop \
+    container-tracker-agent-tray.launcher \
+    container-tracker-agent-ui.desktop \
+    container-tracker-agent-ui.launcher \
+    container-tracker-agent.install \
+    container-tracker-agent.launcher \
+    container-tracker-agent.service \
+    container-tracker-agent.sysusers \
+    container-tracker-agent.tmpfiles
+  do
+    link_target="$(realpath --relative-to "$pkg_dir/src" "$pkg_dir/$link_name")"
+    command ln -sfn "$link_target" "$pkg_dir/src/$link_name"
+  done
+}
+
+ensure_workspace_build_deps() {
+  if (cd "$repo_root" && node -e "require.resolve('esbuild')") >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "[agent:rebuild-restart:linux] missing workspace build dependency: esbuild"
+  echo "[agent:rebuild-restart:linux] installing workspace dependencies (pnpm install --frozen-lockfile)..."
+  (cd "$repo_root" && run_pnpm install --frozen-lockfile)
+}
+
 find_existing_tray_pids() {
   local user_id="$1"
   local proc_root environ_path pid
@@ -154,6 +202,8 @@ main() {
     exit 1
   fi
 
+  ensure_workspace_build_deps
+
   agent_id="$(first_non_empty \
     "$(read_env_value "$project_env_path" AGENT_ID || true)" \
     "${AGENT_ID:-}" \
@@ -186,6 +236,7 @@ main() {
   echo "[agent:rebuild-restart:linux] building package..."
   cd "$pkg_dir"
   makepkg -f --nodeps
+  normalize_packaging_source_links
 
   pkg_file="$(ls -1t container-tracker-agent-*-x86_64.pkg.tar.zst | head -n 1)"
   if [ -z "$pkg_file" ]; then

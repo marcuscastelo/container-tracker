@@ -20,6 +20,32 @@ function writeProcEnviron(filePath, values) {
   fs.writeFileSync(filePath, `${values.join('\u0000')}\u0000`, 'utf8')
 }
 
+function createPackagingSourceTree(tempDir) {
+  const pkgDir = path.join(tempDir, 'packaging', 'arch')
+  fs.mkdirSync(path.join(pkgDir, 'src'), { recursive: true })
+
+  const linkNames = [
+    'container-tracker-agent-admin.launcher',
+    'container-tracker-agent-tray.desktop',
+    'container-tracker-agent-tray.launcher',
+    'container-tracker-agent-ui.desktop',
+    'container-tracker-agent-ui.launcher',
+    'container-tracker-agent.install',
+    'container-tracker-agent.launcher',
+    'container-tracker-agent.service',
+    'container-tracker-agent.sysusers',
+    'container-tracker-agent.tmpfiles',
+  ]
+
+  for (const linkName of linkNames) {
+    const targetPath = path.join(pkgDir, linkName)
+    fs.writeFileSync(targetPath, `${linkName}\n`, 'utf8')
+    fs.symlinkSync(targetPath, path.join(pkgDir, 'src', linkName))
+  }
+
+  return { linkNames, pkgDir }
+}
+
 describeOnLinuxShellHost('rebuild-restart-linux tray restart', () => {
   it('kills only tray-mode Electron processes and avoids matching the wrapper path', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rebuild-restart-linux-'))
@@ -98,6 +124,37 @@ restart_tray_for_current_session
     expect(fs.readFileSync(pgrepCapturePath, 'utf8')).not.toContain('/usr/bin/ct-agent-tray')
     expect(fs.readFileSync(killCapturePath, 'utf8')).toContain('111')
     expect(fs.readFileSync(killCapturePath, 'utf8')).not.toContain('222')
+  })
+
+  it('normalizes packaging symlinks back to relative targets after makepkg rewrites them', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rebuild-restart-linux-links-'))
+    const { linkNames, pkgDir } = createPackagingSourceTree(tempDir)
+
+    const result = spawnSync(
+      'bash',
+      [
+        '-lc',
+        `source "$SCRIPT_PATH"
+pkg_dir="$PKG_DIR"
+normalize_packaging_source_links
+`,
+      ],
+      {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PKG_DIR: pkgDir,
+          SCRIPT_PATH: scriptPath,
+        },
+      },
+    )
+
+    expect(result.status).toBe(0)
+
+    for (const linkName of linkNames) {
+      expect(fs.readlinkSync(path.join(pkgDir, 'src', linkName))).toBe(`../${linkName}`)
+    }
   })
 
   it('does not inject a backend URL default when no BACKEND_URL is provided', () => {
