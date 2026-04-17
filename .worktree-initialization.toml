@@ -9,5 +9,7 @@ command = "pnpm install"
 required = true
 
 [[run]]
+# Default worktrees bind to shared staging.
+# Run `pnpm db:emancipate` later if this worktree needs an isolated Supabase stack.
 command = "pnpm db:worktree:init"
 required = true

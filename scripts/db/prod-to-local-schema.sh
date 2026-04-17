@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-pnpm supabase:start
+pnpm db:stage:ensure
 pnpm db:prod:pull:schema
 
-echo "Now rebuild local from migrations if desired:"
-echo "npx supabase db reset"
+echo "Shared staging was kept intact. Review the pulled schema and rebuild staging explicitly if needed:"
+echo "pnpm db:stage:rebuild"

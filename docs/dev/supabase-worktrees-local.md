@@ -1,26 +1,13 @@
-# Supabase Local por Worktree (Stack Compartilhada)
+# Worktrees: Staging Compartilhado e Dev Emancipada
 
-Este guia define o fluxo operacional para múltiplas worktrees locais com isolamento de banco por worktree.
+Este guia define o fluxo operacional para múltiplas worktrees locais com isolamento real por stack Supabase, sem depender de branching remoto.
 
 Modelo adotado:
-- 1 stack Supabase local compartilhada (containers únicos)
-- 1 template compartilhado (`ct_template_seeded`)
-- 1 database isolado por worktree (`ct_wt_<slug>_<hash>`)
+- `Prod`: ambiente real, manual, fora do tooling local
+- `Staging`: stack Supabase local compartilhada por todas as worktrees não emancipadas
+- `Dev`: stack Supabase completa isolada por worktree, criada sob demanda via `pnpm db:emancipate`
 
-## O que este fluxo resolve
-
-Quando múltiplos agents/LLMs rodam em paralelo, cada worktree usa seu próprio DB local.
-Isso evita contaminação de estado entre migrations e diffs.
-
-## Regras obrigatórias
-
-- Tudo é **local-only**.
-- Não usar `supabase link`.
-- Não usar `db push` remoto.
-- Não usar preview branches remotas.
-- Push/promoção remota continuam manuais e fora do escopo deste fluxo.
-
-## Bootstrap de uma worktree
+## Entry point
 
 ```bash
 git worktree add ../wt-feature minha-branch
@@ -28,39 +15,84 @@ cd ../wt-feature
 pnpm initialize-worktree
 ```
 
-`pnpm initialize-worktree` agora executa:
+`pnpm initialize-worktree` continua sendo o bootstrap canônico e executa:
 1. cópia de `.env`
 2. `pnpm install`
 3. `pnpm db:worktree:init`
 
 Resultado esperado:
-- stack local garantida
-- template compartilhado garantido
-- DB isolado da worktree criado/reusado
-- `.env` atualizado com bloco gerenciado de DB
-- metadata local gravada em `.worktree-db.local.json`
+- worktree em `mode=staging`
+- `.worktree-state.json` persistido localmente
+- `.env` com bloco gerenciado apontando para `staging`
+- nenhuma stack própria emancipada criada por padrão
 
-## Comandos operacionais
+## Metadata da worktree
 
-```bash
-pnpm db:local:stack:ensure
-pnpm db:template:ensure
-pnpm db:template:refresh
-pnpm db:worktree:init
-pnpm db:worktree:reset
-pnpm db:worktree:status
-pnpm db:worktree:drop
+Arquivo local canônico:
+- `.worktree-state.json`
+
+Ele persiste:
+- `worktreeId`
+- `mode`
+- `staging.projectId`, `workdir`, `snapshotPath`, `ports`
+- `emancipated.projectId`, `workdir`, `ports`, `status`, `preserved`
+- `generatedFiles`
+
+As secrets/keys não são persistidas na metadata. Elas são reidratadas via `supabase status -o env` no ambiente ativo.
+
+## Runtime root compartilhado
+
+Todos os artefatos compartilhados ficam em:
+
+```text
+$(git rev-parse --git-common-dir)/ct-local-envs/
 ```
 
-## Como o template funciona
+Estrutura:
+- `staging/project/`: projeto Supabase compartilhado de staging
+- `staging/snapshots/staging.dump`: snapshot local reutilizável
+- `worktrees/<worktree-id>/project/`: projeto Supabase da worktree emancipada
+- `worktrees/<worktree-id>/state.json`: espelho compartilhado do estado da worktree
+- `locks/`: locks locais para rebuild/snapshot/alocação
 
-- `db:template:ensure`: cria `ct_template_seeded` só se não existir.
-- `db:template:refresh`: recria explicitamente o template (drop + create + reset + seed).
-- O template usa migrations versionadas e `supabase/seed.sql` como base reproduzível.
+## Staging compartilhado
 
-## Como migrations são validadas por worktree
+Comandos:
 
-Scripts de migration usam `LOCAL_DB_URL` da worktree atual:
+```bash
+pnpm db:stage:ensure
+pnpm db:stage:status
+pnpm db:stage:refresh-local-snapshot
+pnpm db:stage:rebuild
+```
+
+Semântica:
+- `db:stage:ensure`: materializa e sobe o `staging` compartilhado
+- `db:stage:refresh-local-snapshot`: atualiza o snapshot local usado por futuras emancipações
+- `db:stage:rebuild`: recria explicitamente o projeto compartilhado de staging e renova o snapshot
+
+Regras:
+- branches comuns usam `staging` por padrão
+- não execute migrations destrutivas diretamente em `staging`
+- `staging` não é playground para testes destrutivos de agents
+
+## Emancipação
+
+```bash
+pnpm db:emancipate
+pnpm db:emancipate -- --fresh
+```
+
+Semântica:
+- sobe ou reutiliza a stack isolada da worktree
+- rebinda `.env` para a stack Dev da worktree
+- atualiza `.worktree-state.json` para `mode=emancipated`
+
+Política:
+- sem `--fresh`, reaproveita a stack preservada da worktree quando existir
+- com `--fresh`, recria a stack Dev a partir do snapshot local de `staging`
+
+Depois da emancipação, a worktree pode rodar:
 
 ```bash
 pnpm supabase:reset
@@ -68,38 +100,61 @@ pnpm supabase:db:diff -- --file nome_da_migration
 pnpm supabase:gen-types
 ```
 
-Notas:
-- `supabase:reset` recria o DB isolado da worktree clonando `ct_template_seeded`.
-- `supabase:db:diff` e `supabase:gen-types` usam `LOCAL_DB_URL` da worktree atual.
-- Guardrail: comandos falham se `LOCAL_DB_URL` apontar para `postgres` (DB administrativo) ou template.
+## Rejoin para staging
 
-## Política de idempotência
+```bash
+pnpm db:rejoin
+```
 
-- Reexecutar `pnpm db:worktree:init` é seguro.
-- Se DB da worktree já existir: ele é reutilizado (não reseta automaticamente).
-- Reset destrutivo é explícito via comando (`supabase:reset` / `db:worktree:reset` / `db:worktree:drop` / `db:template:refresh`).
-- `db:template:refresh` não derruba worktrees automaticamente, mas atualiza a base usada por resets futuros.
+Semântica:
+- volta a apontar para `staging`
+- para a stack Dev da worktree sem destruir seus volumes
+- mantém a stack isolada preservada para futura reemancipação
 
-## Configuração local gerada
+## Destroy seguro da worktree
 
-O `.env` recebe um bloco delimitado:
+```bash
+pnpm destroy-worktree
+pnpm destroy-worktree -- --force
+```
 
+Semântica:
+- falha no checkout canônico principal
+- se houver stack Dev emancipada, para e remove somente os recursos dela
+- remove `.worktree-state.json` e metadata legada da worktree atual
+- executa `git worktree remove` com preflight de segurança
+- nunca toca em `staging`, `prod` ou worktrees alheias
+
+## Bloco gerenciado no `.env`
+
+O `.env` recebe um bloco auto-gerado com:
+- `CT_WORKTREE_ENV_MODE`
+- `CT_WORKTREE_ID`
+- `CT_SUPABASE_PROJECT_ID`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY`
+- `SUPABASE_JWT_SECRET`
+- `AGENT_ENROLL_SUPABASE_URL`
+- `AGENT_ENROLL_SUPABASE_ANON_KEY`
+- `VITE_PUBLIC_SUPABASE_URL`
+- `VITE_PUBLIC_SUPABASE_ANON_KEY`
+- `POSTGRES_HOST`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
 - `POSTGRES_DATABASE`
-- `POSTGRES_PRISMA_URL`
 - `POSTGRES_URL`
 - `POSTGRES_URL_NON_POOLING`
+- `POSTGRES_PRISMA_URL`
 - `LOCAL_DB_URL`
 
-Esse bloco é gerenciado automaticamente por `pnpm db:worktree:init`.
+Esse bloco é idempotente e substitui automaticamente o bloco legado DB-only.
 
 ## Limitações conhecidas
 
-- Fluxo depende de Docker + Supabase CLI local.
-- O lock de template é local ao repositório (via `git-common-dir`) e evita corrida entre worktrees do mesmo repo local.
-- Não existe sincronização remota automática entre branches.
-- `supabase:db:diff` pode incluir ruído de grants/ownership quando comparar DB isolado vs shadow DB. Trate como ruído operacional e foque em alterações semânticas de schema/migration.
-
-## Integração manual após trabalho local
-
-O agent/worktree produz migrations no Git local.
-Qualquer promoção/sync remoto continua manual, fora deste fluxo.
+- O snapshot local usado para emancipação está pragmáticamente limitado a dados do schema `public`; isso evita colisões com ownership e objetos internos gerenciados pelo Supabase.
+- Se o checkout canônico principal ainda não tiver `supabase/config.toml`, o `staging` compartilhado cai em fallback para o scaffold da worktree atual até o checkout principal ficar completo.
+- `storage` continua desligado enquanto o `supabase/config.toml` versionado do repo permanecer assim.
+- Não existe promoção remota automática, preview branches remotas nem deploy automático de migrations nesta fase.
