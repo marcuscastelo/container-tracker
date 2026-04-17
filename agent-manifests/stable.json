@@ -1,15 +1,15 @@
 {
   "channel": "stable",
-  "version": "v0.4.0-alpha.2",
+  "version": "0.4.0-alpha.3",
   "platforms": {
     "linux-x64": {
-      "url": "https://github.com/marcuscastelo/container-tracker/releases/download/agent/vv0.4.0-alpha.2/agent-linux-x64.tar.gz",
-      "checksum": "374958cb72a10546c649724ad4b24b0f16210a8a6de646955004209c5ee53242"
+      "url": "https://github.com/marcuscastelo/container-tracker/releases/download/agent/v0.4.0-alpha.3/agent-linux-x64.tar.gz",
+      "checksum": "f0d1e2d1b50505d9272efb6b3a1b4b86444e9d87712c7b80ffc4a0df3ae7338e"
     },
     "windows-x64": {
-      "url": "https://github.com/marcuscastelo/container-tracker/releases/download/agent/vv0.4.0-alpha.2/agent-windows-x64.zip",
-      "checksum": "fe46aa4afcbda745157fcad0bbf288627132203a1af2de3d9a2c7c47271b3761"
+      "url": "https://github.com/marcuscastelo/container-tracker/releases/download/agent/v0.4.0-alpha.3/agent-windows-x64.zip",
+      "checksum": "e149db9f50e009028f6de46f29af81cc97ccd3edabffdb7d3adf0acce4ae6498"
     }
   },
-  "published_at": "2026-04-16T12:16:31Z"
+  "published_at": "2026-04-17T02:14:14Z"
 }
