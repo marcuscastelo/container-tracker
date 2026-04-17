@@ -37,6 +37,15 @@ jobs:
             --dir /tmp/agent-release \
             --clobber
 
+      - name: Promote GitHub release to stable
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: agent/v${{ inputs.version }}
+          name: Agent v${{ inputs.version }}
+          prerelease: false
+          draft: false
+          make_latest: true
+
       - name: Generate stable manifest from canary
         env:
           VERSION: ${{ inputs.version }}

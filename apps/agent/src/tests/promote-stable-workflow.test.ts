@@ -6,7 +6,18 @@ function readPromoteStableWorkflow(): string {
   return fs.readFileSync(path.resolve('.github/workflows/promote-stable.yml'), 'utf8')
 }
 
+const VERSION_INPUT_TOKEN = ['${{ inputs.version ', '}}'].join('')
+
 describe('promote-stable workflow', () => {
+  it('promotes the existing GitHub release out of prerelease mode', () => {
+    const workflow = readPromoteStableWorkflow()
+
+    expect(workflow).toContain('uses: softprops/action-gh-release@v2')
+    expect(workflow).toContain(`name: Agent v${VERSION_INPUT_TOKEN}`)
+    expect(workflow).toContain('prerelease: false')
+    expect(workflow).toContain('make_latest: true')
+  })
+
   it('removes legacy root download/checksum fields during stable normalization', () => {
     const workflow = readPromoteStableWorkflow()
 

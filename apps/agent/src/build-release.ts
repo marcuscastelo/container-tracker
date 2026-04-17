@@ -80,6 +80,8 @@ const STATIC_GATE_FORBIDDEN_PATTERNS = [
   },
 ] as const
 
+type AgentReleaseTarget = 'linux-x64' | 'windows-x64'
+
 type RuntimeDependencyResolution = {
   readonly packageName: string
   readonly packageDir: string
@@ -1273,6 +1275,7 @@ async function pruneReleaseAppForRuntime(
 async function runPreflightChecks(command: {
   readonly repoRoot: string
   readonly releaseDir: string
+  readonly releaseTarget: AgentReleaseTarget
   readonly installerFilePath: string
   readonly bootstrapTemplatePath: string
   readonly linuxAdapterSourcePath: string
@@ -1280,8 +1283,16 @@ async function runPreflightChecks(command: {
   readonly windowsPathsSourcePath: string
 }): Promise<void> {
   const errors: string[] = []
+  const requiredReleaseFiles =
+    command.releaseTarget === 'windows-x64'
+      ? REQUIRED_RELEASE_FILES
+      : ([
+          'app/dist/agent.js',
+          'app/dist/apps/agent/src/supervisor.js',
+          'config/bootstrap.env',
+        ] as const)
 
-  for (const relativePath of REQUIRED_RELEASE_FILES) {
+  for (const relativePath of requiredReleaseFiles) {
     const absolutePath = path.join(command.releaseDir, relativePath)
     if (!(await pathExists(absolutePath))) {
       errors.push(`missing required release file: ${relativePath}`)
@@ -1535,6 +1546,8 @@ async function buildRelease(): Promise<void> {
   const tempDownloadDir = path.join(releaseDir, '.downloads')
   const cacheDownloadDir = path.join(appsAgentDir, '.cache', 'downloads')
   const agentPackageJsonPath = path.join(appsAgentDir, 'package.json')
+  const releaseTarget = resolveReleaseTarget()
+  const includeWindowsRuntime = releaseTarget === 'windows-x64'
 
   const nodeVersion = process.env.AGENT_NODE_WINDOWS_VERSION ?? DEFAULT_NODE_WINDOWS_VERSION
 
@@ -1572,62 +1585,82 @@ async function buildRelease(): Promise<void> {
     await fs.cp(distSharedSrcDir, path.join(releaseAppDistDir, 'src'), { recursive: true })
   }
   await writeAgentEntrypointShims(releaseAppDistDir)
-  await copyControlUiAssets({
-    distControlUiDir,
-    releaseControlUiDir,
-  })
-  await copyElectronRuntime({
-    repoRoot,
-    releaseElectronDir,
-  })
+  if (includeWindowsRuntime) {
+    await copyControlUiAssets({
+      distControlUiDir,
+      releaseControlUiDir,
+    })
+    await copyElectronRuntime({
+      repoRoot,
+      releaseElectronDir,
+    })
+  }
   const runtimeSnapshot = await ensureAgentRuntimeDependenciesInReleaseApp({
     repoRoot,
     releaseAppDir,
   })
   await pruneReleaseAppForRuntime(releaseAppDir, runtimeSnapshot)
 
-  const nodeZipName = `node-${nodeVersion}-win-x64.zip`
-  const nodeZipPath = path.join(cacheDownloadDir, nodeZipName)
-  const nodeExtractDir = path.join(tempDownloadDir, 'node-extracted')
-  const nodeDownloadUrl = `https://nodejs.org/dist/${nodeVersion}/${nodeZipName}`
-  await ensureDownloadedFile({
-    label: 'node runtime',
-    url: nodeDownloadUrl,
-    targetPath: nodeZipPath,
-  })
-  await verifyNodeRuntimeChecksum({
-    nodeVersion,
-    nodeZipPath,
-  })
+  if (includeWindowsRuntime) {
+    const nodeZipName = `node-${nodeVersion}-win-x64.zip`
+    const nodeZipPath = path.join(cacheDownloadDir, nodeZipName)
+    const nodeExtractDir = path.join(tempDownloadDir, 'node-extracted')
+    const nodeDownloadUrl = `https://nodejs.org/dist/${nodeVersion}/${nodeZipName}`
+    await ensureDownloadedFile({
+      label: 'node runtime',
+      url: nodeDownloadUrl,
+      targetPath: nodeZipPath,
+    })
+    await verifyNodeRuntimeChecksum({
+      nodeVersion,
+      nodeZipPath,
+    })
 
-  await fs.rm(nodeExtractDir, { recursive: true, force: true })
-  await fs.mkdir(nodeExtractDir, { recursive: true })
-  await extractZip(nodeZipPath, nodeExtractDir, repoRoot)
+    await fs.rm(nodeExtractDir, { recursive: true, force: true })
+    await fs.mkdir(nodeExtractDir, { recursive: true })
+    await extractZip(nodeZipPath, nodeExtractDir, repoRoot)
 
-  const extractedNodeDir = await findExtractedNodeDirectory(nodeExtractDir)
-  const extractedNodeExePath = path.join(extractedNodeDir, 'node.exe')
-  await ensurePathExists(extractedNodeExePath, 'extracted node runtime executable')
-  await fs.mkdir(releaseNodeDir, { recursive: true })
-  const releaseNodeExePath = path.join(releaseNodeDir, 'node.exe')
-  await fs.cp(extractedNodeExePath, releaseNodeExePath)
-  await buildStartupLauncher({
-    repoRoot,
-    releaseDir,
-    nodeVersion,
-    windowsNodeExePath: releaseNodeExePath,
-  })
+    const extractedNodeDir = await findExtractedNodeDirectory(nodeExtractDir)
+    const extractedNodeExePath = path.join(extractedNodeDir, 'node.exe')
+    await ensurePathExists(extractedNodeExePath, 'extracted node runtime executable')
+    await fs.mkdir(releaseNodeDir, { recursive: true })
+    const releaseNodeExePath = path.join(releaseNodeDir, 'node.exe')
+    await fs.cp(extractedNodeExePath, releaseNodeExePath)
+    await buildStartupLauncher({
+      repoRoot,
+      releaseDir,
+      nodeVersion,
+      windowsNodeExePath: releaseNodeExePath,
+    })
+  }
 
   await fs.rm(tempDownloadDir, { recursive: true, force: true })
 
   await runPreflightChecks({
     repoRoot,
     releaseDir,
+    releaseTarget,
     installerFilePath: path.join(installerDir, 'installer.iss'),
     bootstrapTemplatePath: path.join(installerDir, 'bootstrap.env.template'),
     linuxAdapterSourcePath: path.join(appsAgentDir, 'src', 'platform', 'linux.adapter.ts'),
     windowsAdapterSourcePath: path.join(appsAgentDir, 'src', 'platform', 'windows.adapter.ts'),
     windowsPathsSourcePath: path.join(appsAgentDir, 'src', 'platform', 'windows-paths.ts'),
   })
+}
+
+function resolveReleaseTarget(): AgentReleaseTarget {
+  const rawTarget = normalizeEnvValue(process.env.AGENT_RELEASE_TARGET)
+  if (rawTarget === null) {
+    return 'windows-x64'
+  }
+
+  if (rawTarget === 'linux-x64' || rawTarget === 'windows-x64') {
+    return rawTarget
+  }
+
+  throw new Error(
+    `unsupported AGENT_RELEASE_TARGET "${rawTarget}"; expected "linux-x64" or "windows-x64"`,
+  )
 }
 
 const isDirectExecution =
