@@ -16,17 +16,24 @@ function writeFile(filePath, contents) {
 }
 
 describe('rewriteEmittedImports', () => {
-  it('rewrites emitted @tools imports to relative output paths', () => {
+  it('rewrites emitted @agent imports to relative output paths', () => {
     const distRoot = makeTempDistRoot()
-    const mainPath = path.join(distRoot, 'tools', 'agent-control-ui', 'main.js')
-    const ipcPath = path.join(distRoot, 'tools', 'agent-control-ui', 'ipc.js')
-    const contractsPath = path.join(distRoot, 'tools', 'agent', 'control-core', 'contracts.js')
+    const mainPath = path.join(distRoot, 'apps', 'agent', 'src', 'electron', 'main.js')
+    const ipcPath = path.join(distRoot, 'apps', 'agent', 'src', 'electron', 'ipc.js')
+    const contractsPath = path.join(
+      distRoot,
+      'apps',
+      'agent',
+      'src',
+      'control-core',
+      'contracts.js',
+    )
 
     writeFile(
       mainPath,
       [
-        "import { value } from '@tools/agent-control-ui/ipc';",
-        "import { schema } from '@tools/agent/control-core/contracts';",
+        "import { value } from '@agent/electron/ipc';",
+        "import { schema } from '@agent/control-core/contracts';",
         '',
       ].join('\n'),
     )
@@ -39,7 +46,7 @@ describe('rewriteEmittedImports', () => {
     expect(result.rewrittenFiles).toBe(1)
     expect(result.rewrittenImports).toBe(2)
     expect(rewrittenMain).toContain("from './ipc.js'")
-    expect(rewrittenMain).toContain("from '../agent/control-core/contracts.js'")
-    expect(rewrittenMain).not.toContain('@tools/')
+    expect(rewrittenMain).toContain("from '../control-core/contracts.js'")
+    expect(rewrittenMain).not.toContain('@agent/')
   })
 })

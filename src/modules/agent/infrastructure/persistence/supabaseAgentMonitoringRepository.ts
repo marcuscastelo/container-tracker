@@ -1,4 +1,5 @@
 import type { AgentMonitoringRepository } from '~/modules/agent/application/agent-monitoring.repository'
+import { toUniqueNormalizedVersions } from '~/modules/agent/application/normalize-blocked-versions'
 import { agentMonitoringPersistenceMappers } from '~/modules/agent/infrastructure/persistence/agent-monitoring.persistence.mappers'
 import { supabaseServer } from '~/shared/supabase/supabase.server'
 import {
@@ -308,6 +309,59 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
     return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
   },
 
+  async updateAgentRemotePolicy({
+    tenantId,
+    agentId,
+    updatesPaused,
+    updateChannel,
+    blockedVersions,
+    desiredVersion,
+  }) {
+    const patch = {
+      ...(updatesPaused === undefined ? {} : { remote_updates_paused: updatesPaused }),
+      ...(updateChannel === undefined ? {} : { update_channel: updateChannel }),
+      ...(blockedVersions === undefined
+        ? {}
+        : { remote_blocked_versions: toUniqueNormalizedVersions(blockedVersions) }),
+      ...(desiredVersion === undefined ? {} : { desired_version: desiredVersion }),
+    }
+
+    if (Object.keys(patch).length === 0) {
+      const currentResult = await supabaseServer
+        .from('tracking_agents')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('id', agentId)
+        .is('revoked_at', null)
+        .maybeSingle()
+
+      const currentRow = unwrapSupabaseSingleOrNull(currentResult, {
+        operation: 'updateAgentRemotePolicy/current',
+        table: 'tracking_agents',
+      })
+
+      if (!currentRow) return null
+      return agentMonitoringPersistenceMappers.fromTrackingAgentRow(currentRow)
+    }
+
+    const result = await supabaseServer
+      .from('tracking_agents')
+      .update(patch)
+      .eq('id', agentId)
+      .eq('tenant_id', tenantId)
+      .is('revoked_at', null)
+      .select('*')
+      .maybeSingle()
+
+    const row = unwrapSupabaseSingleOrNull(result, {
+      operation: 'updateAgentRemotePolicy',
+      table: 'tracking_agents',
+    })
+
+    if (!row) return null
+    return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
+  },
+
   async requestAgentRestart({ tenantId, agentId, requestedAt }) {
     const result = await supabaseServer
       .from('tracking_agents')
@@ -344,6 +398,90 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
       operation: 'requestAgentRestart/agent_control_commands',
       table: 'agent_control_commands',
     })
+
+    return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
+  },
+
+  async requestAgentReset({ tenantId, agentId, requestedAt }) {
+    const previousStateResult = await supabaseServer
+      .from('tracking_agents')
+      .select('restart_requested_at,updater_state')
+      .eq('id', agentId)
+      .eq('tenant_id', tenantId)
+      .is('revoked_at', null)
+      .maybeSingle()
+
+    const previousStateRow = unwrapSupabaseSingleOrNull(previousStateResult, {
+      operation: 'requestAgentReset/previousState',
+      table: 'tracking_agents',
+    })
+
+    if (!previousStateRow) return null
+
+    const result = await supabaseServer
+      .from('tracking_agents')
+      .update({
+        restart_requested_at: requestedAt,
+        updater_state: 'draining',
+      })
+      .eq('id', agentId)
+      .eq('tenant_id', tenantId)
+      .is('revoked_at', null)
+      .select('*')
+      .maybeSingle()
+
+    const row = unwrapSupabaseSingleOrNull(result, {
+      operation: 'requestAgentReset',
+      table: 'tracking_agents',
+    })
+
+    if (!row) return null
+
+    try {
+      const commandResult = await supabaseServer
+        .from('agent_control_commands')
+        .insert({
+          tenant_id: tenantId,
+          agent_id: agentId,
+          command_type: 'RESET_AGENT',
+          requested_at: requestedAt,
+          payload: {},
+          requested_by: 'control-plane',
+        })
+        .select('id')
+
+      unwrapSupabaseResultOrThrow(commandResult, {
+        operation: 'requestAgentReset/agent_control_commands',
+        table: 'agent_control_commands',
+      })
+    } catch (error) {
+      try {
+        const rollbackResult = await supabaseServer
+          .from('tracking_agents')
+          .update({
+            restart_requested_at: previousStateRow.restart_requested_at,
+            updater_state: previousStateRow.updater_state,
+          })
+          .eq('id', agentId)
+          .eq('tenant_id', tenantId)
+          .is('revoked_at', null)
+          .select('id')
+
+        unwrapSupabaseResultOrThrow(rollbackResult, {
+          operation: 'requestAgentReset/rollback',
+          table: 'tracking_agents',
+        })
+      } catch (rollbackError) {
+        const enqueueErrorMessage = error instanceof Error ? error.message : String(error)
+        const rollbackErrorMessage =
+          rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
+        throw new Error(
+          `requestAgentReset command enqueue failed and rollback failed: enqueue=${enqueueErrorMessage}; rollback=${rollbackErrorMessage}`,
+        )
+      }
+
+      throw error
+    }
 
     return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
   },

@@ -6,6 +6,7 @@ import type { AgentListItemVM } from '~/modules/agent/ui/vm/agent.vm'
 type Props = {
   readonly agents: readonly AgentListItemVM[]
   readonly loading: boolean
+  readonly refreshing?: boolean
   readonly hasError: boolean
   readonly onAgentClick: (agentId: string) => void
   readonly onLogsClick: (agentId: string) => void
@@ -126,6 +127,12 @@ function AgentCard(props: {
 export function AgentCardList(props: Props): JSX.Element {
   return (
     <div class="flex flex-col gap-2 md:hidden">
+      <Show when={props.refreshing === true}>
+        <div class="rounded-lg border border-border bg-surface px-3 py-1.5 text-micro text-text-muted">
+          Updating agents...
+        </div>
+      </Show>
+
       <Show when={props.hasError}>
         <ErrorCard onRetry={props.onRetry} />
       </Show>

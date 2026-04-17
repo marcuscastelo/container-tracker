@@ -152,7 +152,7 @@ Confirmed writers:
 
 ### Delayed failure behavior
 
-Most agent scrape/ingest errors are not explicitly marked failed by the agent runtime; the agent logs the error and waits for lease expiration (`tools/agent/agent.ts:735-748`).
+Most agent scrape/ingest errors are not explicitly marked failed by the agent runtime; the agent logs the error and waits for lease expiration (`apps/agent/src/agent.ts:735-748`).
 
 ## Retry Model
 
@@ -161,7 +161,7 @@ Most agent scrape/ingest errors are not explicitly marked failed by the agent ru
 - queue retry by lease expiry and reclaim (`supabase/migrations/2026022501_agent_sync_mvp.sql:80-98`)
 - process sync server polling with fixed 5-second interval and 180-second timeout (`src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:3-5`, `src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:113-150`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:4-5`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:110-147`)
 - UI refresh status polling with exponential backoff (`src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`)
-- agent enrollment/bootstrap retry with exponential backoff + jitter, but this is agent runtime bootstrap reliability, not per-sync job retry (`tools/agent/backoff.ts:1-31`, `tools/agent/agent.ts:535-596`)
+- agent enrollment/bootstrap retry with exponential backoff + jitter, but this is agent runtime bootstrap reliability, not per-sync job retry (`apps/agent/src/backoff.ts:1-31`, `apps/agent/src/agent.ts:535-596`)
 
 ### What does not exist today
 

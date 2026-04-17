@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process'
+import fsSync from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
@@ -345,23 +346,27 @@ export function toErrorMessage(error) {
 }
 
 export function log(message) {
-  console.log(`[initialize-worktree] ${message}`)
+  writeLine(1, message)
 }
 
 export function warn(message) {
-  console.warn(`[initialize-worktree] ${message}`)
+  writeLine(2, message)
 }
 
 export function fail(message) {
-  console.error(`[initialize-worktree] ${message}`)
+  writeLine(2, message)
   process.exit(1)
+}
+
+function writeLine(fd, message) {
+  fsSync.writeSync(fd, `[initialize-worktree] ${message}\n`)
 }
 
 const entrypointPath = process.argv[1]
 
 if (entrypointPath && import.meta.url === pathToFileURL(path.resolve(entrypointPath)).href) {
   main().catch((error) => {
-    console.error(`[initialize-worktree] ${toErrorMessage(error)}`)
+    writeLine(2, toErrorMessage(error))
     process.exit(1)
   })
 }

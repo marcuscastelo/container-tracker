@@ -687,4 +687,79 @@ export default [
       ],
     },
   },
+  {
+    files: ['apps/agent/src/release/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: [
+          {
+            group: ['@agent/sync/**', '@agent/providers/**'],
+            message: 'release/* must not import sync/* or providers/* modules.',
+          },
+        ],
+      }),
+    },
+  },
+  {
+    files: ['apps/agent/src/providers/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: [
+          {
+            group: ['@agent/sync/**'],
+            message:
+              'providers/* must not import sync orchestration modules (ack/polling/retry orchestration belongs to sync/*).',
+          },
+        ],
+      }),
+    },
+  },
+  {
+    files: ['apps/agent/src/app/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: [
+          {
+            group: [
+              '@agent/release/domain/**',
+              '@agent/runtime/domain/**',
+              '@agent/sync/domain/**',
+            ],
+            message:
+              'app/* is composition root and must not import operational policy from domain modules.',
+          },
+        ],
+      }),
+    },
+  },
+  {
+    files: ['apps/agent/src/**/*.{ts,tsx}'],
+    ignores: [
+      'apps/agent/src/platform/**/*.{ts,tsx}',
+      'apps/agent/src/core/contracts/**/*.{ts,tsx}',
+      'apps/agent/src/tests/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "MemberExpression[object.name='process'][property.name='platform']",
+          message:
+            'Use platform abstractions from apps/agent/src/platform/* instead of process.platform.',
+        },
+        {
+          selector:
+            'TSTypeAliasDeclaration[id.name=/^(ProviderInput|ProviderRunResult|AgentSyncJob|ReleaseState|RuntimeState|HeartbeatPayload|UnifiedReleaseManifest|UpdateManifestResponseDTO)$/], TSInterfaceDeclaration[id.name=/^(ProviderInput|ProviderRunResult|AgentSyncJob|ReleaseState|RuntimeState|HeartbeatPayload|UnifiedReleaseManifest|UpdateManifestResponseDTO)$/]',
+          message:
+            'Critical agent contracts must be declared only in apps/agent/src/core/contracts/*.',
+        },
+        {
+          selector:
+            'VariableDeclarator[id.name=/^(ProviderInputSchema|ProviderRunResultSchema|AgentSyncJobSchema|ReleaseStateSchema|RuntimeStateSchema|HeartbeatPayloadSchema|UnifiedReleaseManifestSchema|UpdateManifestResponseDTOSchema)$/]',
+          message:
+            'Critical agent Zod contracts must be centralized in apps/agent/src/core/contracts/*.',
+        },
+      ],
+    },
+  },
 ]

@@ -8,7 +8,7 @@ This document defines the canonical one-click flow for the Windows Agent install
 - If `MAERSK_ENABLED=1`, installer shows a dependency checklist for Chrome/Chromium.
   - If Chrome is already installed, checkbox appears pre-checked.
   - If Chrome is missing, user can check to trigger automatic install via `winget`.
-- Installer completes and configures per-user auto-start tasks.
+- Installer completes and configures per-user logon startup through `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
 - Runtime enrollment retries continue while backend is unreachable.
 
 ## Build installer artifacts
@@ -21,9 +21,10 @@ pnpm run agent:release
 
 `agent:release` runs:
 
-1. TypeScript build for `tools/agent/*`
+1. TypeScript build for `apps/agent/src/*`
 2. `release/` assembly (Node runtime + app + bootstrap config)
-3. preflight checks (`preflight ok` only when all checks pass)
+3. SEA startup launcher assembly for `release/ct-agent-startup.exe`
+4. preflight checks (`preflight ok` only when all checks pass)
 
 ### 2) Build transfer bundle (Linux -> Windows)
 
@@ -33,7 +34,7 @@ pnpm run agent:bundle
 
 Output: `dist/agent-installer-bundle.zip`
 
-Bundle content: `release/` plus `tools/agent/installer/*`.
+Bundle content: `release/` plus `apps/agent/src/installer/*`.
 
 ### 3) Build `Setup.exe` (Windows or Linux)
 
@@ -41,7 +42,7 @@ Bundle content: `release/` plus `tools/agent/installer/*`.
 pnpm run agent:setup
 ```
 
-Installer script: `tools/agent/installer/installer.iss`
+Installer script: `apps/agent/src/installer/installer.iss`
 
 Default strategy (`agent:setup`) is:
 
@@ -84,18 +85,17 @@ Installer does not require internet for the core install flow.
 If automatic Chrome install is selected on the dependency page, setup calls `winget` and may use the internet.
 
 - Copies binaries to `%LOCALAPPDATA%\Programs\ContainerTrackerAgent\`
+- Copies `ct-agent-startup.exe` to `%LOCALAPPDATA%\Programs\ContainerTrackerAgent\`
 - Ensures `%LOCALAPPDATA%\ContainerTracker\`
 - Ensures `%LOCALAPPDATA%\ContainerTracker\logs\`
-- Ensures `%LOCALAPPDATA%\ContainerTracker\data\`
-- Ensures `%LOCALAPPDATA%\ContainerTracker\cache\`
+- Ensures `%LOCALAPPDATA%\ContainerTracker\releases\`
+- Ensures `%LOCALAPPDATA%\ContainerTracker\downloads\`
+- Ensures `%LOCALAPPDATA%\ContainerTracker\run\`
 - Copies `bootstrap.env` to `%LOCALAPPDATA%\ContainerTracker\bootstrap.env`
-- Creates per-user startup task `ContainerTrackerAgent`:
-  - `Trigger=At logon`
-  - `LogonType=InteractiveToken`
-  - `RunLevel=LeastPrivilege`
-- Creates per-user startup task `ContainerTrackerAgentUpdater` with the same constraints
-- Triggers both tasks once after install
-- On uninstall: removes both tasks and installed binaries (user data directory is preserved)
+- Registers `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\ContainerTrackerAgent`
+  - value points to `%LOCALAPPDATA%\Programs\ContainerTrackerAgent\ct-agent-startup.exe`
+- Launches the startup bootstrap once after install
+- On uninstall: removes the Run key entry and installed binaries (user data directory is preserved)
 
 ## Runtime startup behavior
 
@@ -132,6 +132,8 @@ Default retry policy for enrollment:
 - Consumed bootstrap: `%LOCALAPPDATA%\ContainerTracker\bootstrap.env.consumed`
 - Effective config: `%LOCALAPPDATA%\ContainerTracker\config.env`
 - Logs: `%LOCALAPPDATA%\ContainerTracker\logs\`
+- Runtime state: `%LOCALAPPDATA%\ContainerTracker\runtime-state.json`
+- Release state: `%LOCALAPPDATA%\ContainerTracker\release-state.json`
 
 ## States and troubleshooting
 
@@ -166,8 +168,7 @@ Default retry policy for enrollment:
 ## Operational commands
 
 ```bat
-schtasks /Query /TN ContainerTrackerAgent /V /FO LIST
-schtasks /Query /TN ContainerTrackerAgentUpdater /V /FO LIST
+reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v ContainerTrackerAgent
 ```
 
 ## Coherence checklist
@@ -181,5 +182,5 @@ schtasks /Query /TN ContainerTrackerAgentUpdater /V /FO LIST
 ## Important notes
 
 - Installer is x64-only.
-- Updater is still stub in MVP.
+- Update orchestration is handled by supervisor/release flow (no parallel updater task).
 - Without code signing, Windows SmartScreen warnings may appear.

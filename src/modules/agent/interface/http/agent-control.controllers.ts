@@ -3,7 +3,7 @@ import {
   AgentControlCommandAckResponseSchema,
   AgentControlStateResponseSchema,
   AgentInfraConfigResponseSchema,
-} from '@tools/agent/control-core/contracts'
+} from '@agent/control-core/contracts'
 import type { AgentMonitoringUseCases } from '~/modules/agent/application/agent-monitoring.usecases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'

@@ -17,7 +17,7 @@
 | Tracking pipeline | `src/modules/tracking/application/*` + `src/modules/tracking/features/*` | Canonical ingest/normalize/diff/timeline/status/alerts (`src/modules/tracking/application/usecases/save-and-process.usecase.ts:35-60`, `src/modules/tracking/application/orchestration/pipeline.ts:70-130`) |
 | Persistence | `src/modules/*/infrastructure/persistence/*` | DB rows and mappers stay here (`src/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository.ts:13-25`, `src/modules/tracking/infrastructure/persistence/supabaseObservationRepository.ts:14-43`, `src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts:18-55`) |
 | Shared infra helpers | `src/shared/*` | Supabase client, realtime helper, env, response helpers (`src/shared/api/sync-requests.realtime.client.ts:1-35`, `src/shared/supabase/sync-requests.realtime.ts:151-285`, `src/shared/config/server-env.ts:21-79`) |
-| Agent runtime | `tools/agent/*` | Runtime/scheduler/bootstrap only; it reuses shared infra fetchers and realtime helpers (`tools/agent/agent.ts:11-22`, `tools/agent/agent.scheduler.ts:18-89`) |
+| Agent runtime | `apps/agent/src/*` | Runtime/scheduler/bootstrap only; it reuses shared infra fetchers and realtime helpers (`apps/agent/src/agent.ts:11-22`, `apps/agent/src/agent.scheduler.ts:18-89`) |
 
 ## Current Boundary Assessment
 
@@ -26,7 +26,7 @@
 - No cross-BC domain import was identified in the audited sync paths.
 - UI reads Response DTOs and maps to VMs; it does not derive timeline/status/alerts itself (`src/modules/process/ui/mappers/processDetail.ui-mapper.ts:172-255`, `docs/TYPE_ARCHITECTURE.md:140-158`).
 - Tracking semantic derivation remains in tracking code on the server (`src/modules/tracking/application/orchestration/pipeline.ts:70-130`).
-- Agent does not own a parallel normalization/derivation stack; it only fetches and posts raw payload (`tools/agent/agent.ts:656-733`).
+- Agent does not own a parallel normalization/derivation stack; it only fetches and posts raw payload (`apps/agent/src/agent.ts:656-733`).
 
 ### Finding 1: Cross-BC orchestration currently lives inside the process BC and its HTTP layer
 
@@ -106,7 +106,7 @@
 | Concern | Should live in | Reason |
 | --- | --- | --- |
 | enqueue rules, dedupe, leasing | `tracking` infra + tracking HTTP interface | operational queue is tracking-adjacent infra |
-| provider fetch execution | `tools/agent/*` runtime | isolate scraping and browser/HTTP runtime concerns |
+| provider fetch execution | `apps/agent/src/*` runtime | isolate scraping and browser/HTTP runtime concerns |
 | snapshot normalization, diff, timeline, status, alerts | `tracking` BC | canonical domain truth |
 | cross-BC process detail/dashboard composition | capability layer | follows `docs/BOUNDARIES.md` orchestration rule |
 | Response DTO mapping | `modules/*/interface/http/*.http.mappers.ts` | preserves type boundaries |

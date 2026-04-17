@@ -3,14 +3,18 @@ node_modules/
 .vinxi/
 .output/
 /release/
+apps/agent/.cache/
+apps/agent/release/
+dist/
 tools/agent/dist/
 tools/agent/.cache/
+tools/agent/installer/Output/
 dist/agent-installer-bundle.zip
-dist/agent-control-ui/tools/
 **/.pnpm-store/**
 
 marucs-src/
 .ralph-loop/
+.ralph
 .agent-runtime/
 .worktree-db.local.json
 .worktree-state.json

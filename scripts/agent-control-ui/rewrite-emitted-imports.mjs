@@ -3,11 +3,11 @@ import path from 'node:path'
 
 const emittedExtensions = ['.js', '.mjs', '.cjs', '.json']
 const importPatterns = [
-  /(from\s+['"])(@tools\/[^'"]+|~\/[^'"]+)(['"])/g,
-  /(import\s+['"])(@tools\/[^'"]+|~\/[^'"]+)(['"])/g,
-  /(import\(\s*['"])(@tools\/[^'"]+|~\/[^'"]+)(['"]\s*\))/g,
-  /(export\s+\*\s+from\s+['"])(@tools\/[^'"]+|~\/[^'"]+)(['"])/g,
-  /(export\s+\{[^}]+\}\s+from\s+['"])(@tools\/[^'"]+|~\/[^'"]+)(['"])/g,
+  /(from\s+['"])(@agent\/[^'"]+|~\/[^'"]+)(['"])/g,
+  /(import\s+['"])(@agent\/[^'"]+|~\/[^'"]+)(['"])/g,
+  /(import\(\s*['"])(@agent\/[^'"]+|~\/[^'"]+)(['"]\s*\))/g,
+  /(export\s+\*\s+from\s+['"])(@agent\/[^'"]+|~\/[^'"]+)(['"])/g,
+  /(export\s+\{[^}]+\}\s+from\s+['"])(@agent\/[^'"]+|~\/[^'"]+)(['"])/g,
 ]
 
 function walkFiles(rootDir) {
@@ -35,8 +35,8 @@ function walkFiles(rootDir) {
 }
 
 function resolveAliasBasePath(specifier, distRoot) {
-  if (specifier.startsWith('@tools/')) {
-    return path.join(distRoot, 'tools', specifier.slice('@tools/'.length))
+  if (specifier.startsWith('@agent/')) {
+    return path.join(distRoot, 'apps', 'agent', 'src', specifier.slice('@agent/'.length))
   }
 
   if (specifier.startsWith('~/')) {
