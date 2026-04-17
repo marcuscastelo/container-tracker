@@ -460,6 +460,9 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       .eq('category', 'monitoring')
       .eq('lifecycle_state', 'ACTIVE')
 
-    unwrapSupabaseResultOrThrow(result, { operation: 'autoResolveMany', table: WRITE_TABLE })
+    // Supabase update without .select() returns 204 + data=null on success.
+    if (result.error) {
+      unwrapSupabaseResultOrThrow(result, { operation: 'autoResolveMany', table: WRITE_TABLE })
+    }
   },
 }

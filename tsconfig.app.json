@@ -4,8 +4,7 @@
     "node_modules",
     "dist",
     ".output",
-    "tools/agent/**/*",
-    "tools/agent-control-ui/**/*",
+    "apps/agent/**/*",
     "tools/ralph-loop/**/*",
     ".ralph-loop/**/*",
     "packaging/arch/src/agent-app/**/*"

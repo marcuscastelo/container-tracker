@@ -12,6 +12,7 @@ export default defineConfig({
     resolve: {
       alias: {
         '~': path.join(currentDir, 'src'),
+        '@agent': path.join(currentDir, 'apps/agent/src'),
         '@tools': path.join(currentDir, 'tools'),
       },
     },

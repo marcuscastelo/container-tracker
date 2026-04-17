@@ -1,0 +1,19 @@
+import {
+  resolveAgentConfigDir as canonicalResolveAgentConfigDir,
+  resolveAgentDataDir as canonicalResolveAgentDataDir,
+  resolveAgentPublicBackendStatePath as canonicalResolveAgentPublicBackendStatePath,
+  resolveAgentPublicLogsPath as canonicalResolveAgentPublicLogsPath,
+  resolveAgentPublicStateDir as canonicalResolveAgentPublicStateDir,
+  resolveAgentPublicStatePath as canonicalResolveAgentPublicStatePath,
+  resolveLogsDir as canonicalResolveLogsDir,
+  resolveReleaseStatePath as canonicalResolveReleaseStatePath,
+} from '@agent/runtime/paths'
+
+export const resolveAgentConfigDir = canonicalResolveAgentConfigDir
+export const resolveAgentDataDir = canonicalResolveAgentDataDir
+export const resolveAgentPublicBackendStatePath = canonicalResolveAgentPublicBackendStatePath
+export const resolveAgentPublicLogsPath = canonicalResolveAgentPublicLogsPath
+export const resolveAgentPublicStateDir = canonicalResolveAgentPublicStateDir
+export const resolveAgentPublicStatePath = canonicalResolveAgentPublicStatePath
+export const resolveLogsDir = canonicalResolveLogsDir
+export const resolveReleaseStatePath = canonicalResolveReleaseStatePath

@@ -266,7 +266,20 @@ export type AgentMonitoringRepository = {
     readonly updateChannel: string
     readonly requestedAt: string
   }) => Promise<AgentMonitoringRecord | null>
+  readonly updateAgentRemotePolicy: (command: {
+    readonly tenantId: string
+    readonly agentId: string
+    readonly updatesPaused?: boolean
+    readonly updateChannel?: string
+    readonly blockedVersions?: readonly string[]
+    readonly desiredVersion?: string | null
+  }) => Promise<AgentMonitoringRecord | null>
   readonly requestAgentRestart: (command: {
+    readonly tenantId: string
+    readonly agentId: string
+    readonly requestedAt: string
+  }) => Promise<AgentMonitoringRecord | null>
+  readonly requestAgentReset: (command: {
     readonly tenantId: string
     readonly agentId: string
     readonly requestedAt: string

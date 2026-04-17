@@ -59,6 +59,7 @@ type AgentUpdateManifestResolved = {
   readonly version: string
   readonly downloadUrl: string
   readonly checksum: string
+  readonly selectedPlatform: AgentPlatform
   readonly channel: string
   readonly publishedAt: string | null
   readonly updateAvailable: boolean
@@ -396,6 +397,7 @@ export function createAgentUpdateManifestService(deps: {
         version: manifest.version,
         downloadUrl: manifestAsset.downloadUrl,
         checksum: manifestAsset.checksum,
+        selectedPlatform: requestedPlatform,
         channel: manifest.channel,
         publishedAt: manifest.published_at ?? null,
         updateAvailable,

@@ -6,6 +6,7 @@ type Props = {
   readonly subtitle?: string
   readonly lastRefreshed: string
   readonly isLive: boolean
+  readonly refreshing?: boolean
   readonly onRefresh: () => void
 }
 
@@ -33,6 +34,9 @@ export function AgentPageHeader(props: Props): JSX.Element {
         </Show>
       </div>
       <div class="flex items-center gap-3">
+        <Show when={props.refreshing === true}>
+          <span class="text-micro text-text-muted">Refreshing...</span>
+        </Show>
         <span class="text-micro text-text-muted">Updated {props.lastRefreshed}</span>
         <button
           type="button"
@@ -40,7 +44,7 @@ export function AgentPageHeader(props: Props): JSX.Element {
           class="motion-focus-surface motion-interactive inline-flex items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground hover:border-control-border-hover hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
           <svg
-            class="h-3.5 w-3.5"
+            class={`h-3.5 w-3.5 ${props.refreshing === true ? 'animate-spin' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

@@ -1,4 +1,4 @@
-import { AgentInfraConfigResponseSchema } from '@tools/agent/control-core/contracts'
+import { AgentInfraConfigResponseSchema } from '@agent/control-core/contracts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { mockedServerEnv } = vi.hoisted(() => ({

@@ -21,7 +21,7 @@ Você precisou usar:
 
 **Mitigação recomendada (curto prazo):**
 - Fixar versão do pnpm no repo (packageManager no package.json / corepack).
-- Documentar explicitamente no `docs/agent-installer.md` e/ou `tools/agent/README`:
+- Documentar explicitamente no `docs/agent-installer.md` e/ou `apps/agent/src/README`:
   - que o release depende dessas flags e por quê.
 
 **Mitigação recomendada (médio prazo):**

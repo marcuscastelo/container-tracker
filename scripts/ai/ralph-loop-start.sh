@@ -18,6 +18,7 @@ Options:
   --agent <codex|claude|amp>    Override RALPH_AGENT
   --max-iterations <N>          Override RALPH_MAX_ITERATIONS
   --dangerous-exec <0|1>        Override RALPH_ALLOW_DANGEROUS_EXEC
+  --plan-retries <N>            Retry count for planning failures (default: 1)
   --exec-retries <N>            Retry count for exec failures (default: 2)
   --workdir <DIR>               Override feature workdir (default: .ralph-loop/<FEATURE_KEY>)
   --prepare-only                Generate prd.json + input.json only (do not run exec)
@@ -48,6 +49,7 @@ prd_source="$2"
 shift 2
 
 prepare_only=0
+plan_retries=1
 exec_retries=2
 feature_dir="${RALPH_LOOP_WORKDIR%/}/$feature_key"
 
@@ -85,6 +87,14 @@ while [ $# -gt 0 ]; do
       exec_retries="$2"
       shift 2
       ;;
+    --plan-retries)
+      if [ $# -lt 2 ]; then
+        rl_error "Missing value for --plan-retries"
+        exit 1
+      fi
+      plan_retries="$2"
+      shift 2
+      ;;
     --workdir)
       if [ $# -lt 2 ]; then
         rl_error "Missing value for --workdir"
@@ -115,6 +125,11 @@ if ! [[ "$exec_retries" =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
+if ! [[ "$plan_retries" =~ ^[0-9]+$ ]]; then
+  rl_error "--plan-retries must be a non-negative integer."
+  exit 1
+fi
+
 if [ "$RALPH_ALLOW_DANGEROUS_EXEC" != "0" ] && [ "$RALPH_ALLOW_DANGEROUS_EXEC" != "1" ]; then
   rl_error "--dangerous-exec must be 0 or 1."
   exit 1
@@ -139,14 +154,34 @@ if [ -n "$source_path" ] && jq empty "$source_path" >/dev/null 2>&1; then
   cp "$source_path" "$plan_json"
   rl_info "Using provided PRD JSON: $source_path"
 else
+  rl_info "Planning phase started for feature: $feature_key"
+
   if [ -n "$source_path" ]; then
     cp "$source_path" "$feature_dir/prd.md"
     rl_info "Saved PRD markdown copy: $feature_dir/prd.md"
   fi
 
-  bash "$SCRIPT_DIR/ralph-loop-plan.sh" "$prd_source" "$plan_json"
+  max_plan_attempts=$((plan_retries + 1))
+  plan_attempt=1
+  while [ "$plan_attempt" -le "$max_plan_attempts" ]; do
+    rl_info "Starting PRD planning attempt $plan_attempt/$max_plan_attempts"
+
+    if bash "$SCRIPT_DIR/ralph-loop-plan.sh" "$prd_source" "$plan_json"; then
+      break
+    fi
+
+    if [ "$plan_attempt" -ge "$max_plan_attempts" ]; then
+      rl_error "PRD planning failed after $max_plan_attempts attempts."
+      exit 1
+    fi
+
+    rl_error "PRD planning failed on attempt $plan_attempt. Retrying in 5s..."
+    sleep 5
+    plan_attempt=$((plan_attempt + 1))
+  done
 fi
 
+rl_info "Building Ralph execution input for feature: $feature_key"
 bash "$SCRIPT_DIR/ralph-loop-make-input.sh" "$plan_json" "$progress_file" "$input_json"
 
 if [ "$prepare_only" = "1" ]; then

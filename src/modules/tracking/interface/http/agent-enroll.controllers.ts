@@ -33,6 +33,10 @@ type EnrolledAgentRecord = {
   readonly maerskUserDataDir: string | null
 }
 
+type ExistingAgentRecord = EnrolledAgentRecord & {
+  readonly revokedAt: string | null
+}
+
 type EnrollmentAuditEventType =
   | 'ENROLL_ATTEMPT'
   | 'ENROLL_SUCCESS'
@@ -65,7 +69,7 @@ export type AgentEnrollControllersDeps = {
   readonly findAgentByFingerprint: (command: {
     readonly tenantId: string
     readonly machineFingerprint: string
-  }) => Promise<EnrolledAgentRecord | null>
+  }) => Promise<ExistingAgentRecord | null>
   readonly createAgent: (command: {
     readonly tenantId: string
     readonly machineFingerprint: string
@@ -81,6 +85,15 @@ export type AgentEnrollControllersDeps = {
     readonly hostname: string
     readonly os: string
     readonly agentVersion: string
+  }) => Promise<EnrolledAgentRecord>
+  readonly reactivateRevokedAgentWithRotatedToken: (command: {
+    readonly agentId: string
+    readonly tenantId: string
+    readonly machineFingerprint: string
+    readonly hostname: string
+    readonly os: string
+    readonly agentVersion: string
+    readonly agentToken: string
   }) => Promise<EnrolledAgentRecord>
   readonly emitAuditEvent: (event: AgentEnrollAuditEvent) => Promise<void>
   readonly recordAgentActivity: (command: {
@@ -338,23 +351,36 @@ export function createAgentEnrollControllers(deps: AgentEnrollControllersDeps) {
         machineFingerprint: requestBody.machineFingerprint,
       })
 
-      const enrolledAgent = existingAgent
-        ? await deps.updateAgentEnrollmentMetadata({
-            agentId: existingAgent.id,
-            tenantId: installerAuth.tenantId,
-            machineFingerprint: requestBody.machineFingerprint,
-            hostname: requestBody.hostname,
-            os: requestBody.os,
-            agentVersion: requestBody.agentVersion,
-          })
-        : await deps.createAgent({
-            tenantId: installerAuth.tenantId,
-            machineFingerprint: requestBody.machineFingerprint,
-            hostname: requestBody.hostname,
-            os: requestBody.os,
-            agentVersion: requestBody.agentVersion,
-            agentToken: generateAgentToken(),
-          })
+      let enrolledAgent: EnrolledAgentRecord
+      if (!existingAgent) {
+        enrolledAgent = await deps.createAgent({
+          tenantId: installerAuth.tenantId,
+          machineFingerprint: requestBody.machineFingerprint,
+          hostname: requestBody.hostname,
+          os: requestBody.os,
+          agentVersion: requestBody.agentVersion,
+          agentToken: generateAgentToken(),
+        })
+      } else if (existingAgent.revokedAt === null) {
+        enrolledAgent = await deps.updateAgentEnrollmentMetadata({
+          agentId: existingAgent.id,
+          tenantId: installerAuth.tenantId,
+          machineFingerprint: requestBody.machineFingerprint,
+          hostname: requestBody.hostname,
+          os: requestBody.os,
+          agentVersion: requestBody.agentVersion,
+        })
+      } else {
+        enrolledAgent = await deps.reactivateRevokedAgentWithRotatedToken({
+          agentId: existingAgent.id,
+          tenantId: installerAuth.tenantId,
+          machineFingerprint: requestBody.machineFingerprint,
+          hostname: requestBody.hostname,
+          os: requestBody.os,
+          agentVersion: requestBody.agentVersion,
+          agentToken: generateAgentToken(),
+        })
+      }
 
       const response = toAgentEnrollResponse(enrolledAgent)
       await recordAgentActivitySafely(deps, {

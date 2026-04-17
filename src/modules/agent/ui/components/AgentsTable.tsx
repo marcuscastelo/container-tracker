@@ -15,6 +15,7 @@ export type AgentSortField =
 type Props = {
   readonly agents: readonly AgentListItemVM[]
   readonly loading: boolean
+  readonly refreshing?: boolean
   readonly hasError: boolean
   readonly sortField: AgentSortField
   readonly sortAsc: boolean
@@ -246,6 +247,11 @@ export function AgentsTable(props: Props): JSX.Element {
 
   return (
     <div class="hidden overflow-x-auto rounded-lg border border-border bg-surface md:block">
+      <Show when={props.refreshing === true}>
+        <div class="border-b border-border/60 bg-surface px-3 py-1.5 text-micro text-text-muted">
+          Updating agents...
+        </div>
+      </Show>
       <table class="min-w-full divide-y divide-border">
         <thead class="bg-surface-muted">
           <tr>

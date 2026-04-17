@@ -84,9 +84,9 @@ This file lists the main source files involved in sync, grouped by responsibilit
 
 | File | Role |
 | --- | --- |
-| `tools/agent/agent.ts` | main runtime: config, enroll, lease, fetch, ingest, realtime wake (`tools/agent/agent.ts:535-866`) |
-| `tools/agent/agent.scheduler.ts` | startup/interval/realtime scheduler (`tools/agent/agent.scheduler.ts:18-89`) |
-| `tools/agent/backoff.ts` | enrollment/bootstrap exponential backoff (`tools/agent/backoff.ts:1-31`) |
+| `apps/agent/src/agent.ts` | main runtime: config, enroll, lease, fetch, ingest, realtime wake (`apps/agent/src/agent.ts:535-866`) |
+| `apps/agent/src/agent.scheduler.ts` | startup/interval/realtime scheduler (`apps/agent/src/agent.scheduler.ts:18-89`) |
+| `apps/agent/src/backoff.ts` | enrollment/bootstrap exponential backoff (`apps/agent/src/backoff.ts:1-31`) |
 
 ## Database and contracts
 
