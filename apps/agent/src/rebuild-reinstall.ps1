@@ -2,7 +2,6 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..\..')
-$agentTaskName = 'ContainerTrackerAgent'
 $installRoot = Join-Path $env:LOCALAPPDATA 'Programs\ContainerTrackerAgent'
 $dataRoot = Join-Path $env:LOCALAPPDATA 'ContainerTracker'
 $shortRoot = 'C:\a'
@@ -15,7 +14,6 @@ function Stop-AgentInstallProcesses {
     [string]$InstallRootPath
   )
 
-  $normalizedTrayHostPath = (Join-Path $InstallRootPath 'app\dist\agent-tray-host.ps1').ToLowerInvariant()
   $deadline = (Get-Date).AddSeconds(20)
   do {
     $running = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
@@ -23,11 +21,6 @@ function Stop-AgentInstallProcesses {
           if ($_.ExecutablePath -and $_.ExecutablePath -like "$InstallRootPath*") {
             return $true
           }
-
-          if ($_.CommandLine) {
-            return $_.CommandLine.ToLowerInvariant().Contains($normalizedTrayHostPath)
-          }
-
           return $false
         })
 
@@ -46,72 +39,29 @@ function Stop-AgentInstallProcesses {
   throw 'failed to stop install-root processes before setup'
 }
 
-function Invoke-SafeTaskDelete {
-  param(
-    [string]$TaskName
-  )
-
-  & cmd.exe /d /s /c "schtasks /Delete /TN ""$TaskName"" /F >NUL 2>&1 || exit /B 0"
-  if ($LASTEXITCODE -ne 0) {
-    throw "failed to delete scheduled task $TaskName (exit code $LASTEXITCODE)"
-  }
-}
-
-function Show-TaskDiagnostics {
-  function Show-OptionalTaskQuery {
-    param(
-      [string]$TaskName
-    )
-
-    & cmd.exe /d /s /c "schtasks /Query /TN ""$TaskName"" /V /FO LIST 2>NUL || (echo [agent:rebuild-restart] task not found: $TaskName & exit /B 0)"
-    if ($LASTEXITCODE -ne 0) {
-      throw "failed to query scheduled task $TaskName (exit code $LASTEXITCODE)"
-    }
-  }
-
-  Show-OptionalTaskQuery -TaskName $agentTaskName
-}
-
-function Invoke-SafeTaskRun {
-  param(
-    [string]$TaskName
-  )
-
-  $maxAttempts = 30
-  for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-    & cmd.exe /d /s /c "schtasks /Run /TN ""$TaskName"" >NUL 2>&1"
-    if ($LASTEXITCODE -eq 0) {
-      return
-    }
-
-    Start-Sleep -Milliseconds 400
-  }
-
-  Write-Warning "[agent:rebuild-restart] failed to run task $TaskName after $maxAttempts attempts; dumping task query for diagnostics"
-  throw "failed to run scheduled task $TaskName after $maxAttempts attempts"
-}
-
-function Start-AgentTrayHost {
-  $trayHostPath = Join-Path $installRoot 'app\dist\agent-tray-host.ps1'
-  if (-not (Test-Path -LiteralPath $trayHostPath)) {
-    Write-Warning "[agent:rebuild-restart] tray host script not found: $trayHostPath"
+function Start-AgentStartupLauncher {
+  $startupLauncherPath = Join-Path $installRoot 'ct-agent-startup.exe'
+  if (-not (Test-Path -LiteralPath $startupLauncherPath)) {
+    Write-Warning "[agent:rebuild-restart] startup launcher not found: $startupLauncherPath"
     return
   }
 
-  Write-Host "[agent:rebuild-restart] starting tray host: $trayHostPath"
+  Write-Host "[agent:rebuild-restart] starting startup launcher: $startupLauncherPath"
   Start-Process `
-    -FilePath 'powershell.exe' `
-    -ArgumentList @(
-      '-NoProfile',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-WindowStyle',
-      'Hidden',
-      '-File',
-      $trayHostPath
-    ) `
+    -FilePath $startupLauncherPath `
     -WorkingDirectory $installRoot `
     -WindowStyle Hidden | Out-Null
+}
+
+function Show-StartupDiagnostics {
+  $startupLogPath = Join-Path $dataRoot 'logs\startup.log'
+  $supervisorLogPath = Join-Path $dataRoot 'logs\supervisor.log'
+  foreach ($logPath in @($startupLogPath, $supervisorLogPath)) {
+    if (Test-Path -LiteralPath $logPath) {
+      Write-Host "[agent:rebuild-restart] log tail: $logPath"
+      Get-Content -LiteralPath $logPath -Tail 40
+    }
+  }
 }
 
 Push-Location $repoRoot
@@ -162,7 +112,6 @@ try {
   }
 
   Stop-AgentInstallProcesses -InstallRootPath $installRoot
-  Invoke-SafeTaskDelete -TaskName $agentTaskName
 
   $installerLogPath = Join-Path $shortRoot 'installer-run.log'
   if (Test-Path $installerLogPath) {
@@ -185,17 +134,11 @@ try {
   Write-Host '[agent:rebuild-restart] bootstrap.env is provided by installer payload.'
   Write-Host '[agent:rebuild-restart] config.env generation by this script is disabled; runtime enrollment is responsible for creating it.'
 
-  Write-Host "[agent:rebuild-restart] starting scheduled tasks..."
-  try {
-    Invoke-SafeTaskRun -TaskName $agentTaskName
-  } catch {
-    Write-Warning "[agent:rebuild-restart] could not run task $agentTaskName immediately: $($_.Exception.Message)"
-  }
-
-  Start-AgentTrayHost
+  Write-Host "[agent:rebuild-restart] starting agent startup launcher..."
+  Start-AgentStartupLauncher
 
   Start-Sleep -Seconds 2
-  Show-TaskDiagnostics
+  Show-StartupDiagnostics
 
   Write-Host '[agent:rebuild-restart] done.'
 } finally {

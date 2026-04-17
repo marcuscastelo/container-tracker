@@ -81,7 +81,7 @@ export async function stageRelease(command: {
     version: command.manifest.version,
     downloadUrl: selectedAsset.url,
     expectedChecksum: selectedAsset.checksum,
-    fetchImpl: command.fetchImpl,
+    ...(command.fetchImpl ? { fetchImpl: command.fetchImpl } : {}),
   })
 
   if (!resolveReleaseEntrypoint(downloadedRelease.releaseDir)) {

@@ -11,10 +11,66 @@ export type { ChildRunOutcome } from '@agent/runtime/domain/runtime-lifecycle'
 
 const MAX_RUNTIME_STDIO_LOG_FILE_SIZE_BYTES = 20 * 1024 * 1024
 
+type RuntimeLifecycleLogger = (message: string) => void
+
+function toErrorDetails(error: unknown): string {
+  if (error instanceof Error) {
+    if (typeof error.stack === 'string' && error.stack.length > 0) {
+      return error.stack
+    }
+    return error.message
+  }
+  return String(error)
+}
+
+function logLifecycle(log: RuntimeLifecycleLogger | undefined, message: string): void {
+  if (!log) {
+    return
+  }
+  log(message)
+}
+
+function attachChildLifecycleLogging(command: {
+  readonly child: ChildProcess
+  readonly expectedVersion: string
+  readonly scriptPath: string
+  readonly execArgv: readonly string[]
+  readonly log?: RuntimeLifecycleLogger
+}): void {
+  command.child.once('spawn', () => {
+    logLifecycle(
+      command.log,
+      `runtime child spawn event pid=${command.child.pid ?? 'unknown'} version=${command.expectedVersion} script=${command.scriptPath} exec_argv=[${command.execArgv.join(', ')}]`,
+    )
+  })
+  command.child.once('error', (error) => {
+    logLifecycle(
+      command.log,
+      `runtime child error event version=${command.expectedVersion} script=${command.scriptPath} error=${toErrorDetails(error)}`,
+    )
+  })
+  command.child.once('exit', (code, signal) => {
+    logLifecycle(
+      command.log,
+      `runtime child exit event version=${command.expectedVersion} code=${code ?? 'null'} signal=${signal ?? 'null'}`,
+    )
+  })
+  command.child.once('close', (code, signal) => {
+    logLifecycle(
+      command.log,
+      `runtime child close event version=${command.expectedVersion} code=${code ?? 'null'} signal=${signal ?? 'null'}`,
+    )
+  })
+  command.child.once('disconnect', () => {
+    logLifecycle(command.log, `runtime child disconnect event version=${command.expectedVersion}`)
+  })
+}
+
 function mirrorRuntimeOutput(command: {
   readonly child: ChildProcess
   readonly logsDir: string
   readonly onOutput: () => void
+  readonly log?: RuntimeLifecycleLogger
 }): void {
   const stdout = command.child.stdout
   if (stdout) {
@@ -27,6 +83,9 @@ function mirrorRuntimeOutput(command: {
       process.stdout.write(chunk)
       stdoutWriter.write(chunk)
       command.onOutput()
+    })
+    stdout.on('error', (error) => {
+      logLifecycle(command.log, `runtime stdout stream error: ${toErrorDetails(error)}`)
     })
     command.child.once('exit', () => {
       void stdoutWriter.close()
@@ -44,6 +103,9 @@ function mirrorRuntimeOutput(command: {
       process.stderr.write(chunk)
       stderrWriter.write(chunk)
       command.onOutput()
+    })
+    stderr.on('error', (error) => {
+      logLifecycle(command.log, `runtime stderr stream error: ${toErrorDetails(error)}`)
     })
     command.child.once('exit', () => {
       void stderrWriter.close()
@@ -77,18 +139,32 @@ export async function runRuntimeWithHealthGate(command: {
   readonly onOutput: () => void
   readonly onStabilityConfirmed: () => void
   readonly onRuntimeStarted: (child: ChildProcess) => void
+  readonly log?: RuntimeLifecycleLogger
 }): Promise<ChildRunOutcome> {
+  const execArgv = resolveRuntimeExecArgv(command.scriptPath)
+  logLifecycle(
+    command.log,
+    `launching runtime with health gate version=${command.expectedVersion} script=${command.scriptPath} startup_timeout_ms=${command.startupTimeoutMs} health_grace_ms=${command.healthGraceMs} exec_argv=[${execArgv.join(', ')}]`,
+  )
   const child = startRuntime({
     scriptPath: command.scriptPath,
-    execArgv: resolveRuntimeExecArgv(command.scriptPath),
+    execArgv,
     env: command.env,
     stdio: 'pipe',
+  })
+  attachChildLifecycleLogging({
+    child,
+    expectedVersion: command.expectedVersion,
+    scriptPath: command.scriptPath,
+    execArgv,
+    log: command.log,
   })
   command.onRuntimeStarted(child)
   mirrorRuntimeOutput({
     child,
     logsDir: command.logsDir,
     onOutput: command.onOutput,
+    log: command.log,
   })
 
   const exitPromise = new Promise<number | null>((resolve) => {
@@ -108,6 +184,10 @@ export async function runRuntimeWithHealthGate(command: {
 
   const exitCode = await exitPromise
   const health = await healthMonitorPromise
+  logLifecycle(
+    command.log,
+    `runtime health gate completed version=${command.expectedVersion} exit_code=${exitCode ?? 'null'} startup_confirmed=${health.startupConfirmed} startup_timed_out=${health.startupTimedOut} health_grace_confirmed=${health.healthGraceConfirmed}`,
+  )
 
   return {
     exitCode,
@@ -124,18 +204,32 @@ export async function runRuntimeWithoutHealthGate(command: {
   readonly logsDir: string
   readonly onOutput: () => void
   readonly onRuntimeStarted: (child: ChildProcess) => void
+  readonly log?: RuntimeLifecycleLogger
 }): Promise<ChildRunOutcome> {
+  const execArgv = resolveRuntimeExecArgv(command.scriptPath)
+  logLifecycle(
+    command.log,
+    `launching runtime without health gate version=${command.expectedVersion} script=${command.scriptPath} exec_argv=[${execArgv.join(', ')}]`,
+  )
   const child = startRuntime({
     scriptPath: command.scriptPath,
-    execArgv: resolveRuntimeExecArgv(command.scriptPath),
+    execArgv,
     env: command.env,
     stdio: 'pipe',
+  })
+  attachChildLifecycleLogging({
+    child,
+    expectedVersion: command.expectedVersion,
+    scriptPath: command.scriptPath,
+    execArgv,
+    log: command.log,
   })
   command.onRuntimeStarted(child)
   mirrorRuntimeOutput({
     child,
     logsDir: command.logsDir,
     onOutput: command.onOutput,
+    log: command.log,
   })
 
   const exitCode = await new Promise<number | null>((resolve) => {
@@ -143,6 +237,10 @@ export async function runRuntimeWithoutHealthGate(command: {
       resolve(code)
     })
   })
+  logLifecycle(
+    command.log,
+    `runtime exited without health gate version=${command.expectedVersion} exit_code=${exitCode ?? 'null'}`,
+  )
 
   return {
     exitCode,

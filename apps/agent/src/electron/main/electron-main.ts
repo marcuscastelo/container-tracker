@@ -13,22 +13,25 @@ import {
   agentControlIpcChannels,
 } from '@agent/electron/ipc'
 import { createInstalledLinuxControlService } from '@agent/electron/main/installed-linux-control-service'
+import type { AgentTrayRuntimePort } from '@agent/electron/main/tray/tray.commands'
+import { type AgentTrayHost, createAgentTrayHost } from '@agent/electron/main/tray/tray-host'
 import {
   createWindowLifecycleController,
   setupSingleInstance,
   type UiLaunchMode,
 } from '@agent/electron/main/window-controller'
-import { isLinuxPlatform, isMacPlatform } from '@agent/platform/os-branching'
+import { isLinuxPlatform, isMacPlatform, isWindowsPlatform } from '@agent/platform/os-branching'
 import {
   app,
   BrowserWindow,
   type BrowserWindow as ElectronBrowserWindow,
   ipcMain,
-  Menu,
+  shell,
   Tray,
 } from 'electron'
 
-const currentDir = path.dirname(fileURLToPath(import.meta.url))
+const currentDir =
+  typeof __dirname === 'string' ? __dirname : path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(currentDir, '../../../../..')
 
 const launchMode = resolveLaunchMode()
@@ -36,7 +39,9 @@ const lifecycle = createWindowLifecycleController({
   mode: launchMode,
 })
 let mainWindow: ElectronBrowserWindow | null = null
+let trayHost: AgentTrayHost | null = null
 let openWindowRequested = lifecycle.shouldOpenOnReady()
+const WINDOWS_TRAY_GUID = '0F1AE8D1-7B19-4B14-9A17-2EF197BBD5AA'
 
 function resolveLaunchMode(): UiLaunchMode {
   return process.env.CT_AGENT_UI_MODE === 'tray' ? 'tray' : 'window'
@@ -76,6 +81,10 @@ function isInstalledLinuxUi(): boolean {
 function resolveIconPath(): string | undefined {
   const candidates = [
     process.env.CT_AGENT_UI_ICON_PATH?.trim(),
+    process.env.CT_AGENT_INSTALL_ROOT
+      ? path.join(process.env.CT_AGENT_INSTALL_ROOT, 'app', 'assets', 'tray.ico')
+      : undefined,
+    path.join(repoRoot, 'apps', 'agent', 'src', 'installer', 'resources', 'tray.ico'),
     path.join(repoRoot, 'public', 'branding', 'logo-light.png'),
     path.join(repoRoot, 'public', 'favicon.ico'),
   ]
@@ -98,6 +107,15 @@ function createBridgeService() {
   }
 
   return createBootstrapControlService()
+}
+
+function resolveTrayIconDir(iconPath: string): string {
+  const explicitIconDir = process.env.CT_AGENT_UI_ICON_DIR?.trim()
+  if (explicitIconDir) {
+    return explicitIconDir
+  }
+
+  return path.dirname(iconPath)
 }
 
 function createMainWindow(): ElectronBrowserWindow {
@@ -159,55 +177,64 @@ function openMainWindow(): void {
   lifecycle.openWindow(ensureMainWindow())
 }
 
-function createTrayHost(): Tray {
+function createTrayRuntimePort(
+  service: ReturnType<typeof createBridgeService>,
+): AgentTrayRuntimePort {
+  return {
+    async getBackendState() {
+      return await service.getBackendState()
+    },
+    async getSnapshot() {
+      if ('getAgentOperationalSnapshot' in service) {
+        const result = await service.getAgentOperationalSnapshot()
+        return result.snapshot
+      }
+
+      return service.getSnapshot()
+    },
+    async getReleaseInventory() {
+      return await service.getReleaseInventory()
+    },
+    async getPaths() {
+      return await service.getPaths()
+    },
+    async restartAgent() {
+      return await service.restartAgent()
+    },
+    async checkForUpdates() {
+      if ('checkForUpdates' in service) {
+        return await service.checkForUpdates()
+      }
+
+      throw new Error('Update checks are unavailable in this installed control mode.')
+    },
+  }
+}
+
+function createTrayHost(service: ReturnType<typeof createBridgeService>): AgentTrayHost {
   const trayIconPath = resolveIconPath()
   if (!trayIconPath) {
     throw new Error('Tray icon asset was not found')
   }
 
-  const createdTray = new Tray(trayIconPath)
-  createdTray.setToolTip('Container Tracker Agent')
-  createdTray.setContextMenu(
-    Menu.buildFromTemplate([
-      {
-        label: 'Abrir UI',
-        click() {
-          openMainWindow()
-        },
-      },
-      {
-        label: 'Recarregar',
-        click() {
-          const existingWindow = mainWindow
-          if (existingWindow) {
-            existingWindow.webContents.reload()
-          }
-        },
-      },
-      {
-        type: 'separator',
-      },
-      {
-        label: 'Sair',
-        click() {
-          lifecycle.setQuitting()
-          app.quit()
-        },
-      },
-    ]),
-  )
-  createdTray.on('click', () => {
-    openMainWindow()
+  const createdTray = isWindowsPlatform()
+    ? new Tray(trayIconPath, WINDOWS_TRAY_GUID)
+    : new Tray(trayIconPath)
+  return createAgentTrayHost({
+    tray: createdTray,
+    port: createTrayRuntimePort(service),
+    shell,
+    app,
+    iconDir: resolveTrayIconDir(trayIconPath),
+    fallbackIconPath: trayIconPath,
+    openWindow: openMainWindow,
+    setQuitting() {
+      lifecycle.setQuitting()
+    },
   })
-  createdTray.on('double-click', () => {
-    openMainWindow()
-  })
-  return createdTray
 }
 
-function registerIpcHandlers(): void {
-  const service = createBridgeService()
-
+function registerIpcHandlers(service: ReturnType<typeof createBridgeService>): void {
   ipcMain.handle(agentControlIpcChannels.getBackendState, async () => {
     return service.getBackendState()
   })
@@ -232,6 +259,13 @@ function registerIpcHandlers(): void {
   ipcMain.handle(agentControlIpcChannels.startAgent, async () => service.startAgent())
   ipcMain.handle(agentControlIpcChannels.stopAgent, async () => service.stopAgent())
   ipcMain.handle(agentControlIpcChannels.restartAgent, async () => service.restartAgent())
+  ipcMain.handle(agentControlIpcChannels.checkForUpdates, async () => {
+    if ('checkForUpdates' in service) {
+      return service.checkForUpdates()
+    }
+
+    throw new Error('Update checks are unavailable in this installed control mode.')
+  })
   ipcMain.handle(agentControlIpcChannels.pauseUpdates, async () => service.pauseUpdates())
   ipcMain.handle(agentControlIpcChannels.resumeUpdates, async () => service.resumeUpdates())
   ipcMain.handle(agentControlIpcChannels.changeChannel, async (_event, rawInput) => {
@@ -286,6 +320,7 @@ const canRun = shouldDisableSingleInstanceLock()
       app,
       onSecondInstance() {
         openWindowRequested = true
+        trayHost?.refresh()
         if (mainWindow) {
           lifecycle.openWindow(mainWindow)
         }
@@ -294,11 +329,15 @@ const canRun = shouldDisableSingleInstanceLock()
 
 if (canRun) {
   void app.whenReady().then(() => {
-    registerIpcHandlers()
-    ensureMainWindow()
+    const service = createBridgeService()
+    registerIpcHandlers(service)
     if (launchMode === 'tray') {
-      createTrayHost()
+      if (!isWindowsPlatform()) {
+        ensureMainWindow()
+      }
+      trayHost = createTrayHost(service)
     } else {
+      ensureMainWindow()
       openMainWindow()
     }
 

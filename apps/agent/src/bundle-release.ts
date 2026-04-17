@@ -10,9 +10,13 @@ const BUNDLE_OUTPUT_RELATIVE_PATH = 'dist/agent-installer-bundle.zip'
 const FIXED_ZIP_DATE = new Date('2000-01-01T00:00:00.000Z')
 
 const REQUIRED_RELEASE_FILES = [
+  'release/ct-agent-startup.exe',
   'release/node/node.exe',
   'release/app/dist/agent.js',
   'release/app/dist/apps/agent/src/supervisor.js',
+  'release/app/dist/apps/agent/src/platform/windows/startup.js',
+  'release/control-ui/package.json',
+  'release/electron/electron.exe',
   'release/config/bootstrap.env',
 ] as const
 

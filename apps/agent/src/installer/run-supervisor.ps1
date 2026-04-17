@@ -32,7 +32,35 @@ function Write-SupervisorLauncherLog {
   Add-Content -Path $supervisorLogPath -Value $line
 }
 
+function Write-PathProbe {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Label,
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  $exists = Test-Path -LiteralPath $Path
+  if (-not $exists) {
+    Write-SupervisorLauncherLog -Message "$Label path missing: $Path"
+    return
+  }
+
+  $item = Get-Item -LiteralPath $Path
+  $type = if ($item.PSIsContainer) { 'directory' } else { 'file' }
+  Write-SupervisorLauncherLog -Message "$Label path ok type=$type value=$Path"
+}
+
 try {
+  Write-SupervisorLauncherLog -Message "launcher context pid=$PID user=$env:USERNAME host=$env:COMPUTERNAME powershell=$($PSVersionTable.PSVersion) cwd=$(Get-Location)"
+  Write-SupervisorLauncherLog -Message "launcher environment LOCALAPPDATA=$env:LOCALAPPDATA AGENT_DATA_DIR=$env:AGENT_DATA_DIR DOTENV_PATH=$env:DOTENV_PATH BOOTSTRAP_DOTENV_PATH=$env:BOOTSTRAP_DOTENV_PATH AGENT_PUBLIC_STATE_DIR=$env:AGENT_PUBLIC_STATE_DIR"
+  Write-PathProbe -Label 'install-root' -Path $installRoot
+  Write-PathProbe -Label 'data-root' -Path $dataRoot
+  Write-PathProbe -Label 'logs-dir' -Path $logsDir
+  Write-PathProbe -Label 'node-exe' -Path $nodeExePath
+  Write-PathProbe -Label 'alias-loader' -Path $registerAliasLoaderPath
+  Write-PathProbe -Label 'supervisor-script' -Path $supervisorScriptPath
+
   if (-not (Test-Path -LiteralPath $nodeExePath)) {
     throw "node.exe not found at $nodeExePath"
   }
@@ -49,6 +77,7 @@ try {
 
   Ensure-Directory -Path $logsDir
   Write-SupervisorLauncherLog -Message 'starting installed supervisor entrypoint'
+  Write-SupervisorLauncherLog -Message "launch command: `"$nodeExePath`" --import `"$registerAliasLoaderUrl`" `"$supervisorScriptPath`""
 
   Push-Location $installRoot
   try {
@@ -64,11 +93,25 @@ try {
   }
 
   Write-SupervisorLauncherLog -Message "supervisor process exited with code $exitCode"
+  if ($exitCode -ne 0) {
+    $agentOutPath = Join-Path $logsDir 'agent.out.log'
+    $agentErrPath = Join-Path $logsDir 'agent.err.log'
+    Write-SupervisorLauncherLog -Message "non-zero supervisor exit detected; inspect runtime logs out=$agentOutPath err=$agentErrPath"
+    Write-PathProbe -Label 'agent-out-log' -Path $agentOutPath
+    Write-PathProbe -Label 'agent-err-log' -Path $agentErrPath
+  }
   exit $exitCode
 }
 catch {
   try {
-    Write-SupervisorLauncherLog -Message $_.Exception.Message
+    $exceptionMessage = $_.Exception.Message
+    $stackTrace = $_.ScriptStackTrace
+    if ([string]::IsNullOrWhiteSpace($stackTrace)) {
+      Write-SupervisorLauncherLog -Message "launcher fatal error: $exceptionMessage"
+    }
+    else {
+      Write-SupervisorLauncherLog -Message "launcher fatal error: $exceptionMessage`n$stackTrace"
+    }
   }
   catch {
     # Best effort logging only.

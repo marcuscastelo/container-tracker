@@ -41,6 +41,7 @@ declare module 'electron' {
 
   export type MenuItemConstructorOptions = {
     readonly label?: string
+    readonly enabled?: boolean
     readonly type?: 'normal' | 'separator'
     readonly click?: () => void
   }
@@ -52,9 +53,14 @@ declare module 'electron' {
   }
 
   export class Tray {
-    constructor(image: string)
+    constructor(image: string, guid?: string)
+    setImage(image: string): void
     setToolTip(toolTip: string): void
     setContextMenu(menu: Menu): void
+    displayBalloon(options: { readonly title: string; readonly content: string }): void
+    popUpContextMenu(): void
+    destroy(): void
+    getGUID(): string | null
     on(event: 'click' | 'double-click', listener: () => void): void
   }
 
@@ -74,6 +80,11 @@ declare module 'electron' {
 
   export const ipcRenderer: {
     invoke: <T = unknown>(channel: string, ...args: readonly unknown[]) => Promise<T>
+  }
+
+  export const shell: {
+    openPath: (path: string) => Promise<string>
+    openExternal: (url: string) => Promise<void>
   }
 
   export const contextBridge: {

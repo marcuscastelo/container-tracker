@@ -31,9 +31,13 @@ const NODE_MODULES_METADATA_ENTRIES = [
 ] as const
 
 const REQUIRED_RELEASE_FILES = [
+  'ct-agent-startup.exe',
   'node/node.exe',
   'app/dist/agent.js',
   'app/dist/apps/agent/src/supervisor.js',
+  'app/dist/apps/agent/src/platform/windows/startup.js',
+  'control-ui/package.json',
+  'electron/electron.exe',
   'config/bootstrap.env',
 ] as const
 
@@ -333,10 +337,16 @@ function resolveRepoRoot(startDir: string): string {
   }
 }
 
-function runCommand(command: string, args: readonly string[], cwd: string): Promise<void> {
+function runCommand(
+  command: string,
+  args: readonly string[],
+  cwd: string,
+  env?: NodeJS.ProcessEnv,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
+      env,
       stdio: 'inherit',
       shell: false,
     })
@@ -531,98 +541,51 @@ function normalizeInstallerCommandLine(line: string): string {
   return line.replaceAll('""', '"').toLowerCase()
 }
 
-export function collectInstallerTaskRegistrationErrors(
+export function collectInstallerStartupRegistrationErrors(
   installerContentRaw: string,
 ): readonly string[] {
-  const taskRegistrationLines = installerContentRaw
-    .split(/\r?\n/)
-    .map(normalizeInstallerCommandLine)
-    .filter(
-      (line) =>
-        (line.includes('filename: "schtasks.exe"') && line.includes('/create')) ||
-        line.includes('register-scheduledtask'),
-    )
-
-  if (taskRegistrationLines.length < 1) {
-    return ['installer.iss must include one ONLOGON task registration command']
-  }
+  const normalizedLines = installerContentRaw.split(/\r?\n/).map(normalizeInstallerCommandLine)
+  const taskRegistrationLines = normalizedLines.filter(
+    (line) =>
+      (line.includes('filename: "schtasks.exe"') && line.includes('/create')) ||
+      line.includes('register-scheduledtask') ||
+      line.includes('new-scheduledtask'),
+  )
 
   const errors: string[] = []
-  const hasAgentCreate = taskRegistrationLines.some(
-    (line) =>
-      line.includes('powershell.exe') &&
-      line.includes('-windowstyle hidden') &&
-      line.includes('run-supervisor.ps1'),
-  )
-  if (!hasAgentCreate) {
-    errors.push('installer.iss missing expected ONLOGON task registration for supervisor')
+  const registersRunKey =
+    installerContentRaw.includes('Software\\Microsoft\\Windows\\CurrentVersion\\Run') &&
+    installerContentRaw.includes('ValueName: "{#AgentRunValueName}"') &&
+    installerContentRaw.includes('ct-agent-startup.exe')
+  if (!registersRunKey) {
+    errors.push('installer.iss must register HKCU Run startup for ct-agent-startup.exe')
   }
 
-  const wrapsTaskWithCmdExe = taskRegistrationLines.some(
-    (line) =>
-      line.includes('new-scheduledtaskaction') &&
-      (line.includes("-execute 'cmd.exe'") || line.includes('-execute "cmd.exe"')),
-  )
-  if (wrapsTaskWithCmdExe) {
-    errors.push('installer.iss task registration must execute powershell.exe directly')
+  if (taskRegistrationLines.length > 0) {
+    errors.push('installer.iss must not register Windows Scheduled Tasks for startup')
   }
 
-  const usesLegacyAgentTrayHost = taskRegistrationLines.some((line) =>
+  const startsViaScheduledTask = normalizedLines.some(
+    (line) =>
+      line.includes('schtasks') &&
+      (line.includes('/run') || line.includes('/change') || line.includes('/end')),
+  )
+  if (startsViaScheduledTask) {
+    errors.push('installer.iss must not start or stop the agent through scheduled-task commands')
+  }
+
+  const usesLegacyAgentTrayHost = normalizedLines.some((line) =>
     line.includes('agent-tray-host.ps1'),
   )
   if (usesLegacyAgentTrayHost) {
-    errors.push(
-      'installer.iss agent task must launch run-supervisor.ps1 instead of agent-tray-host.ps1',
-    )
+    errors.push('installer.iss must not install or launch the PowerShell tray host')
   }
 
-  const launchesRuntimeShimDirectly = taskRegistrationLines.some((line) =>
+  const launchesRuntimeShimDirectly = normalizedLines.some((line) =>
     line.includes('app\\dist\\agent.js'),
   )
   if (launchesRuntimeShimDirectly) {
-    errors.push('installer.iss agent task must not launch app\\dist\\agent.js directly')
-  }
-
-  for (const line of taskRegistrationLines) {
-    const usesSchtasksCreate = line.includes('filename: "schtasks.exe"') && line.includes('/create')
-
-    if (usesSchtasksCreate) {
-      if (!line.includes('/sc onlogon') || !line.includes('/it') || !line.includes('/rl limited')) {
-        errors.push(
-          'installer.iss schtasks registrations must include /SC ONLOGON, /IT and /RL LIMITED',
-        )
-        break
-      }
-
-      if (line.includes('/ru system') || line.includes('/rl highest')) {
-        errors.push('installer.iss task registrations must not use SYSTEM or highest privileges')
-        break
-      }
-
-      continue
-    }
-
-    if (
-      !line.includes('new-scheduledtasktrigger -atlogon') ||
-      !line.includes('logontype interactive') ||
-      !line.includes('runlevel limited')
-    ) {
-      errors.push(
-        'installer.iss Register-ScheduledTask registrations must use AtLogOn, Interactive logon and RunLevel Limited',
-      )
-      break
-    }
-
-    if (
-      line.includes('-userid system') ||
-      line.includes('/ru system') ||
-      line.includes('runlevel highest') ||
-      line.includes('/rl highest') ||
-      line.includes('highest privileges')
-    ) {
-      errors.push('installer.iss task registrations must not use SYSTEM or highest privileges')
-      break
-    }
+    errors.push('installer.iss startup must not launch app\\dist\\agent.js directly')
   }
 
   return errors
@@ -1314,6 +1277,7 @@ async function runPreflightChecks(command: {
   readonly bootstrapTemplatePath: string
   readonly linuxAdapterSourcePath: string
   readonly windowsAdapterSourcePath: string
+  readonly windowsPathsSourcePath: string
 }): Promise<void> {
   const errors: string[] = []
 
@@ -1376,6 +1340,18 @@ async function runPreflightChecks(command: {
       errors.push('installer.iss must include supervisor launcher scripts in [Files]/[Run]')
     }
 
+    if (!installerContentRaw.includes('{#ReleaseRoot}\\ct-agent-startup.exe')) {
+      errors.push('installer.iss must include native ct-agent-startup.exe in [Files]')
+    }
+
+    if (!installerContentRaw.includes('{#ReleaseRoot}\\control-ui\\*')) {
+      errors.push('installer.iss must include Electron control-ui assets in [Files]')
+    }
+
+    if (!installerContentRaw.includes('{#ReleaseRoot}\\electron\\*')) {
+      errors.push('installer.iss must include Electron runtime assets in [Files]')
+    }
+
     const requiredDataLayoutDirectories = [
       '{localappdata}\\ContainerTracker\\releases',
       '{localappdata}\\ContainerTracker\\logs',
@@ -1395,7 +1371,7 @@ async function runPreflightChecks(command: {
       errors.push('installer.iss must not define legacy data/cache directories')
     }
 
-    errors.push(...collectInstallerTaskRegistrationErrors(installerContentRaw))
+    errors.push(...collectInstallerStartupRegistrationErrors(installerContentRaw))
   } else {
     errors.push(`installer.iss not found: ${command.installerFilePath}`)
   }
@@ -1436,17 +1412,28 @@ async function runPreflightChecks(command: {
 
   if (await pathExists(command.windowsAdapterSourcePath)) {
     const windowsAdapterSource = await fs.readFile(command.windowsAdapterSourcePath, 'utf8')
-    if (
-      !windowsAdapterSource.includes('DEFAULT_DATA_DIR_NAME') ||
-      !windowsAdapterSource.includes('ContainerTracker') ||
-      !windowsAdapterSource.includes('LOCALAPPDATA')
-    ) {
+    if (!windowsAdapterSource.includes('resolveWindowsPlatformPaths')) {
       errors.push(
-        'windows.adapter.ts must resolve fallback paths under LOCALAPPDATA\\ContainerTracker',
+        'windows.adapter.ts must delegate Windows path resolution to resolveWindowsPlatformPaths',
       )
     }
   } else {
     errors.push(`windows.adapter.ts not found: ${command.windowsAdapterSourcePath}`)
+  }
+
+  if (await pathExists(command.windowsPathsSourcePath)) {
+    const windowsPathsSource = await fs.readFile(command.windowsPathsSourcePath, 'utf8')
+    if (
+      !windowsPathsSource.includes('DEFAULT_WINDOWS_DATA_DIR_NAME') ||
+      !windowsPathsSource.includes('ContainerTracker') ||
+      !windowsPathsSource.includes('LOCALAPPDATA')
+    ) {
+      errors.push(
+        'windows-paths.ts must resolve fallback paths under LOCALAPPDATA\\ContainerTracker',
+      )
+    }
+  } else {
+    errors.push(`windows-paths.ts not found: ${command.windowsPathsSourcePath}`)
   }
 
   for (const relativePath of STATIC_GATE_FILES) {
@@ -1478,6 +1465,56 @@ async function runPreflightChecks(command: {
   )
 }
 
+async function copyControlUiAssets(command: {
+  readonly distControlUiDir: string
+  readonly releaseControlUiDir: string
+}): Promise<void> {
+  await ensurePathExists(command.distControlUiDir, 'compiled Electron control UI')
+  await fs.rm(command.releaseControlUiDir, { recursive: true, force: true })
+  await fs.cp(command.distControlUiDir, command.releaseControlUiDir, { recursive: true })
+}
+
+async function copyElectronRuntime(command: {
+  readonly repoRoot: string
+  readonly releaseElectronDir: string
+}): Promise<void> {
+  const electronRuntimeDir = path.join(command.repoRoot, 'node_modules', 'electron', 'dist')
+  await ensurePathExists(
+    path.join(electronRuntimeDir, 'electron.exe'),
+    'Electron runtime executable',
+  )
+  await fs.rm(command.releaseElectronDir, { recursive: true, force: true })
+  await fs.cp(electronRuntimeDir, command.releaseElectronDir, { recursive: true })
+}
+
+async function buildStartupLauncher(command: {
+  readonly repoRoot: string
+  readonly releaseDir: string
+  readonly nodeVersion: string
+  readonly windowsNodeExePath: string
+}): Promise<void> {
+  const builderScriptPath = path.join(
+    command.repoRoot,
+    'scripts',
+    'agent',
+    'build-windows-startup-launcher.mjs',
+  )
+  await ensurePathExists(builderScriptPath, 'Windows startup launcher builder script')
+  await ensurePathExists(command.windowsNodeExePath, 'release node.exe for startup launcher')
+
+  await runCommand(
+    process.execPath,
+    [
+      builderScriptPath,
+      `--output=${path.join(command.releaseDir, 'ct-agent-startup.exe')}`,
+      `--windows-node=${command.windowsNodeExePath}`,
+      `--node-version=${command.nodeVersion}`,
+    ],
+    command.repoRoot,
+    process.env,
+  )
+}
+
 async function buildRelease(): Promise<void> {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url))
   const repoRoot = resolveRepoRoot(scriptDir)
@@ -1485,9 +1522,12 @@ async function buildRelease(): Promise<void> {
   const installerDir = path.join(appsAgentDir, 'src', 'installer')
   const distRootDir = path.join(repoRoot, 'dist')
   const distAgentAppDir = path.join(distRootDir, 'apps', 'agent', 'src')
+  const distControlUiDir = path.join(distRootDir, 'apps', 'agent', 'control-ui')
   const distSharedSrcDir = path.join(distRootDir, 'src')
   const releaseDir = path.join(repoRoot, 'release')
   const releaseAppDir = path.join(releaseDir, 'app')
+  const releaseControlUiDir = path.join(releaseDir, 'control-ui')
+  const releaseElectronDir = path.join(releaseDir, 'electron')
   const packageLocalReleaseDir = path.join(appsAgentDir, 'release')
   const releaseAppDistDir = path.join(releaseAppDir, 'dist')
   const releaseNodeDir = path.join(releaseDir, 'node')
@@ -1532,6 +1572,14 @@ async function buildRelease(): Promise<void> {
     await fs.cp(distSharedSrcDir, path.join(releaseAppDistDir, 'src'), { recursive: true })
   }
   await writeAgentEntrypointShims(releaseAppDistDir)
+  await copyControlUiAssets({
+    distControlUiDir,
+    releaseControlUiDir,
+  })
+  await copyElectronRuntime({
+    repoRoot,
+    releaseElectronDir,
+  })
   const runtimeSnapshot = await ensureAgentRuntimeDependenciesInReleaseApp({
     repoRoot,
     releaseAppDir,
@@ -1560,7 +1608,14 @@ async function buildRelease(): Promise<void> {
   const extractedNodeExePath = path.join(extractedNodeDir, 'node.exe')
   await ensurePathExists(extractedNodeExePath, 'extracted node runtime executable')
   await fs.mkdir(releaseNodeDir, { recursive: true })
-  await fs.cp(extractedNodeExePath, path.join(releaseNodeDir, 'node.exe'))
+  const releaseNodeExePath = path.join(releaseNodeDir, 'node.exe')
+  await fs.cp(extractedNodeExePath, releaseNodeExePath)
+  await buildStartupLauncher({
+    repoRoot,
+    releaseDir,
+    nodeVersion,
+    windowsNodeExePath: releaseNodeExePath,
+  })
 
   await fs.rm(tempDownloadDir, { recursive: true, force: true })
 
@@ -1571,6 +1626,7 @@ async function buildRelease(): Promise<void> {
     bootstrapTemplatePath: path.join(installerDir, 'bootstrap.env.template'),
     linuxAdapterSourcePath: path.join(appsAgentDir, 'src', 'platform', 'linux.adapter.ts'),
     windowsAdapterSourcePath: path.join(appsAgentDir, 'src', 'platform', 'windows.adapter.ts'),
+    windowsPathsSourcePath: path.join(appsAgentDir, 'src', 'platform', 'windows-paths.ts'),
   })
 }
 

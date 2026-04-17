@@ -19,6 +19,7 @@ export const agentControlIpcChannels = {
   startAgent: 'agent-control/start-agent',
   stopAgent: 'agent-control/stop-agent',
   restartAgent: 'agent-control/restart-agent',
+  checkForUpdates: 'agent-control/check-for-updates',
   pauseUpdates: 'agent-control/pause-updates',
   resumeUpdates: 'agent-control/resume-updates',
   changeChannel: 'agent-control/change-channel',
@@ -67,6 +68,7 @@ export type AgentControlRendererApi = {
   readonly startAgent: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly stopAgent: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly restartAgent: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
+  readonly checkForUpdates: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly pauseUpdates: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly resumeUpdates: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly changeChannel: (

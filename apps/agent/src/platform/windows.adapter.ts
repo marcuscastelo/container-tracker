@@ -1,38 +1,11 @@
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
 import process from 'node:process'
 
-import { AGENT_PATH_LAYOUT, resolveAgentPathLayoutPaths } from '@agent/platform/agent-path-layout'
 import { ensureDirectory, runCommand, tryCommand } from '@agent/platform/common'
 import { createWindowsLocalControlAdapter } from '@agent/platform/local-control.adapter'
 import type { AgentPlatformAdapter } from '@agent/platform/platform.types'
-
-const DEFAULT_DATA_DIR_NAME = 'ContainerTracker'
-
-function normalizeOptionalEnv(value: string | undefined): string | undefined {
-  if (typeof value !== 'string') {
-    return undefined
-  }
-
-  const normalized = value.trim()
-  return normalized.length > 0 ? normalized : undefined
-}
-
-function resolveDataDir(env: NodeJS.ProcessEnv): string {
-  const explicitDataDir = normalizeOptionalEnv(env.AGENT_DATA_DIR)
-  if (explicitDataDir) {
-    return explicitDataDir
-  }
-
-  const localAppData = normalizeOptionalEnv(env.LOCALAPPDATA)
-  if (localAppData) {
-    return path.win32.join(localAppData, DEFAULT_DATA_DIR_NAME)
-  }
-
-  return path.win32.join(os.homedir(), 'AppData', 'Local', DEFAULT_DATA_DIR_NAME)
-}
+import { resolveWindowsPlatformPaths } from '@agent/platform/windows-paths'
 
 function removePathIfExists(targetPath: string): void {
   try {
@@ -91,24 +64,7 @@ export const windowsPlatformAdapter: AgentPlatformAdapter = {
   key: 'windows-x64',
   control: createWindowsLocalControlAdapter(),
   resolvePaths(command) {
-    const dataDir = resolveDataDir(command.env)
-    const bootstrapEnvPath =
-      normalizeOptionalEnv(command.env.BOOTSTRAP_DOTENV_PATH) ??
-      path.win32.join(dataDir, AGENT_PATH_LAYOUT.files.bootstrapEnv)
-    const configEnvPath =
-      normalizeOptionalEnv(command.env.DOTENV_PATH) ??
-      path.win32.join(dataDir, AGENT_PATH_LAYOUT.files.configEnv)
-    const publicStateDir =
-      normalizeOptionalEnv(command.env.AGENT_PUBLIC_STATE_DIR) ??
-      path.win32.join(dataDir, AGENT_PATH_LAYOUT.directories.publicState)
-
-    return resolveAgentPathLayoutPaths({
-      dataDir,
-      bootstrapEnvPath,
-      publicStateDir,
-      configEnvPath,
-      joinPath: path.win32.join,
-    })
+    return resolveWindowsPlatformPaths(command.env)
   },
   ensureDirectories(command) {
     fs.mkdirSync(command.paths.dataDir, { recursive: true })

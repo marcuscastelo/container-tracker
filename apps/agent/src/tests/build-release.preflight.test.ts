@@ -1,32 +1,35 @@
 import fs from 'node:fs'
 
-import { collectInstallerTaskRegistrationErrors } from '@agent/build-release'
+import { collectInstallerStartupRegistrationErrors } from '@agent/build-release'
 import { describe, expect, it } from 'vitest'
 
 const installerFileUrl = new URL('../installer/installer.iss', import.meta.url)
 
-describe('build-release preflight task registration validation', () => {
-  it('accepts the current PowerShell Register-ScheduledTask installer flow', () => {
+describe('build-release preflight startup registration validation', () => {
+  it('accepts the current HKCU Run startup installer flow', () => {
     const installerContent = fs.readFileSync(installerFileUrl, 'utf8')
 
-    expect(collectInstallerTaskRegistrationErrors(installerContent)).toEqual([])
+    expect(collectInstallerStartupRegistrationErrors(installerContent)).toEqual([])
   })
 
-  it('accepts legacy schtasks /Create registrations', () => {
+  it('rejects legacy schtasks /Create registrations', () => {
     const installerContent = `
+Root: HKCU; Subkey: "Software\\Microsoft\\Windows\\CurrentVersion\\Run"; ValueType: string; ValueName: "{#AgentRunValueName}"; ValueData: """{app}\\ct-agent-startup.exe"""
 Filename: "schtasks.exe"; Parameters: "/Create /SC ONLOGON /IT /RL LIMITED /TN ""ContainerTrackerAgent"" /TR ""powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\\app\\dist\\run-supervisor.ps1"""""""
 `.trim()
 
-    expect(collectInstallerTaskRegistrationErrors(installerContent)).toEqual([])
+    expect(collectInstallerStartupRegistrationErrors(installerContent)).toContain(
+      'installer.iss must not register Windows Scheduled Tasks for startup',
+    )
   })
 
-  it('rejects installers without an ONLOGON task registration command', () => {
+  it('rejects installers without an HKCU Run registration', () => {
     const installerContent = `
 Filename: "cmd.exe"; Parameters: "/C echo Installer completed"
 `.trim()
 
-    expect(collectInstallerTaskRegistrationErrors(installerContent)).toContain(
-      'installer.iss must include one ONLOGON task registration command',
+    expect(collectInstallerStartupRegistrationErrors(installerContent)).toContain(
+      'installer.iss must register HKCU Run startup for ct-agent-startup.exe',
     )
   })
 
@@ -35,18 +38,19 @@ Filename: "cmd.exe"; Parameters: "/C echo Installer completed"
 Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#AgentTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\\app\\dist\\agent-tray-host.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null"""
 `.trim()
 
-    expect(collectInstallerTaskRegistrationErrors(installerContent)).toContain(
-      'installer.iss agent task must launch run-supervisor.ps1 instead of agent-tray-host.ps1',
+    expect(collectInstallerStartupRegistrationErrors(installerContent)).toContain(
+      'installer.iss must not install or launch the PowerShell tray host',
     )
   })
 
-  it('rejects Register-ScheduledTask registrations that still wrap execution with cmd.exe', () => {
+  it('rejects scheduled-task start or stop commands in the installer command sections', () => {
     const installerContent = `
-Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#AgentTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\\app\\dist\\run-supervisor.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null"""
+Root: HKCU; Subkey: "Software\\Microsoft\\Windows\\CurrentVersion\\Run"; ValueType: string; ValueName: "{#AgentRunValueName}"; ValueData: """{app}\\ct-agent-startup.exe"""
+Filename: "cmd.exe"; Parameters: "/C schtasks /Run /TN ""ContainerTrackerAgent"" || exit /B 0"
 `.trim()
 
-    expect(collectInstallerTaskRegistrationErrors(installerContent)).toContain(
-      'installer.iss task registration must execute powershell.exe directly',
+    expect(collectInstallerStartupRegistrationErrors(installerContent)).toContain(
+      'installer.iss must not start or stop the agent through scheduled-task commands',
     )
   })
 })

@@ -18,7 +18,7 @@ export async function downloadRelease(command: {
   const downloaded = await downloadReleaseBundle({
     version: command.version,
     downloadUrl: command.downloadUrl,
-    fetchImpl: command.fetchImpl,
+    ...(command.fetchImpl ? { fetchImpl: command.fetchImpl } : {}),
   })
 
   verifyReleaseChecksum({

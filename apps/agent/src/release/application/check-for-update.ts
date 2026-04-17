@@ -85,7 +85,7 @@ export async function runReleaseCheckCycle(command: {
     manifest,
     layout: command.layout,
     state: effectiveReleaseState,
-    fetchImpl: command.fetchImpl,
+    ...(command.fetchImpl ? { fetchImpl: command.fetchImpl } : {}),
   })
 
   if (stagedRelease.kind === 'no_update') {

@@ -15,6 +15,7 @@ import {
   refreshAgentControlPublicLogs,
 } from '@agent/control-core/public-control-files'
 import { appendPendingActivityEvents } from '@agent/pending-activity'
+import { resolveAgentPlatformKey } from '@agent/platform/platform.adapter'
 import {
   activatePendingRelease,
   confirmActivatedRelease,
@@ -90,6 +91,58 @@ function toErrorMessage(error: unknown): string {
     return error.message
   }
   return String(error)
+}
+
+function toErrorDetails(error: unknown): string {
+  if (error instanceof Error) {
+    if (typeof error.stack === 'string' && error.stack.length > 0) {
+      return error.stack
+    }
+    return error.message
+  }
+  return String(error)
+}
+
+function summarizePathLayout(layout: ReturnType<typeof resolveAgentPathLayout>): string {
+  return [
+    `data=${layout.dataDir}`,
+    `logs=${layout.logsDir}`,
+    `release_state=${layout.releaseStatePath}`,
+    `runtime_state=${layout.runtimeStatePath}`,
+    `public_state=${layout.publicStatePath}`,
+    `public_logs=${layout.publicLogsPath}`,
+    `current=${layout.currentPath}`,
+    `previous=${layout.previousPath}`,
+  ].join(' ')
+}
+
+function summarizeRuntimeLaunchEnv(env: NodeJS.ProcessEnv): string {
+  const keys = [
+    'AGENT_DATA_DIR',
+    'LOCALAPPDATA',
+    'DOTENV_PATH',
+    'BOOTSTRAP_DOTENV_PATH',
+    'AGENT_PUBLIC_STATE_DIR',
+    'AGENT_ACTIVE_RELEASE_VERSION',
+    'AGENT_SUPERVISOR_HEALTH_PATH',
+    'AGENT_SUPERVISOR_CONTROL_PATH',
+    'AGENT_PENDING_ACTIVITY_PATH',
+    'AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS',
+    'AGENT_UPDATE_MANIFEST_CHANNEL',
+    'AGENT_UPDATE_STARTUP_TIMEOUT_MS',
+    'AGENT_UPDATE_HEALTH_GRACE_MS',
+    'AGENT_UPDATE_CRASH_LOOP_THRESHOLD',
+  ] as const
+
+  return keys
+    .map((key) => {
+      const value = env[key]
+      if (typeof value !== 'string') {
+        return `${key}=<unset>`
+      }
+      return `${key}=${value}`
+    })
+    .join(' ')
 }
 
 async function publishSupervisorPublicSnapshot(
@@ -371,6 +424,7 @@ export async function runAgentMain(): Promise<void> {
   const scriptDir = path.dirname(scriptPath)
   const fallbackEntrypoint = resolveFallbackRuntimeEntrypoint(scriptDir)
   const fallbackVersion = readAgentVersion(scriptDir)
+  const platformKey = resolveAgentPlatformKey()
 
   const startupTimeoutMs = resolveNumberEnv(
     normalizeOptionalEnv(process.env.AGENT_UPDATE_STARTUP_TIMEOUT_MS),
@@ -396,6 +450,11 @@ export async function runAgentMain(): Promise<void> {
 
   const layout = resolveAgentPathLayout()
   ensureAgentPathLayout(layout)
+  appendSupervisorLog(
+    layout.logsDir,
+    `supervisor bootstrap context pid=${process.pid} platform_key=${platformKey} arch=${process.arch} node=${process.version} exec=${process.execPath} cwd=${process.cwd()} script=${scriptPath} script_dir=${scriptDir} fallback_entrypoint=${fallbackEntrypoint} fallback_version=${fallbackVersion}`,
+  )
+  appendSupervisorLog(layout.logsDir, `supervisor path layout ${summarizePathLayout(layout)}`)
   writeSupervisorPidFile(layout)
   process.once('exit', () => {
     removeSupervisorPidFile(layout)
@@ -412,6 +471,10 @@ export async function runAgentMain(): Promise<void> {
     configuredChannel: currentConfig?.AGENT_UPDATE_MANIFEST_CHANNEL,
   })
   const releaseChecksDisabled = releaseChecksMode.disabled
+  appendSupervisorLog(
+    layout.logsDir,
+    `release checks mode disabled=${releaseChecksDisabled} reason=${releaseChecksMode.reason} configured_channel=${releaseChecksMode.configuredChannel ?? 'unknown'}`,
+  )
   if (releaseChecksDisabled) {
     if (releaseChecksMode.reason === 'EXPLICIT_DISABLE_FLAG') {
       appendSupervisorLog(
@@ -567,6 +630,14 @@ export async function runAgentMain(): Promise<void> {
       resolvedRelease: runtimeSelection,
       baseEnv: process.env,
     })
+    appendSupervisorLog(
+      layout.logsDir,
+      `runtime launch prepared source=${runtimeSelection.source} expected_version=${launchSpec.expectedVersion} health_path=${launchSpec.healthPath} entrypoint=${launchSpec.entrypointPath}`,
+    )
+    appendSupervisorLog(
+      layout.logsDir,
+      `runtime launch env ${summarizeRuntimeLaunchEnv(launchSpec.env)}`,
+    )
 
     const stopReleaseCheckLoop = releaseChecksDisabled
       ? () => {}
@@ -612,6 +683,9 @@ export async function runAgentMain(): Promise<void> {
                 `started runtime pid=${child.pid ?? 'unknown'} version=${launchSpec.expectedVersion} entrypoint=${launchSpec.entrypointPath}`,
               )
             },
+            log(message: string) {
+              appendSupervisorLog(layout.logsDir, message)
+            },
           })
         : await runRuntimeWithoutHealthGate({
             scriptPath: launchSpec.entrypointPath,
@@ -625,7 +699,20 @@ export async function runAgentMain(): Promise<void> {
                 `started runtime pid=${child.pid ?? 'unknown'} version=${launchSpec.expectedVersion} entrypoint=${launchSpec.entrypointPath}`,
               )
             },
+            log(message: string) {
+              appendSupervisorLog(layout.logsDir, message)
+            },
           })
+      appendSupervisorLog(
+        layout.logsDir,
+        `runtime run completed exit_code=${runResult.exitCode ?? 'null'} startup_confirmed=${runResult.startupConfirmed} startup_timed_out=${runResult.startupTimedOut} health_grace_confirmed=${runResult.healthGraceConfirmed}`,
+      )
+    } catch (error) {
+      appendSupervisorLog(
+        layout.logsDir,
+        `runtime run failed with unhandled error: ${toErrorDetails(error)}`,
+      )
+      throw error
     } finally {
       stopReleaseCheckLoop()
     }
@@ -828,6 +915,15 @@ export async function runAgentMain(): Promise<void> {
 
 export function launchAgentMain(): void {
   void runAgentMain().catch((error) => {
+    try {
+      const layout = resolveAgentPathLayout()
+      appendSupervisorLog(
+        layout.logsDir,
+        `fatal startup error: ${toErrorDetails(error)} (pid=${process.pid} node=${process.version} exec=${process.execPath})`,
+      )
+    } catch {
+      // best effort logging only
+    }
     console.error(`[supervisor] fatal startup error: ${toErrorMessage(error)}`)
     process.exitCode = EXIT_FATAL
   })

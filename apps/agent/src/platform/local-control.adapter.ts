@@ -4,12 +4,7 @@ import {
   shouldUseLocalRuntimeProcessControl,
 } from '@agent/platform/control/linux-dev-process-control'
 import { createLinuxServiceControlStrategy } from '@agent/platform/control/linux-service-control'
-import {
-  buildWindowsTaskEndCommand,
-  buildWindowsTaskRunCommand,
-  createWindowsTaskControlStrategy,
-  parseWindowsTaskQueryOutput,
-} from '@agent/platform/control/windows-task-control'
+import { createWindowsProcessControlStrategy } from '@agent/platform/control/windows-process-control'
 import type { AgentPlatformControlAdapter } from '@agent/platform/platform.contract'
 
 function createAdapter(
@@ -44,7 +39,5 @@ export function createLinuxLocalControlAdapter(): AgentPlatformControlAdapter {
 }
 
 export function createWindowsLocalControlAdapter(): AgentPlatformControlAdapter {
-  return createAdapter('windows', createWindowsTaskControlStrategy())
+  return createAdapter('windows', createWindowsProcessControlStrategy())
 }
-
-export { buildWindowsTaskEndCommand, buildWindowsTaskRunCommand, parseWindowsTaskQueryOutput }

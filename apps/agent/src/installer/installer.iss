@@ -2,7 +2,7 @@
 #define AppVersion "0.1.0"
 #define AppIdValue "{{0F1AE8D1-7B19-4B14-9A17-2EF197BBD5AA}}"
 #define AppDirName "ContainerTrackerAgent"
-#define AgentTaskName "ContainerTrackerAgent"
+#define AgentRunValueName "ContainerTrackerAgent"
 #define RepoRootEnv GetEnv("CONTAINER_TRACKER_REPO_ROOT")
 #if RepoRootEnv != ""
   #define RepoRoot RepoRootEnv
@@ -37,25 +37,25 @@ Name: "{localappdata}\ContainerTracker\run"; BeforeInstall: LogDirectoryCreation
 [Files]
 Source: "{#ReleaseRoot}\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs createallsubdirs ignoreversion; BeforeInstall: LogNodeRuntimeCopyStart
 Source: "{#ReleaseRoot}\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs createallsubdirs ignoreversion; BeforeInstall: LogAppBundleCopyStart
+Source: "{#ReleaseRoot}\electron\*"; DestDir: "{app}\electron"; Flags: recursesubdirs createallsubdirs ignoreversion; BeforeInstall: LogFileCopy('Electron runtime', '{app}\electron')
+Source: "{#ReleaseRoot}\control-ui\*"; DestDir: "{app}\control-ui"; Flags: recursesubdirs createallsubdirs ignoreversion; BeforeInstall: LogFileCopy('Electron control UI', '{app}\control-ui')
+Source: "{#ReleaseRoot}\ct-agent-startup.exe"; DestDir: "{app}"; Flags: ignoreversion; BeforeInstall: LogFileCopy('ct-agent-startup.exe', '{app}\ct-agent-startup.exe')
 Source: "run-supervisor.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion; BeforeInstall: LogFileCopy('run-supervisor.ps1', '{app}\app\dist\run-supervisor.ps1')
-Source: "agent-tray-host.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion; BeforeInstall: LogFileCopy('agent-tray-host.ps1', '{app}\app\dist\agent-tray-host.ps1')
 Source: "stop-agent-runtime.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion; BeforeInstall: LogFileCopy('stop-agent-runtime.ps1', '{app}\app\dist\stop-agent-runtime.ps1')
 Source: "resources\tray.ico"; DestDir: "{app}\app\assets"; Flags: ignoreversion; BeforeInstall: LogFileCopy('tray icon', '{app}\app\assets\tray.ico')
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{localappdata}\ContainerTracker"; DestName: "bootstrap.env"; Flags: uninsneveruninstall; BeforeInstall: LogFileCopy('bootstrap.env', '{localappdata}\ContainerTracker\bootstrap.env')
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{tmp}"; DestName: "bootstrap.env.template"; Flags: dontcopy; BeforeInstall: LogFileCopy('bootstrap.env template', '{tmp}\bootstrap.env.template')
 Source: "stop-agent-runtime.ps1"; DestDir: "{tmp}"; Flags: dontcopy; BeforeInstall: LogFileCopy('stop-agent-runtime.ps1 (temp)', '{tmp}\stop-agent-runtime.ps1')
 
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#AgentRunValueName}"; ValueData: """{app}\ct-agent-startup.exe"""; Flags: uninsdeletevalue
+
 [Run]
-Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /IT /RL LIMITED /TN ""{#AgentTaskName}"" /TR ""powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\run-supervisor.ps1"""""""; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Registering scheduled task {#AgentTaskName}.')
-Filename: "cmd.exe"; Parameters: "/C schtasks /Run /TN ""{#AgentTaskName}"" || exit /B 0"; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Starting agent supervisor task.')
-Filename: "cmd.exe"; Parameters: "/C start """" /B powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\agent-tray-host.ps1"""; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Starting agent tray host.')
+Filename: "{app}\ct-agent-startup.exe"; Flags: runhidden nowait; BeforeInstall: LogRunAction('Starting agent startup launcher.')
 
 [UninstallRun]
-Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#AgentTaskName}"" /DISABLE || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Disabling scheduled task {#AgentTaskName}..."; RunOnceId: "disable-agent-task"
-Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#AgentTaskName}"" || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Stopping scheduled task {#AgentTaskName}..."; RunOnceId: "end-agent-task"
 Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\stop-agent-runtime.ps1"" -CleanupNodeModules || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Stopping agent runtime processes..."; RunOnceId: "kill-agent-runtime-processes"
 Filename: "cmd.exe"; Parameters: "/C timeout /T 5 /NOBREAK || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Waiting for process shutdown..."; RunOnceId: "post-kill-runtime-delay"
-Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#AgentTaskName}"" /F || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Deleting scheduled task {#AgentTaskName}..."; RunOnceId: "delete-agent-task"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\ContainerTracker\*"
@@ -897,32 +897,13 @@ begin
   ErrorMessage := '';
   ResultCode := -1;
 
-  if (not RunCmdAndLogOutput(
-    'Disable scheduled task {#AgentTaskName}',
-    '/C schtasks /Change /TN "{#AgentTaskName}" /DISABLE || exit /B 0',
+  if not RunCmdAndLogOutput(
+    'Remove legacy scheduled task ContainerTrackerAgent if present',
+    '/C schtasks /Delete /TN "ContainerTrackerAgent" /F || exit /B 0',
     ResultCode
-  )) or (ResultCode <> 0) then
+  ) then
   begin
-    ErrorMessage :=
-      'Failed to disable scheduled task {#AgentTaskName} before install/update ' +
-      '(exit code ' + IntToStr(ResultCode) + ').';
-    UIErrorLog(ErrorMessage);
-    Result := False;
-    exit;
-  end;
-
-  if (not RunCmdAndLogOutput(
-    'Stop running task {#AgentTaskName}',
-    '/C schtasks /End /TN "{#AgentTaskName}" || exit /B 0',
-    ResultCode
-  )) or (ResultCode <> 0) then
-  begin
-    ErrorMessage :=
-      'Failed to stop running task {#AgentTaskName} before install/update ' +
-      '(exit code ' + IntToStr(ResultCode) + ').';
-    UIErrorLog(ErrorMessage);
-    Result := False;
-    exit;
+    UILog('Legacy scheduled task cleanup command could not be executed; continuing.');
   end;
 
   ExtractTemporaryFile('stop-agent-runtime.ps1');
@@ -1219,7 +1200,7 @@ begin
 
   if CurStep = ssPostInstall then
   begin
-    UILog('Post-install step started: configuring scheduled tasks and runtime startup.');
+    UILog('Post-install step started: configuring HKCU Run startup and runtime launcher.');
     exit;
   end;
 

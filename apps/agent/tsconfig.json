@@ -59,6 +59,9 @@
     "./src/pending-activity.ts",
     "./src/cli/ct-agent.ts",
     "./src/cli/ct-agent-admin.ts",
+    "./src/installer/ct-agent-startup.lib.ts",
+    "./src/installer/ct-agent-startup.entry.ts",
+    "./src/platform/windows/startup.ts",
     "./src/build-release.ts",
     "./src/bundle-release.ts"
   ]

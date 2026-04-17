@@ -31,6 +31,13 @@ function runAndWait(command, args, options = {}) {
   })
 }
 
+function runPnpmAndWait(args, options = {}) {
+  return runAndWait('pnpm', args, {
+    ...options,
+    ...(process.platform === 'win32' ? { shell: true } : {}),
+  })
+}
+
 function resolveSystemElectronBinary() {
   const candidates = [
     process.env.ELECTRON_BINARY,
@@ -63,13 +70,14 @@ async function resolveElectronCommand() {
     return {
       command: 'pnpm',
       args: ['exec', 'electron'],
+      useShell: process.platform === 'win32',
     }
   }
 
   console.warn(
     '[agent-control-ui] electron runtime not found in node_modules; attempting `pnpm rebuild electron`',
   )
-  const rebuildExit = await runAndWait('pnpm', ['rebuild', 'electron'])
+  const rebuildExit = await runPnpmAndWait(['rebuild', 'electron'])
   if (rebuildExit !== 0) {
     throw new Error(
       'Electron install is incomplete and automatic recovery failed. Run `pnpm rebuild electron` (or reinstall dependencies) and retry.',
@@ -84,6 +92,7 @@ async function resolveElectronCommand() {
     return {
       command: 'pnpm',
       args: ['exec', 'electron'],
+      useShell: process.platform === 'win32',
     }
   }
 
@@ -113,6 +122,7 @@ try {
 
 const electron = run(electronCommand.command, [...electronCommand.args, distRoot], {
   env: buildElectronEnv(),
+  ...(electronCommand.useShell ? { shell: true } : {}),
 })
 
 electron.once('error', (error) => {

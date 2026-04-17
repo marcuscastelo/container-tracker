@@ -4,15 +4,62 @@ import path from 'node:path'
 
 import { createLinuxDevProcessControlStrategy } from '@agent/platform/control/linux-dev-process-control'
 import { createLinuxServiceControlStrategy } from '@agent/platform/control/linux-service-control'
-import {
-  buildWindowsTaskEndCommand,
-  buildWindowsTaskRunCommand,
-  createWindowsTaskControlStrategy,
-} from '@agent/platform/control/windows-task-control'
+import { createWindowsProcessControlStrategy } from '@agent/platform/control/windows-process-control'
+import type { PlatformPathResolution } from '@agent/platform/platform.contract'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 function createTempDataDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix))
+}
+
+function createWindowsControlPaths(dataDir: string): {
+  readonly layout: PlatformPathResolution
+  readonly installRoot: string
+  readonly startupExecutablePath: string
+  readonly supervisorPidPath: string
+  readonly runtimeStatePath: string
+  readonly supervisorControlPath: string
+} {
+  const layout: PlatformPathResolution = {
+    dataDir,
+    releasesDir: path.join(dataDir, 'releases'),
+    currentPath: path.join(dataDir, 'current'),
+    previousPath: path.join(dataDir, 'previous'),
+    logsDir: path.join(dataDir, 'logs'),
+    releaseStatePath: path.join(dataDir, 'release-state.json'),
+    runtimeStatePath: path.join(dataDir, 'runtime-state.json'),
+    configEnvPath: path.join(dataDir, 'config.env'),
+    bootstrapEnvPath: path.join(dataDir, 'bootstrap.env'),
+    consumedBootstrapEnvPath: path.join(dataDir, 'bootstrap.env.consumed'),
+    installerTokenStatePath: path.join(dataDir, 'installer-token-state.json'),
+    downloadsDir: path.join(dataDir, 'downloads'),
+    baseRuntimeConfigPath: path.join(dataDir, 'control-base.runtime.json'),
+    supervisorControlPath: path.join(dataDir, 'supervisor-control.json'),
+    pendingActivityPath: path.join(dataDir, 'pending-activity-events.json'),
+    controlOverridesPath: path.join(dataDir, 'control-overrides.local.json'),
+    controlRemoteCachePath: path.join(dataDir, 'control-remote-cache.json'),
+    infraConfigPath: path.join(dataDir, 'infra-config.json'),
+    auditLogPath: path.join(dataDir, 'agent-control-audit.ndjson'),
+    publicStateDir: path.join(dataDir, 'run'),
+    publicStatePath: path.join(dataDir, 'run', 'control-ui-state.json'),
+    publicBackendStatePath: path.join(dataDir, 'run', 'control-ui-backend-state.json'),
+    publicLogsPath: path.join(dataDir, 'run', 'control-ui-logs.json'),
+    agentLogForwarderStatePath: path.join(dataDir, 'agent-log-forwarder-state.json'),
+  }
+
+  return {
+    layout,
+    installRoot: path.join(dataDir, 'Programs', 'ContainerTrackerAgent'),
+    startupExecutablePath: path.join(
+      dataDir,
+      'Programs',
+      'ContainerTrackerAgent',
+      'ct-agent-startup.exe',
+    ),
+    supervisorPidPath: path.join(dataDir, 'supervisor.pid'),
+    runtimeStatePath: layout.runtimeStatePath,
+    supervisorControlPath: layout.supervisorControlPath,
+  }
 }
 
 afterEach(() => {
@@ -98,38 +145,62 @@ describe('linux dev process control strategy', () => {
   })
 })
 
-describe('windows task control strategy', () => {
-  it('executes start/stop/restart through scheduled-task commands', async () => {
-    const runCommand = vi.fn().mockResolvedValue({ stdout: '', stderr: '' })
-    const strategy = createWindowsTaskControlStrategy({ runCommand })
+describe('windows process control strategy', () => {
+  it('starts the native startup launcher when no supervisor pid is alive', async () => {
+    const dataDir = createTempDataDir('agent-windows-control-start-')
+    const paths = createWindowsControlPaths(dataDir)
+    const startStartup = vi.fn()
+    const strategy = createWindowsProcessControlStrategy({
+      resolvePaths: () => paths,
+      resolveSupervisorPid: async () => null,
+      startStartup,
+    })
 
-    await strategy.startAgent({ serviceName: 'CustomTask' })
-    await strategy.stopAgent({ serviceName: 'CustomTask' })
-    await strategy.restartAgent({ serviceName: 'CustomTask' })
+    await strategy.startAgent()
 
-    expect(runCommand).toHaveBeenNthCalledWith(1, 'cmd.exe', [
-      '/d',
-      '/s',
-      '/c',
-      buildWindowsTaskRunCommand('CustomTask'),
-    ])
-    expect(runCommand).toHaveBeenNthCalledWith(2, 'cmd.exe', [
-      '/d',
-      '/s',
-      '/c',
-      buildWindowsTaskEndCommand('CustomTask'),
-    ])
-    expect(runCommand).toHaveBeenNthCalledWith(3, 'cmd.exe', [
-      '/d',
-      '/s',
-      '/c',
-      buildWindowsTaskEndCommand('CustomTask'),
-    ])
-    expect(runCommand).toHaveBeenNthCalledWith(4, 'cmd.exe', [
-      '/d',
-      '/s',
-      '/c',
-      buildWindowsTaskRunCommand('CustomTask'),
-    ])
+    expect(startStartup).toHaveBeenCalledWith({
+      startupExecutablePath: paths.startupExecutablePath,
+      installRoot: paths.installRoot,
+      layout: paths.layout,
+      runtimeOnly: true,
+    })
+  })
+
+  it('requests supervisor drain for restart when the supervisor is running', async () => {
+    const dataDir = createTempDataDir('agent-windows-control-restart-')
+    const paths = createWindowsControlPaths(dataDir)
+    const requestRestart = vi.fn()
+    const strategy = createWindowsProcessControlStrategy({
+      resolvePaths: () => paths,
+      resolveSupervisorPid: async () => 4242,
+      requestRestart,
+    })
+
+    await strategy.restartAgent()
+
+    expect(requestRestart).toHaveBeenCalledWith(paths.supervisorControlPath)
+  })
+
+  it('stops a running supervisor and cleans stale pid state', async () => {
+    const dataDir = createTempDataDir('agent-windows-control-stop-')
+    const paths = createWindowsControlPaths(dataDir)
+    const killProcess = vi.fn()
+    const waitForProcessExit = vi
+      .fn<(pid: number, timeoutMs: number) => Promise<boolean>>()
+      .mockResolvedValue(true)
+    const cleanupSupervisorPidFile = vi.fn()
+    const strategy = createWindowsProcessControlStrategy({
+      resolvePaths: () => paths,
+      resolveSupervisorPid: async () => 4242,
+      killProcess,
+      waitForProcessExit,
+      cleanupSupervisorPidFile,
+    })
+
+    await strategy.stopAgent()
+
+    expect(killProcess).toHaveBeenCalledWith(4242, 'SIGTERM')
+    expect(waitForProcessExit).toHaveBeenCalledWith(4242, 5000)
+    expect(cleanupSupervisorPidFile).toHaveBeenCalledWith(paths.supervisorPidPath)
   })
 })

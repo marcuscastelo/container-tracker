@@ -30,12 +30,15 @@ import {
   buildAgentReleaseInventory,
   readAgentControlPublicState,
 } from '@agent/control-core/public-control-state'
+import { appendPendingActivityEvents } from '@agent/pending-activity'
 import { resolvePlatformAdapter } from '@agent/platform/platform.adapter'
 import type { AgentPlatformControlAdapter } from '@agent/platform/platform.contract'
 import { requestReleaseActivation } from '@agent/release/application/activate-release'
+import { runReleaseCheckCycle } from '@agent/release/application/check-for-update'
 import { resolveReleaseEntrypoint } from '@agent/release/application/release-layout'
 import { requestReleaseRollback } from '@agent/release/application/rollback-release'
 import { readReleaseState } from '@agent/release/infrastructure/release-state.file-repository'
+import { requestRuntimeDrain } from '@agent/runtime/application/drain-runtime'
 import { writeSupervisorControl } from '@agent/runtime/infrastructure/supervisor-control.repository'
 import {
   resolveAgentPublicBackendStatePath,
@@ -70,6 +73,7 @@ type AgentControlLocalService = {
   readonly startAgent: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly stopAgent: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly restartAgent: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
+  readonly checkForUpdates: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly pauseUpdates: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly resumeUpdates: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly changeChannel: (
@@ -365,6 +369,35 @@ export function createAgentControlLocalService(
     async restartAgent() {
       await adapter.restartAgent()
       return withSnapshotResult(deps.layout, 'Agent restart requested')
+    },
+    async checkForUpdates() {
+      const syncResult = await syncSnapshot(deps.layout)
+      const result = await runReleaseCheckCycle({
+        layout: deps.layout,
+        fallbackVersion: syncResult.releaseState.current_version,
+        backendUrl: syncResult.effectiveConfig.BACKEND_URL,
+        agentToken: syncResult.effectiveConfig.AGENT_TOKEN,
+        agentId: syncResult.effectiveConfig.AGENT_ID,
+        updateChannel: syncResult.effectiveConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
+        effectiveBlockedVersions: syncResult.snapshot.updates.blockedVersions.effective,
+      })
+
+      if (result.activities.length > 0) {
+        appendPendingActivityEvents(deps.layout.pendingActivityPath, result.activities)
+      }
+
+      if (result.shouldDrain && result.drainReason) {
+        requestRuntimeDrain({
+          supervisorControlPath: deps.layout.supervisorControlPath,
+          reason: result.drainReason,
+          requestedAt: new Date().toISOString(),
+        })
+      }
+
+      const message = result.updateAvailable
+        ? `Update check completed; release ${result.manifestVersion} is pending activation`
+        : 'Update check completed; no update is available'
+      return withSnapshotResult(deps.layout, message)
     },
     async pauseUpdates() {
       setLocalUpdatesPaused({

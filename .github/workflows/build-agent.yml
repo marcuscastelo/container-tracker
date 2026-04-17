@@ -56,6 +56,9 @@ jobs:
           INSTALLER_TOKEN: ci-installer-token
         run: pnpm run agent:release
 
+      - name: Assert Windows startup launcher artifact
+        run: test -f release/ct-agent-startup.exe
+
       - name: Package linux artifact
         run: |
           rm -rf /tmp/agent-linux-x64
@@ -92,4 +95,52 @@ jobs:
             agent-linux-x64.sha256
             agent-windows-x64.zip
             agent-windows-x64.sha256
+          if-no-files-found: error
+
+  build-agent-windows-setup:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN }}
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build release app
+        env:
+          BACKEND_URL: https://agent.invalid
+          INSTALLER_TOKEN: ci-installer-token
+        run: pnpm run agent:release
+
+      - name: Build native Windows installer
+        run: pnpm run agent:setup:native
+
+      - name: Assert setup artifact
+        run: |
+          if (!(Test-Path 'apps/agent/src/installer/Output/ContainerTrackerAgent-Setup.exe')) {
+            throw 'ContainerTrackerAgent-Setup.exe was not generated.'
+          }
+
+      - name: Upload setup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-windows-setup
+          path: apps/agent/src/installer/Output/ContainerTrackerAgent-Setup.exe
           if-no-files-found: error

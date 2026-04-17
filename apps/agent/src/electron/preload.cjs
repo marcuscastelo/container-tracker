@@ -9,6 +9,7 @@ const agentControlIpcChannels = {
   startAgent: 'agent-control/start-agent',
   stopAgent: 'agent-control/stop-agent',
   restartAgent: 'agent-control/restart-agent',
+  checkForUpdates: 'agent-control/check-for-updates',
   pauseUpdates: 'agent-control/pause-updates',
   resumeUpdates: 'agent-control/resume-updates',
   changeChannel: 'agent-control/change-channel',
@@ -44,6 +45,9 @@ const agentControl = {
   },
   restartAgent() {
     return ipcRenderer.invoke(agentControlIpcChannels.restartAgent)
+  },
+  checkForUpdates() {
+    return ipcRenderer.invoke(agentControlIpcChannels.checkForUpdates)
   },
   pauseUpdates() {
     return ipcRenderer.invoke(agentControlIpcChannels.pauseUpdates)

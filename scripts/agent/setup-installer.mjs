@@ -10,6 +10,11 @@ import { fileURLToPath } from 'node:url'
 const DEFAULT_DOCKER_IMAGE = 'amake/innosetup'
 const DEFAULT_INSTALLER_SCRIPT = 'apps/agent/src/installer/installer.iss'
 const VALID_MODES = ['auto', 'native', 'docker', 'wine']
+const REQUIRED_WINDOWS_SETUP_INPUTS = [
+  'release/ct-agent-startup.exe',
+  'release/control-ui/package.json',
+  'release/electron/electron.exe',
+]
 
 function toErrorMessage(error) {
   if (error instanceof Error) {
@@ -370,11 +375,27 @@ async function chooseStrategy(command) {
   )
 }
 
+async function ensureWindowsSetupInputs(repoRoot) {
+  const missing = []
+  for (const relativePath of REQUIRED_WINDOWS_SETUP_INPUTS) {
+    if (!(await pathExists(path.join(repoRoot, relativePath)))) {
+      missing.push(relativePath)
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Windows setup inputs are missing: ${missing.join(', ')}. Run pnpm run agent:release before compiling Setup.exe.`,
+    )
+  }
+}
+
 async function main() {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url))
   const repoRoot = resolveRepoRoot(scriptDir)
   const parsed = parseCliArgs(process.argv.slice(2))
   const installerScriptPath = await resolveInstallerScriptPath(repoRoot, parsed.installerScriptPath)
+  await ensureWindowsSetupInputs(repoRoot)
 
   const command = {
     ...parsed,
