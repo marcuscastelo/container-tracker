@@ -31,6 +31,9 @@ export default defineConfig({
         if (source.startsWith('~')) {
           after = source.startsWith('~/') ? source.slice(2) : source.slice(1)
           roots = ['src']
+        } else if (source.startsWith('@agent/')) {
+          after = source.slice('@agent/'.length)
+          roots = ['apps/agent/src']
         } else if (source.startsWith('@tools/')) {
           after = source.slice('@tools/'.length)
           roots = ['tools']

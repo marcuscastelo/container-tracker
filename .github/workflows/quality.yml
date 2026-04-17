@@ -48,6 +48,9 @@ jobs:
       - name: Run architecture boundary scan
         run: pnpm run architecture:boundary-scan
 
+      - name: Run agent boundary scan
+        run: pnpm run agent:boundary-scan
+
       - name: Run knip files scan
         run: pnpm run knip:files
 
@@ -116,6 +119,9 @@ jobs:
 
       - name: Run tests with coverage
         run: pnpm run test:coverage
+
+      - name: Run agent smoke suites
+        run: pnpm run agent:smoke
 
       - name: Build coverage policy report
         run: pnpm run coverage:report -- --write --github-summary

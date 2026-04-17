@@ -194,8 +194,41 @@ If you modify:
 - Kept module/capability boundaries intact?
 - Avoided `any`, unsafe `as`, and `Partial<Entity>` contracts?
 - Kept `snake_case` confined to persistence?
+- Ran the mandatory `pnpm sanity` close-out gate and compared baseline vs final state?
 
 If any answer is "not sure", stop and re-check canonical docs.
+
+---
+
+## 11.1) Mandatory `pnpm sanity` Gate (Canonical)
+
+Definition:
+
+- A **commit-ready package** is any change set the agent considers ready for commit, PR, or technical handoff.
+
+Policy:
+
+- For every commit-ready package, running `pnpm sanity` before closure is mandatory.
+- This gate is non-optional, even when `pnpm sanity` is slow or expensive.
+
+Rules:
+
+- Capture the initial `pnpm sanity` state before implementation (`green` or `non-green` + failing checks).
+- If the initial state is `green`, the final state must be `green`.
+- If the initial state is `non-green`, the final state must be at least as good as baseline.
+- Never introduce new failures, newly-gated warnings, or any baseline regression.
+- When safe and local to scope, fix trivial pre-existing failures found during implementation.
+- Do not use a pre-broken baseline as justification to worsen repository health.
+- The package cannot be declared final/commit-ready without this verification.
+
+Mandatory closing report:
+
+- Initial `pnpm sanity` state (green/non-green + pre-existing failures).
+- Final `pnpm sanity` state.
+- Delta vs baseline:
+  - failures fixed
+  - failures that remained
+  - explicit confirmation that no worsening occurred
 
 ---
 
@@ -253,6 +286,7 @@ Why:
 - Do not add Chromium auto-update logic to `.devcontainer/post-create.sh`, `.devcontainer/post-start.sh`, or refresh workflows; version bumps must happen in explicit PRs.
 - Before debugging `/api/refresh-maersk/:container`, run `pnpm run maersk:smoke:puppeteer` to validate browser launch and classify failures as `missing_browser_binary`, `invalid_chrome_path`, or `launch_incompatibility`.
 - For `/api/refresh-maersk/:container` smoke, minimum pass criterion is response output not containing `Browser launch failed`; provider-side `403/502` responses are acceptable for this smoke if launch succeeded.
+- For agent canonical state files (`control-base.runtime.json`, `control-overrides.local.json`, `control-remote-cache.json`, `infra-config.json`, `supervisor-control.json`, `pending-activity-events.json`, public control JSONs, and `agent-log-forwarder-state.json`), route reads/writes/removals through `@agent/state/infrastructure/json-state.file-store` (or delegating repositories) instead of direct `fs` persistence in feature modules.
 
 ---
 
@@ -386,7 +420,7 @@ Execution guideline for PR-suggestion tasks:
 1. Fetch feedback with `ai:pr:feedback`.
 2. Prioritize actionable code suggestions (correctness/performance/tests/clarity).
 3. Implement what is technically sound and aligned with architecture/invariants.
-4. Run required checks/build and keep it green before commit.
+4. Run the mandatory close-out `pnpm sanity` gate (section `11.1`) before commit.
 
 ---
 

@@ -20,7 +20,7 @@ check_fail() {
   status=1
 }
 
-if [ -d "$REPO_ROOT/.git" ]; then
+if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   check_ok "Git repository detected at $REPO_ROOT"
 else
   check_fail "No Git repository detected at $REPO_ROOT"

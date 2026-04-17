@@ -16,7 +16,7 @@ Core components:
   - `POST /api/agent/enroll` (bootstrap -> effective config contract)
 - Legacy route:
   - `GET/POST /api/refresh-maersk/:container` returns `410 Gone`
-- Local Node runner: `tools/agent/agent.ts`
+- Local Node runner: `apps/agent/src/agent.ts`
 
 Snapshots continue to be persisted in `container_snapshots` via
 `trackingUseCases.saveAndProcess(...)`.
@@ -230,7 +230,7 @@ Expected:
 ## 6) Run Agent
 
 ```bash
-node --experimental-strip-types tools/agent/agent.ts
+node --experimental-strip-types apps/agent/src/agent.ts
 ```
 
 First execution:
