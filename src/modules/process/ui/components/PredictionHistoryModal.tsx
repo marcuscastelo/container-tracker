@@ -1,13 +1,18 @@
 import type { JSX } from 'solid-js'
 import { createMemo, Show } from 'solid-js'
+import { PredictionHistoryCopySeriesAction } from '~/modules/process/ui/components/PredictionHistoryCopySeriesAction'
 import { PredictionHistoryHeader } from '~/modules/process/ui/components/PredictionHistoryHeader'
 import { PredictionHistoryTimeline } from '~/modules/process/ui/components/PredictionHistoryTimeline'
-import type { PredictionHistoryModalVM } from '~/modules/process/ui/viewmodels/prediction-history.vm'
+import type {
+  PredictionHistoryModalVM,
+  PredictionHistorySource,
+} from '~/modules/process/ui/viewmodels/prediction-history.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 
 type Props = {
   readonly predictionHistory: PredictionHistoryModalVM | null
+  readonly predictionHistorySource: PredictionHistorySource | null
   readonly activityLabel: string
   readonly isOpen: boolean
   readonly loading?: boolean
@@ -20,10 +25,22 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
   const title = createMemo(
     () => `${t(keys.shipmentView.timeline.predictionHistory.title)} — ${props.activityLabel}`,
   )
+  const copySource = createMemo<PredictionHistorySource | null>(() =>
+    props.loading !== true && props.errorMessage == null ? props.predictionHistorySource : null,
+  )
 
   return (
     <Dialog open={props.isOpen} onClose={props.onClose} title={title()} maxWidth="3xl">
       <div class="space-y-4">
+        <Show when={copySource()}>
+          {(source) => (
+            <PredictionHistoryCopySeriesAction
+              source={source()}
+              activityLabel={props.activityLabel}
+            />
+          )}
+        </Show>
+
         <Show when={props.loading === true}>
           <div class="rounded-md border border-border bg-surface px-4 py-6 text-center text-sm-ui text-text-muted">
             {t(keys.shipmentView.loading)}

@@ -234,7 +234,7 @@ describe('Event Series Classification', () => {
   })
 
   describe('Multiple ACTUAL (conflict detection)', () => {
-    it('should detect conflict and select latest ACTUAL as primary', () => {
+    it('should detect conflict and select latest observed ACTUAL as primary', () => {
       const series = [
         makeObs({
           event_time: '2026-01-10T00:00:00.000Z',
@@ -255,7 +255,7 @@ describe('Event Series Classification', () => {
       const result = classifySeries(series, now)
       expect(result.hasActualConflict).toBe(true)
       expect(result.conflictingActualCount).toBe(2)
-      expect(result.primary).toBe(series[2]) // Latest ACTUAL
+      expect(result.primary).toBe(series[2]) // Latest observed ACTUAL
       expect(extractLabels(result.classified)).toEqual([
         'CONFLICTING_ACTUAL',
         'CONFLICTING_ACTUAL',
@@ -263,23 +263,63 @@ describe('Event Series Classification', () => {
       ])
     })
 
-    it('should use created_at as tiebreaker when ACTUAL event_times are equal', () => {
+    it('selects latest observed ACTUAL even when a backfilled correction has older event_time', () => {
+      const series = [
+        makeObs({
+          event_time: '2026-01-20T00:00:00.000Z',
+          event_time_type: 'ACTUAL',
+          created_at: '2026-01-10T08:00:00.000Z',
+        }),
+        makeObs({
+          event_time: '2026-01-15T00:00:00.000Z',
+          event_time_type: 'ACTUAL',
+          created_at: '2026-01-11T08:00:00.000Z',
+        }),
+      ]
+
+      const result = classifySeries(series, now)
+
+      expect(result.primary).toBe(series[1])
+      expect(extractLabels(result.classified)).toEqual(['CONFLICTING_ACTUAL', 'CONFIRMED'])
+    })
+
+    it('uses event_time as tiebreaker when ACTUAL observed_at values are equal', () => {
       const series = [
         makeObs({
           event_time: '2026-01-15T00:00:00.000Z',
           event_time_type: 'ACTUAL',
-          created_at: '2026-01-15T10:00:00.000Z',
+          created_at: '2026-01-15T12:00:00.000Z',
         }),
         makeObs({
-          event_time: '2026-01-15T00:00:00.000Z',
+          event_time: '2026-01-17T00:00:00.000Z',
           event_time_type: 'ACTUAL',
-          created_at: '2026-01-15T12:00:00.000Z', // Later created_at
+          created_at: '2026-01-15T12:00:00.000Z',
         }),
       ]
       const result = classifySeries(series, now)
       expect(result.hasActualConflict).toBe(true)
-      expect(result.primary).toBe(series[1]) // Later created_at
+      expect(result.primary).toBe(series[1]) // Later event_time tiebreak
       expect(extractLabels(result.classified)).toEqual(['CONFLICTING_ACTUAL', 'CONFIRMED'])
+    })
+
+    it('keeps deterministic ACTUAL primary when observed_at and event_time both tie', () => {
+      const series = [
+        makeObs({
+          event_time: '2026-01-15T00:00:00.000Z',
+          event_time_type: 'ACTUAL',
+          created_at: '2026-01-15T12:00:00.000Z',
+        }),
+        makeObs({
+          event_time: '2026-01-15T00:00:00.000Z',
+          event_time_type: 'ACTUAL',
+          created_at: '2026-01-15T12:00:00.000Z',
+        }),
+      ]
+
+      const result = classifySeries(series, now)
+
+      expect(result.primary).toBe(series[0])
+      expect(extractLabels(result.classified)).toEqual(['CONFIRMED', 'CONFLICTING_ACTUAL'])
     })
 
     it('should handle ACTUAL with null event_time (use created_at only)', () => {
@@ -300,7 +340,7 @@ describe('Event Series Classification', () => {
       expect(result.primary).toBe(series[1]) // Latest created_at
     })
 
-    it('should prefer ACTUAL with event_time over ACTUAL with null event_time', () => {
+    it('prefers latest observed ACTUAL over null/non-null event_time differences', () => {
       const series = [
         makeObs({
           event_time: null,
@@ -314,7 +354,7 @@ describe('Event Series Classification', () => {
         }),
       ]
       const result = classifySeries(series, now)
-      expect(result.primary).toBe(series[1]) // ACTUAL with event_time
+      expect(result.primary).toBe(series[0]) // Latest observed ACTUAL
     })
 
     it('marks voyage mismatch after confirmation and labels the older ACTUAL as corrected', () => {
@@ -358,7 +398,7 @@ describe('Event Series Classification', () => {
       ]
       const result = classifySeries(series, now)
       expect(result.hasActualConflict).toBe(true)
-      expect(result.primary).toBe(series[3]) // Latest ACTUAL
+      expect(result.primary).toBe(series[3]) // Latest observed ACTUAL
       expect(extractLabels(result.classified)).toEqual([
         'SUPERSEDED_EXPECTED', // Before ACTUAL
         'SUPERSEDED_EXPECTED', // Before ACTUAL
@@ -406,8 +446,8 @@ describe('Event Series Classification', () => {
       ]
       const result = classifySeries(series, now)
       expect(result.hasActualConflict).toBe(true)
-      expect(result.primary).toBe(series[1]) // Latest event_time (safe-first)
-      expect(extractLabels(result.classified)).toEqual(['CONFLICTING_ACTUAL', 'CONFIRMED'])
+      expect(result.primary).toBe(series[0]) // Latest observed ACTUAL revision
+      expect(extractLabels(result.classified)).toEqual(['CONFIRMED', 'CONFLICTING_ACTUAL'])
     })
 
     it('should handle progression: EXPECTED → EXPECTED → ACTUAL → EXPECTED (redundant)', () => {

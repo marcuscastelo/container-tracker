@@ -84,7 +84,11 @@ A series may contain:
 Algorithm:
 
 1. If any ACTUAL exists:
-   - Select the latest ACTUAL as primary.
+   - Select the latest observed ACTUAL as primary.
+   - "Latest observed" means observation recency (`created_at`/observed-at), not
+     the largest ACTUAL event date.
+   - If ACTUAL observed-at ties, use `event_time` as deterministic secondary
+     tiebreak.
 2. Else:
    - Select the latest observed EXPECTED revision as primary only while it is non-expired.
    - "Latest observed" means observation recency (`created_at`/observed-at), not
@@ -117,7 +121,7 @@ Rules:
 
 If multiple ACTUAL events exist in one series:
 
-- Latest ACTUAL is primary
+- Latest observed ACTUAL is primary
 - Series marked as conflicted
 - Data alert may be emitted
 

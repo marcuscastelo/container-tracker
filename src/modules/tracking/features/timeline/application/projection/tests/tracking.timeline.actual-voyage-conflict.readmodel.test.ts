@@ -77,6 +77,39 @@ describe('deriveTimelineWithSeriesReadModel actual voyage conflicts', () => {
     ])
   })
 
+  it('selects the latest observed ACTUAL as timeline primary when ACTUAL event_time regresses', () => {
+    const timeline = deriveTimelineWithSeriesReadModel(
+      [
+        makeObservation({
+          id: 'discharge-latest-event-time',
+          voyage: 'OB610R',
+          event_time: '2026-03-29',
+          created_at: '2026-04-02T19:12:43.853916Z',
+        }),
+        makeObservation({
+          id: 'discharge-latest-observed',
+          voyage: 'OB610R',
+          event_time: '2026-03-28',
+          created_at: '2026-04-04T16:53:10.273469Z',
+        }),
+      ],
+      now,
+    )
+
+    expect(timeline).toHaveLength(1)
+    expect(timeline[0]?.id).toBe('discharge-latest-observed')
+    expect(timeline[0]?.seriesConflict).toEqual({
+      kind: 'MULTIPLE_ACTUALS',
+      fields: [],
+    })
+    expect(
+      timeline[0]?.seriesHistory?.classified.map((item) => [item.id, item.seriesLabel]),
+    ).toEqual([
+      ['discharge-latest-observed', 'CONFIRMED'],
+      ['discharge-latest-event-time', 'CONFLICTING_ACTUAL'],
+    ])
+  })
+
   it('keeps conflict metadata on the primary timeline item even without embedded history', () => {
     const timeline = deriveTimelineWithSeriesReadModel(
       [
