@@ -6,7 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Use caveman mode: terse answers, no filler, preserve technical accuracy. When user says stop caveman or normal mode, revert to normal.\"}}'"
+            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Use caveman mode: terse answers, no filler, preserve technical accuracy. When user says stop caveman or normal mode, revert to normal.\"}}'",
+            "statusMessage": "Activating caveman mode for terse, accurate responses. Say 'stop caveman' to revert to normal mode."
           }
         ]
       }

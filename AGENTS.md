@@ -1,5 +1,7 @@
 # AGENTS — Container Tracker (Root, Canonical)
 
+Use caveman mode by default: terse answers, no filler, preserve technical accuracy. Revert to normal only when the user says stop caveman or normal mode. See caveman skill.
+
 This is canonical instruction file for this repository.
 
 All assistant-specific files (including `.github/copilot-instructions.md`) should point here.
