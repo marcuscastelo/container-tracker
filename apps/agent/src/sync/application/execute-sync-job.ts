@@ -49,6 +49,33 @@ function toDurationMs(result: ProviderRunResult): number {
   return result.timing.durationMs
 }
 
+function logProviderResult(command: {
+  readonly job: AgentSyncJob
+  readonly providerResult: ProviderRunResult
+}): void {
+  const common = {
+    syncRequestId: command.job.syncRequestId,
+    provider: command.job.provider,
+    refType: command.job.refType,
+    ref: command.job.ref,
+    providerStatus: command.providerResult.status,
+    durationMs: command.providerResult.timing.durationMs,
+    observedAt: command.providerResult.observedAt,
+  }
+
+  if (command.providerResult.status === 'success') {
+    console.log('[agent] provider fetch success', common)
+    return
+  }
+
+  console.error('[agent] provider fetch failed', {
+    ...common,
+    errorCode: command.providerResult.errorCode,
+    errorMessage: command.providerResult.errorMessage,
+    parseError: command.providerResult.parseError,
+  })
+}
+
 function toUnsupportedProviderResult(provider: string): ProviderRunResult {
   const now = new Date().toISOString()
   const classification = unsupportedProviderError(provider)
@@ -79,16 +106,26 @@ export async function executeSyncJob(command: {
     registry: command.providerRegistry,
     provider: command.job.provider,
   })
+  const providerInput = toProviderInput({
+    job: command.job,
+    config: command.config,
+    agentVersion: command.agentVersion,
+  })
+  console.log('[agent] provider fetch request', {
+    syncRequestId: providerInput.syncRequestId,
+    provider: providerInput.provider,
+    refType: providerInput.refType,
+    ref: providerInput.ref,
+  })
+
   const providerResult =
     runner === null
       ? toUnsupportedProviderResult(command.job.provider)
-      : await runner.run(
-          toProviderInput({
-            job: command.job,
-            config: command.config,
-            agentVersion: command.agentVersion,
-          }),
-        )
+      : await runner.run(providerInput)
+  logProviderResult({
+    job: command.job,
+    providerResult,
+  })
 
   const occurredAt = new Date().toISOString()
   const retryDecision = decideSyncRetryPolicy(providerResult)
@@ -161,6 +198,14 @@ export async function executeSyncJob(command: {
       snapshotId: ingestResult.snapshotId,
     }
   }
+
+  console.warn('[agent] provider result skipped snapshot ingest', {
+    syncRequestId: command.job.syncRequestId,
+    provider: command.job.provider,
+    ref: command.job.ref,
+    providerStatus: providerResult.status,
+    retryDecision: retryDecision.reason,
+  })
 
   if (shouldReportFailure(providerResult)) {
     const backendFailure = reportSyncFailure({

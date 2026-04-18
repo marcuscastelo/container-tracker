@@ -2,6 +2,26 @@ import axios from 'axios'
 import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/fetch-result'
 import { systemClock } from '~/shared/time/clock'
 
+function normalizeLogText(value: string, maxLength = 180): string {
+  const compact = value.replace(/\s+/g, ' ').trim()
+  if (compact.length <= maxLength) {
+    return compact
+  }
+  return `${compact.slice(0, maxLength)}...`
+}
+
+function isParseFailurePayload(
+  payload: unknown,
+): payload is { readonly parse_failure: true; readonly raw_html_snippet: string } {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
+    return false
+  }
+  if (!('parse_failure' in payload)) {
+    return false
+  }
+  return payload.parse_failure === true
+}
+
 /**
  * Fetch tracking data from CMA-CGM's public tracking endpoint.
  *
@@ -9,48 +29,93 @@ import { systemClock } from '~/shared/time/clock'
  * We extract and parse that JSON payload.
  */
 export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchResult> {
-  const response = await axios.post(
-    'https://www.cma-cgm.com/ebusiness/tracking/search',
-    new URLSearchParams({
-      __RequestVerificationToken:
-        'WSKXu5mATqHpEopOTqNHnfZdedqy3gil1IV1XMncr66exbjY5Ks6KO4ekvCROhP42Lkh9F3zegXkzFIPlO2aRnDgxFaIQU61qzAI_9dNZtc1',
-      'SearchViewModel.SearchBy': 'Container',
-      'SearchViewModel.Reference': containerNumber,
-      'SearchViewModel.FromHome': 'true',
-      search: '',
-    }),
-    {
-      responseType: 'text',
-      decompress: true,
-      timeout: 30_000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate',
-        Referer: 'https://www.cma-cgm.com/ebusiness/tracking/search',
-        Origin: 'https://www.cma-cgm.com',
-        'Sec-GPC': '1',
-        'Alt-Used': 'www.cma-cgm.com',
-        Connection: 'keep-alive',
-        Cookie:
-          'datadome=F4C3piYK84t_34olK3LkOba3h0iWGmhXKlZa51JSvQmBWRd5iyiy2~zZkfLDt3bsQEv5RQQqkzXiZ65kQRDQ0UX8aSfy4dYURaY~HTFsNcHROHWDkSZMnjmW8D6VEPYk; __RequestVerificationToken=64dS2BI8rYboYSq-JMaZn8dlXYijOkaLdFJIT0yXutdjqNzUCLbsLr61l1KUejvvPx1wCOqIFdpoh3vDBPBgt1B2j80asuEgtNeRpz0H2lI1; dtCookie=v_4_srv_2_sn_786CC8D9A19CFA6CC105F857BA5985D7_perc_100000_ol_0_mul_1_app-3A0b422508580a7b79_0_rcs-3Acss_0; Human_Search=1; MustRelease=22.0.4.0',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'same-origin',
-        'Sec-Fetch-User': '?1',
-        Priority: 'u=0, i',
-        Pragma: 'no-cache',
-        'Cache-Control': 'no-cache',
-        TE: 'trailers',
+  const url = 'https://www.cma-cgm.com/ebusiness/tracking/search'
+  const startedAtMs = Date.now()
+  console.log('[tracking:cmacgm] request', {
+    method: 'POST',
+    url,
+    containerNumber,
+  })
+
+  const response = await axios
+    .post(
+      url,
+      new URLSearchParams({
+        __RequestVerificationToken:
+          'WSKXu5mATqHpEopOTqNHnfZdedqy3gil1IV1XMncr66exbjY5Ks6KO4ekvCROhP42Lkh9F3zegXkzFIPlO2aRnDgxFaIQU61qzAI_9dNZtc1',
+        'SearchViewModel.SearchBy': 'Container',
+        'SearchViewModel.Reference': containerNumber,
+        'SearchViewModel.FromHome': 'true',
+        search: '',
+      }),
+      {
+        responseType: 'text',
+        decompress: true,
+        timeout: 30_000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate',
+          Referer: 'https://www.cma-cgm.com/ebusiness/tracking/search',
+          Origin: 'https://www.cma-cgm.com',
+          'Sec-GPC': '1',
+          'Alt-Used': 'www.cma-cgm.com',
+          Connection: 'keep-alive',
+          Cookie:
+            'datadome=F4C3piYK84t_34olK3LkOba3h0iWGmhXKlZa51JSvQmBWRd5iyiy2~zZkfLDt3bsQEv5RQQqkzXiZ65kQRDQ0UX8aSfy4dYURaY~HTFsNcHROHWDkSZMnjmW8D6VEPYk; __RequestVerificationToken=64dS2BI8rYboYSq-JMaZn8dlXYijOkaLdFJIT0yXutdjqNzUCLbsLr61l1KUejvvPx1wCOqIFdpoh3vDBPBgt1B2j80asuEgtNeRpz0H2lI1; dtCookie=v_4_srv_2_sn_786CC8D9A19CFA6CC105F857BA5985D7_perc_100000_ol_0_mul_1_app-3A0b422508580a7b79_0_rcs-3Acss_0; Human_Search=1; MustRelease=22.0.4.0',
+          'Upgrade-Insecure-Requests': '1',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'same-origin',
+          'Sec-Fetch-User': '?1',
+          Priority: 'u=0, i',
+          Pragma: 'no-cache',
+          'Cache-Control': 'no-cache',
+          TE: 'trailers',
+        },
       },
-    },
-  )
+    )
+    .catch((error: unknown) => {
+      if (axios.isAxiosError(error)) {
+        console.error('[tracking:cmacgm] response error', {
+          method: 'POST',
+          url,
+          containerNumber,
+          status: error.response?.status ?? null,
+          message: error.message,
+          durationMs: Date.now() - startedAtMs,
+        })
+      }
+      throw error
+    })
 
   const html: string = response.data
-  console.debug('Fetched CMA-CGM HTML response:', html.slice(0, 2000)) // Log the raw HTML for debugging (truncated to avoid huge logs)
+  console.log('[tracking:cmacgm] response', {
+    method: 'POST',
+    url,
+    containerNumber,
+    status: response.status,
+    ok: response.status >= 200 && response.status < 300,
+    durationMs: Date.now() - startedAtMs,
+    htmlPreview: normalizeLogText(html),
+  })
+
   const payload = extractResponseData(html)
+  if (isParseFailurePayload(payload)) {
+    console.warn('[tracking:cmacgm] parse failed', {
+      method: 'POST',
+      url,
+      containerNumber,
+      htmlSnippet: normalizeLogText(payload.raw_html_snippet),
+    })
+  } else {
+    console.log('[tracking:cmacgm] parse success', {
+      method: 'POST',
+      url,
+      containerNumber,
+    })
+  }
 
   return {
     provider: 'cmacgm',

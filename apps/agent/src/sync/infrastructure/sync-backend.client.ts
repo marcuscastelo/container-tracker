@@ -62,6 +62,28 @@ function safeStringify(value: unknown): string {
   }
 }
 
+function normalizeLogText(value: string, maxLength = 240): string {
+  const compact = value.replace(/\s+/g, ' ').trim()
+  if (compact.length <= maxLength) {
+    return compact
+  }
+  return `${compact.slice(0, maxLength)}...`
+}
+
+function toLeaseWindowSeconds(leasedUntil: string | null): number | null {
+  if (leasedUntil === null) {
+    return null
+  }
+
+  const leaseEndsAtMs = Date.parse(leasedUntil)
+  if (Number.isNaN(leaseEndsAtMs)) {
+    return null
+  }
+
+  const deltaMs = leaseEndsAtMs - Date.now()
+  return Math.max(0, Math.round(deltaMs / 1000))
+}
+
 export function createSyncBackendClient(command: {
   readonly config: ValidatedAgentConfig
   readonly fetchImpl?: typeof fetch
@@ -76,10 +98,23 @@ export function createSyncBackendClient(command: {
       if (fetchCommand.recoverOwnedLeases) {
         url.searchParams.set('recover_owned_leases', 'true')
       }
+      const leaseRequestLog = {
+        tenantId: command.config.TENANT_ID,
+        limit: fetchCommand.limit,
+        recoverOwnedLeases: fetchCommand.recoverOwnedLeases,
+      }
+
+      console.log('[agent] lease targets request', leaseRequestLog)
 
       const response = await fetchImpl(url, {
         method: 'GET',
         headers: buildHeaders(command.config, false),
+      })
+
+      console.log('[agent] lease targets response', {
+        ...leaseRequestLog,
+        status: response.status,
+        ok: response.ok,
       })
 
       if (response.status === 401) {
@@ -97,6 +132,17 @@ export function createSyncBackendClient(command: {
         throw new Error(`invalid targets response: ${parsed.error.message}`)
       }
 
+      const leasedTargetsCount = parsed.data.targets.length
+      const leaseWindowSeconds = toLeaseWindowSeconds(parsed.data.leased_until)
+      console.log('[agent] lease targets acquired', {
+        ...leaseRequestLog,
+        availableTargets: leasedTargetsCount,
+        leasedByAgent: leasedTargetsCount,
+        leasedUntil: parsed.data.leased_until,
+        leaseWindowSeconds,
+        queueLagSeconds: parsed.data.queue_lag_seconds,
+      })
+
       return {
         targets: parsed.data.targets.map((target) => toAgentSyncJob(target)),
         leasedUntil: parsed.data.leased_until,
@@ -105,6 +151,15 @@ export function createSyncBackendClient(command: {
     },
 
     async ingestSnapshot(ingestCommand): Promise<IngestSnapshotResult> {
+      const ingestRequestLog = {
+        syncRequestId: ingestCommand.job.syncRequestId,
+        provider: ingestCommand.job.provider,
+        refType: ingestCommand.job.refType,
+        ref: ingestCommand.job.ref,
+        providerStatus: ingestCommand.providerResult.status,
+      }
+      console.log('[agent] snapshot ingest request', ingestRequestLog)
+
       const response = await fetchImpl(
         `${command.config.BACKEND_URL}/api/tracking/snapshots/ingest`,
         {
@@ -132,8 +187,14 @@ export function createSyncBackendClient(command: {
           }),
         },
       )
+      console.log('[agent] snapshot ingest response', {
+        ...ingestRequestLog,
+        status: response.status,
+        ok: response.ok,
+      })
 
       if (response.status === 409) {
+        console.warn('[agent] snapshot ingest lease conflict', ingestRequestLog)
         return { kind: 'lease_conflict' }
       }
 
@@ -143,6 +204,12 @@ export function createSyncBackendClient(command: {
         if (!parsed.success) {
           throw new Error(`invalid ingest failure response: ${parsed.error.message}`)
         }
+
+        console.error('[agent] snapshot ingest rejected', {
+          ...ingestRequestLog,
+          error: parsed.data.error,
+          snapshotId: parsed.data.snapshot_id ?? null,
+        })
 
         return {
           kind: 'failed',
@@ -157,6 +224,11 @@ export function createSyncBackendClient(command: {
 
       if (!response.ok) {
         const details = await response.text().catch(() => '')
+        console.error('[agent] snapshot ingest transport failed', {
+          ...ingestRequestLog,
+          status: response.status,
+          details: normalizeLogText(details),
+        })
         throw new Error(`ingest failed (${response.status}): ${details}`)
       }
 
@@ -167,6 +239,14 @@ export function createSyncBackendClient(command: {
           `invalid ingest response: ${parsed.error.message}; payload=${safeStringify(payload)}`,
         )
       }
+
+      console.log('[agent] snapshot ingest accepted', {
+        ...ingestRequestLog,
+        snapshotId: parsed.data.snapshot_id,
+        newObservationsCount: parsed.data.new_observations_count ?? null,
+        newAlertsCount: parsed.data.new_alerts_count ?? null,
+        observationCreated: (parsed.data.new_observations_count ?? 0) > 0,
+      })
 
       return {
         kind: 'accepted',
