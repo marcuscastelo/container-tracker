@@ -20,7 +20,7 @@ src/
 
 ## 2. Bounded Contexts (modules/*)
 
-A module inside `modules/`:
+module inside `modules/`:
 
 - Owns its semantic model
 - Defines entities, value objects and invariants
@@ -82,7 +82,7 @@ Tracking responsibilities:
 - Safe-first primary selection
 - Derived state (ACTUAL / EXPECTED / EXPIRED_EXPECTED)
 - Chronological ordering
-- Preserve status-neutral operational observations (for example `TERMINAL_MOVE`) as facts
+- Preserve status-neutral operational observations (for example `TERMINAL_MOVE`) facts
 - Keep carrier-normalizer technical traceability in raw event metadata (for example `normalizer_version`)
 
 Tracking does NOT:
@@ -102,7 +102,7 @@ UI (process/ui) is responsible for:
 
 ## 5. Operational UI Philosophy (Canonical)
 
-Shipment/process detail must follow a timeline-first layout:
+Shipment/process detail must follow timeline-first layout:
 
 - Main column: container selector + timeline (primary artifact)
 - Sidebar: shipment information, current status, supporting metadata
@@ -124,7 +124,7 @@ Reference:
 
 Read models:
 
-- Belong to the BC that owns the semantics
+- Belong to BC that owns semantics
 - Must not import UI
 - Must not format presentation strings
 - May aggregate cross-entity information
@@ -154,9 +154,9 @@ Shared types must be minimal and stable.
 
 No cross-BC semantic leakage.
 
-If two BCs need the same type:
+If two BCs need same type:
 - Prefer duplication over semantic coupling
-- Or explicitly define a shared kernel in `shared/domain/`
+- Or explicitly define shared kernel in `shared/domain/`
 
 Operational decision:
 
@@ -166,8 +166,8 @@ Operational decision:
 
 Architecture principle:
 
-> The domain drives the UI.  
-> The UI never defines domain truth.
+> domain drives UI.
+> UI never defines domain truth.
 
 ---
 

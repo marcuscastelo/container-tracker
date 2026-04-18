@@ -1,8 +1,8 @@
 # Container Tracking Platform — Master Technical & Product Document (0209)
 
 > Documento unificado e canônico do projeto.
-> Destinado a: novos devs, assistentes LLM, revisão arquitetural e alinhamento produto–engenharia.
-> Este arquivo **substitui** e **absorve** os documentos anteriores, sem depender da estrutura ou nomenclatura antiga.
+> Destinado: novos devs, assistentes LLM, revisão arquitetural e alinhamento produto–engenharia.
+> Este arquivo **substitui** e **absorve** documentos anteriores, sem depender da estrutura ou nomenclatura antiga.
 
 ---
 
@@ -15,7 +15,7 @@ Plataforma de tracking de containers multi-armador (CMA CGM, Maersk, MSC, etc.) 
 * UX limpa, moderna e explicável
 * base sólida para evolução (alertas, emails, auditoria, integrações)
 
-O sistema **não confia em eventos crus das APIs**. Ele coleta snapshots, deriva fatos, estados e alertas internamente.
+sistema **não confia em eventos crus das APIs**. Ele coleta snapshots, deriva fatos, estados e alertas internamente.
 
 ---
 
@@ -23,10 +23,10 @@ O sistema **não confia em eventos crus das APIs**. Ele coleta snapshots, deriva
 
 ### 2.1 Shipment (Processo)
 
-Representa um processo logístico único, criado manualmente pelo usuário.
+Representa processo logístico único, criado manualmente pelo usuário.
 
 * Pode conter **1..N containers**
-* É a unidade principal de organização e dashboard
+* É unidade principal de organização e dashboard
 * Campos principais:
 
   * client_name
@@ -45,18 +45,18 @@ Representa um processo logístico único, criado manualmente pelo usuário.
 Entidade física rastreável.
 
 * Identificado por container_number (ISO 6346 *não obrigatório*)
-* Pertence a exatamente 1 Shipment
+* Pertence exatamente 1 Shipment
 * Origem, destino, ETA e status **são derivados**, não inseridos manualmente
 
 ---
 
 ### 2.3 Snapshot (Fonte da Verdade Externa)
 
-Cada chamada a uma API externa gera um **snapshot imutável**.
+Cada chamada API externa gera **snapshot imutável**.
 
 * Não é evento
 * Não é status
-* É apenas: "o que a API retornou naquele momento"
+* É: " que API retornou naquele momento"
 
 Motivação:
 
@@ -64,7 +64,7 @@ Motivação:
 * APIs podem reordenar histórico
 * APIs podem mudar sem aviso
 
-> Nunca confiamos que a API seja um event stream consistente.
+> Nunca confiamos que API seja event stream consistente.
 
 ---
 
@@ -85,10 +85,10 @@ Observations:
 
 Definição operacional (importante):
 
-* Uma Observation representa um fato semântico normalizado derivado de um ou mais registros brutos do carrier — é uma unidade de verdade (C), não um verbatim event (A) nem apenas um estado técnico (B).
+* Observation representa fato semântico normalizado derivado de ou mais registros brutos do carrier — é unidade de verdade (C), não verbatim event () nem estado técnico (B).
 * Observations são frases/tuplas semânticas (ex.: "LOADED_on_vessel_X_at_port_Y") que permitem raciocínio e comparações determinísticas.
-* Observations devem incluir um fingerprint determinístico que permita deduplicação segura. O fingerprint deve ser calculado a partir dos campos semânticos relevantes e deve ignorar campos instáveis (ex.: event_id do carrier, timestamps de ingestão, campos de debug).
-* Observations preservam o payload raw referenciado (link para snapshot) e armazenam metadados de confiança/uncertainty quando aplicável.
+* Observations devem incluir fingerprint determinístico que permita deduplicação segura. fingerprint deve ser calculado partir dos campos semânticos relevantes e deve ignorar campos instáveis (ex.: event_id do carrier, timestamps de ingestão, campos de debug).
+* Observations preservam payload raw referenciado (link para snapshot) e armazenam metadados de confiança/uncertainty quando aplicável.
 
 ---
 
@@ -104,13 +104,13 @@ Sequência ordenada de Observations.
 
 ### 2.6 Status
 
-Status é uma **projeção colapsada**, derivada da timeline.
+Status é **projeção colapsada**, derivada da timeline.
 
 Princípios:
 
 * Status **não volta**
 * É calculado por dominância semântica
-* Representa o estágio mais avançado relevante
+* Representa estágio mais avançado relevante
 
 Exemplos:
 
@@ -118,7 +118,7 @@ Exemplos:
 * ARRIVED_AT_POD
 * DISCHARGED
 
-Nota importante: a Timeline pode repetir, voltar ou conter sinais contraditórios (por exemplo em backfills ou APIs inconsistentes). Isso é aceitável. O Status, por definição, é monotônico (não volta) — o contraste entre Timeline (histórico de fatos) e Status (projeção) deve ser preservado e exibido claramente na UI.
+Nota importante: Timeline pode repetir, voltar ou conter sinais contraditórios (por exemplo em backfills ou APIs inconsistentes). Isso é aceitável. Status, por definição, é monotônico (não volta) — contraste entre Timeline (histórico de fatos) e Status (projeção) deve ser preservado e exibido claramente na UI.
 
 ---
 
@@ -126,7 +126,7 @@ Nota importante: a Timeline pode repetir, voltar ou conter sinais contraditório
 
 Transbordo **não é status**.
 
-É um atributo derivado:
+É atributo derivado:
 
 * hasTransshipment: boolean
 * transshipmentCount: number
@@ -159,8 +159,8 @@ Características:
 
 Regra de contenção para retroatividade (MVP):
 
-* Alertas retroativos serão permitidos apenas para alertas do tipo "fact". Alertas de monitoring NÃO devem ser gerados retroativamente.
-* Alertas retroativos devem ser marcados com um metadado `retroactive: true` e um rótulo `historical` na UI para evitar confusão e spam. Implementações futuras podem oferecer filtros/compactação para backfills.
+* Alertas retroativos serão permitidos para alertas do tipo "fact". Alertas de monitoring NÃO devem ser gerados retroativamente.
+* Alertas retroativos devem ser marcados com metadado `retroactive: true` e rótulo `historical` na UI para evitar confusão e spam. Implementações futuras podem oferecer filtros/compactação para backfills.
 
 #### B) Alertas de Monitoramento (monitoring)
 
@@ -188,7 +188,7 @@ Campos principais:
 
 Regras:
 
-* Alertas fact disparam uma vez
+* Alertas fact disparam vez
 * Alertas monitoring podem reaparecer
 * Ack/Dismiss é persistido
 * Undo opcional no futuro
@@ -246,11 +246,11 @@ persist(newObs)
 
 #### 4.2.1 Fingerprint e deduplicação (regras)
 
-* Cada Observation deve expor um `fingerprint` determinístico usado para deduplicação e comparações.
-* O fingerprint NÃO é um hash do snapshot completo. Deve ser derivado apenas dos campos semânticos relevantes (por exemplo: tipo de observation, container_number, porto, vessel, event_datetime normalizado) e explicitamente ignorar campos instáveis (ex.: event_id do carrier, ingest_timestamp, debug).
+* Cada Observation deve expor `fingerprint` determinístico usado para deduplicação e comparações.
+* fingerprint NÃO é hash do snapshot completo. Deve ser derivado dos campos semânticos relevantes (por exemplo: tipo de observation, container_number, porto, vessel, event_datetime normalizado) e explicitamente ignorar campos instáveis (ex.: event_id do carrier, ingest_timestamp, debug).
 * Fingerprints devem ser estáveis entre execuções e independentes de metadados de ingestão.
-* A deduplicação é feita comparando fingerprints; quando um fingerprint novo aparece, persiste-se a Observation e linka-se ao snapshot de origem.
-* Em caso de dúvida (fingerprint collision ou campos conflitantes), preservar ambos os registros e criar um `Alert[data]` indicando conflito para revisão humana.
+* deduplicação é feita comparando fingerprints; quando fingerprint novo aparece, persiste-se Observation e linka-se ao snapshot de origem.
+* Em caso de dúvida (fingerprint collision ou campos conflitantes), preservar ambos registros e criar `Alert[data]` indicando conflito para revisão humana.
 
 ---
 
@@ -353,7 +353,7 @@ Regras:
 * Domain não conhece infra
 * Adapters são isolados
 
-Responsabilidade (ownership) — quem faz o quê:
+Responsabilidade (ownership) — quem faz quê:
 
 * Domain: contém regras puras de derivação de Observations → Timeline → Status; validações canônicas; tipos fechados.
 * Application: orquestra pipelines (fetch → snapshot → normalize → persist → derive alerts); aplica versionamento e coordenação entre adaptadores; coordena retries e backfills.
@@ -401,4 +401,4 @@ Responsabilidade (ownership) — quem faz o quê:
 ---
 
 **Este documento é vivo.**
-Atualize conforme o sistema evolui, sempre preservando os princípios acima.
+Atualize conforme sistema evolui, sempre preservando princípios acima.

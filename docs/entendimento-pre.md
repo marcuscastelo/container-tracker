@@ -1,6 +1,6 @@
 # Entendimento prévio do projeto Container Tracker
 
-Este documento registra o entendimento inicial do repositório "Container Tracker" antes do recebimento de informações adicionais. Foi gerado a partir da inspeção da estrutura do repositório, dos documentos em `docs/` e dos principais artefatos no diretório `src/`.
+Este documento registra entendimento inicial do repositório "Container Tracker" antes do recebimento de informações adicionais. Foi gerado partir da inspeção da estrutura do repositório, dos documentos em `docs/` e dos principais artefatos no diretório `src/`.
 
 ## Visão geral
 - Projeto: Container Tracker — aplicação web para track & trace de containers (logística marítima).
@@ -18,7 +18,7 @@ Esses documentos definem regras e invariantes fundamentais do domínio que devem
 
 ## Estrutura do código e artefatos relevantes
 - Frontend / app: `app.tsx`, `entry-client.tsx`, `entry-server.tsx`, `routes/`, `locales/` — aplicação SolidJS/TypeScript com i18n.
-- Módulos de domínio: `src/modules/` contém `container/`, `process/`, `tracking/` — cada módulo segue a divisão `application/`, `domain/`, `infrastructure/`, `ui/`.
+- Módulos de domínio: `src/modules/` contém `container/`, `process/`, `tracking/` — cada módulo segue divisão `application/`, `domain/`, `infrastructure/`, `ui/`.
 - Capabilities: `src/capabilities/` (ex.: `search/`) — orquestram BCs e dependem de `modules/*/application`.
 - Shared/infra: `shared/` (ex.: `supabase`, `api-schemas`) — integração com serviços e contratos.
 - Exemplos/fixtures: `examples/` e `test/fixtures/` com payloads de carriers (Maersk, MSC, etc.).
@@ -32,7 +32,7 @@ Stack técnico inferido:
 - Observations são append-only — correções são adicionadas, não sobrescritas.
 - Status é derivado da timeline/observations, e não fonte de verdade.
 - Eventos têm `event_time_type` = ACTUAL | EXPECTED; EXPECTED pode expirar e ser marcado `EXPIRED_EXPECTED`.
-- Event Series: eventos relacionados formam séries; timeline exibe um primary por série (safe-first). EXPECTED posteriores a ACTUAL não apagam fatos.
+- Event Series: eventos relacionados formam séries; timeline exibe primary por série (safe-first). EXPECTED posteriores ACTUAL não apagam fatos.
 - Alert Policy: fact alerts (retroativos) vs monitoring alerts (tempo real, não retroativos).
 - Tipagem forte: evitar `any`, preferir `unknown` + guards, `as const` quando necessário.
 - Separação de camadas: Rows (DB) ≠ Entities (domínio) ≠ DTOs ≠ ViewModels.
@@ -41,7 +41,7 @@ Stack técnico inferido:
 - Ingestão de eventos (webhooks, polling, uploads ou integrações externas) → persistência de snapshot raw + criação de observation com fingerprint.
 - Agrupamento em Event Series → derivação de timeline/status → geração de alerts (fact e/ou monitoring).
 - UI consome read models das camadas `application` dos módulos e apresenta timeline, ETAs, alertas, etc.
-- Correções/human-in-the-loop feitas via novos observations (append-only), nunca alteração in-place.
+- Correções/human-in--loop feitas via novos observations (append-only), nunca alteração in-place.
 
 ## Integrações e artefatos externos
 - Arquivos em `examples/api/` mostram payloads/contratos com carriers (Maersk, MSC, etc.).
@@ -57,15 +57,15 @@ Stack técnico inferido:
 7. Operação e deploy: destino (Vercel, infra própria), CI/CD e observabilidade.
 
 ## Perguntas rápidas para afinar entendimento
-- Quais são as fontes de eventos (webhook, polling, arquivos)? Existe um catálogo de conectores?
-- Qual é o banco de dados primário e o papel do Supabase em produção?
-- Há um microserviço separado para ingestão ou tudo roda na mesma aplicação/monorepo?
+- Quais são fontes de eventos (webhook, polling, arquivos)? Existe catálogo de conectores?
+- Qual é banco de dados primário e papel do Supabase em produção?
+- Há microserviço separado para ingestão ou tudo roda na mesma aplicação/monorepo?
 - Requisitos de multitenancy / isolamento por cliente?
-- Existem contratos OpenAPI/JSON Schema para os payloads dos carriers?
+- Existem contratos OpenAPI/JSON Schema para payloads dos carriers?
 
 ## Próximos passos planejados
-- Ao receber as informações adicionais, reconciliar e produzir um delta: o que muda no entendimento, implicações arquiteturais, alterações necessárias no código/tests e riscos.
-- Validar se o código atual implementa as invariantes documentadas e propor correções/tests/migrations quando necessário.
+- Ao receber informações adicionais, reconciliar e produzir delta: que muda no entendimento, implicações arquiteturais, alterações necessárias no código/tests e riscos.
+- Validar se código atual implementa invariantes documentadas e propor correções/tests/migrations quando necessário.
 
 ---
-Registro criado automaticamente a partir da inspeção do repositório em 2026-02-17.
+Registro criado automaticamente partir da inspeção do repositório em 2026-02-17.

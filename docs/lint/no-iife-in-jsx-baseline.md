@@ -17,8 +17,8 @@ Generated at: 2026-03-03 07:22:57Z
 - No current occurrences in scope.
 
 ## Incremental Refactoring Tasks
-1. Keep the rule in `warn` mode for `src/modules/**/ui/**/*.{ts,tsx}` while monitoring new warnings per PR.
-2. If a warning appears, refactor JSX IIFE usage into one of the approved alternatives: pre-calculation before JSX, pure external function, or `createMemo`.
+1. Keep rule in `warn` mode for `src/modules/**/ui/**/*.{ts,tsx}` while monitoring new warnings per PR.
+2. If warning appears, refactor JSX IIFE usage into one of approved alternatives: pre-calculation before JSX, pure external function, or `createMemo`.
 3. Re-generate this baseline after each refactor wave to track net warning reduction by file.
-4. Promote `warn -> error` only when the baseline remains at `0` warnings and CI expectations are updated.
-5. Follow [`docs/lint/no-iife-in-jsx-transition.md`](./no-iife-in-jsx-transition.md) for promotion checklist, controlled exception format, and CI gate verification.
+4. Promote `warn -> error` only when baseline remains at `0` warnings and CI expectations are updated.
+5. Follow [@@H0@@](./no-iife-in-jsx-transition.md) for promotion checklist, controlled exception format, and CI gate verification.

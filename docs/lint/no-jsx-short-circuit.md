@@ -20,7 +20,7 @@ Use Solid canonical control flow instead:
 
 ## Scope
 
-The rule runs as `error` for:
+rule runs `error` for:
 
 - `src/modules/*/ui/**/*.tsx`
 - `src/capabilities/*/ui/**/*.tsx`
@@ -28,7 +28,7 @@ The rule runs as `error` for:
 
 ## Detection Model
 
-The rule only flags **explicit JSX in AST** on the right branch of `&&` inside `JSXExpressionContainer`.
+rule only flags **explicit JSX in AST** on right branch of `&&` inside `JSXExpressionContainer`.
 
 It includes:
 

@@ -1,6 +1,6 @@
 # Container Tracker — Product & Domain Master (v2)
 
-This document defines the **product vision and canonical domain model**.
+This document defines **product vision and canonical domain model**.
 
 It is NOT responsible for:
 
@@ -23,7 +23,7 @@ This document defines:
 
 # 1. Product Vision
 
-Container Tracker is an operational maritime tracking panel.
+Container Tracker is operational maritime tracking panel.
 
 Its purpose is:
 
@@ -33,7 +33,7 @@ Its purpose is:
 - Detect operational exceptions early
 - Present reliable, explainable state to operators
 
-The system prioritizes:
+system prioritizes:
 
 - Determinism
 - Auditability
@@ -48,7 +48,7 @@ The system prioritizes:
 
 ## 2.1 Process (Shipment)
 
-Represents a logical shipment grouping.
+Represents logical shipment grouping.
 
 Contains:
 
@@ -58,14 +58,14 @@ Contains:
 - Carrier
 - Containers[]
 
-A Process does not own tracking logic.
-Tracking is delegated to the Tracking BC.
+Process does not own tracking logic.
+Tracking is delegated to Tracking BC.
 
 ---
 
 ## 2.2 Container
 
-Represents a physical container.
+Represents physical container.
 
 Contains:
 
@@ -104,7 +104,7 @@ Tracking never deletes facts.
 
 # 3. Snapshot Model
 
-A Snapshot:
+Snapshot:
 
 - Represents raw carrier payload
 - Is immutable
@@ -117,14 +117,14 @@ Snapshots are never modified or overwritten.
 
 # 4. Observation Model
 
-An Observation:
+Observation:
 
-- Is a normalized fact derived from a Snapshot
+- Is normalized fact derived from Snapshot
 - Is idempotent (via fingerprint)
 - Is immutable
 - Is append-only
 
-Observations are the canonical historical truth.
+Observations are canonical historical truth.
 
 ---
 
@@ -161,7 +161,7 @@ Typical transshipment sequence may include:
 - TERMINAL_MOVE
 - LOAD
 
-`TERMINAL_MOVE` keeps yard operations visible without being reinterpreted as ARRIVAL/DEPARTURE.
+`TERMINAL_MOVE` keeps yard operations visible without being reinterpreted ARRIVAL/DEPARTURE.
 
 ---
 
@@ -257,5 +257,5 @@ For full specification:
 
 ---
 
-This file is the canonical product-level domain description.
+This file is canonical product-level domain description.
 All technical enforcement rules live in their respective specification documents.

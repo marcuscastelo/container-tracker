@@ -1,8 +1,8 @@
 # Ralph Loop + Codex Workflow
 
-This project integrates [snarktank/ralph](https://github.com/snarktank/ralph) as a submodule in `tools/ralph-loop` and runs it through local wrappers in `scripts/ai`.
+This project integrates [snarktank/ralph](https://github.com/snarktank/ralph) submodule in `tools/ralph-loop` and runs it through local wrappers in `scripts/ai`.
 
-The current default is Claude. Codex can be enabled via `RALPH_AGENT=codex`.
+current default is Claude. Codex can be enabled via `RALPH_AGENT=codex`.
 
 ## Setup
 
@@ -20,17 +20,17 @@ pnpm run ai:loop:doctor
 
 ## Generate PRD JSON
 
-Generate `prd.json` directly from a feature prompt:
+Generate `prd.json` directly from feature prompt:
 
 ```bash
 pnpm run ai:loop:plan -- "Build dashboard with saved filters" .ralph-loop/prd.json
 ```
 
-Or pass a prompt file as first argument.
+Or pass prompt file first argument.
 
 ## One Command Flow (Markdown -> Ralph)
 
-If you already have a PRD markdown (for example copied from ChatGPT web), run everything with one command:
+If you already have PRD markdown (for example copied from ChatGPT web), run everything with one command:
 
 ```bash
 pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md
@@ -42,7 +42,7 @@ This command will:
 2. Generate `.ralph-loop/docs-ralph-loop/input.json`.
 3. Start Ralph execution immediately.
 
-The flow works from terminal only. VS Code can be closed after you save the PRD file.
+flow works from terminal only. VS Code can be closed after you save PRD file.
 
 Useful options:
 
@@ -56,7 +56,7 @@ pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --max-ite
 
 ## One Command Flow (Pasted PRD Text -> Ralph)
 
-If you want to paste the full PRD text directly in terminal:
+If you want to paste full PRD text directly in terminal:
 
 ```bash
 pnpm run ai:ralph -- "# PRD title
@@ -71,8 +71,8 @@ cat tasks/prd-docs-ralph-loop.md | pnpm run ai:ralph --
 
 This wrapper will:
 
-1. Infer a feature key from PRD title (or use `--feature-key`).
-2. Save markdown under `tasks/prd-<feature-key>.md` (or `-2`, `-3`, ... if needed).
+1. Infer feature key from PRD title (or use `--feature-key`).
+2. Save markdown under `tasks/prd-<feature-key>.md` (or `-2`, `-3`,... if needed).
 3. Call `pnpm run ai:loop:start` automatically.
 
 ## Build Execution Input
@@ -89,7 +89,7 @@ pnpm run ai:loop:input -- .ralph-loop/prd.json .ralph-loop/progress.txt .ralph-l
 pnpm run ai:loop:exec -- .ralph-loop/input.json
 ```
 
-The loop will run one story per iteration and stop when it sees `<promise>COMPLETE</promise>` or reaches max iterations.
+loop will run one story per iteration and stop when it sees `<promise>COMPLETE</promise>` or reaches max iterations.
 
 ## Environment Variables
 
@@ -109,7 +109,7 @@ When `RALPH_AGENT=claude`, wrappers export:
 - `ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-$RALPH_CLAUDE_BASE_URL}`
 - `ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-$RALPH_CLAUDE_AUTH_TOKEN}`
 
-and execute Claude as:
+and execute Claude:
 
 ```bash
 claude --model google/gemma-4-e4b "<PROMPT>"
@@ -123,7 +123,7 @@ RALPH_MAX_ITERATIONS=20 pnpm run ai:loop:exec -- .ralph-loop/input.json
 
 ## Devcontainer Policy
 
-The devcontainer is optimized for:
+devcontainer is optimized for:
 
 - Commit in container
 - Push implementation branch in container (for Ralph loop completion)
@@ -146,12 +146,12 @@ Use bypass only when intentional.
 
 ## Host/Container Branch Visibility
 
-Branch and commit history are shared between host and container because the devcontainer mounts the same workspace and `.git` directory.
+Branch and commit history are shared between host and container because devcontainer mounts same workspace and `.git` directory.
 
 Practical flow:
 
 1. Work and commit in container.
-2. Push only the implementation branch from container (or host when preferred).
+2. Push only implementation branch from container (or host when preferred).
 
 ## Claude Swap (Future)
 
@@ -167,7 +167,7 @@ export ANTHROPIC_AUTH_TOKEN=lmstudio
 export RALPH_CLAUDE_MODEL=google/gemma-4-e4b
 ```
 
-4. Reuse the same `pnpm run ai:loop:*` commands.
+4. Reuse same `pnpm run ai:loop:*` commands.
 
 ## Troubleshooting
 
@@ -217,10 +217,10 @@ cat .ralph-loop/last-exec-output.txt
 2. Confirm persisted state:
    - Plan: `.ralph-loop/prd.json`
    - Progress log: `.ralph-loop/progress.txt`
-3. Re-run the same command:
+3. Re-run same command:
 
 ```bash
 pnpm run ai:loop:exec -- .ralph-loop/input.json
 ```
 
-The loop is append-only and reads persisted files, so it safely continues from the current state.
+loop is append-only and reads persisted files, so it safely continues from current state.

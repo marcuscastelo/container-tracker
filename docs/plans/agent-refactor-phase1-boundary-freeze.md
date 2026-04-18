@@ -1,21 +1,21 @@
 # Agent Refactor Fase 1 — Boundary Freeze (ADR curto)
 
-Status: **Accepted (Fase 1)**  
-Data: 2026-04-14  
+Status: **Accepted (Fase 1)**
+Data: 2026-04-14
 Escopo canônico: `apps/agent/src/**` sem `tests/**`
 
 ## Contexto
 
-- O agent atual já possui modularização parcial, mas ainda concentra decisões operacionais críticas em poucos hotspots.
-- A Fase 1 congela ownership e dependências para evitar refactor cego nas fases 2–6.
+- agent atual já possui modularização parcial, mas ainda concentra decisões operacionais críticas em poucos hotspots.
+- Fase 1 congela ownership e dependências para evitar refactor cego nas fases 2–6.
 - Não há mudança comportamental nesta fase.
 
 ## Decisões
 
 ### 1) Raiz canônica e contexto legado
 
-- A raiz canônica do refactor é: **`apps/agent`**.
-- Referências históricas de `tools/agent` permanecem apenas como contexto/documentação legado.
+- raiz canônica do refactor é: **`apps/agent`**.
+- Referências históricas de `tools/agent` permanecem como contexto/documentação legado.
 - Novas decisões de arquitetura do agent devem apontar para `apps/agent`.
 
 ### 2) Árvore-alvo lógica congelada (contrato para Fases 2–6)
@@ -52,9 +52,9 @@ Ownership congelado:
 - `providers/*` **não** conhece `release/*`.
 - `release/*` **não** conhece lógica provider-specific.
 - `runtime/*` **não** conhece shape detalhado de payload backend além de contratos explicitados em `core/*`/`sync/*`.
-- `platform/*` é a única camada que conhece diferenças OS-specific de comando/path/extract/process.
+- `platform/*` é única camada que conhece diferenças -specific de comando/path/extract/process.
 - `state/*` é owner exclusivo de persistência de arquivos de estado locais (sem escrita ad hoc em outras camadas).
-- `app/*` apenas compõe; não decide semântica operacional.
+- `app/*` compõe; não decide semântica operacional.
 
 ### 4) Fluxos permitidos (freeze)
 
@@ -83,7 +83,7 @@ Ownership congelado:
 
 - Nenhuma API runtime/backend/UI foi alterada.
 - Nenhum protocolo foi alterado.
-- O resultado da Fase 1 é exclusivamente contrato documental de ownership/boundaries.
+- resultado da Fase 1 é exclusivamente contrato documental de ownership/boundaries.
 
 ## Guardrail da fase
 

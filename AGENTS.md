@@ -1,6 +1,6 @@
 # AGENTS — Container Tracker (Root, Canonical)
 
-This is the canonical instruction file for this repository.
+This is canonical instruction file for this repository.
 
 All assistant-specific files (including `.github/copilot-instructions.md`) should point here.
 For tracking-only changes, also read `src/modules/tracking/AGENTS.md`.
@@ -25,7 +25,7 @@ Before implementing anything non-trivial, consult:
 - Roadmap: `docs/ROADMAP.md`
 - Carrier/provider integration guide: `docs/PROVIDER_INTEGRATION_GUIDE.md`
 
-If any canonical file is missing/renamed, stop and ask for the correct path.
+If any canonical file is missing/renamed, stop and ask for correct path.
 
 ---
 
@@ -56,17 +56,17 @@ Capabilities orchestrate across BCs.
 - Raw payload must always be preserved
 - Conflicts/uncertainties are exposed, never hidden
 - Incomplete data is valid domain input:
-  ETA missing must be explicit, timeline gaps are tolerated, UI must explain absence
+ETA missing must be explicit, timeline gaps are tolerated, UI must explain absence
 
 ### Event Series
 - `event_time_type` is `ACTUAL | EXPECTED`
-- Semantic observations form a series
+- Semantic observations form series
 - One series generates exactly one timeline primary
 - If there is ACTUAL: primary is latest ACTUAL
 - If no ACTUAL: primary is latest valid EXPECTED
 - EXPECTED after ACTUAL is preserved fact, redundant for display
 - Multiple ACTUAL in same series is conflict (preserve facts + signal uncertainty)
-- `EXPIRED_EXPECTED` is derived state, never persisted as fact mutation
+- `EXPIRED_EXPECTED` is derived state, never persisted fact mutation
 
 ---
 
@@ -89,13 +89,13 @@ Capabilities orchestrate across BCs.
 - Repositories must not swallow errors
 - Repositories must not receive Commands directly
 - Distinct shapes must not be mixed:
-  Row (infra) != Entity (domain) != DTO (interface) != ViewModel (UI)
+Row (infra)!= Entity (domain)!= DTO (interface)!= ViewModel (UI)
 - `snake_case` only in persistence and persistence mappers
 - Prefer named exports; avoid `export default`
 - Root tooling configs (for example `eslint.config.mjs`) are linted by Biome import rules:
-  avoid `./` or `../` imports there and prefer `package.json` `imports` aliases (`#...`)
+avoid `./` or `../` imports there and prefer `package.json` `imports` aliases (`#...`)
 - For local ESLint plugins authored in `.mjs`, prefer rule tests in `*.test.mjs`;
-  TypeScript `*.test.ts` can fail strict plugin-shape checks during `pnpm run type-check`
+TypeScript `*.test.ts` can fail strict plugin-shape checks during `pnpm run type-check`
 
 ---
 
@@ -106,7 +106,7 @@ UI may:
 - apply i18n
 - render uncertainty states
 - manage interaction state
-- compose shipment view as timeline-first
+- compose shipment view timeline-first
 - render supporting metadata/status in sidebar panels
 - preserve grouped operational timeline blocks provided by canonical read models
 
@@ -134,7 +134,7 @@ UI must not:
 
 ## 7) Security and Validation
 
-- Treat all external input as hostile
+- Treat all external input hostile
 - Validate boundaries with Zod
 - Keep explicit timeouts and rate limits in integrations
 - Never render raw unsafe HTML from external payloads
@@ -163,7 +163,7 @@ Additional repo testing convention:
 
 - Deleting old EXPECTED observations
 - Recomputing domain status in UI
-- Persisting status as primary source of truth
+- Persisting status primary source of truth
 - Suppressing conflicting ACTUAL facts
 - Inventing carrier behavior not evidenced by payloads/spec
 - Hiding uncertainty (ETA unknown, ACTUAL conflicts, parse failures)
@@ -194,7 +194,7 @@ If you modify:
 - Kept module/capability boundaries intact?
 - Avoided `any`, unsafe `as`, and `Partial<Entity>` contracts?
 - Kept `snake_case` confined to persistence?
-- Ran the mandatory `pnpm sanity` close-out gate and compared baseline vs final state?
+- Ran mandatory `pnpm sanity` close-out gate and compared baseline vs final state?
 
 If any answer is "not sure", stop and re-check canonical docs.
 
@@ -204,7 +204,7 @@ If any answer is "not sure", stop and re-check canonical docs.
 
 Definition:
 
-- A **commit-ready package** is any change set the agent considers ready for commit, PR, or technical handoff.
+- **commit-ready package** is any change set agent considers ready for commit, PR, or technical handoff.
 
 Policy:
 
@@ -213,13 +213,13 @@ Policy:
 
 Rules:
 
-- Capture the initial `pnpm sanity` state before implementation (`green` or `non-green` + failing checks).
-- If the initial state is `green`, the final state must be `green`.
-- If the initial state is `non-green`, the final state must be at least as good as baseline.
+- Capture initial `pnpm sanity` state before implementation (`green` or `non-green` + failing checks).
+- If initial state is `green`, final state must be `green`.
+- If initial state is `non-green`, final state must be at least good baseline.
 - Never introduce new failures, newly-gated warnings, or any baseline regression.
 - When safe and local to scope, fix trivial pre-existing failures found during implementation.
-- Do not use a pre-broken baseline as justification to worsen repository health.
-- The package cannot be declared final/commit-ready without this verification.
+- Do not use pre-broken baseline justification to worsen repository health.
+- package cannot be declared final/commit-ready without this verification.
 
 Mandatory closing report:
 
@@ -244,7 +244,7 @@ UI never defines domain truth.
 ## 13) Historical Docs
 
 Files under `docs/0204/*` are historical context only.
-For current decisions, always prioritize the canonical docs listed in section 0.
+For current decisions, always prioritize canonical docs listed in section 0.
 
 ---
 
@@ -252,8 +252,8 @@ For current decisions, always prioritize the canonical docs listed in section 0.
 
 When returning content intended to be copied and pasted (for example PR title/description, changelog blocks, release notes, shell snippets, or templates):
 
-- Prefer wrapping the whole payload with **4 backticks** (```` ... ````) to avoid nesting issues.
-- If the output is long/structured, a canvas-like alternative is acceptable, but default is still 4 backticks for plain copy/paste.
+- Prefer wrapping whole payload with **4 backticks** (````... ````) to avoid nesting issues.
+- If output is long/structured, canvas-like alternative is acceptable, but default is still 4 backticks for plain copy/paste.
 
 ---
 
@@ -268,7 +268,7 @@ Rules:
 
 - If sandbox exists, **never run Git commands inside sandbox**.
 - Always run Git commands with non-sandbox/external execution so commit signing, credentials, and agent access behave correctly.
-- If the assistant has no sandbox feature, treat host execution as compliant and proceed normally.
+- If assistant has no sandbox feature, treat host execution compliant and proceed normally.
 
 Why:
 
@@ -278,13 +278,13 @@ Why:
 
 ## 16) Ralph Loop + Devcontainer Patterns
 
-- `tools/ralph-loop` is an external Git submodule; treat it as third-party code and do not apply root lint/type-check rules to it.
-- Use the local wrappers in `scripts/ai/` (exposed as `pnpm run ai:loop:*`) instead of calling `tools/ralph-loop/ralph.sh` directly.
+- `tools/ralph-loop` is external Git submodule; treat it third-party code and do not apply root lint/type-check rules to it.
+- Use local wrappers in `scripts/ai/` (exposed `pnpm run ai:loop:*`) instead of calling `tools/ralph-loop/ralph.sh` directly.
 - Devcontainer policy allows commit-in-container and branch push-in-container for Ralph loop completion; dangerous pushes remain blocked by guard scripts (`main/master`, deletion refspecs, force/mirror/all) and destructive local Git commands are still blocked.
 - For Maersk Puppeteer flows in devcontainer, keep Chromium provisioned in `.devcontainer/Dockerfile` and set `CHROME_PATH=/usr/bin/chromium` in `.devcontainer/devcontainer.json`.
-- Keep Chromium version pinned via `.devcontainer/devcontainer.json` `build.args.CHROMIUM_VERSION` and install it as an exact package version in `.devcontainer/Dockerfile`.
+- Keep Chromium version pinned via `.devcontainer/devcontainer.json` `build.args.CHROMIUM_VERSION` and install it exact package version in `.devcontainer/Dockerfile`.
 - Do not add Chromium auto-update logic to `.devcontainer/post-create.sh`, `.devcontainer/post-start.sh`, or refresh workflows; version bumps must happen in explicit PRs.
-- Before debugging `/api/refresh-maersk/:container`, run `pnpm run maersk:smoke:puppeteer` to validate browser launch and classify failures as `missing_browser_binary`, `invalid_chrome_path`, or `launch_incompatibility`.
+- Before debugging `/api/refresh-maersk/:container`, run `pnpm run maersk:smoke:puppeteer` to validate browser launch and classify failures `missing_browser_binary`, `invalid_chrome_path`, or `launch_incompatibility`.
 - For `/api/refresh-maersk/:container` smoke, minimum pass criterion is response output not containing `Browser launch failed`; provider-side `403/502` responses are acceptable for this smoke if launch succeeded.
 - For agent canonical state files (`control-base.runtime.json`, `control-overrides.local.json`, `control-remote-cache.json`, `infra-config.json`, `supervisor-control.json`, `pending-activity-events.json`, public control JSONs, and `agent-log-forwarder-state.json`), route reads/writes/removals through `@agent/state/infrastructure/json-state.file-store` (or delegating repositories) instead of direct `fs` persistence in feature modules.
 
@@ -292,9 +292,9 @@ Why:
 
 ## 17) PRD-to-Implementation Workflow (Canonical)
 
-When the request is to implement an existing PRD, the default path is:
+When request is to implement existing PRD, default path is:
 
-1. Place or identify the PRD:
+1. Place or identify PRD:
    - Markdown: `tasks/prd-<feature>.md`
    - JSON (Ralph schema): `.ralph-loop/<feature>/prd.json`
 2. Start with one command:
@@ -303,15 +303,15 @@ When the request is to implement an existing PRD, the default path is:
    - Plan: `.ralph-loop/<feature-key>/prd.json`
    - Progress log: `.ralph-loop/<feature-key>/progress.txt`
    - Input: `.ralph-loop/<feature-key>/input.json`
-4. If an active Ralph loop is running, finish by pushing the current implementation branch (`git push`) after commits are created. Never push/delete protected branches (`main`/`master`).
+4. If active Ralph loop is running, finish by pushing current implementation branch (`git push`) after commits are created. Never push/delete protected branches (`main`/`master`).
 
 Rules:
 
-- If a valid existing PRD is present, do not re-plan/refine before execution.
+- If valid existing PRD is present, do not re-plan/refine before execution.
 - Prefer `ai:loop:start` over chaining `plan -> input -> exec` manually.
 - Use `--prepare-only` when user wants artifacts generated without running loop execution.
-- After implementation in an active Ralph loop, prefer preparing/opening a PR with the `$draft-pr-from-branch` skill when applicable.
-- The agent must never merge PRs.
+- After implementation in active Ralph loop, prefer preparing/opening PR with `$draft-pr-from-branch` skill when applicable.
+- agent must never merge PRs.
 
 ---
 
@@ -348,22 +348,22 @@ Policy:
 
 - Any UI/UX change is only complete after visual validation with screenshots.
 - Playwright MCP must be used ad hoc for manual validation flows; do not run automated test suites with Playwright MCP by default.
-- Exception: running or wiring Playwright test suites is allowed only when the task explicitly involves implementing or maintaining automated tests (unit/integration/e2e).
+- Exception: running or wiring Playwright test suites is allowed only when task explicitly involves implementing or maintaining automated tests (unit/integration/e2e).
 - Do not run ad hoc `node`/JavaScript scripts that import Playwright for routine validation; use Playwright MCP directly in Codex CLI or Codex + VSCode.
-- Exception: ad hoc JavaScript Playwright scripts are allowed only when a concrete MCP limitation (missing tools/capabilities or equivalent blocker) requires that fallback.
+- Exception: ad hoc JavaScript Playwright scripts are allowed only when concrete MCP limitation (missing tools/capabilities or equivalent blocker) requires that fallback.
 - Always validate at least desktop + mobile.
 - Quality gate mindset is mandatory: ask and answer
-  - "Ficou de acordo com o site?"
+  - "Ficou de acordo com site?"
   - "Ficou visualmente bom?"
 - Prefer slower and polished over fast and rough for UI work.
 
 Dev server strategy:
 
-1. Assume the dev server may or may not already be running.
-2. Prefer an isolated run first, always in the same execution context/network namespace where Playwright MCP is running:
+1. Assume dev server may or may not already be running.
+2. Prefer isolated run first, always in same execution context/network namespace where Playwright MCP is running:
    - `pnpm run dev -- --host localhost --port 3009`
-3. If `3009` is unavailable, use the allocated port and continue with the reported URL.
-4. Fallback only when starting a new isolated server is not trivial: probe existing local routes in this order and keep the first that responds:
+3. If `3009` is unavailable, use allocated port and continue with reported URL.
+4. Fallback only when starting new isolated server is not trivial: probe existing local routes in this order and keep first that responds:
    - `http://localhost:3000`
    - `http://127.0.0.1:3000`
 
@@ -376,30 +376,30 @@ Screenshot commands (recommended baseline):
 
 Timing and stability:
 
-- Use `--wait-for-timeout 8000` as default (8s).
+- Use `--wait-for-timeout 8000` default (8s).
 - Increase wait (`12000-15000`) when page depends on async fetch/hydration/animations.
-- Keep `--full-page` enabled unless the task explicitly targets viewport-only behavior.
+- Keep `--full-page` enabled unless task explicitly targets viewport-only behavior.
 
 Blank/gray screenshot troubleshooting:
 
 1. If screenshots are blank/gray, suspect sandbox/browser runtime constraints first.
 2. Re-run Playwright screenshot commands with non-sandbox/external execution.
-3. Sanity-check browser capture with a known page (`https://example.com`) if needed.
+3. Sanity-check browser capture with known page (`https://example.com`) if needed.
 4. Then retry local app capture.
 5. If `127.0.0.1` fails but `localhost` works, keep `localhost` (common loopback/IPv6 binding behavior) and continue.
-6. If local routes still fail, start `pnpm run dev` in the same context as Playwright MCP and retry.
+6. If local routes still fail, start `pnpm run dev` in same context Playwright MCP and retry.
 
 Output expectation for UI tasks:
 
-- Provide screenshot file paths in the response.
+- Provide screenshot file paths in response.
 - Mention which route was validated.
-- Explicitly state whether UI is aligned and visually good based on the two quality questions above.
+- Explicitly state whether UI is aligned and visually good based on two quality questions above.
 
 ---
 
 ## 20) PR Review Feedback Retrieval (GitHub API + Credential Helper)
 
-Use this flow when the user asks to read/apply PR suggestions, review comments, or "implementar sugestões do PR".
+Use this flow when user asks to read/apply PR suggestions, review comments, or "implementar sugestões do PR".
 
 Preferred command:
 
@@ -411,7 +411,7 @@ Direct script:
 
 Behavior:
 
-- The script authenticates via `git credential fill` (no manual token copy/paste).
+- script authenticates via `git credential fill` (no manual token copy/paste).
 - If `--repo` is omitted, it infers `<owner/repo>` from `origin`.
 - `--kind all` returns review comments (`pulls/:number/comments`), reviews (`pulls/:number/reviews`), and issue comments (`issues/:number/comments`) in one JSON payload.
 
@@ -420,7 +420,7 @@ Execution guideline for PR-suggestion tasks:
 1. Fetch feedback with `ai:pr:feedback`.
 2. Prioritize actionable code suggestions (correctness/performance/tests/clarity).
 3. Implement what is technically sound and aligned with architecture/invariants.
-4. Run the mandatory close-out `pnpm sanity` gate (section `11.1`) before commit.
+4. Run mandatory close-out `pnpm sanity` gate (section `11.1`) before commit.
 
 ---
 
@@ -438,16 +438,16 @@ args = ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-s
 
 Guidelines:
 
-- Keep `.serena/project.yml` aligned with the repo languages (for this repo: `typescript`).
+- Keep `.serena/project.yml` aligned with repo languages (for this repo: `typescript`).
 - For code refactors, prefer Serena symbolic tools (`find_symbol`, `find_referencing_symbols`, `rename_symbol`, `replace_symbol_body`).
 - Use plain text/regex replacement only for non-code artifacts or when symbol-level operations are not applicable.
 - If Serena bootstrap/cache/network fails under sandbox constraints, rerun outside sandbox.
 
 ## 22) UI Complexity Guardrail (JSX max depth / `ui:complexity:ci`)
 
-When `ui:complexity:ci` or JSX max depth fails, **do not “game” the rule** by replacing `<Show>` / `<For>` with inline JavaScript conditionals or by moving the same branching into component-level early returns.
+When `ui:complexity:ci` or JSX max depth fails, **do not “game” rule** by replacing `<Show>` / `<For>` with inline JavaScript conditionals or by moving same branching into component-level early returns.
 
-This includes forbidden patterns such as:
+This includes forbidden patterns such:
 
 - `{condition && <Component />}`
 - `{condition ? <A /> : <B />}`
@@ -475,7 +475,7 @@ Reduce complexity by **changing structure**, not syntax.
 Preferred strategies, in order:
 
 1. **Extract child components**
-   - If a JSX branch represents a semantic UI block, extract it to a named component.
+   - If JSX branch represents semantic UI block, extract it to named component.
    - Typical candidates:
      - loading block
      - error block
@@ -489,8 +489,8 @@ Preferred strategies, in order:
      - modal body
 
 2. **Extract branch bodies into named components**
-   - Keep the parent structure explicit with `<Show>` / `<For>`.
-   - Make each branch shallow by rendering a dedicated child component instead of large inline JSX.
+   - Keep parent structure explicit with `<Show>` / `<For>`.
+   - Make each branch shallow by rendering dedicated child component instead of large inline JSX.
    - Example:
      - bad: large `<Show when=...>{...huge JSX...}</Show>`
      - good: `<Show when=...><ShipmentEmptyState /></Show>`
@@ -512,16 +512,16 @@ Preferred strategies, in order:
 
 6. **Move non-trivial `<For>` bodies into item components**
    - Keep `<For>` when iterating.
-   - Reduce complexity by extracting the item renderer into a named component such as:
+   - Reduce complexity by extracting item renderer into named component such:
      - `<ProcessRow />`
      - `<AlertListItem />`
      - `<ContainerSummaryItem />`
 
 ### Keep Solid semantics explicit
 
-`<Show>` and `<For>` are preferred when the UI is actually expressing rendered structure.
-They are **not** the problem.
-The problem is excessive responsibility and deeply nested inline JSX.
+`<Show>` and `<For>` are preferred when UI is expressing rendered structure.
+They are **not** problem.
+problem is excessive responsibility and deeply nested inline JSX.
 
 Good:
 - shallow `<Show>` / `<For>`
@@ -538,7 +538,7 @@ Bad:
 
 ### Architectural rule
 
-UI is a presentation layer. It may:
+UI is presentation layer. It may:
 
 - map DTO → ViewModel
 - sort/filter/group for display
@@ -552,11 +552,11 @@ UI must **not**:
 - reimplement status/alert/timeline derivation
 
 When reducing complexity, extract **presentation structure only**.
-If simplification requires semantic re-derivation, move that responsibility to the proper backend/read-model owner.
+If simplification requires semantic re-derivation, move that responsibility to proper backend/read-model owner.
 
 ### Review heuristic
 
-A complexity fix is acceptable only if it improves at least one of these:
+complexity fix is acceptable only if it improves at least one of these:
 
 - smaller inline JSX regions
 - fewer responsibilities per component
@@ -564,7 +564,7 @@ A complexity fix is acceptable only if it improves at least one of these:
 - better reviewability and reuse
 - better boundary adherence
 
-If the diff only replaces `<Show>` / `<For>` with `&&`, ternary, `.map()`, or top-level `return` branches, it is not a real fix and should be rejected.
+If diff only replaces `<Show>` / `<For>` with `&&`, ternary, `.map()`, or top-level `return` branches, it is not real fix and should be rejected.
 
 ### Non-negotiable rule
 

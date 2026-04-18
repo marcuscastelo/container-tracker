@@ -1,6 +1,6 @@
 # Agent Platform Layout (Canonical)
 
-This document defines the canonical filesystem layout for `apps/agent` and ownership boundaries.
+This document defines canonical filesystem layout for `apps/agent` and ownership boundaries.
 
 ## Canonical Layout
 
@@ -22,7 +22,7 @@ DATA_DIR/
 ## Ownership
 
 - `apps/agent/src/platform/*`
-  - Owns OS-specific behavior (Linux/Windows).
+  - Owns -specific behavior (Linux/Windows).
   - Owns path resolution through `PlatformAdapter.resolvePaths()`.
   - Owns platform link/pointer switching through:
     - `readSymlinkOrPointer()`
@@ -31,13 +31,13 @@ DATA_DIR/
   - Owns persistence of state files.
   - Must not compute paths; only consumes `PlatformPaths`.
 - `apps/agent/src/config/infrastructure/*`
-  - Owns `config.env` / `bootstrap.env` file I/O.
+  - Owns `config.env` / `bootstrap.env` file I/.
   - Must not compute paths; only consumes `PlatformPaths`.
 - Runtime, supervisor, updater, control, CLI
   - Consume resolved paths from `PlatformAdapter`.
-  - Must not branch on OS directly.
+  - Must not branch on directly.
 
 ## Public State Policy
 
 - Linux default public-state directory: `DATA_DIR/run`
-- `AGENT_PUBLIC_STATE_DIR` remains an explicit override.
+- `AGENT_PUBLIC_STATE_DIR` remains explicit override.

@@ -1,12 +1,12 @@
 # Fase 1 — Base arquitetural e contratos E2E da feature
 
 ## Objetivo
-Criar a fundação end-to-end da feature de “tracking requer validação”, sem ainda ativar regras reais de detecção em produção.
+Criar fundação end-to-end da feature de “tracking requer validação”, sem ainda ativar regras reais de detecção em produção.
 
-A fase deve entregar a infraestrutura mínima completa para que as próximas fases só adicionem regras sem precisar refazer contratos, boundaries, tipos, DTOs, ViewModels, UI plumbing ou wiring.
+fase deve entregar infraestrutura mínima completa para que próximas fases só adicionem regras sem precisar refazer contratos, boundaries, tipos, DTOs, ViewModels, UI plumbing ou wiring.
 
 ## Escopo
-- Criar o conceito canônico no Tracking BC, sem ainda depender de heurísticas reais complexas.
+- Criar conceito canônico no Tracking BC, sem ainda depender de heurísticas reais complexas.
 - Definir tipos internos e contratos de projeção/read model para:
   - item granular de validation issue
   - agregação por container
@@ -18,8 +18,8 @@ A fase deve entregar a infraestrutura mínima completa para que as próximas fas
 - Criar ViewModels mínimos
 - Preparar UI para exibir placeholders/containers semânticos da feature
 - Preparar i18n/translation keys
-- Garantir que realtime/prefetch/reconciliation não quebrem com os novos campos
-- Garantir que a adição dos novos campos não aumente desnecessariamente payload/egress
+- Garantir que realtime/prefetch/reconciliation não quebrem com novos campos
+- Garantir que adição dos novos campos não aumente desnecessariamente payload/egress
 
 ## Fora de escopo
 - Regras reais de detecção de inconsistência
@@ -30,15 +30,15 @@ A fase deve entregar a infraestrutura mínima completa para que as próximas fas
 - Time travel específico da feature
 
 ## Regras arquiteturais
-- Tracking BC é o único dono da derivação de validation issue.
+- Tracking BC é único dono da derivação de validation issue.
 - Capability não define regra semântica.
 - UI só consome DTO/ViewModel, nunca deduz validation issue.
-- A feature não cria novo status canônico de container.
-- A feature não altera observation/snapshot/status truth.
-- A feature é um sinal derivado paralelo.
+- feature não cria novo status canônico de container.
+- feature não altera observation/snapshot/status truth.
+- feature é sinal derivado paralelo.
 
 ## Modelo conceitual inicial
-Criar os conceitos abaixo no Tracking BC:
+Criar conceitos abaixo no Tracking BC:
 
 ### Granular
 - TrackingValidationIssue
@@ -72,9 +72,9 @@ Atualizar:
 Adicionar suportes sem quebrar layout:
 - shipment header: espaço para banner agregador
 - container summary/header: espaço para badge/chip
-- dashboard row: campo/badge para indicar que o processo contém containers com validação necessária
+- dashboard row: campo/badge para indicar que processo contém containers com validação necessária
 
-Ainda sem lógica real de exibição forte; pode aparecer apenas quando payload vier preenchido.
+Ainda sem lógica real de exibição forte; pode aparecer quando payload vier preenchido.
 
 ## i18n
 Adicionar chaves mínimas para:
@@ -93,8 +93,8 @@ Garantir que:
 ## Performance / egress
 - Não enviar evidence pesado.
 - Não enviar arrays detalhados desnecessários para dashboard.
-- No dashboard, mandar apenas agregados mínimos.
-- Os detalhes por issue devem existir apenas onde necessários.
+- No dashboard, mandar agregados mínimos.
+- detalhes por issue devem existir onde necessários.
 
 ## Testes
 ### Unit
@@ -113,21 +113,21 @@ Garantir que:
 - pnpmcheck verde
 - sem regressão de payload indevida
 - contratos backend/frontend estáveis
-- UI pronta para receber a feature nas próximas fases
+- UI pronta para receber feature nas próximas fases
 - nenhum comportamento semântico novo ativado ainda
 
 ## Commit esperado
-Um commit único e atômico para a base arquitetural da feature.
+commit único e atômico para base arquitetural da feature.
 
 ---
 
 # Prompt de implementação — Fase 1
 
-Implemente a base arquitetural end-to-end da feature de “tracking requer validação” no Container Tracker, sem ainda ativar regras reais de detecção.
+Implemente base arquitetural end-to-end da feature de “tracking requer validação” no Container Tracker, sem ainda ativar regras reais de detecção.
 
 Objetivo:
 - criar contratos canônicos no Tracking BC
-- propagar os novos campos até backend, DTO, UI mapper, ViewModels e UI
+- propagar novos campos até backend, DTO, UI mapper, ViewModels e UI
 - manter boundaries estritos
 - não inventar lógica na UI
 - não criar novo status canônico
@@ -136,15 +136,15 @@ Objetivo:
 - manter shipment timeline-first
 
 Requisitos obrigatórios:
-1. Tracking BC deve passar a expor estruturas para validation issues:
+1. Tracking BC deve passar expor estruturas para validation issues:
    - granular issue
    - agregado por container
    - agregado por processo
-2. HTTP DTOs usados por shipment e dashboard devem incluir apenas os campos mínimos necessários.
+2. HTTP DTOs usados por shipment e dashboard devem incluir campos mínimos necessários.
 3. UI mappers devem converter DTO -> VM explicitamente.
-4. Dashboard deve receber apenas agregados mínimos, evitando payload pesado.
+4. Dashboard deve receber agregados mínimos, evitando payload pesado.
 5. Shipment page deve ter suporte de UI para banner agregador e indicador por container.
-6. Adicionar chaves i18n mínimas para a feature.
+6. Adicionar chaves i18n mínimas para feature.
 7. Garantir que refresh, prefetch e realtime não criem second source of truth.
 8. Não adicionar heurísticas reais ainda.
 9. Não adicionar persistência histórica ainda.
@@ -155,7 +155,7 @@ Também:
 - revisar ViewModels para não carregar detalhes desnecessários no dashboard
 - fazer testes unitários mínimos dos mappers e contratos
 - fazer QA manual real no app, sem scripts automatizados de QA
-- validar visualmente que a UI continua íntegra
+- validar visualmente que UI continua íntegra
 
 Entregue:
 - implementação
@@ -169,7 +169,7 @@ Entregue:
 # Fase 2 — UI funcional mínima e naming validado visualmente
 
 ## Objetivo
-Ativar a feature na UI de forma mínima, com dados mockados/controlados ou derivados por fallback explícito de desenvolvimento, apenas para validar:
+Ativar feature na UI de forma mínima, com dados mockados/controlados ou derivados por fallback explícito de desenvolvimento, para validar:
 - naming curto
 - densidade visual
 - posicionamento correto
@@ -179,13 +179,13 @@ Ainda sem regras reais relevantes em produção.
 
 ## Escopo
 - Implementar exibição real dos campos da Fase 1 quando presentes
-- Testar e escolher o melhor label visual para o badge principal
-- Consolidar o padrão visual para:
+- Testar e escolher melhor label visual para badge principal
+- Consolidar padrão visual para:
   - dashboard
   - shipment process banner
   - container-level indication
-- Garantir que a timeline não seja poluída
-- Garantir que o usuário entenda o funil até o container afetado
+- Garantir que timeline não seja poluída
+- Garantir que usuário entenda funil até container afetado
 
 ## Fora de escopo
 - Gatilhos reais complexos
@@ -202,7 +202,7 @@ Ainda sem regras reais relevantes em produção.
 - Validação pendente
 
 ## Decisão de UX esperada
-Escolher o label final com base em:
+Escolher label final com base em:
 - ausência de quebra/truncamento relevante
 - legibilidade em dashboard row
 - legibilidade em shipment header
@@ -224,7 +224,7 @@ Escolher o label final com base em:
 - Não inserir cards quebrando fluxo cronológico
 
 ### Timeline
-- Ainda não marcar itens específicos de forma detalhada nesta fase, apenas preparar slot/estrutura se necessário
+- Ainda não marcar itens específicos de forma detalhada nesta fase, preparar slot/estrutura se necessário
 - Evitar poluição visual prematura
 
 ## i18n
@@ -240,7 +240,7 @@ Escolher o label final com base em:
 - renderização condicional dos badges/mensagens
 
 ### Manual
-- Usar Playwright apenas para abrir telas, medir/comparar visualmente e registrar o melhor label
+- Usar Playwright para abrir telas, medir/comparar visualmente e registrar melhor label
 - QA manual do LLM sem script automatizado de assert visual
 - Validar:
   - dashboard
@@ -252,37 +252,37 @@ Escolher o label final com base em:
 - label final escolhido e fixado
 - posicionamento aprovado visualmente
 - zero poluição excessiva da timeline
-- UI consistente com a arquitetura timeline-first
+- UI consistente com arquitetura timeline-first
 - pnpmcheck verde
 
 ## Commit esperado
-Um commit único para ativar a UI mínima funcional e consolidar o naming.
+commit único para ativar UI mínima funcional e consolidar naming.
 
 ---
 
 # Prompt de implementação — Fase 2
 
-Implemente a camada visual mínima funcional da feature de tracking validation issue usando os contratos da Fase 1.
+Implemente camada visual mínima funcional da feature de tracking validation issue usando contratos da Fase 1.
 
 Objetivo:
-- escolher o melhor naming visual curto
-- ativar a UI mínima de dashboard e shipment
+- escolher melhor naming visual curto
+- ativar UI mínima de dashboard e shipment
 - validar densidade e legibilidade
-- manter o funil processo -> container
+- manter funil processo -> container
 
 Requisitos:
-1. Teste visualmente no app os labels candidatos:
+1. Teste visualmente no app labels candidatos:
    - Validação necessária
    - Atenção necessária
    - Rastreamento requer validação
    - Rastreamento requer atenção
    - Validação pendente
-2. Use Playwright para abrir e navegar as telas reais e comparar o comportamento visual, mas faça a decisão final por inspeção manual do LLM, não por script automático de assertions visuais.
-3. Escolha o label mais estável sem truncamento/quebra de linha problemática.
-4. Ative a exibição no dashboard e shipment.
+2. Use Playwright para abrir e navegar telas reais e comparar comportamento visual, mas faça decisão final por inspeção manual do LLM, não por script automático de assertions visuais.
+3. Escolha label mais estável sem truncamento/quebra de linha problemática.
+4. Ative exibição no dashboard e shipment.
 5. Shipment deve exibir texto agregador apontando que existem containers que requerem validação.
 6. Container-level indication deve existir.
-7. Não poluir timeline nem inserir cards quebrando a ordem cronológica.
+7. Não poluir timeline nem inserir cards quebrando ordem cronológica.
 8. Não criar heurística de detecção real ainda.
 9. Fazer testes unitários de renderização/mapeamento.
 10. Rodar pnpmcheck até ficar verde.
@@ -299,8 +299,8 @@ Entregue:
 # Fase 3 — Detecção real #1: conflitos críticos de ACTUALs
 
 ## Objetivo
-Implementar o primeiro gatilho canônico real da feature:
-- conflitos críticos de ACTUALs que comprometem a leitura confiável da timeline derivada
+Implementar primeiro gatilho canônico real da feature:
+- conflitos críticos de ACTUALs que comprometem leitura confiável da timeline derivada
 
 ## Escopo
 - Detectar conflitos críticos de ACTUALs no Tracking BC
@@ -313,13 +313,13 @@ Implementar o primeiro gatilho canônico real da feature:
 Entram aqui conflitos como:
 - múltiplos ACTUALs críticos semanticamente incompatíveis na mesma série
 - exemplo clássico: dois ACTUAL DISCHARGE irreconciliáveis
-- outros ACTUALs críticos cuja coexistência comprometa a interpretação atual
+- outros ACTUALs críticos cuja coexistência comprometa interpretação atual
 
 ## Regras
-- O sistema nunca apaga fatos conflitantes
-- Latest ACTUAL pode continuar primary para timeline, mas a série/container deve ganhar validation issue quando o conflito comprometer confiança
+- sistema nunca apaga fatos conflitantes
+- Latest ACTUAL pode continuar primary para timeline, mas série/container deve ganhar validation issue quando conflito comprometer confiança
 - Não criar lógica na UI
-- A decisão nasce no tracking
+- decisão nasce no tracking
 
 ## Severity
 - padrão: CRITICAL
@@ -339,8 +339,8 @@ Entram aqui conflitos como:
 - container afetado mostra indicador
 
 ## Alertas
-Se o sistema atual já suportar semântica coerente de alertas críticos de data/validation para esse caso, integrar.
-Se não suportar sem debt excessivo, manter o validation issue e preparar integração posterior.
+Se sistema atual já suportar semântica coerente de alertas críticos de data/validation para esse caso, integrar.
+Se não suportar sem debt excessivo, manter validation issue e preparar integração posterior.
 
 ## Testes
 ### Unit
@@ -356,33 +356,33 @@ Se não suportar sem debt excessivo, manter o validation issue e preparar integr
 
 ## Critério de pronto
 - conflito crítico real detectado no tracking
-- UI mostra o resultado
+- UI mostra resultado
 - sem regressão da timeline
 - pnpmcheck verde
 
 ## Commit esperado
-1 commit atômico para o primeiro gatilho real.
+1 commit atômico para primeiro gatilho real.
 
 ---
 
 # Prompt de implementação — Fase 3
 
-Implemente o primeiro gatilho real da feature: conflitos críticos de ACTUALs.
+Implemente primeiro gatilho real da feature: conflitos críticos de ACTUALs.
 
 Objetivo:
-- detectar no Tracking BC quando múltiplos ACTUALs críticos tornam a interpretação do tracking insegura
+- detectar no Tracking BC quando múltiplos ACTUALs críticos tornam interpretação do tracking insegura
 - gerar TrackingValidationIssue canônico
 - propagar isso até dashboard e shipment
 
 Requisitos:
-1. A lógica deve nascer somente no Tracking BC.
+1. lógica deve nascer somente no Tracking BC.
 2. Não apagar nem esconder ACTUALs conflitantes.
-3. Detectar pelo menos o caso clássico de múltiplos ACTUAL DISCHARGE irreconciliáveis.
+3. Detectar pelo menos caso clássico de múltiplos ACTUAL DISCHARGE irreconciliáveis.
 4. Gerar issue code `CONFLICTING_CRITICAL_ACTUALS`.
 5. Severidade inicial `CRITICAL`.
 6. Agregar por container e processo.
 7. Expor na UI pelos contratos já criados.
-8. Se houver encaixe limpo com alertas backend-derived, integrar sem violar a arquitetura; se não houver, deixe preparado com TODO técnico explícito e sem gambiarra.
+8. Se houver encaixe limpo com alertas backend-derived, integrar sem violar arquitetura; se não houver, deixe preparado com TODO técnico explícito e sem gambiarra.
 9. Criar testes unitários robustos para séries e agregações.
 10. Fazer QA manual em casos reais/fixtures.
 11. Rodar pnpmcheck até verde.
@@ -398,12 +398,12 @@ Também revisar:
 # Fase 4 — Detecção real #2: tracking continuando após encerramento forte
 
 ## Objetivo
-Detectar o caso em que o processo/container já teve encerramento forte e, depois disso, novos eventos passam a aparecer como continuação espúria do tracking.
+Detectar caso em que processo/container já teve encerramento forte e, depois disso, novos eventos passam aparecer como continuação espúria do tracking.
 
 ## Escopo
 - Implementar detecção canônica no tracking ou projeção canônica apropriada
 - Cobrir reuso de container após delivered/empty returned
-- Marcar o container/processo como requerendo validação
+- Marcar container/processo como requerendo validação
 - Expor isso na UI
 
 ## Definição de encerramento forte v1
@@ -419,7 +419,7 @@ Após encerramento forte, surgem novos eventos incompatíveis com continuação 
 - outros sinais de ciclo logístico reaberto incompatível
 
 ## Razão do gatilho
-Sem esse sinal, processos já encerrados podem voltar a parecer ativos, gerar ETA e poluir o sistema.
+Sem esse sinal, processos já encerrados podem voltar parecer ativos, gerar ETA e poluir sistema.
 
 ## Severity
 - padrão: CRITICAL
@@ -428,15 +428,15 @@ Sem esse sinal, processos já encerrados podem voltar a parecer ativos, gerar ET
 - POST_COMPLETION_TRACKING_CONTINUED
 
 ## Saída esperada
-- Dashboard passa a evidenciar esses processos
+- Dashboard passa evidenciar esses processos
 - Shipment mostra mensagem agregadora
 - Container afetado fica marcado
-- Timeline pode continuar exibindo fatos, mas o sistema deixa explícito que a leitura exige validação
+- Timeline pode continuar exibindo fatos, mas sistema deixa explícito que leitura exige validação
 
 ## Fora de escopo
 - Feature estrutural de corte por data/sync
 - Ferramenta manual para truncar tracking
-- Reatribuição automática a novo processo/BL
+- Reatribuição automática novo processo/BL
 
 ## Testes
 ### Unit
@@ -446,7 +446,7 @@ Sem esse sinal, processos já encerrados podem voltar a parecer ativos, gerar ET
 
 ### Manual
 - usar casos reais/fixtures de container reutilizado
-- validar que processos entregues não parecem “normais” quando o tracking continua
+- validar que processos entregues não parecem “normais” quando tracking continua
 
 ## Critério de pronto
 - caso detectado corretamente
@@ -461,10 +461,10 @@ Sem esse sinal, processos já encerrados podem voltar a parecer ativos, gerar ET
 
 # Prompt de implementação — Fase 4
 
-Implemente o segundo gatilho real da feature: continuação de tracking após encerramento forte do processo/container.
+Implemente segundo gatilho real da feature: continuação de tracking após encerramento forte do processo/container.
 
 Objetivo:
-- detectar casos em que o container foi entregue ou retornado vazio e, depois disso, o sistema começa a receber eventos de um novo tracking incompatível com o processo original
+- detectar casos em que container foi entregue ou retornado vazio e, depois disso, sistema começa receber eventos de novo tracking incompatível com processo original
 - marcar esse caso como requiring validation
 
 Requisitos:
@@ -473,7 +473,7 @@ Requisitos:
 3. Gere issue code `POST_COMPLETION_TRACKING_CONTINUED`.
 4. Severidade `CRITICAL`.
 5. Não apague fatos históricos.
-6. Não implemente ainda a feature futura de corte manual.
+6. Não implemente ainda feature futura de corte manual.
 7. Propague até dashboard e shipment.
 8. Criar testes unitários cobrindo delivered/empty_returned com e sem tracking posterior.
 9. Fazer QA manual com fixture/caso real.
@@ -483,7 +483,7 @@ Requisitos:
 Também revisar:
 - textos de UI para esse caso
 - payload leve no dashboard
-- se a timeline precisa de micro-indicação de que a continuação é inconsistente, sem poluir a tela
+- se timeline precisa de micro-indicação de que continuação é inconsistente, sem poluir tela
 
 ===
 
@@ -491,12 +491,12 @@ Também revisar:
 # Fase 5 — Severidade dupla real, integração com alertas e destaque consistente no dashboard
 
 ## Objetivo
-Consolidar a infraestrutura de severidade `ADVISORY | CRITICAL` com comportamento E2E consistente, integrando com o sistema atual de alertas onde fizer sentido e ajustando o dashboard para refletir bem os casos críticos.
+Consolidar infraestrutura de severidade `ADVISORY|CRITICAL` com comportamento E2E consistente, integrando com sistema atual de alertas onde fizer sentido e ajustando dashboard para refletir bem casos críticos.
 
 ## Escopo
 - Tornar severidade parte real do fluxo
 - Padronizar exibição de ADVISORY vs CRITICAL
-- Integrar casos críticos com alerta crítico backend-derived quando o encaixe for limpo
+- Integrar casos críticos com alerta crítico backend-derived quando encaixe for limpo
 - Ajustar dashboard para refletir criticidade sem inventar nova semântica local
 
 ## Escopo detalhado
@@ -511,7 +511,7 @@ Consolidar a infraestrutura de severidade `ADVISORY | CRITICAL` com comportament
   - marcações discretas
 
 ## Objetivo técnico
-Preparar o sistema para próximas rules advisory sem reabrir contratos.
+Preparar sistema para próximas rules advisory sem reabrir contratos.
 
 ## Regras
 - UI não calcula severidade
@@ -543,16 +543,16 @@ Preparar o sistema para próximas rules advisory sem reabrir contratos.
 
 # Prompt de implementação — Fase 5
 
-Consolide a infraestrutura de severidade `ADVISORY | CRITICAL` da feature de tracking validation issue.
+Consolide infraestrutura de severidade `ADVISORY|CRITICAL` da feature de tracking validation issue.
 
 Objetivo:
-- tornar a severidade parte real do fluxo E2E
+- tornar severidade parte real do fluxo E2E
 - integrar casos críticos ao comportamento visual/alerta do sistema de forma consistente
-- preparar a base para os próximos gatilhos advisory
+- preparar base para próximos gatilhos advisory
 
 Requisitos:
 1. Severidade deve atravessar tracking -> result -> DTO -> VM -> UI.
-2. Dashboard deve diferenciar bem critical dos demais, usando a semântica visual existente de alertas críticos sempre que possível.
+2. Dashboard deve diferenciar bem critical dos demais, usando semântica visual existente de alertas críticos sempre que possível.
 3. Advisory deve ser suportado sem hacks, mesmo que ainda haja poucos casos concretos.
 4. Não criar regra local de prioridade na UI além daquilo que já é coerente com alertas/estado vindo do backend.
 5. Se houver integração com alertas, ela deve ser backend-derived e sem duplicidade semântica confusa.
@@ -566,24 +566,24 @@ Requisitos:
 # Fase 6 — Detecção real #3 (ADVISORY): classificação canônica de timeline/blocos inconsistente
 
 ## Objetivo
-Detectar inconsistências semânticas na derivação canônica da timeline/blocos operacionais quando a leitura principal ainda existe, mas a classificação ficou insegura.
+Detectar inconsistências semânticas na derivação canônica da timeline/blocos operacionais quando leitura principal ainda existe, mas classificação ficou insegura.
 
 ## Escopo
-- Cobrir casos em que a derivação canônica produz classificação operacional improvável/incoerente
+- Cobrir casos em que derivação canônica produz classificação operacional improvável/incoerente
 - Exemplo orientador:
   - item com evidência forte de contexto marítimo/vessel sendo classificado como post-carriage
-- O erro deve existir no read model/backend canônico, não apenas na UI
+- erro deve existir no read model/backend canônico, não na UI
 
 ## Severity
 - padrão: ADVISORY
-- pode subir para CRITICAL se o caso específico realmente comprometer a leitura principal
+- pode subir para CRITICAL se caso específico realmente comprometer leitura principal
 
 ## Issue code
 - CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT
 
 ## Regra de fronteira
 Só entra nessa fase se:
-- a inconsistência já existir antes da UI
+- inconsistência já existir antes da UI
 - ou seja, no DTO/read model/backend canônico
 
 Não entra:
@@ -608,8 +608,8 @@ Não entra:
 - caso puramente visual não deve depender dessa fase
 
 ### Manual
-- reproduzir pelo menos um caso real semelhante aos vistos em prints
-- confirmar no read model/DTO que o erro existe antes da UI
+- reproduzir pelo menos caso real semelhante aos vistos em prints
+- confirmar no read model/DTO que erro existe antes da UI
 
 ## Critério de pronto
 - advisory real funcionando
@@ -623,21 +623,21 @@ Não entra:
 
 # Prompt de implementação — Fase 6
 
-Implemente um gatilho advisory para inconsistência na classificação canônica de timeline/blocos operacionais.
+Implemente gatilho advisory para inconsistência na classificação canônica de timeline/blocos operacionais.
 
 Objetivo:
-- detectar quando a derivação canônica do tracking produz uma classificação semântica insegura, mesmo que a leitura principal ainda esteja disponível
+- detectar quando derivação canônica do tracking produz classificação semântica insegura, mesmo que leitura principal ainda esteja disponível
 - exemplo: algo com forte sinal de voyage/navio aparecendo como post-carriage no backend/read model
 
 Requisitos:
-1. A lógica deve nascer no backend canônico, nunca na UI.
-2. Só gerar issue se o problema já existir no read model/DTO backend.
+1. lógica deve nascer no backend canônico, nunca na UI.
+2. Só gerar issue se problema já existir no read model/DTO backend.
 3. Issue code `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`.
 4. Severidade inicial `ADVISORY`, salvo evidência forte de comprometimento maior.
 5. Não use heurísticas frágeis demais ou NLP improvisado.
-6. Baseie a detecção em sinais semânticos objetivos existentes no pipeline de tracking.
+6. Baseie detecção em sinais semânticos objetivos existentes no pipeline de tracking.
 7. Escreva testes unitários.
-8. Faça QA manual comprovando que o erro existe antes da UI.
+8. Faça QA manual comprovando que erro existe antes da UI.
 9. Rode pnpmcheck até verde.
 10. Crie exatamente 1 commit desta fase.
 
@@ -647,7 +647,7 @@ Requisitos:
 # Fase 7 — Histórico operacional por transição (activated / changed / resolved)
 
 ## Objetivo
-Persistir o lifecycle operacional das tracking validation issues sem transformar isso em source of truth do domínio e sem armazenar snapshot completo por sync.
+Persistir lifecycle operacional das tracking validation issues sem transformar isso em source of truth do domínio e sem armazenar snapshot completo por sync.
 
 ## Escopo
 - Criar tabela operacional mínima para lifecycle de validation issue
@@ -670,7 +670,7 @@ Persistir o lifecycle operacional das tracking validation issues sem transformar
 - Evitar alto volume desnecessário
 
 ## Modelo recomendado
-Uma linha por transição relevante, não uma linha por sync.
+linha por transição relevante, não linha por sync.
 
 ## Uso futuro habilitado
 - incidência por provider
@@ -706,7 +706,7 @@ Uma linha por transição relevante, não uma linha por sync.
 
 # Prompt de implementação — Fase 7
 
-Implemente a persistência operacional do lifecycle de tracking validation issues por transição.
+Implemente persistência operacional do lifecycle de tracking validation issues por transição.
 
 Objetivo:
 - registrar `activated`, `changed`, `resolved`
@@ -720,7 +720,7 @@ Requisitos:
 4. Armazenar contexto mínimo suficiente para análise futura.
 5. Evitar duplicações inúteis.
 6. Não misturar isso com observation/snapshot/status truth.
-7. Criar testes unitários/integration locais para o lifecycle.
+7. Criar testes unitários/integration locais para lifecycle.
 8. Fazer QA manual verificando transições geradas pelos casos das fases anteriores.
 9. Rodar pnpmcheck até verde.
 10. Criar exatamente 1 commit desta fase.
@@ -734,18 +734,18 @@ Também revisar:
 # Fase 8 — Time travel / sync-aware reconstruction + refinamento de prefetch e payloads
 
 ## Objetivo
-Garantir que a feature se comporte corretamente ao navegar por syncs/time travel e refinar payloads/prefetch para não piorar egress e performance.
+Garantir que feature se comporte corretamente ao navegar por syncs/time travel e refinar payloads/prefetch para não piorar egress e performance.
 
 ## Escopo
-- Integrar a feature ao fluxo existente de time travel/sync navigation
+- Integrar feature ao fluxo existente de time travel/sync navigation
 - Garantir reconstrução coerente do estado por sync
-- Refinar o que vai para dashboard vs shipment
+- Refinar que vai para dashboard vs shipment
 - Otimizar prefetch e ViewModels para não carregar detalhes onde não precisam
 
 ## Estratégia
 - Não persistir snapshot completo por sync
-- Reconstruir o estado da feature por derivação quando a tela estiver navegando por syncs
-- Usar o lifecycle persistido apenas como suporte operacional, não como fonte de renderização principal
+- Reconstruir estado da feature por derivação quando tela estiver navegando por syncs
+- Usar lifecycle persistido como suporte operacional, não como fonte de renderização principal
 
 ## Performance
 ### Dashboard
@@ -753,7 +753,7 @@ Garantir que a feature se comporte corretamente ao navegar por syncs/time travel
 ### Shipment atual
 - detalhes agregados por container
 ### Time travel sync-specific
-- carregar detalhe apenas quando necessário
+- carregar detalhe quando necessário
 
 ## Realtime / refresh
 - garantir coerência entre visão atual e visão histórica
@@ -766,12 +766,12 @@ Garantir que a feature se comporte corretamente ao navegar por syncs/time travel
 - reconstrução por sync em cenários básicos
 
 ### Manual
-- navegar por syncs e confirmar que a feature acompanha corretamente o estado derivado
+- navegar por syncs e confirmar que feature acompanha corretamente estado derivado
 - validar que payload do dashboard não inchou
-- validar que shipment detalhado só carrega o necessário
+- validar que shipment detalhado só carrega necessário
 
 ## Critério de pronto
-- time travel coerente com a feature
+- time travel coerente com feature
 - sem snapshot bloat por sync
 - payloads refinados
 - pnpmcheck verde
@@ -783,7 +783,7 @@ Garantir que a feature se comporte corretamente ao navegar por syncs/time travel
 
 # Prompt de implementação — Fase 8
 
-Integre a feature de tracking validation issue ao fluxo de time travel/sync navigation e refine payloads/performance.
+Integre feature de tracking validation issue ao fluxo de time travel/sync navigation e refine payloads/performance.
 
 Objetivo:
 - garantir comportamento correto ao navegar por syncs
@@ -792,9 +792,9 @@ Objetivo:
 - manter dashboard leve
 
 Requisitos:
-1. A feature deve aparecer corretamente quando a UI navegar por syncs/time travel.
+1. feature deve aparecer corretamente quando UI navegar por syncs/time travel.
 2. Preferir reconstrução derivada por sync, não persistência completa por sync.
-3. Dashboard deve continuar recebendo apenas agregados mínimos.
+3. Dashboard deve continuar recebendo agregados mínimos.
 4. Shipment/time travel detalhado só deve carregar detalhe quando realmente necessário.
 5. Ajustar prefetch/reconciliation se preciso.
 6. Não criar second source of truth em realtime/local state.
@@ -809,7 +809,7 @@ Requisitos:
 # Fase 9 — Detecção real #4 e #5 + endurecimento das regras abertas
 
 ## Objetivo
-Adicionar mais dois gatilhos reais relevantes da V1.1 e endurecer as rules abertas, aproveitando o que já foi visto nos chats/casos reais.
+Adicionar mais dois gatilhos reais relevantes da V1.1 e endurecer rules abertas, aproveitando que já foi visto nos chats/casos reais.
 
 ## Escopo
 Adicionar até dois novos gatilhos concretos, desde que bem objetivos e sustentados por casos já discutidos.
@@ -819,7 +819,7 @@ Adicionar até dois novos gatilhos concretos, desde que bem objetivos e sustenta
 - MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT
 - EXPECTED_PLAN_NOT_RECONCILABLE
 
-Escolher os dois melhores com base em:
+Escolher dois melhores com base em:
 - objetividade
 - valor operacional
 - baixo risco de falso positivo
@@ -836,7 +836,7 @@ Escolher os dois melhores com base em:
 
 ## Testes
 ### Unit
-- um conjunto robusto de fixtures por gatilho
+- conjunto robusto de fixtures por gatilho
 ### Manual
 - validação com casos reais ou muito próximos dos já vistos
 
@@ -853,19 +853,19 @@ Escolher os dois melhores com base em:
 
 # Prompt de implementação — Fase 9
 
-Implemente mais dois gatilhos reais da feature, escolhendo os dois mais objetivos e úteis entre os candidatos abaixo:
+Implemente mais dois gatilhos reais da feature, escolhendo dois mais objetivos e úteis entre candidatos abaixo:
 
 - `UNRECONCILABLE_TRACKING_STATE`
 - `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
 - `EXPECTED_PLAN_NOT_RECONCILABLE`
 
 Objetivo:
-- ampliar a cobertura da feature sem cair em heurística vaga
+- ampliar cobertura da feature sem cair em heurística vaga
 - usar critérios objetivos sustentados pelos casos reais já discutidos
 
 Requisitos:
-1. Escolha apenas dois gatilhos nesta fase.
-2. Justifique tecnicamente a escolha no resumo final da implementação.
+1. Escolha dois gatilhos nesta fase.
+2. Justifique tecnicamente escolha no resumo final da implementação.
 3. Cada gatilho precisa de critério objetivo.
 4. Cada gatilho precisa de testes unitários robustos.
 5. Propague até UI sem piorar payload desnecessariamente.
@@ -879,10 +879,10 @@ Requisitos:
 # Fase 10 — Polimento final, QA de regressão end-to-end e fechamento da V1/V1.1
 
 ## Objetivo
-Concluir a feature com polimento, ajustes finais de UX, revisão de payloads, revisão de textos, QA de regressão amplo e fechamento do escopo V1/V1.1 definido nesta conversa.
+Concluir feature com polimento, ajustes finais de UX, revisão de payloads, revisão de textos, QA de regressão amplo e fechamento do escopo V1/V1.1 definido nesta conversa.
 
 ## Escopo
-- Revisar todos os gatilhos implementados
+- Revisar todos gatilhos implementados
 - Revisar mensagens e i18n
 - Revisar UI em dashboard, shipment, container, timeline
 - Revisar realtime/refresh/prefetch
@@ -904,7 +904,7 @@ Concluir a feature com polimento, ajustes finais de UX, revisão de payloads, re
 - nenhum rederive na UI
 
 ## QA manual obrigatório
-Rodar uma bateria manual cobrindo:
+Rodar bateria manual cobrindo:
 - sem issue
 - advisory
 - critical por conflito de ACTUAL
@@ -930,27 +930,27 @@ Rodar uma bateria manual cobrindo:
 
 # Prompt de implementação — Fase 10
 
-Faça o fechamento final da feature de tracking validation issue no Container Tracker.
+Faça fechamento final da feature de tracking validation issue no Container Tracker.
 
 Objetivo:
-- polir tudo o que foi implementado nas fases anteriores
+- polir tudo que foi implementado nas fases anteriores
 - revisar UX, i18n, payloads, ViewModels, QA manual e regressões
-- deixar a V1/V1.1 pronta dentro do escopo acordado
+- deixar V1/V1.1 pronta dentro do escopo acordado
 
 Requisitos:
-1. Revisar toda a cadeia tracking -> DTO -> VM -> UI.
+1. Revisar toda cadeia tracking -> DTO -> VM -> UI.
 2. Eliminar resíduos técnicos locais deixados pelas fases anteriores.
 3. Revisar textos e i18n.
 4. Revisar densidade visual e consistência.
-5. Revisar payloads para manter dashboard leve e shipment detalhado apenas quando necessário.
+5. Revisar payloads para manter dashboard leve e shipment detalhado quando necessário.
 6. Garantir que UI não rederiva semântica.
-7. Fazer uma rodada ampla de QA manual cobrindo todos os casos implementados.
+7. Fazer rodada ampla de QA manual cobrindo todos casos implementados.
 8. Garantir pnpmcheck verde.
 9. Criar exatamente 1 commit final desta fase.
 
 No resumo final, inclua:
-- o que foi ajustado
-- o que foi validado manualmente
+- que foi ajustado
+- que foi validado manualmente
 - qualquer risco residual pequeno que permaneça
 
 

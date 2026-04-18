@@ -1,7 +1,7 @@
 # Migração de Banco de Dados: alert_fingerprint
 
 ## Status
-⚠️ **MIGRAÇÃO PENDENTE** - A coluna `alert_fingerprint` precisa ser adicionada à tabela `tracking_alerts`.
+⚠️ **MIGRAÇÃO PENDENTE** - coluna `alert_fingerprint` precisa ser adicionada à tabela `tracking_alerts`.
 
 ## Objetivo
 Adicionar deduplicação por fingerprint para alertas FACT-based, permitindo múltiplos alertas do mesmo tipo quando representam fatos distintos (e.g., dois transbordos diferentes).
@@ -31,7 +31,7 @@ COMMENT ON COLUMN tracking_alerts.alert_fingerprint IS
 1. **Aplicar migração no Supabase:**
    - Ir ao Dashboard do Supabase
    - SQL Editor → New Query
-   - Colar e executar o SQL acima
+   - Colar e executar SQL acima
 
 2. **Regenerar tipos TypeScript:**
    ```bash
@@ -41,9 +41,9 @@ COMMENT ON COLUMN tracking_alerts.alert_fingerprint IS
    npx supabase gen types typescript --project-id <PROJECT_ID> > src/shared/supabase/database.types.ts
    ```
 
-3. **Verificar que os tipos foram atualizados:**
+3. **Verificar que tipos foram atualizados:**
    - Abrir `src/shared/supabase/database.types.ts`
-   - Confirmar que `tracking_alerts.Row` e `tracking_alerts.Insert` têm o campo `alert_fingerprint: string | null`
+   - Confirmar que `tracking_alerts.Row` e `tracking_alerts.Insert` têm campo `alert_fingerprint: string | null`
 
 4. **Rodar testes completos:**
    ```bash
@@ -54,7 +54,7 @@ COMMENT ON COLUMN tracking_alerts.alert_fingerprint IS
 
 ### Alertas FACT (com fingerprint)
 - **Antes:** Só permitia 1 alerta TRANSSHIPMENT ativo por container
-- **Depois:** Permite múltiplos alertas TRANSSHIPMENT se as evidências (observations) forem diferentes
+- **Depois:** Permite múltiplos alertas TRANSSHIPMENT se evidências (observations) forem diferentes
 
 ### Alertas MONITORING (sem fingerprint)
 - **Antes:** Deduplica por TYPE
@@ -68,7 +68,7 @@ COMMENT ON COLUMN tracking_alerts.alert_fingerprint IS
 
 ## Validação
 
-Após aplicar a migração, executar:
+Após aplicar migração, executar:
 
 ```sql
 -- Verificar que a coluna existe

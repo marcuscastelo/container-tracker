@@ -3,13 +3,13 @@
 * Status: Accepted
 * Data: 2026-02-20
 * Branch de implementação: `refactor/separate-bc-from-capabilities`
-* Relacionado a: `docs/plans/refactor-bc-capabilities-execution-plan.md`
+* Relacionado: `docs/plans/refactor-bc-capabilities-execution-plan.md`
 
 ---
 
 ## Contexto
 
-O projeto apresentava os seguintes problemas estruturais:
+projeto apresentava seguintes problemas estruturais:
 
 1. Imports cross-BC de `domain` (process ↔ tracking ↔ container).
 2. Rotas (`src/routes/api/**`) acessando diretamente `application` e `infrastructure`.
@@ -25,7 +25,7 @@ Esses pontos criavam:
 * Risco de regressão silenciosa.
 * Inversão de dependências entre camadas.
 
-O objetivo foi estabilizar boundaries reais e enforceáveis, mantendo o monólito modular.
+objetivo foi estabilizar boundaries reais e enforceáveis, mantendo monólito modular.
 
 ---
 
@@ -46,7 +46,7 @@ Regras:
 
 ### 2. Rotas como adapters finos
 
-Todas as rotas em `src/routes/api/**`:
+Todas rotas em `src/routes/api/**`:
 
 * Não podem importar `domain`, `application` ou `infrastructure` diretamente.
 * Devem delegar exclusivamente para controllers em `modules/*/interface/http` ou `capabilities/*/interface/http`.
@@ -80,7 +80,7 @@ Responsabilidade de verificação pertence ao BC `container`.
 * Orquestração movida para usecases.
 * Puppeteer/Maersk isolado em infraestrutura.
 
-Controller chama um único usecase.
+Controller chama único usecase.
 
 ---
 
@@ -94,7 +94,7 @@ Foi criado contrato semântico local (`operationalSemantics.ts`) com:
 * Severidade
 * Regras de dominância
 
-O BC process não depende mais do domínio de tracking.
+BC process não depende mais do domínio de tracking.
 
 ---
 
@@ -116,7 +116,7 @@ Foram adicionadas regras de boundary que bloqueiam:
 * Domain → interface/http/shared-ui/routes
 * Cross-BC domain imports
 
-As regras só foram ativadas após estado verde.
+regras só foram ativadas após estado verde.
 
 ---
 
@@ -125,7 +125,7 @@ As regras só foram ativadas após estado verde.
 Com boundaries explícitos:
 
 * UI de shipment/process consome read models e permanece presentation-only.
-* Timeline-first layout e agrupamentos operacionais devem ser renderizados a partir de contratos canônicos, sem re-derivação na UI.
+* Timeline-first layout e agrupamentos operacionais devem ser renderizados partir de contratos canônicos, sem re-derivação na UI.
 
 Referência de composição visual/operacional:
 

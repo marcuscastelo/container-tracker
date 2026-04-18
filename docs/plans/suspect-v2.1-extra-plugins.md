@@ -8,14 +8,14 @@ Proposto
 - Caso de referência: **CA052-26**
 
 ## Objetivo do adendo
-Evoluir o detector atualmente genérico:
+Evoluir detector atualmente genérico:
 
 - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
 
-para permitir, em casos apropriados, classificações mais específicas e semanticamente mais úteis para o operador e para evolução futura do sistema.
+para permitir, em casos apropriados, classificações mais específicas e semanticamente mais úteis para operador e para evolução futura do sistema.
 
-Este adendo não substitui o detector genérico.
-Ele cria uma camada mais refinada para casos onde a inconsistência atual parece nascer especificamente de **plano expected ruim, fragmentado ou semanticamente empobrecido**.
+Este adendo não substitui detector genérico.
+Ele cria camada mais refinada para casos onde inconsistência atual parece nascer especificamente de **plano expected ruim, fragmentado ou semanticamente empobrecido**.
 
 ---
 
@@ -25,14 +25,14 @@ Na V1/V2 atual, certos casos estão sendo corretamente capturados pelo detector 
 
 Isso já é útil e melhor do que não detectar nada.
 
-Porém, alguns casos — especialmente como o **CA052-26** — parecem apontar para uma classe mais específica de problema:
+Porém, alguns casos — especialmente como **CA052-26** — parecem apontar para classe mais específica de problema:
 
 - sequência expected excessivamente fragmentada
 - milestones expected importantes não mapeadas ou semanticamente pobres
 - múltiplas pernas expected sem reconciliação confiável
-- interpretação do provider “funciona”, mas entrega um plano canônico fraco demais
+- interpretação do provider “funciona”, mas entrega plano canônico fraco demais
 
-Nesses casos, o detector genérico acerta a direção, mas não comunica a natureza real do problema com precisão suficiente.
+Nesses casos, detector genérico acerta direção, mas não comunica natureza real do problema com precisão suficiente.
 
 ---
 
@@ -45,7 +45,7 @@ Hoje, diferentes falhas semânticas podem cair no mesmo bucket:
 Isso gera três limitações:
 
 ## 1. Explicação insuficiente
-O usuário entende que “a timeline ficou inconsistente”, mas não entende se o problema é:
+usuário entende que “ timeline ficou inconsistente”, mas não entende se problema é:
 - classificação estrutural absurda
 - conflito factual
 - plano expected fragmentado
@@ -56,22 +56,22 @@ Ao manter tudo no mesmo bucket, fica mais difícil:
 - calibrar severity
 - comparar frequência por tipo
 - priorizar correções
-- saber se o problema está em fingerprint, mapping, grouping ou coverage
+- saber se problema está em fingerprint, mapping, grouping ou coverage
 
 ## 3. Menor valor operacional
-Casos de plano expected ruim pedem um tipo de explicação diferente de casos de conflito factual forte.
+Casos de plano expected ruim pedem tipo de explicação diferente de casos de conflito factual forte.
 
 ---
 
 # Objetivo de produto
 
-Adicionar um nível novo de especialização para casos de inconsistência ligados a **expected plan**, permitindo que o sistema diferencie, quando houver evidência suficiente, entre pelo menos estas classes:
+Adicionar nível novo de especialização para casos de inconsistência ligados **expected plan**, permitindo que sistema diferencie, quando houver evidência suficiente, entre pelo menos estas classes:
 
 1. **Expected plan fragmentado**
 2. **Provider interpretation impoverished**
 3. **Multi-leg plan not reconcilable**
 
-O detector genérico continua existindo como fallback seguro.
+detector genérico continua existindo como fallback seguro.
 
 ---
 
@@ -79,11 +79,11 @@ O detector genérico continua existindo como fallback seguro.
 
 Este adendo **não** inclui:
 
-- reescrever o modelo canônico de event series
-- alterar o safe-first rule
+- reescrever modelo canônico de event series
+- alterar safe-first rule
 - criar engine genérica de detecção por configuração
-- corrigir todos os mappings de provider
-- substituir o detector genérico em todos os casos
+- corrigir todos mappings de provider
+- substituir detector genérico em todos casos
 - observabilidade externa dev-facing
 - reclassificação semântica na UI
 
@@ -91,11 +91,11 @@ Este adendo **não** inclui:
 
 # Hipótese central
 
-Existe uma subclasse de validation issues em que o problema não é “a timeline está inconsistente” em sentido amplo, mas sim:
+Existe subclasse de validation issues em que problema não é “ timeline está inconsistente” em sentido amplo, mas sim:
 
-> o sistema não conseguiu montar um plano expected coerente e confiável a partir dos sinais disponíveis do provider.
+> sistema não conseguiu montar plano expected coerente e confiável partir dos sinais disponíveis do provider.
 
-Quando isso acontece, a feature deve ser capaz de dizer isso de forma mais precisa.
+Quando isso acontece, feature deve ser capaz de dizer isso de forma mais precisa.
 
 ---
 
@@ -108,14 +108,14 @@ Padrões observados:
 - múltiplas localizações intermediárias
 - transshipment intended/planned
 - transições entre blocos com semântica fraca
-- timeline canônica aparentemente “montada”, mas com confiança baixa sobre o plano
+- timeline canônica aparentemente “montada”, mas com confiança baixa sobre plano
 
 Esse caso parece mais próximo de:
 - expected plan fragmentado
 - provider interpretation impoverished
 - multi-leg plan not reconcilable
 
-do que apenas:
+do que:
 - canonical timeline classification inconsistent
 
 ---
@@ -123,12 +123,12 @@ do que apenas:
 # Proposta de evolução
 
 ## Situação atual
-O sistema emite algo como:
+sistema emite algo como:
 
 - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
 
 ## Situação desejada
-O sistema deve poder emitir um detector mais específico quando houver critério objetivo suficiente, por exemplo:
+sistema deve poder emitir detector mais específico quando houver critério objetivo suficiente, por exemplo:
 
 - `EXPECTED_PLAN_FRAGMENTED`
 - `PROVIDER_INTERPRETATION_IMPOVERISHED`
@@ -147,7 +147,7 @@ Continua existindo como fallback universal:
 - usado quando não há evidência suficiente para especializar
 
 ## Camada 2 — Especialização de expected-plan issues
-Quando houver sinais objetivos, o sistema promove o caso para uma categoria mais precisa.
+Quando houver sinais objetivos, sistema promove caso para categoria mais precisa.
 
 ---
 
@@ -156,13 +156,13 @@ Quando houver sinais objetivos, o sistema promove o caso para uma categoria mais
 ## 1. EXPECTED_PLAN_FRAGMENTED
 
 ### Intenção
-Detectar quando o plano expected parece quebrado em fragmentos semânticos demais, em vez de formar uma sequência coerente de pernas.
+Detectar quando plano expected parece quebrado em fragmentos semânticos demais, em vez de formar sequência coerente de pernas.
 
 ### Sinais candidatos
-- múltiplos passos expected que deveriam compor uma mesma continuidade, mas aparecem como blocos quebrados sem reconciliação clara
+- múltiplos passos expected que deveriam compor mesma continuidade, mas aparecem como blocos quebrados sem reconciliação clara
 - legs intermediárias fracas/incompletas demais
-- muitos eventos expected sem suporte suficiente para consolidar uma perna operacional clara
-- sequência expected excessivamente “picotada” para o mesmo ciclo logístico
+- muitos eventos expected sem suporte suficiente para consolidar perna operacional clara
+- sequência expected excessivamente “picotada” para mesmo ciclo logístico
 
 ### Exemplos
 - ETA, intended transshipment, planned transshipment e chegada esperada aparecendo como peças soltas
@@ -177,16 +177,16 @@ Detectar quando o plano expected parece quebrado em fragmentos semânticos demai
 ## 2. PROVIDER_INTERPRETATION_IMPOVERISHED
 
 ### Intenção
-Detectar quando o provider continua sendo ingerido tecnicamente, mas a interpretação canônica resultante está semanticamente pobre demais.
+Detectar quando provider continua sendo ingerido tecnicamente, mas interpretação canônica resultante está semanticamente pobre demais.
 
 ### Sinais candidatos
 - alta densidade de milestones centrais “não mapeados”
 - eventos fundamentais chegam, mas sem semântica suficiente para montar plano robusto
 - leitura atual depende demais de placeholders genéricos
-- cobertura do parser parece insuficiente para o payload atual do provider
+- cobertura do parser parece insuficiente para payload atual do provider
 
 ### Diferença para unknown isolado
-Esse detector **não** deve disparar por um único evento não mapeado.
+Esse detector **não** deve disparar por único evento não mapeado.
 Ele só entra quando houver **empobrecimento semântico relevante do plano**.
 
 ### Exemplos
@@ -194,21 +194,21 @@ Ele só entra quando houver **empobrecimento semântico relevante do plano**.
 
 ### Severity sugerida
 - `ADVISORY` por padrão
-- `CRITICAL` se empobrecimento comprometer o entendimento atual do fluxo
+- `CRITICAL` se empobrecimento comprometer entendimento atual do fluxo
 
 ---
 
 ## 3. MULTI_LEG_PLAN_NOT_RECONCILABLE
 
 ### Intenção
-Detectar quando há sinais suficientes de um plano com múltiplas pernas, mas o sistema não consegue reconciliar essas pernas numa sequência expected confiável.
+Detectar quando há sinais suficientes de plano com múltiplas pernas, mas sistema não consegue reconciliar essas pernas numa sequência expected confiável.
 
 ### Sinais candidatos
 - múltiplas localizações intermediárias expected
 - transbordos intended/planned
 - legs parciais que sugerem multi-leg route
 - ausência de coerência suficiente entre origem, intermediários e destino esperado
-- mudanças ou transições que não conseguem ser encaixadas como uma cadeia expected estável
+- mudanças ou transições que não conseguem ser encaixadas como cadeia expected estável
 
 ### Exemplos
 - Karachi → Colombo → Singapore → Santos, com intended/planned/arrival events insuficientemente reconciliados
@@ -216,14 +216,14 @@ Detectar quando há sinais suficientes de um plano com múltiplas pernas, mas o 
 
 ### Severity sugerida
 - `ADVISORY` por padrão
-- `CRITICAL` se o sistema usar esse plano para orientar leitura principal atual
+- `CRITICAL` se sistema usar esse plano para orientar leitura principal atual
 
 ---
 
 # Regras de priorização entre os detectores
 
 ## Ordem sugerida
-Quando múltiplos sinais coexistirem, o sistema deve escolher o motivo mais útil e mais correto.
+Quando múltiplos sinais coexistirem, sistema deve escolher motivo mais útil e mais correto.
 
 Prioridade sugerida:
 
@@ -233,17 +233,17 @@ Prioridade sugerida:
 4. `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
 
 ## Justificativa
-- `MULTI_LEG_PLAN_NOT_RECONCILABLE` é o mais estrutural e mais próximo da leitura operacional
+- `MULTI_LEG_PLAN_NOT_RECONCILABLE` é mais estrutural e mais próximo da leitura operacional
 - `EXPECTED_PLAN_FRAGMENTED` é forte, mas ainda mais sintoma estrutural
 - `PROVIDER_INTERPRETATION_IMPOVERISHED` é mais diagnóstico de cobertura/qualidade da interpretação
-- o genérico continua sendo fallback
+- genérico continua sendo fallback
 
 ---
 
 # Critérios de ativação
 
 ## Regra de segurança
-O sistema só deve especializar quando houver **evidência objetiva suficiente**.
+sistema só deve especializar quando houver **evidência objetiva suficiente**.
 
 Se não houver, deve permanecer no detector genérico.
 
@@ -251,7 +251,7 @@ Se não houver, deve permanecer no detector genérico.
 - nenhum detector novo pode depender de UI
 - nenhum detector novo pode usar texto livre ou heurística frouxa
 - nenhum detector novo pode ser disparado só por “evento não mapeado”
-- a especialização precisa ser determinística dado o mesmo conjunto de observations/read model
+- especialização precisa ser determinística dado mesmo conjunto de observations/read model
 
 ---
 
@@ -269,20 +269,20 @@ Cada issue especializada deve continuar suportando:
 ## Exemplos de summaries
 
 ### EXPECTED_PLAN_FRAGMENTED
-- “O plano previsto atual ficou fragmentado demais para formar uma rota confiável.”
+- “ plano previsto atual ficou fragmentado demais para formar rota confiável.”
 
 ### PROVIDER_INTERPRETATION_IMPOVERISHED
-- “Os dados previstos deste rastreamento vieram com semântica insuficiente para montar uma leitura confiável.”
+- “ dados previstos deste rastreamento vieram com semântica insuficiente para montar leitura confiável.”
 
 ### MULTI_LEG_PLAN_NOT_RECONCILABLE
-- “O sistema detectou múltiplas pernas previstas, mas não conseguiu reconciliá-las numa rota consistente.”
+- “ sistema detectou múltiplas pernas previstas, mas não conseguiu reconciliá-las numa rota consistente.”
 
 ---
 
 # UX esperada
 
 ## Shipment page
-A seção “Motivos da validação” deve conseguir mostrar o novo motivo específico.
+seção “Motivos da validação” deve conseguir mostrar novo motivo específico.
 
 ## Área afetada
 Sempre que possível:
@@ -293,9 +293,9 @@ Sempre que possível:
 
 ## Review hint
 Exemplos:
-- “Revise os trechos intermediários previstos e os transbordos planejados.”
-- “Revise os milestones expected não mapeados do plano.”
-- “Revise a cadeia expected entre intermediários e destino final.”
+- “Revise trechos intermediários previstos e transbordos planejados.”
+- “Revise milestones expected não mapeados do plano.”
+- “Revise cadeia expected entre intermediários e destino final.”
 
 ---
 
@@ -313,17 +313,17 @@ Garantir que existam sinais suficientes para:
 - sinais de empobrecimento semântico
 
 ## DTO / VM
-Suportar os novos `reasonCode` sem quebrar UI atual.
+Suportar novos `reasonCode` sem quebrar UI atual.
 
 ## UI
-Consumir os novos reasons sem rederivar semântica.
+Consumir novos reasons sem rederivar semântica.
 
 ---
 
 # Requisitos não funcionais
 
 ## Determinismo
-Dado o mesmo conjunto de facts/read model, a especialização deve ser reprodutível.
+Dado mesmo conjunto de facts/read model, especialização deve ser reprodutível.
 
 ## Baixo falso positivo
 Não pode transformar qualquer timeline “feia” em fragmentação.
@@ -333,7 +333,7 @@ Não aumentar payload do dashboard.
 Shipment pode receber reason específico sem debug pesado.
 
 ## Boundary safety
-Toda a especialização nasce no Tracking BC.
+Toda especialização nasce no Tracking BC.
 
 ---
 
@@ -343,16 +343,16 @@ Toda a especialização nasce no Tracking BC.
 Criar detectores novos sem critério objetivo suficiente.
 
 ### Mitigação
-Fallback sempre disponível para o detector genérico.
+Fallback sempre disponível para detector genérico.
 
 ## 2. Nomes tecnicamente bons, mas ruins de produto
-O nome interno pode não ser o melhor texto final para o usuário.
+nome interno pode não ser melhor texto final para usuário.
 
 ### Mitigação
 Separar `reasonCode` de `userSummary`.
 
 ## 3. Confusão entre problema estrutural e problema de coverage do provider
-Um mesmo caso pode parecer ambos.
+mesmo caso pode parecer ambos.
 
 ### Mitigação
 Definir hierarquia clara de prioridade.
@@ -362,7 +362,7 @@ Definir hierarquia clara de prioridade.
 # Métricas de sucesso
 
 ## Qualitativas
-Em casos tipo CA052, a explicação deve parecer:
+Em casos tipo CA052, explicação deve parecer:
 - mais precisa
 - mais útil
 - mais próxima do problema real
@@ -377,10 +377,10 @@ Em casos tipo CA052, a explicação deve parecer:
 # Rollout sugerido
 
 ## Etapa 1
-Introduzir os novos `reasonCode` com fallback intacto.
+Introduzir novos `reasonCode` com fallback intacto.
 
 ## Etapa 2
-Implementar especialização mínima para o caso CA052-like.
+Implementar especialização mínima para caso CA052-like.
 
 ## Etapa 3
 Calibrar thresholds com casos reais e revisar wording.
@@ -397,22 +397,22 @@ Calibrar thresholds com casos reais e revisar wording.
 ## Validar
 - se especializou quando devia
 - se não especializou sem evidência suficiente
-- se a mensagem final ficou melhor que a genérica
-- se a timeline continua íntegra
-- se a UI só consome e exibe
+- se mensagem final ficou melhor que genérica
+- se timeline continua íntegra
+- se UI só consome e exibe
 
 ---
 
 # Conclusão
 
-Este adendo V2.1 propõe refinar a feature de Validation Issue para casos em que a inconsistência canônica atual é, na verdade, mais especificamente um problema de:
+Este adendo V2.1 propõe refinar feature de Validation Issue para casos em que inconsistência canônica atual é,, mais especificamente problema de:
 
 - plano expected fragmentado
 - interpretação empobrecida do provider
 - plano multi-leg não reconciliável
 
-O detector genérico continua existindo.
-A novidade é permitir que o sistema, quando tiver confiança suficiente, diga **com mais precisão que tipo de problema expected-plan aconteceu**.
+detector genérico continua existindo.
+novidade é permitir que sistema, quando tiver confiança suficiente, diga **com mais precisão que tipo de problema expected-plan aconteceu**.
 
 ---
 
@@ -428,10 +428,10 @@ poderão ser refinados para:
 - `MULTI_LEG_PLAN_NOT_RECONCILABLE`
 
 ## Por quê
-Porque alguns casos, como o CA052, parecem mais um problema de plano expected ruim do que apenas uma inconsistência canônica genérica.
+Porque alguns casos, como CA052, parecem mais problema de plano expected ruim do que inconsistência canônica genérica.
 
 ## Como
-Com especialização backend-derived no Tracking BC, usando critérios objetivos e mantendo fallback para o detector genérico.
+Com especialização backend-derived no Tracking BC, usando critérios objetivos e mantendo fallback para detector genérico.
 
 ## Benefício
 Mais precisão, mais explicabilidade e melhor base para evolução futura.

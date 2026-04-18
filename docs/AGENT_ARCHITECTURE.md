@@ -1,11 +1,11 @@
 # Agent Architecture (Canonical)
 
-Status: active  
+Status: active
 Scope: `apps/agent`
 
 ## Canonical root
 
-- Runtime/build/release architecture for the agent is defined under `apps/agent`.
+- Runtime/build/release architecture for agent is defined under `apps/agent`.
 - `tools/agent` references are legacy-only context in historical docs.
 
 ## Final tree
@@ -35,7 +35,7 @@ apps/agent/src/
 - `providers/`: provider-specific execution adapters (no orchestration ownership).
 - `state/`: local file state mappers and repositories.
 - `observability/`: heartbeat/health payload mapping and logging contracts.
-- `platform/`: OS-specific branching and platform adapters.
+- `platform/`: -specific branching and platform adapters.
 
 ## Explicit exceptions outside the tree
 

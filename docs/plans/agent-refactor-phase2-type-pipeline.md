@@ -28,7 +28,7 @@ Data: 2026-04-14
 
 ## Regras ativas nesta fase
 
-- Fronteira sempre muda o tipo.
+- Fronteira sempre muda tipo.
 - DTO de sync é **estrito canônico** (sem wrappers `data/result` e sem camelCase legado).
 - Parsing/validation só nas bordas; provider não valida estrutura global de job.
 - Contratos centrais não usam `Partial<>`.
@@ -40,5 +40,5 @@ Data: 2026-04-14
 - `core/types/*`: enums/unions compartilhadas.
 - `config/*`: parse/validate/serialize de config.
 - `sync/*`: mappers de entrada/saída de jobs.
-- `state/*`: parse/serialize de estado + I/O atômico.
+- `state/*`: parse/serialize de estado + I/ atômico.
 - `observability/*`: payloads canônicos de heartbeat/health/log.
