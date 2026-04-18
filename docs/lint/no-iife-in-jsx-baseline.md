@@ -21,4 +21,4 @@ Generated at: 2026-03-03 07:22:57Z
 2. If warning appears, refactor JSX IIFE usage into one of approved alternatives: pre-calculation before JSX, pure external function, or `createMemo`.
 3. Re-generate this baseline after each refactor wave to track net warning reduction by file.
 4. Promote `warn -> error` only when baseline remains at `0` warnings and CI expectations are updated.
-5. Follow [@@H0@@](./no-iife-in-jsx-transition.md) for promotion checklist, controlled exception format, and CI gate verification.
+5. Follow [the transition guide](./no-iife-in-jsx-transition.md) for promotion checklist, controlled exception format, and CI gate verification.

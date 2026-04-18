@@ -22,7 +22,7 @@ DATA_DIR/
 ## Ownership
 
 - `apps/agent/src/platform/*`
-  - Owns -specific behavior (Linux/Windows).
+  - Owns OS-specific behavior (Linux/Windows).
   - Owns path resolution through `PlatformAdapter.resolvePaths()`.
   - Owns platform link/pointer switching through:
     - `readSymlinkOrPointer()`
@@ -31,11 +31,11 @@ DATA_DIR/
   - Owns persistence of state files.
   - Must not compute paths; only consumes `PlatformPaths`.
 - `apps/agent/src/config/infrastructure/*`
-  - Owns `config.env` / `bootstrap.env` file I/.
+  - Owns `config.env` / `bootstrap.env` file I/O.
   - Must not compute paths; only consumes `PlatformPaths`.
 - Runtime, supervisor, updater, control, CLI
   - Consume resolved paths from `PlatformAdapter`.
-  - Must not branch on directly.
+  - Must not branch on `process.platform` directly.
 
 ## Public State Policy
 

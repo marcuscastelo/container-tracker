@@ -193,7 +193,7 @@ Costs:
 
 # Result
 
-Agent release system becomes **-agnostic** with minimal adapters.
+Agent release system becomes **OS-agnostic** with minimal adapters.
 
 ```
 Supervisor

@@ -6,7 +6,7 @@ This guide defines controlled promotion path from `warn` to `error` for `contain
 
 Promotion to `error` is allowed only when all items below are true:
 
-1. Baseline at [@@H0@@](./no-iife-in-jsx-baseline.md) reports `0` warnings.
+1. Baseline at [the baseline doc](./no-iife-in-jsx-baseline.md) reports `0` warnings.
 2. Scoped lint command still reports `0` warnings for rule:
    - `pnpm exec eslint "src/modules/**/ui/**/*.{ts,tsx}" --format json`
 3. New PRs in scope do not introduce warnings for `container-tracker/no-iife-in-jsx`.
@@ -23,7 +23,7 @@ Use inline disable only when refactor cannot be completed in same PR and always 
 ## warn -> error Procedure
 
 1. Confirm precondition above (`0` warnings in scope).
-2. Change rule severity in [@@H0@@](../../eslint.config.mjs) for `src/modules/**/ui/**/*.{ts,tsx}`:
+2. Change rule severity in [eslint.config.mjs](../../eslint.config.mjs) for `src/modules/**/ui/**/*.{ts,tsx}`:
    - from: `'container-tracker/no-iife-in-jsx': 'warn'`
    - to: `'container-tracker/no-iife-in-jsx': 'error'`
 3. Run local quality gate:

@@ -35,7 +35,7 @@ apps/agent/src/
 - `providers/`: provider-specific execution adapters (no orchestration ownership).
 - `state/`: local file state mappers and repositories.
 - `observability/`: heartbeat/health payload mapping and logging contracts.
-- `platform/`: -specific branching and platform adapters.
+- `platform/`: OS-specific branching and platform adapters.
 
 ## Explicit exceptions outside the tree
 

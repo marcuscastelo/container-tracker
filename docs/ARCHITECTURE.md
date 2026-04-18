@@ -156,7 +156,7 @@ No cross-BC semantic leakage.
 
 If two BCs need same type:
 - Prefer duplication over semantic coupling
-- Or explicitly define shared kernel in `shared/domain/`
+- Or explicitly define shared kernel in approved `src/shared/*` areas
 
 Operational decision:
 

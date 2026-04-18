@@ -40,5 +40,5 @@ Data: 2026-04-14
 - `core/types/*`: enums/unions compartilhadas.
 - `config/*`: parse/validate/serialize de config.
 - `sync/*`: mappers de entrada/saída de jobs.
-- `state/*`: parse/serialize de estado + I/ atômico.
+- `state/*`: parse/serialize de estado + I/O atômico.
 - `observability/*`: payloads canônicos de heartbeat/health/log.

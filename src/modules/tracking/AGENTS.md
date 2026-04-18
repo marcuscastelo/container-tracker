@@ -60,7 +60,7 @@ If changing:
 
 Prefer deterministic fixtures and stable tests.
 - `deriveTimelineWithSeriesReadModel()` emits only series with valid primary; series containing only expired EXPECTED events is omitted, so test timestamps/`now` must reflect intended visibility.
-- For metadata-only additions on observations, add /B invariant regression using same fixture with metadata present vs stripped (`null`) and assert timeline semantics, status derivation, and alert derivation are identical.
+- For metadata-only additions on observations, add A/B invariant regression using same fixture with metadata present vs stripped (`null`) and assert timeline semantics, status derivation, and alert derivation are identical.
 
 ---
 

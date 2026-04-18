@@ -1,6 +1,6 @@
 # Tracking Validation Plugin Framework
 
-This slice owns pluginable tracking validation detection inside Tracking BC.
+This slice owns pluggable tracking validation detection inside Tracking BC.
 
 It exists to answer:
 
