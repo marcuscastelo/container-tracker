@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import {
-  type PredictionHistorySource,
-  type PredictionHistoryVersionSource,
-  toPredictionHistoryModalVM,
-} from '~/modules/process/ui/mappers/predictionHistory.ui-mapper'
+import { toPredictionHistoryModalVM } from '~/modules/process/ui/mappers/predictionHistory.ui-mapper'
+import type {
+  PredictionHistorySource,
+  PredictionHistoryVersionSource,
+} from '~/modules/process/ui/viewmodels/prediction-history.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 
 function makeVersion(

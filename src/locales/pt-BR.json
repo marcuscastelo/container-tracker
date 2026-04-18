@@ -515,6 +515,9 @@
       "predictionHistory": {
         "title": "Histórico de Previsões",
         "close": "Fechar",
+        "copySeries": "Copiar série",
+        "copySeriesCopied": "Copiado",
+        "copySeriesError": "Não foi possível copiar a série",
         "unavailable": "—",
         "currentVersionMarker": "Versão atual",
         "header": {
