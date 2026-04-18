@@ -74,20 +74,5 @@ export const CmaCgmApiSchema = z
         path: ['PastMoves'],
         message: 'CMA-CGM snapshot missing movement arrays',
       })
-      return
-    }
-
-    const hasSemanticMove = allMoves.some(
-      (move) =>
-        hasNonEmptyText(move.StatusDescription) &&
-        (hasNonEmptyText(move.Date) || hasNonEmptyText(move.DateString)),
-    )
-
-    if (!hasSemanticMove) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['PastMoves'],
-        message: 'CMA-CGM snapshot has no recognizable movement entries',
-      })
     }
   })

@@ -21,19 +21,54 @@ function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function toPayloadShapeError(payload: unknown): string | null {
+function hasNonEmptyText(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function assessPayload(payload: unknown): {
+  readonly parseError: string | null
+  readonly warnings: readonly string[]
+} {
   const parseResult = CmaCgmApiSchema.safeParse(payload)
-  if (parseResult.success) {
-    return null
+  if (!parseResult.success) {
+    const firstIssue = parseResult.error.issues[0]
+    if (firstIssue === undefined) {
+      return {
+        parseError: 'CMA-CGM payload does not match expected snapshot shape',
+        warnings: [],
+      }
+    }
+
+    const path = firstIssue.path.length > 0 ? firstIssue.path.join('.') : 'payload'
+    return {
+      parseError: `CMA-CGM payload invalid at ${path}: ${firstIssue.message}`,
+      warnings: [],
+    }
   }
 
-  const firstIssue = parseResult.error.issues[0]
-  if (firstIssue === undefined) {
-    return 'CMA-CGM payload does not match expected snapshot shape'
+  const allMoves = [
+    ...(parseResult.data.PastMoves ?? []),
+    ...(parseResult.data.CurrentMoves ?? []),
+    ...(parseResult.data.ProvisionalMoves ?? []),
+  ]
+
+  const hasSemanticMove = allMoves.some(
+    (move) =>
+      hasNonEmptyText(move.StatusDescription) &&
+      (hasNonEmptyText(move.Date) || hasNonEmptyText(move.DateString)),
+  )
+
+  if (!hasSemanticMove) {
+    return {
+      parseError: null,
+      warnings: ['CMA-CGM payload accepted with low confidence: moves missing status/date'],
+    }
   }
 
-  const path = firstIssue.path.length > 0 ? firstIssue.path.join('.') : 'payload'
-  return `CMA-CGM payload invalid at ${path}: ${firstIssue.message}`
+  return {
+    parseError: null,
+    warnings: [],
+  }
 }
 
 export function createCmaCgmRunner(deps?: {
@@ -48,8 +83,8 @@ export function createCmaCgmRunner(deps?: {
 
       try {
         const result = await fetchStatus(input.ref)
-        const payloadShapeError = toPayloadShapeError(result.payload)
-        const parseError = result.parseError ?? payloadShapeError
+        const payloadAssessment = assessPayload(result.payload)
+        const parseError = result.parseError ?? payloadAssessment.parseError
 
         if (parseError !== null) {
           const classification = classifyProviderParseError(parseError)
@@ -67,12 +102,21 @@ export function createCmaCgmRunner(deps?: {
           })
         }
 
+        if (payloadAssessment.warnings.length > 0) {
+          console.warn('[agent] provider payload warning', {
+            provider: input.provider,
+            ref: input.ref,
+            warnings: payloadAssessment.warnings,
+          })
+        }
+
         return buildProviderSuccess({
           startedAtMs,
           observedAt: result.fetchedAt,
           raw: result.payload,
           diagnostics: {
             provider: input.provider,
+            warnings: payloadAssessment.warnings,
           },
         })
       } catch (error) {

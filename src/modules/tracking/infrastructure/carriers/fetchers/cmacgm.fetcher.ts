@@ -1,6 +1,5 @@
 import axios from 'axios'
 import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/fetch-result'
-import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema'
 import { systemClock } from '~/shared/time/clock'
 
 function normalizeLogText(value: string, maxLength = 180): string {
@@ -25,26 +24,14 @@ function isParseFailurePayload(payload: unknown): payload is {
   return payload.parse_failure === true
 }
 
-function toPayloadSchemaError(payload: unknown): string | null {
+function toCmaCgmHtmlParseError(payload: unknown): string | null {
   if (isParseFailurePayload(payload)) {
     if (payload.reason === 'response_data_not_found') {
       return 'CMA-CGM response HTML missing expected options.responseData payload'
     }
     return 'CMA-CGM response HTML contained invalid options.responseData JSON'
   }
-
-  const schemaResult = CmaCgmApiSchema.safeParse(payload)
-  if (schemaResult.success) {
-    return null
-  }
-
-  const firstIssue = schemaResult.error.issues[0]
-  if (firstIssue === undefined) {
-    return 'CMA-CGM response JSON does not match expected snapshot shape'
-  }
-
-  const path = firstIssue.path.length > 0 ? firstIssue.path.join('.') : 'payload'
-  return `CMA-CGM response JSON invalid at ${path}: ${firstIssue.message}`
+  return null
 }
 
 /**
@@ -127,7 +114,7 @@ export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchR
   })
 
   const payload = extractResponseData(html)
-  const parseError = toPayloadSchemaError(payload)
+  const parseError = toCmaCgmHtmlParseError(payload)
   if (parseError !== null) {
     console.warn('[tracking:cmacgm] parse failed', {
       method: 'POST',

@@ -76,6 +76,32 @@ describe('provider runners', () => {
     expect(result.errorCode).toBe('PROVIDER_PARSE_ERROR')
   })
 
+  it('cmacgm runner keeps close-enough payload as success and emits diagnostics warning', async () => {
+    const runner = createCmaCgmRunner({
+      async fetchStatus() {
+        return {
+          payload: {
+            ContainerReference: 'MSCU1234567',
+            PastMoves: [
+              {
+                Date: null,
+                DateString: null,
+                State: 'DONE',
+                StatusDescription: null,
+              },
+            ],
+          },
+          fetchedAt: '2026-04-15T00:00:00.000Z',
+          parseError: null,
+        }
+      },
+    })
+
+    const result = await runner.run(makeInput('cmacgm'))
+    expect(result.status).toBe('success')
+    expect(Array.isArray(result.diagnostics.warnings)).toBe(true)
+  })
+
   it('pil runner classifies timeout exceptions as retryable failures', async () => {
     const runner = createPilRunner({
       async fetchStatus() {
