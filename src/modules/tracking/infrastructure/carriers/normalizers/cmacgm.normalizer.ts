@@ -11,7 +11,6 @@ import {
   buildDateOnlyTrackingTemporal,
   buildLocalDateTimeTrackingTemporal,
   composeTrackingRawEventTime,
-  resolveTrackingEventTimezone,
 } from '~/modules/tracking/infrastructure/carriers/normalizers/tracking-temporal-resolution'
 import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema'
 import { CalendarDate } from '~/shared/time/calendar-date'
@@ -231,8 +230,7 @@ function parseCmaCgmDate(
     if (parsedDate) {
       if (timeStringField) {
         const parsedTime = parseCmaCgmMeridiemTime(timeStringField)
-        const timezone = resolveTrackingEventTimezone(temporalLocationContext)
-        if (parsedTime && timezone !== null) {
+        if (parsedTime) {
           return buildLocalDateTimeTrackingTemporal({
             localDateTime: `${parsedDate.toIsoDate()}T${parsedTime}`,
             rawEventTime,

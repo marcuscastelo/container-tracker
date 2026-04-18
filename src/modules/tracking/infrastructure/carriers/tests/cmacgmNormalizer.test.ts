@@ -323,6 +323,25 @@ describe('normalizeCmaCgmSnapshot', () => {
       expect(drafts[0]?.event_time_source).toBe('carrier_date_only')
     })
 
+    it('uses derived fallback when DateString and TimeString exist but timezone cannot be resolved', () => {
+      const drafts = normalizeCmaCgmSnapshot(
+        makeSnapshot(
+          makeSingleMovePayload({
+            DateString: 'Friday,24-APR-2026',
+            TimeString: '07:00 PM',
+            LocationCode: 'ZZZZZ',
+            Location: 'UNKNOWN TERMINAL',
+          }),
+        ),
+      )
+
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time?.kind).toBe('date')
+      expect(temporalCanonicalText(drafts[0]?.event_time ?? null)).toBe('2026-04-24')
+      expect(drafts[0]?.event_time_source).toBe('derived_fallback')
+      expect(drafts[0]?.raw_event_time).toBe('Friday,24-APR-2026 07:00 PM')
+    })
+
     it('uses move.Date as instant only for explicitly absolute timestamps', () => {
       const msDateDrafts = normalizeCmaCgmSnapshot(
         makeSnapshot(
