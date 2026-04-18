@@ -9,6 +9,7 @@ import {
   type ProviderRunner,
 } from '@agent/providers/common/provider-result'
 import { fetchCmaCgmStatus } from '~/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher'
+import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema'
 
 type CmaCgmFetcher = (containerNumber: string) => Promise<{
   readonly payload: unknown
@@ -18,6 +19,21 @@ type CmaCgmFetcher = (containerNumber: string) => Promise<{
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+function toPayloadShapeError(payload: unknown): string | null {
+  const parseResult = CmaCgmApiSchema.safeParse(payload)
+  if (parseResult.success) {
+    return null
+  }
+
+  const firstIssue = parseResult.error.issues[0]
+  if (firstIssue === undefined) {
+    return 'CMA-CGM payload does not match expected snapshot shape'
+  }
+
+  const path = firstIssue.path.length > 0 ? firstIssue.path.join('.') : 'payload'
+  return `CMA-CGM payload invalid at ${path}: ${firstIssue.message}`
 }
 
 export function createCmaCgmRunner(deps?: {
@@ -32,15 +48,17 @@ export function createCmaCgmRunner(deps?: {
 
       try {
         const result = await fetchStatus(input.ref)
+        const payloadShapeError = toPayloadShapeError(result.payload)
+        const parseError = result.parseError ?? payloadShapeError
 
-        if (result.parseError) {
-          const classification = classifyProviderParseError(result.parseError)
+        if (parseError !== null) {
+          const classification = classifyProviderParseError(parseError)
           return buildProviderFailure({
             startedAtMs,
             status: classification.status,
             errorCode: classification.code,
             errorMessage: classification.message,
-            parseError: result.parseError,
+            parseError,
             raw: result.payload,
             observedAt: result.fetchedAt,
             diagnostics: {

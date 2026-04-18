@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/fetch-result'
+import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema'
 import { systemClock } from '~/shared/time/clock'
 
 function normalizeLogText(value: string, maxLength = 180): string {
@@ -10,9 +11,11 @@ function normalizeLogText(value: string, maxLength = 180): string {
   return `${compact.slice(0, maxLength)}...`
 }
 
-function isParseFailurePayload(
-  payload: unknown,
-): payload is { readonly parse_failure: true; readonly raw_html_snippet: string } {
+function isParseFailurePayload(payload: unknown): payload is {
+  readonly parse_failure: true
+  readonly raw_html_snippet: string
+  readonly reason: 'response_data_not_found' | 'invalid_response_data_json'
+} {
   if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
     return false
   }
@@ -20,6 +23,28 @@ function isParseFailurePayload(
     return false
   }
   return payload.parse_failure === true
+}
+
+function toPayloadSchemaError(payload: unknown): string | null {
+  if (isParseFailurePayload(payload)) {
+    if (payload.reason === 'response_data_not_found') {
+      return 'CMA-CGM response HTML missing expected options.responseData payload'
+    }
+    return 'CMA-CGM response HTML contained invalid options.responseData JSON'
+  }
+
+  const schemaResult = CmaCgmApiSchema.safeParse(payload)
+  if (schemaResult.success) {
+    return null
+  }
+
+  const firstIssue = schemaResult.error.issues[0]
+  if (firstIssue === undefined) {
+    return 'CMA-CGM response JSON does not match expected snapshot shape'
+  }
+
+  const path = firstIssue.path.length > 0 ? firstIssue.path.join('.') : 'payload'
+  return `CMA-CGM response JSON invalid at ${path}: ${firstIssue.message}`
 }
 
 /**
@@ -102,12 +127,16 @@ export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchR
   })
 
   const payload = extractResponseData(html)
-  if (isParseFailurePayload(payload)) {
+  const parseError = toPayloadSchemaError(payload)
+  if (parseError !== null) {
     console.warn('[tracking:cmacgm] parse failed', {
       method: 'POST',
       url,
       containerNumber,
-      htmlSnippet: normalizeLogText(payload.raw_html_snippet),
+      error: normalizeLogText(parseError),
+      htmlSnippet: isParseFailurePayload(payload)
+        ? normalizeLogText(payload.raw_html_snippet)
+        : null,
     })
   } else {
     console.log('[tracking:cmacgm] parse success', {
@@ -121,6 +150,7 @@ export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchR
     provider: 'cmacgm',
     payload,
     fetchedAt: systemClock.now().toIsoString(),
+    parseError,
   }
 }
 
@@ -134,7 +164,11 @@ function extractResponseData(html: string): unknown {
 
   if (!match?.[2]) {
     // No embedded JSON found — store the raw HTML snippet for debugging
-    return { parse_failure: true, raw_html_snippet: html.slice(0, 2000) }
+    return {
+      parse_failure: true,
+      reason: 'response_data_not_found',
+      raw_html_snippet: html.slice(0, 2000),
+    }
   }
 
   const inner = match[2]
@@ -149,6 +183,10 @@ function extractResponseData(html: string): unknown {
   try {
     return JSON.parse(inner)
   } catch {
-    return { parse_failure: true, raw_html_snippet: html.slice(0, 2000) }
+    return {
+      parse_failure: true,
+      reason: 'invalid_response_data_json',
+      raw_html_snippet: html.slice(0, 2000),
+    }
   }
 }

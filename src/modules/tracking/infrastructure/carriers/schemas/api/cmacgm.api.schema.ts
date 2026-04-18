@@ -26,25 +26,68 @@ const CmaCgmMoveSchema = z.object({
   raw: z.any().optional(),
 })
 
-export const CmaCgmApiSchema = z.object({
-  ContainerReference: z.string().nullable().optional(),
-  EstimatedTimeOfArrival: z.string().nullable().optional(), // "/Date(...)\/"
-  ABPExportDate: z.string().nullable().optional(),
-  ABPImportDate: z.string().nullable().optional(),
-  CurrentMoves: z.array(CmaCgmMoveSchema).optional(),
-  PastMoves: z.array(CmaCgmMoveSchema).optional(),
-  ProvisionalMoves: z.array(CmaCgmMoveSchema).optional(),
-  PlaceOfLoading: z.string().nullable().optional(),
-  LastDischargePort: z.string().nullable().optional(),
-  ContainerStatus: z.number().nullable().optional(),
-  IsEtaAtPod: z.boolean().nullable().optional(),
-  IsEtaAtFpd: z.boolean().nullable().optional(),
-  ContextInfo: z.any().optional(),
-  CollectionAddress: z.any().optional(),
-  LaraContainerCode: z.string().nullable().optional(),
-  RemainingDays: z.number().nullable().optional(),
-  DefaultZoomLevel: z.number().nullable().optional(),
-  ModeOfTransport: z.string().nullable().optional(),
-  EstimatedTimeOfArrivalString: z.string().nullable().optional(),
-  raw: z.any().optional(),
-})
+function hasNonEmptyText(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+export const CmaCgmApiSchema = z
+  .object({
+    ContainerReference: z.string().nullable().optional(),
+    EstimatedTimeOfArrival: z.string().nullable().optional(), // "/Date(...)\/"
+    ABPExportDate: z.string().nullable().optional(),
+    ABPImportDate: z.string().nullable().optional(),
+    CurrentMoves: z.array(CmaCgmMoveSchema).optional(),
+    PastMoves: z.array(CmaCgmMoveSchema).optional(),
+    ProvisionalMoves: z.array(CmaCgmMoveSchema).optional(),
+    PlaceOfLoading: z.string().nullable().optional(),
+    LastDischargePort: z.string().nullable().optional(),
+    ContainerStatus: z.number().nullable().optional(),
+    IsEtaAtPod: z.boolean().nullable().optional(),
+    IsEtaAtFpd: z.boolean().nullable().optional(),
+    ContextInfo: z.any().optional(),
+    CollectionAddress: z.any().optional(),
+    LaraContainerCode: z.string().nullable().optional(),
+    RemainingDays: z.number().nullable().optional(),
+    DefaultZoomLevel: z.number().nullable().optional(),
+    ModeOfTransport: z.string().nullable().optional(),
+    EstimatedTimeOfArrivalString: z.string().nullable().optional(),
+    raw: z.any().optional(),
+  })
+  .superRefine((payload, context) => {
+    if (!hasNonEmptyText(payload.ContainerReference)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['ContainerReference'],
+        message: 'CMA-CGM snapshot missing ContainerReference',
+      })
+    }
+
+    const allMoves = [
+      ...(payload.PastMoves ?? []),
+      ...(payload.CurrentMoves ?? []),
+      ...(payload.ProvisionalMoves ?? []),
+    ]
+
+    if (allMoves.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['PastMoves'],
+        message: 'CMA-CGM snapshot missing movement arrays',
+      })
+      return
+    }
+
+    const hasSemanticMove = allMoves.some(
+      (move) =>
+        hasNonEmptyText(move.StatusDescription) &&
+        (hasNonEmptyText(move.Date) || hasNonEmptyText(move.DateString)),
+    )
+
+    if (!hasSemanticMove) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['PastMoves'],
+        message: 'CMA-CGM snapshot has no recognizable movement entries',
+      })
+    }
+  })

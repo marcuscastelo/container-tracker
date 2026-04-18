@@ -58,6 +58,24 @@ describe('provider runners', () => {
     expect(result.status).toBe('blocked')
   })
 
+  it('cmacgm runner classifies unexpected snapshot shape as terminal failure', async () => {
+    const runner = createCmaCgmRunner({
+      async fetchStatus() {
+        return {
+          payload: {
+            html: '<html><body>unknown</body></html>',
+          },
+          fetchedAt: '2026-04-15T00:00:00.000Z',
+          parseError: null,
+        }
+      },
+    })
+
+    const result = await runner.run(makeInput('cmacgm'))
+    expect(result.status).toBe('terminal_failure')
+    expect(result.errorCode).toBe('PROVIDER_PARSE_ERROR')
+  })
+
   it('pil runner classifies timeout exceptions as retryable failures', async () => {
     const runner = createPilRunner({
       async fetchStatus() {
