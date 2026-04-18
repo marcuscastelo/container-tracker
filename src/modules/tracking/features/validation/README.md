@@ -91,7 +91,7 @@ Do not invent new scopes in UI or capability code.
 
 - Deriving validation issues in UI, capability, route, or dev preview code
 - Bypassing registry with ad hoc detector execution
-- Persisting debug payloads or raw snapshots validation lifecycle state
+- Persisting debug payloads or raw snapshots as validation lifecycle state
 - Hiding conflicting facts to reduce noise
 - Turning this slice into generic rules engine or shared kernel
 

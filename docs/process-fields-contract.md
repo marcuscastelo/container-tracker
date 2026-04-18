@@ -1,6 +1,6 @@
 # F1.1 Process Fields Contract
 
-This document defines canonical field structure for Shipment (Process) entities in Container Tracker system.
+This document defines the canonical field structure for Shipment (Process) entities in the Container Tracker system.
 
 ## Version
 F1.1 - Existência Operacional (UX básica)
@@ -38,7 +38,7 @@ All process/shipment fields MUST use these exact names across all layers (UI, AP
 
 ## Forbidden Fields
 
-following fields MUST NOT exist in any layer:
+The following fields MUST NOT exist in any layer:
 
 - ❌ `operation_type` (import/export/transshipment) - Legacy field, not reliable
 - ❌ `container_type` / `equipment_type` (20GP, 40HC, etc.) - Not reliable or required data point
@@ -127,7 +127,7 @@ When showing process fields in forms, use this order:
 
 ### Response
 
-Same structure request, plus:
+Same structure as request, plus:
 - `id`: string (UUID)
 - `source`: string
 - `created_at`: string (ISO 8601)
