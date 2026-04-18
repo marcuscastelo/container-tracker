@@ -1,13 +1,13 @@
 # ADR-0012 — Unified Agent Release System (Linux + Windows)
 
-Status: Accepted  
+Status: Accepted
 Date: 2026-03-09
 
 ---
 
 # Context
 
-O agent atualmente possui diferenças operacionais entre Linux e Windows:
+agent atualmente possui diferenças operacionais entre Linux e Windows:
 
 Linux:
 - execução direta do runtime Node
@@ -19,24 +19,24 @@ Windows:
 - execução via Scheduled Tasks
 - update potencialmente via reinstall
 
-Entretanto, o installer Windows **não é necessário para updates**.
+Entretanto, installer Windows **não é necessário para updates**.
 
-Ele apenas:
+Ele:
 
 - cria diretórios
 - copia runtime
 - registra scheduled tasks
 - inicializa config
 
-Isso significa que o installer pode ser tratado como **bootstrap-only**, e não como mecanismo contínuo de release.
+Isso significa que installer pode ser tratado como **bootstrap-only**, e não como mecanismo contínuo de release.
 
-Isso permite **unificar completamente o sistema de release e update entre Linux e Windows**.
+Isso permite **unificar completamente sistema de release e update entre Linux e Windows**.
 
 ---
 
 # Decision
 
-O sistema de releases do agent passa a ser **idêntico entre Linux e Windows**.
+sistema de releases do agent passa ser **idêntico entre Linux e Windows**.
 
 Releases são bundles versionados ativados via:
 
@@ -45,7 +45,7 @@ Releases são bundles versionados ativados via:
 - health check
 - rollback
 
-Installer Windows passa a ser **usado apenas na primeira instalação**.
+Installer Windows passa ser **usado na primeira instalação**.
 
 Updates subsequentes são realizados via **bundle activation**, exatamente como Linux.
 
@@ -53,7 +53,7 @@ Updates subsequentes são realizados via **bundle activation**, exatamente como 
 
 # Unified Release Layout
 
-Ambos OS usarão:
+Ambos usarão:
 
 ```
 DATA_DIR/
@@ -72,7 +72,7 @@ DATA_DIR/
 
 # Launcher Contract
 
-OS launchers **nunca apontam para versão específica**.
+launchers **nunca apontam para versão específica**.
 
 Eles apontam sempre para:
 
@@ -94,7 +94,7 @@ Windows
 %LOCALAPPDATA%\Programs\ContainerTrackerAgent\run-supervisor.ps1
 ```
 
-O launcher resolve `current/` e executa o runtime.
+launcher resolve `current/` e executa runtime.
 
 ---
 
@@ -134,7 +134,7 @@ Rollback steps:
 
 # Platform Adapter Layer
 
-Diferenças entre OS ficam isoladas em:
+Diferenças entre ficam isoladas em:
 
 ```
 apps/agent/src/platform/

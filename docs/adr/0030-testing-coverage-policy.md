@@ -6,16 +6,16 @@
 
 ## Context
 
-O repositório precisa começar a metrificar coverage, mas um número global isolado não é suficiente para representar segurança operacional real.
+repositório precisa começar metrificar coverage, mas número global isolado não é suficiente para representar segurança operacional real.
 
 No Container Tracker:
 
-- a verdade canônica vive no domínio, especialmente em `tracking`
+- verdade canônica vive no domínio, especialmente em `tracking`
 - `tracking` é responsável por interpretação semântica de eventos, séries, timeline, status e alerts
 - UI, routes e capabilities consomem essa verdade, mas não podem rederivá-la
-- portanto, coverage útil precisa refletir risco arquitetural e semântico, não apenas quantidade de linhas executadas
+- portanto, coverage útil precisa refletir risco arquitetural e semântico, não quantidade de linhas executadas
 
-Sem essa distinção, o repositório corre o risco de:
+Sem essa distinção, repositório corre risco de:
 
 - inflar coverage com testes baratos de utilitários ou UI cosmética
 - manter baixo coverage nas regras canônicas mais sensíveis
@@ -26,9 +26,9 @@ Sem essa distinção, o repositório corre o risco de:
 
 ## Decision
 
-Adotar uma **Coverage Policy v0** orientada a risco arquitetural.
+Adotar **Coverage Policy v0** orientada risco arquitetural.
 
-A policy passa a tratar coverage em três níveis:
+policy passa tratar coverage em três níveis:
 
 1. **Coverage macro**
    - line / branch / function / statement globais
@@ -41,22 +41,22 @@ A policy passa a tratar coverage em três níveis:
 3. **Coverage crítico**
    - foco explícito nas áreas canônicas do tracking e demais fluxos operacionais relevantes
 
-A métrica principal do projeto passa a ser:
+métrica principal do projeto passa ser:
 
 **branch coverage do domínio crítico**, com prioridade para:
 
 - `modules/tracking/domain`
 - `modules/tracking/application`
 
-Coverage global continua existindo, mas deixa de ser a métrica principal de confiança.
+Coverage global continua existindo, mas deixa de ser métrica principal de confiança.
 
 ---
 
 ## Rationale
 
-Essa decisão existe para alinhar a metrificação de testes com a arquitetura oficial do projeto.
+Essa decisão existe para alinhar metrificação de testes com arquitetura oficial do projeto.
 
-Como o tracking é dono de:
+Como tracking é dono de:
 
 - normalização de observations
 - grouping/classification de series
@@ -66,7 +66,7 @@ Como o tracking é dono de:
 - derivação de status
 - derivação de alerts
 
-é nessa camada que uma regressão semântica traz mais risco operacional.
+é nessa camada que regressão semântica traz mais risco operacional.
 
 Logo:
 
@@ -78,7 +78,7 @@ Logo:
 
 ## Scope
 
-A policy cobre:
+policy cobre:
 
 - `modules/process/**`
 - `modules/container/**`
@@ -133,7 +133,7 @@ Manter visibilidade explícita para áreas canônicas:
 - alerts
 
 #### Critical behavioral checklist
-A policy também exige checklist explícito de proteção para:
+policy também exige checklist explícito de proteção para:
 
 - fingerprint determinístico / idempotência
 - ACTUAL vencendo EXPECTED
@@ -153,14 +153,14 @@ Esta policy não tem como objetivo inicial:
 
 - impor threshold global alto imediatamente
 - bloquear PRs por meta arbitrária sem baseline
-- maximizar percentual a qualquer custo
-- incentivar snapshots ou testes cosméticos apenas para inflar score
+- maximizar percentual qualquer custo
+- incentivar snapshots ou testes cosméticos para inflar score
 
 ---
 
 ## Initial Enforcement Model
 
-Na v0, a policy é de **instrumentação + observabilidade + anti-regressão básica**.
+Na v0, policy é de **instrumentação + observabilidade + anti-regressão básica**.
 
 ### Required now
 - CI deve gerar report de coverage
@@ -178,7 +178,7 @@ Na v0, a policy é de **instrumentação + observabilidade + anti-regressão bá
 
 ## Future Evolution
 
-Após baseline estável, a policy pode evoluir para:
+Após baseline estável, policy pode evoluir para:
 
 1. **anti-regressão formal**
    - impedir queda do baseline global
@@ -196,7 +196,7 @@ Após baseline estável, a policy pode evoluir para:
 ## Consequences
 
 ### Positive
-- coverage passa a refletir risco real
+- coverage passa refletir risco real
 - maior foco em tracking crítico
 - menos confiança falsa baseada em score global
 - backlog de testes guiado por semântica e arquitetura
@@ -214,18 +214,18 @@ Esses tradeoffs são aceitáveis porque privilegiam auditabilidade e determinism
 
 ## Summary
 
-O repositório passa a adotar uma policy em que:
+repositório passa adotar policy em que:
 
 - coverage global é secundário
 - coverage por módulo e camada é obrigatório
 - tracking crítico recebe prioridade explícita
-- branch coverage de domínio crítico é a principal referência de confiança
+- branch coverage de domínio crítico é principal referência de confiança
 - rollout começa por observabilidade, não por gate agressivo
 
 ## TL;DR
 
 ### Decisão
-Adotar **Coverage Policy v0** orientada a risco arquitetural.
+Adotar **Coverage Policy v0** orientada risco arquitetural.
 
 ### Métrica principal
 **Branch coverage de domínio crítico**, principalmente tracking.

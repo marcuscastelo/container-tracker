@@ -1,12 +1,12 @@
 # Provider Integration Guide
 
-This document explains how to add a new carrier/provider to Container Tracker without breaking domain invariants, sync orchestration, or UI boundaries.
+This document explains how to add new carrier/provider to Container Tracker without breaking domain invariants, sync orchestration, or UI boundaries.
 
 Use this guide for:
 
-- a new tracking-capable provider
-- a new process/UI carrier label that may later become tracking-capable
-- a provider refactor that changes fetchers, normalizers, or agent/runtime wiring
+- new tracking-capable provider
+- new process/UI carrier label that may later become tracking-capable
+- provider refactor that changes fetchers, normalizers, or agent/runtime wiring
 
 Read together with:
 
@@ -24,15 +24,15 @@ Read together with:
 
 ### 1.1 Preserve the canonical pipeline
 
-Every provider must fit the same flow:
+Every provider must fit same flow:
 
 `Snapshot -> Observation -> Series -> Timeline -> Status -> Alerts`
 
 Do not bypass this by:
 
-- deriving status in the fetcher
-- deriving timeline semantics in the UI
-- persisting provider-specific DTOs as canonical truth
+- deriving status in fetcher
+- deriving timeline semantics in UI
+- persisting provider-specific DTOs canonical truth
 
 ### 1.2 Keep ownership boundaries intact
 
@@ -53,27 +53,27 @@ Do not bypass this by:
 
 ## 2) Two Different Concepts: Process Carrier vs Tracking Provider
 
-The repo has two related but distinct layers:
+repo has two related but distinct layers:
 
 - `process` carrier: what users can select or view in shipment/process flows
-- `tracking` provider: what the sync/agent pipeline can actually fetch and normalize
+- `tracking` provider: what sync/agent pipeline can fetch and normalize
 
 Important:
 
-- A carrier may exist in process UI and still be non-trackable.
-- A new tracking provider usually needs process/UI support too, but not always.
-- If a provider is user-selectable in process forms, update process carrier catalogs and display labels.
-- If a provider is sync-capable, update tracking provider registries, agent capabilities, schemas, and queue/migrations.
+- carrier may exist in process UI and still be non-trackable.
+- new tracking provider usually needs process/UI support too, but not always.
+- If provider is user-selectable in process forms, update process carrier catalogs and display labels.
+- If provider is sync-capable, update tracking provider registries, agent capabilities, schemas, and queue/migrations.
 
 ---
 
 ## 3) End-to-End Checklist
 
-Use this as the canonical checklist.
+Use this canonical checklist.
 
 ### 3.1 Provider identity and registries
 
-Add the provider string in the domain and every registry that gates sync behavior.
+Add provider string in domain and every registry that gates sync behavior.
 
 Typical files:
 
@@ -90,15 +90,15 @@ Typical files:
 - `src/modules/tracking/interface/http/agent-enroll.controllers.bootstrap.ts`
 - `apps/agent/src/agent.ts`
 
-If you miss one of these, the repo often compiles but the runtime breaks later with:
+If you miss one of these, repo often compiles but runtime breaks later with:
 
 - unsupported provider errors
-- agent targets never including the new provider
+- agent targets never including new provider
 - fetch succeeding in one path but not in another
 
 ### 3.2 Provider fetcher
 
-Create the provider fetcher in tracking infrastructure.
+Create provider fetcher in tracking infrastructure.
 
 Typical location:
 
@@ -107,12 +107,12 @@ Typical location:
 Rules:
 
 - isolate headers, retries, timeouts, and provider quirks here
-- validate external payloads at the boundary
+- validate external payloads at boundary
 - preserve original raw payload structure
 - prefer explicit partial-failure handling over silent fallback
-- return `parseError` for business/validation problems when the transport succeeded
+- return `parseError` for business/validation problems when transport succeeded
 
-If the provider is not REST-based, keep browser/scraping details isolated in infra too, following the Maersk pattern.
+If provider is not REST-based, keep browser/scraping details isolated in infra too, following Maersk pattern.
 
 ### 3.3 Provider schemas
 
@@ -131,7 +131,7 @@ Rules:
 
 ### 3.4 Raw snapshot shape
 
-If the provider uses multiple endpoints, persist a consolidated raw snapshot with all original payloads preserved.
+If provider uses multiple endpoints, persist consolidated raw snapshot with all original payloads preserved.
 
 Recommended pattern:
 
@@ -154,7 +154,7 @@ Rules:
 
 ### 3.5 Normalizer and mapping
 
-Add a provider-specific normalizer and register it in `normalizeSnapshot()`.
+Add provider-specific normalizer and register it in `normalizeSnapshot()`.
 
 Typical files:
 
@@ -165,29 +165,29 @@ Typical files:
 Rules:
 
 - emit canonical `ObservationDraft`s only
-- keep provider-specific labels/ids as metadata for audit/UI
+- keep provider-specific labels/ids metadata for audit/UI
 - centralize provider event mapping in one place
 - centralize provider temporal parsing in one place
-- prefer stable provider identifiers when available, with label-based validation as a secondary safeguard
-- degrade unknown provider events safely instead of crashing the whole sync
+- prefer stable provider identifiers when available, with label-based validation secondary safeguard
+- degrade unknown provider events safely instead of crashing whole sync
 
 Do not:
 
-- invent canonical types that the domain does not own yet
+- invent canonical types that domain does not own yet
 - spread provider-specific parsing across multiple unrelated files
-- use provider sequence numbers or opaque ids as the sole semantic identity
+- use provider sequence numbers or opaque ids sole semantic identity
 
 ### 3.6 Observation metadata propagation
 
-When adding provider metadata fields, propagate them through the full chain:
+When adding provider metadata fields, propagate them through full chain:
 
 `normalizer -> ObservationDraft -> diff/persistence mappers -> projection/read model -> UI`
 
-Do not make metadata fields part of semantic derivation unless the domain explicitly requires that.
+Do not make metadata fields part of semantic derivation unless domain explicitly requires that.
 
 ### 3.7 Sync queue and agent runtime
 
-A provider is not E2E until the agent/sync runtime knows how to lease, process, and ingest it.
+provider is not E2E until agent/sync runtime knows how to lease, process, and ingest it.
 
 Check:
 
@@ -205,7 +205,7 @@ Typical failure if this is incomplete:
 
 ### 3.8 Container/process carrier consistency
 
-If the user can edit the carrier on a process, container rows must remain aligned with that carrier when the domain expects provider-specific refresh by container.
+If user can edit carrier on process, container rows must remain aligned with that carrier when domain expects provider-specific refresh by container.
 
 Relevant files:
 
@@ -216,7 +216,7 @@ Relevant files:
 
 Rules:
 
-- updating a process carrier must reconcile existing container carrier codes when appropriate
+- updating process carrier must reconcile existing container carrier codes when appropriate
 - refresh-by-container must validate provider/container coherence
 - stale persisted carrier data should be healed or backfilled explicitly
 
@@ -243,11 +243,11 @@ Example files:
 Rules:
 
 - do not rely only on code changes when persisted data already exists
-- when runtime selection depends on stored provider/carrier codes, provide a backfill plan
+- when runtime selection depends on stored provider/carrier codes, provide backfill plan
 
 ### 3.10 Process/UI carrier catalogs
 
-If the provider is user-visible in process management or global UI, update carrier display/catalog helpers too.
+If provider is user-visible in process management or global UI, update carrier display/catalog helpers too.
 
 Typical files:
 
@@ -267,7 +267,7 @@ Potential UI touchpoints:
 Important:
 
 - UI label support is separate from tracking capability
-- adding a provider only in backend is not E2E if the user cannot select or recognize it in the UI
+- adding provider only in backend is not E2E if user cannot select or recognize it in UI
 
 ---
 
@@ -279,18 +279,18 @@ Use this order to avoid half-wired providers.
 2. Create provider fetcher and schemas.
 3. Define raw snapshot contract.
 4. Implement normalizer, mapping, and temporal parsing.
-5. Register the normalizer.
+5. Register normalizer.
 6. Wire agent/runtime dispatch and HTTP schemas.
 7. Add migrations and backfills.
 8. Update process/UI carrier catalogs if user-facing.
 9. Add tests.
-10. Smoke the real refresh/sync path end to end.
+10. Smoke real refresh/sync path end to end.
 
 ---
 
 ## 5) Testing Matrix
 
-Provider work is only done when the E2E path is covered.
+Provider work is only done when E2E path is covered.
 
 Minimum expectations:
 
@@ -306,19 +306,19 @@ Minimum expectations:
 
 - raw snapshot to `ObservationDraft[]`
 - expected actual-vs-expected behavior
-- timeline/status/alerts remain canonical after provider data enters the system
+- timeline/status/alerts remain canonical after provider data enters system
 - multi-endpoint reconciliation when applicable
 
 ### 5.3 Runtime/sync tests
 
-- refresh and sync resolver paths accept the new provider
-- agent target schemas accept the provider
-- agent capability lists include the provider
+- refresh and sync resolver paths accept new provider
+- agent target schemas accept provider
+- agent capability lists include provider
 - queue dedupe still works
 
 ### 5.4 UI tests
 
-If the provider is user-facing:
+If provider is user-facing:
 
 - carrier dropdown/catalog exposes it
 - display labels are stable
@@ -356,7 +356,7 @@ Symptom:
 
 Fix:
 
-- register the provider in `normalizeSnapshot()`
+- register provider in `normalizeSnapshot()`
 
 ### 6.4 Refresh mismatch caused by stale container carrier codes
 
@@ -394,7 +394,7 @@ Fix:
 
 ## 7) Useful Search Commands
 
-When adding a provider, these searches help find incomplete wiring:
+When adding provider, these searches help find incomplete wiring:
 
 ```bash
 rg -n "SupportedSyncProvider|ProviderSchema|AgentProviderSchema|PROCESSABLE_PROVIDER_ORDER" src tools
@@ -403,13 +403,13 @@ rg -n "provider in \\('|capabilities @>|target_provider" supabase/migrations
 rg -n "msc|maersk|cmacgm|pil|one" src tools supabase
 ```
 
-When validating a recent provider rollout, also search for a neighboring provider and compare touched surfaces. This is usually faster than guessing.
+When validating recent provider rollout, also search for neighboring provider and compare touched surfaces. This is usually faster than guessing.
 
 ---
 
 ## 8) Reference Implementation: ONE
 
-The ONE rollout is the best current reference because it touched all major layers:
+ONE rollout is best current reference because it touched all major layers:
 
 - provider/domain/sync registries
 - agent runtime and capabilities
@@ -436,7 +436,7 @@ Representative files:
 
 ## 9) Final Pre-PR Checklist
 
-Before opening the PR, confirm:
+Before opening PR, confirm:
 
 - raw payload is preserved
 - provider is registered everywhere it must be
@@ -449,4 +449,4 @@ Before opening the PR, confirm:
 - initial vs final `pnpm sanity` state (delta) was recorded with explicit no-regression confirmation
 - no domain semantics leaked into capabilities or UI
 
-If any answer is "not sure", stop and compare with the ONE implementation before merging.
+If any answer is "not sure", stop and compare with ONE implementation before merging.

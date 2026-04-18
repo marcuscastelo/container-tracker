@@ -5,7 +5,7 @@
 
 Este documento existe para manter contexto estável ao longo das fases de implementação da feature de **Tracking Validation Issues plugináveis**.
 
-Ele deve permitir que, daqui a semanas, a implementação continue sem perda de contexto, sem drift semântico e sem reinterpretação errada da feature.
+Ele deve permitir que, daqui semanas, implementação continue sem perda de contexto, sem drift semântico e sem reinterpretação errada da feature.
 
 Este documento não substitui:
 - MASTER_v2
@@ -18,7 +18,7 @@ Este documento não substitui:
 - UI_PHILOSOPHY
 - ALERT_POLICY
 
-Ele é um documento de contexto operacional e de implementação da feature.
+Ele é documento de contexto operacional e de implementação da feature.
 
 ---
 
@@ -26,12 +26,12 @@ Ele é um documento de contexto operacional e de implementação da feature.
 
 ## 1.1 Nome conceitual
 
-A feature trata de **Tracking Validation Issues**.
+feature trata de **Tracking Validation Issues**.
 
-É um sistema de validações derivadas que identifica casos em que o sistema **pode não estar interpretando corretamente o rastreamento com confiança suficiente**.
+É sistema de validações derivadas que identifica casos em que sistema **pode não estar interpretando corretamente rastreamento com confiança suficiente**.
 
 ## 1.2 O que ela NÃO é
-A feature não é:
+feature não é:
 - novo status canônico
 - novo tipo de observation
 - novo tipo de snapshot
@@ -41,8 +41,8 @@ A feature não é:
 - bug tracker de qualquer problema visual
 
 ## 1.3 O que ela é
-A feature é:
-- um sinal derivado paralelo
+feature é:
+- sinal derivado paralelo
 - canônico dentro do Tracking BC
 - auditável
 - extensível por detectores plugináveis
@@ -55,10 +55,10 @@ A feature é:
 # 2. Princípios canônicos da feature
 
 ## 2.1 Ownership
-Tracking é o único dono da semântica de validation issue.
+Tracking é único dono da semântica de validation issue.
 
 ## 2.2 Determinismo
-Dadas as mesmas observations, a derivação dos validation issues deve ser determinística.
+Dadas mesmas observations, derivação dos validation issues deve ser determinística.
 
 ## 2.3 Append-only preservado
 Validation issue nunca apaga:
@@ -68,14 +68,14 @@ Validation issue nunca apaga:
 - conflicts
 
 ## 2.4 Uncertainty visible
-A feature existe justamente para tornar visível a baixa confiança do sistema.
+feature existe justamente para tornar visível baixa confiança do sistema.
 
 ## 2.5 UI presentation-only
 UI:
 - renderiza
 - destaca
 - agrega visualmente
-- guia o operador
+- guia operador
 
 UI não:
 - detecta
@@ -102,16 +102,16 @@ Não via:
 # 3. Filosofia semântica
 
 ## 3.1 Pergunta central
-A pergunta da feature não é:
-> “o embarque está ruim?”
+pergunta da feature não é:
+> “ embarque está ruim?”
 
-A pergunta da feature é:
-> “o sistema está sem confiança suficiente na própria leitura atual desse tracking?”
+pergunta da feature é:
+> “ sistema está sem confiança suficiente na própria leitura atual desse tracking?”
 
 ## 3.2 Quando deve aparecer
-A feature deve aparecer quando houver evidência objetiva de que:
-- a leitura atual pode estar semanticamente insegura
-- o sistema pode estar interpretando errado
+feature deve aparecer quando houver evidência objetiva de que:
+- leitura atual pode estar semanticamente insegura
+- sistema pode estar interpretando errado
 - pode ser necessária validação manual
 - pode ser necessária intervenção futura de código
 
@@ -134,7 +134,7 @@ Internamente pode usar:
 ou equivalente próximo.
 
 ## 4.2 Nome externo
-O nome externo final deve ser curto e validado visualmente.
+nome externo final deve ser curto e validado visualmente.
 
 Shortlist atual:
 - Validação necessária
@@ -144,9 +144,9 @@ Shortlist atual:
 - Validação pendente
 
 ## 4.3 Regra de decisão
-A decisão do nome visual deve ser feita:
+decisão do nome visual deve ser feita:
 - na tela real
-- com Playwright abrindo as telas
+- com Playwright abrindo telas
 - com inspeção manual do LLM
 - priorizando não quebrar layout, não truncar feio e não poluir
 
@@ -162,26 +162,26 @@ A decisão do nome visual deve ser feita:
 ### ADVISORY
 - inconsistência relevante
 - leitura principal talvez ainda utilizável
-- pede atenção/validação, mas não é o caso mais agressivo
+- pede atenção/validação, mas não é caso mais agressivo
 
 ### CRITICAL
-- forte chance de a leitura atual estar perigosamente errada
+- forte chance de leitura atual estar perigosamente errada
 - afeta compreensão principal do container/processo
-- pode merecer destaque similar a alerta crítico
+- pode merecer destaque similar alerta crítico
 
 ## 5.3 UI principal
-A UI principal continua essencialmente binária:
+UI principal continua essencialmente binária:
 - há validation issue
 - não há validation issue
 
-A severidade modula destaque/integração.
+severidade modula destaque/integração.
 
 ---
 
 # 6. Funil de agregação
 
 ## 6.1 Princípio
-A issue nasce granularmente e sobe de nível.
+issue nasce granularmente e sobe de nível.
 
 ## 6.2 Fluxo de agregação
 ### ponto local
@@ -193,18 +193,18 @@ A issue nasce granularmente e sobe de nível.
 - PROVIDER_INTERPRETATION
 
 ### container
-O container é marcado como tendo validation issue quando houver finding ativo relevante.
+container é marcado como tendo validation issue quando houver finding ativo relevante.
 
 ### processo
-O processo fica agregado como:
+processo fica agregado como:
 - contém containers que requerem validação
 
 ### dashboard
-O dashboard não mostra tudo.
-Ele mostra o agregado mínimo operacional.
+dashboard não mostra tudo.
+Ele mostra agregado mínimo operacional.
 
 ## 6.3 Regra de navegação
-O usuário deve sempre conseguir seguir o funil:
+usuário deve sempre conseguir seguir funil:
 - dashboard
 - processo
 - container
@@ -218,11 +218,11 @@ O usuário deve sempre conseguir seguir o funil:
 Tracking Validation Issue só pode nascer de problema detectável no backend canônico.
 
 ## 7.2 Se entrar na UI e ficar errado só na pintura
-É bug de UI.  
+É bug de UI.
 Não é validation issue.
 
 ## 7.3 Pergunta operacional de decisão
-Se eu abrir o DTO/read model backend, sem a UI, já consigo ver o erro semântico?
+Se eu abrir DTO/read model backend, sem UI, já consigo ver erro semântico?
 
 - Se sim → pode ser validation issue
 - Se não → é bug de UI
@@ -245,7 +245,7 @@ Responsabilidades:
 ## 8.2 TrackingValidationContext
 Contexto entregue ao detector.
 
-Deve conter apenas dados canônicos do tracking, como:
+Deve conter dados canônicos do tracking, como:
 - timeline derivada
 - series
 - status derivado
@@ -282,7 +282,7 @@ Funções:
 - registrar detectores ativos
 - definir ordem estável
 - permitir rollout incremental
-- manter uma única forma de executar detectores
+- manter única forma de executar detectores
 
 ---
 
@@ -330,7 +330,7 @@ Evitar:
 `CONFLICTING_CRITICAL_ACTUALS`
 
 ### motivação
-Conflitos ACTUAL críticos irreconciliáveis podem comprometer severamente a leitura atual.
+Conflitos ACTUAL críticos irreconciliáveis podem comprometer severamente leitura atual.
 
 ### exemplos
 - dois `ACTUAL DISCHARGE` incompatíveis
@@ -351,7 +351,7 @@ Conflitos ACTUAL críticos irreconciliáveis podem comprometer severamente a lei
 `POST_COMPLETION_TRACKING_CONTINUED`
 
 ### motivação
-Container/processo já encerrado continua recebendo tracking incompatível, geralmente por reuso de container ou contaminação de ciclo.
+Container/processo já encerrado continua recebendo tracking incompatível, por reuso de container ou contaminação de ciclo.
 
 ### marcos fortes v1
 - `DELIVERED`
@@ -372,7 +372,7 @@ Container/processo já encerrado continua recebendo tracking incompatível, gera
 `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
 
 ### motivação
-A classificação canônica da timeline/read model ficou semanticamente absurda, mas a incoerência já existe antes da UI.
+classificação canônica da timeline/read model ficou semanticamente absurda, mas incoerência já existe antes da UI.
 
 ### exemplo
 - item com forte contexto marítimo aparecendo em post-carriage no backend canônico
@@ -393,7 +393,7 @@ Detectores ainda não fechados completamente, mas previstos no plano:
 Estado do tracking atual semanticamente inseguro e irreconciliável.
 
 ## 11.2 `EXPECTED_PLAN_NOT_RECONCILABLE`
-Mudança/replan expected que o sistema não consegue reconciliar com confiança.
+Mudança/replan expected que sistema não consegue reconciliar com confiança.
 
 ## 11.3 `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
 Milestone crítica ausente em contexto fortemente contraditório.
@@ -434,16 +434,16 @@ Bloco operacional canônico estruturalmente impossível.
 # 13. Customer-facing vs dev-facing
 
 ## 13.1 Estado atual
-Na V1, o foco principal é customer-facing com semântica de produto adequada.
+Na V1, foco principal é customer-facing com semântica de produto adequada.
 
 ## 13.2 Futuro
-A infraestrutura deve ficar preparada para findings:
+infraestrutura deve ficar preparada para findings:
 - `USER_VISIBLE`
 - `DEV_OBSERVABILITY_ONLY`
 - `BOTH`
 
 ## 13.3 Regra atual
-A V1 não depende de:
+V1 não depende de:
 - Sentry
 - email
 - painel dev
@@ -460,7 +460,7 @@ Validation issue não substitui alert canônico.
 Alguns casos críticos podem virar alerta backend-derived quando:
 - isso trouxer clareza
 - não gerar duplicidade confusa
-- respeitar a política de alertas já existente
+- respeitar política de alertas já existente
 
 ## 14.3 Cuidado
 Não misturar:
@@ -499,7 +499,7 @@ Registrar transições:
 # 16. Time travel
 
 ## 16.1 Regra
-O time travel deve mostrar a feature coerente por sync.
+time travel deve mostrar feature coerente por sync.
 
 ## 16.2 Estratégia
 - preferir reconstrução derivada por sync
@@ -513,7 +513,7 @@ Não criar segunda fonte de verdade histórica.
 # 17. Performance e payload
 
 ## 17.1 Dashboard
-Deve receber apenas agregados mínimos:
+Deve receber agregados mínimos:
 - has issue
 - highest severity
 - count
@@ -553,7 +553,7 @@ Nada de mandar evidence pesada para dashboard.
 - marcação discreta quando necessário
 - sem virar árvore de natal
 - sem quebrar timeline-first
-- sem cards quebrando a cronologia
+- sem cards quebrando cronologia
 
 ---
 
@@ -621,64 +621,64 @@ Cada fase deve:
 
 # 22. Crosswalk — preservação do plano antigo
 
-Esta seção existe para garantir que a reescrita pluginável não perca nada.
+Esta seção existe para garantir que reescrita pluginável não perca nada.
 
 ## 22.1 Plano antigo → plano novo
 
 ### Plano antigo Fase 1
-Base arquitetural e contratos E2E  
+Base arquitetural e contratos E2E
 → preservado no novo:
 - Fase 1
 
 ### Plano antigo Fase 2
-UI mínima + naming  
+UI mínima + naming
 → preservado no novo:
 - Fase 2
 
 ### Plano antigo Fase 3
-Conflitos críticos de ACTUAL  
+Conflitos críticos de ACTUAL
 → preservado no novo:
 - Fase 2
 
 ### Plano antigo Fase 4
-Tracking após encerramento forte  
+Tracking após encerramento forte
 → preservado no novo:
 - Fase 3
 
 ### Plano antigo Fase 5
-Severidade dupla + alert integration  
+Severidade dupla + alert integration
 → preservado no novo:
 - Fase 4
 
 ### Plano antigo Fase 6
-Classificação canônica inconsistente  
+Classificação canônica inconsistente
 → preservado no novo:
 - Fase 5
 
 ### Plano antigo Fase 7
-Histórico por transição  
+Histórico por transição
 → preservado no novo:
 - Fase 6
 
 ### Plano antigo Fase 8
-Time travel + payload/prefetch  
+Time travel + payload/prefetch
 → preservado no novo:
 - Fase 7
 
 ### Plano antigo Fase 9
-Dois detectores extras  
+Dois detectores extras
 → preservado no novo:
 - Fase 9
 
 ### Plano antigo Fase 10
-Polimento final  
+Polimento final
 → preservado no novo:
 - Fase 10
 
 ## 22.2 O que foi adicionado
-A única nuance nova estrutural é:
-- tudo nasce pluginável desde a fase 1
-- e existe uma fase explícita de hardening/documentação do framework (fase 8)
+única nuance nova estrutural é:
+- tudo nasce pluginável desde fase 1
+- e existe fase explícita de hardening/documentação do framework (fase 8)
 
 Nada do plano antigo foi removido em semântica.
 
@@ -687,7 +687,7 @@ Nada do plano antigo foi removido em semântica.
 # 23. Decisões já fechadas
 
 - V1 já nasce pluginável
-- tracking é o dono
+- tracking é dono
 - UI não detecta
 - severidade interna é `ADVISORY | CRITICAL`
 - UI principal continua binária
@@ -695,7 +695,7 @@ Nada do plano antigo foi removido em semântica.
 - evento não mapeado genérico não entra como gatilho bruto da V1
 - conflito ACTUAL crítico entra
 - tracking pós-conclusão entra
-- classificação canônica inconsistente entra se o erro já existir antes da UI
+- classificação canônica inconsistente entra se erro já existir antes da UI
 - histórico preferido é por transição
 - dashboard segue leve
 - shipment segue timeline-first
@@ -707,7 +707,7 @@ Nada do plano antigo foi removido em semântica.
 
 - nome final do badge
 - quais dois detectores exatos entram na fase 9
-- se todos os criticals devem sempre gerar alert ou não
+- se todos criticals devem sempre gerar alert ou não
 - quando abrir findings dev-facing explicitamente
 - quando ligar observabilidade de desenvolvimento externa
 - quando implementar feature de corte/truncamento manual do tracking contaminado
@@ -716,22 +716,22 @@ Nada do plano antigo foi removido em semântica.
 
 # 25. Regra suprema da feature
 
-Se a feature precisar entender semântica de evento, série, timeline, status ou expected/actual, ela pertence ao **Tracking BC** e deve ser implementada como detector pluginável dentro do sistema canônico de validation issues.
+Se feature precisar entender semântica de evento, série, timeline, status ou expected/actual, ela pertence ao **Tracking BC** e deve ser implementada como detector pluginável dentro do sistema canônico de validation issues.
 
 ---
 
 # TL;DR
 
 ## O que este documento garante
-- a feature foi definida semântica e arquiteturalmente
-- o plano antigo foi preservado
-- a nuance pluginável foi adicionada sem perder escopo
-- existe uma trilha clara de V1, V1.1 e V2
+- feature foi definida semântica e arquiteturalmente
+- plano antigo foi preservado
+- nuance pluginável foi adicionada sem perder escopo
+- existe trilha clara de V1, V1.1 e V2
 
 ## O que fazer durante as fases
-- sempre consultar este documento antes de abrir uma nova fase
-- usar o crosswalk para verificar se nada foi perdido
-- atualizar apenas as seções mutáveis, sem apagar decisões já fechadas
+- sempre consultar este documento antes de abrir nova fase
+- usar crosswalk para verificar se nada foi perdido
+- atualizar seções mutáveis, sem apagar decisões já fechadas
 
 ## Resultado esperado
-Ao final das fases, o sistema terá uma V1 de validation issues sólida, extensível e fiel à arquitetura do projeto.
+Ao final das fases, sistema terá V1 de validation issues sólida, extensível e fiel à arquitetura do projeto.

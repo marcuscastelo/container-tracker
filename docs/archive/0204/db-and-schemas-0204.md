@@ -1,6 +1,6 @@
 # Modelo de Persistência — Snapshots, Observações e Derivações
 
-Este documento descreve o **modelo de dados recomendado** para o Container Tracker considerando:
+Este documento descreve **modelo de dados recomendado** para Container Tracker considerando:
 
 * APIs externas inconsistentes
 * Persistência por **snapshots imutáveis**
@@ -25,7 +25,7 @@ status / timeline / alerts     (DERIVADOS, não-fonte)
 
 ## 1. processes
 
-Representa o **Processo / Shipment** (aggregate root).
+Representa **Processo / Shipment** (aggregate root).
 
 ```sql
 processes
@@ -59,7 +59,7 @@ Notas:
 
 ## 2. containers
 
-Container físico associado a um processo.
+Container físico associado processo.
 
 ```sql
 containers
@@ -86,7 +86,7 @@ Constraints recomendadas:
 
 ## 3. container_tracking_snapshots (CRÍTICO)
 
-Snapshot imutável de uma chamada à API externa.
+Snapshot imutável de chamada à API externa.
 
 ```sql
 container_tracking_snapshots
@@ -102,7 +102,7 @@ raw_payload JSONB NOT NULL
 
 Regras:
 
-* Apenas INSERT (append-only)
+* INSERT (append-only)
 * Nunca atualizar ou deletar
 * Fonte primária de verdade externa
 
@@ -114,7 +114,7 @@ Regras:
 
 ## 4. container_observations (memória normalizada)
 
-Representa **observações detectadas** a partir dos snapshots.
+Representa **observações detectadas** partir dos snapshots.
 
 ```sql
 container_observations
@@ -136,8 +136,8 @@ source_snapshot_id UUID FK → container_tracking_snapshots.id
 Notas importantes:
 
 * fingerprint = hash(activity + event_time + location + carrier)
-* Se um carrier apagar um evento, a observation **permanece**
-* `last_seen_at` ajuda a entender flapping / inconsistência
+* Se carrier apagar evento, observation **permanece**
+* `last_seen_at` ajuda entender flapping / inconsistência
 
 ---
 
@@ -244,4 +244,4 @@ processes
 
 * Definir algoritmo de diff snapshot → observations
 * Definir fingerprints canônicos
-* Desenhar motor P0.1 em cima **desse modelo**, não o contrário
+* Desenhar motor P0.1 em cima **desse modelo**, não contrário

@@ -1,11 +1,11 @@
 # ADR 0017 — Linux Agent Operational Model
 
-Date: 2026-03-11  
+Date: 2026-03-11
 Status: Accepted
 
 ## Context
 
-O agent do Container Tracker atualmente possui um runtime cross-platform baseado em Node:
+agent do Container Tracker atualmente possui runtime cross-platform baseado em Node:
 
 - `apps/agent/src/agent.ts`
 - bootstrap/enroll
@@ -16,14 +16,14 @@ O agent do Container Tracker atualmente possui um runtime cross-platform baseado
 - graceful shutdown
 - update check (`runUpdateCheck()`)
 
-O Windows possui uma infraestrutura operacional completa:
+Windows possui infraestrutura operacional completa:
 
 - installer (Inno Setup)
 - Task Scheduler
 - tray host
 - rebuild-reinstall flow
 
-Linux hoje consegue rodar o runtime, mas **não possui modelo operacional formal**.
+Linux hoje consegue rodar runtime, mas **não possui modelo operacional formal**.
 
 Problemas identificados:
 
@@ -35,7 +35,7 @@ Problemas identificados:
 
 Antes de implementar suporte Linux, foi necessário definir:
 
-- quem supervisiona o runtime
+- quem supervisiona runtime
 - quem controla updates
 - layout de filesystem Linux
 - surface operacional mínima

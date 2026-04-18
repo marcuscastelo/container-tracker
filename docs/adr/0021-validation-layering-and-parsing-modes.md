@@ -1,8 +1,8 @@
 # ADR-0021 — Validation Layering and Parsing Modes (Canonical Acceptance vs Tolerant Parsing)
 
-Status: Proposed  
-Date: 2026-03-13  
-Owner: Repository maintainers  
+Status: Proposed
+Date: 2026-03-13
+Owner: Repository maintainers
 Related:
 - `docs/TYPE_ARCHITECTURE.md`
 - `docs/BOUNDARIES.md`
@@ -16,12 +16,12 @@ Related:
 
 ## Context
 
-The repository already defines layer boundaries and type transitions, but recurring ambiguity still appears in validation/parsing behavior across boundaries.
+repository already defines layer boundaries and type transitions, but recurring ambiguity still appears in validation/parsing behavior across boundaries.
 
 Observed hotspots:
 
 - `src/modules/process/ui/validation/processApi.validation.ts` mixes request decode concerns with transport IO, cache, and endpoint orchestration.
-- `src/modules/tracking/infrastructure/persistence/supabaseSyncMetadataRepository.ts` imports normalization from an application use case.
+- `src/modules/tracking/infrastructure/persistence/supabaseSyncMetadataRepository.ts` imports normalization from application use case.
 - `src/modules/process/ui/screens/shipment/lib/shipmentRefresh.status.ts` keeps response schema definitions inside `lib/`, mixing helper and boundary-contract concerns.
 
 This ADR defines explicit parsing modes and layer constraints so we can keep deterministic domain truth while still handling hostile/incomplete external input.
@@ -134,7 +134,7 @@ UI may:
 UI must not:
 - derive canonical status/timeline/alerts truth
 - move transport orchestration into generic `*.validation.ts` files
-- treat permissive parse as domain acceptance
+- treat permissive parse domain acceptance
 
 ## Infrastructure
 
@@ -155,7 +155,7 @@ Infrastructure must not:
 - `*.validation.ts` files becoming adapter/orchestrator units.
 - Tolerant parsing hiding inconsistencies.
 - Infrastructure importing wrong-layer helpers to "normalize quickly".
-- Mixing transport decode with operational policy in the same boundary adapter.
+- Mixing transport decode with operational policy in same boundary adapter.
 
 ---
 
@@ -187,7 +187,7 @@ Refactor targets under this ADR:
 - `src/modules/process/ui/validation/processApi.validation.ts`
   - split API transport/caching concerns from validation concerns.
 - `src/modules/tracking/infrastructure/persistence/supabaseSyncMetadataRepository.ts`
-  - move container normalization dependency to a boundary-stable utility.
+  - move container normalization dependency to boundary-stable utility.
 - `src/modules/process/ui/screens/shipment/lib/shipmentRefresh.status.ts`
   - keep response schema ownership in explicit boundary schema files.
 

@@ -1,13 +1,13 @@
 # V2 — Fase 1 — Framework canônico de plugins de validação
 
 ## Objetivo
-Criar a infraestrutura canônica para que o Tracking BC suporte **plugins de validação** de forma aberta a extensão e fechada para modificação ad hoc.
+Criar infraestrutura canônica para que Tracking BC suporte **plugins de validação** de forma aberta extensão e fechada para modificação ad hoc.
 
-A meta desta fase não é adicionar novos detectores complexos, mas estabelecer o contrato estável no qual todos os detectores futuros da V2 serão plugados.
+meta desta fase não é adicionar novos detectores complexos, mas estabelecer contrato estável no qual todos detectores futuros da V2 serão plugados.
 
 ## Motivação
-Hoje a feature de validation issue já tem regras pontuais.
-A V2 precisa evoluir para um modelo em que novas detecções possam ser adicionadas sem:
+Hoje feature de validation issue já tem regras pontuais.
+V2 precisa evoluir para modelo em que novas detecções possam ser adicionadas sem:
 - espalhar `if/else` por timeline/status/alerts/readmodels
 - mover semântica para UI/capability
 - criar shared kernel indevido
@@ -15,14 +15,14 @@ A V2 precisa evoluir para um modelo em que novas detecções possam ser adiciona
 
 ## Princípios arquiteturais obrigatórios
 - Todo detector novo deve viver dentro do **Tracking BC**.
-- A semântica do detector nasce no domínio do tracking, não na UI, não em capability.
-- UI apenas consome `Response DTO -> ViewModel`.
-- O sistema deve continuar determinístico.
-- O sistema não pode apagar fatos, reescrever observations, nem “limpar” conflitos.
-- O framework de plugins não deve virar shared/domain nem utilitário global reutilizável fora do tracking sem ADR formal.
+- semântica do detector nasce no domínio do tracking, não na UI, não em capability.
+- UI consome `Response DTO -> ViewModel`.
+- sistema deve continuar determinístico.
+- sistema não pode apagar fatos, reescrever observations, nem “limpar” conflitos.
+- framework de plugins não deve virar shared/domain nem utilitário global reutilizável fora do tracking sem ADR formal.
 
 ## Decisão estrutural
-Criar uma nova feature slice no tracking:
+Criar nova feature slice no tracking:
 
 `modules/tracking/features/validation/`
 
@@ -46,7 +46,7 @@ Contrato de detector pluginável.
 
 Responsabilidades:
 - receber contexto canônico suficiente
-- avaliar uma condição semântica
+- avaliar condição semântica
 - retornar zero ou mais validation findings
 - não persistir nem emitir UI labels finais
 - não depender de UI, HTTP ou capability
@@ -54,7 +54,7 @@ Responsabilidades:
 ### 2. TrackingValidationContext
 Contexto estável entregue ao detector.
 
-Deve conter apenas contratos canônicos internos do tracking, por exemplo:
+Deve conter contratos canônicos internos do tracking, por exemplo:
 - timeline derivada
 - series derivadas
 - status atual derivado
@@ -70,7 +70,7 @@ Não deve conter:
 - snapshots enormes se não forem necessários
 
 ### 3. TrackingValidationFinding
-Saída padronizada de um detector.
+Saída padronizada de detector.
 
 Campos sugeridos:
 - code
@@ -94,12 +94,12 @@ Responsabilidades:
 ## Regras de desenho
 - Cada detector deve ser classe/função pura e isolada por arquivo.
 - Cada detector deve ter nome de domínio, não nome técnico genérico.
-- O registry não pode conter regra semântica além de composição/ordenação.
+- registry não pode conter regra semântica além de composição/ordenação.
 - Detectores não podem depender uns dos outros de forma circular.
 - Detectores podem compartilhar contratos estáveis internos, mas não devem compartilhar semântica escondida via `shared/`.
 
 ## Extensibilidade
-A abertura para extensão deve acontecer por:
+abertura para extensão deve acontecer por:
 - novo arquivo detector
 - registro explícito no registry
 - testes unitários próprios
@@ -114,7 +114,7 @@ Não por:
 - Novo slice `validation`
 - Contratos de detector/context/finding
 - Registry determinístico
-- Wiring do pipeline atual para chamar o registry
+- Wiring do pipeline atual para chamar registry
 - Propagação dos findings até DTO/VM existentes, mesmo que sem novos detectores da V2 ainda
 - Garantir que nada quebre em dashboard, shipment, realtime, prefetch e time travel atual
 
@@ -134,33 +134,33 @@ Não por:
 - framework pluginável criado
 - semântica continua no Tracking BC
 - zero regra de validação migrada para UI/capability
-- todos os próximos detectores podem nascer sobre esse framework
+- todos próximos detectores podem nascer sobre esse framework
 - 1 commit atômico
 
 ---
 
 # Prompt de implementação — Fase 1
 
-Implemente o framework canônico de plugins de validação no Tracking BC.
+Implemente framework canônico de plugins de validação no Tracking BC.
 
 Objetivo:
-- criar uma feature slice `modules/tracking/features/validation`
+- criar feature slice `modules/tracking/features/validation`
 - definir contratos estáveis para detectores plugináveis
 - criar registry determinístico
 - integrar esse framework ao pipeline atual de validation issue sem quebrar comportamento existente
 
 Requisitos:
-1. O framework deve viver exclusivamente dentro do Tracking BC.
+1. framework deve viver exclusivamente dentro do Tracking BC.
 2. Não criar shared kernel sem ADR.
 3. Não mover lógica semântica para UI, capability, routes ou infra genérica.
-4. Criar contratos equivalentes a:
+4. Criar contratos equivalentes:
    - `TrackingValidationDetector`
    - `TrackingValidationContext`
    - `TrackingValidationFinding`
    - `TrackingValidationRegistry`
-5. O registry deve ser explícito e determinístico.
-6. A feature deve continuar atravessando application -> HTTP DTO -> UI mapper -> ViewModel.
-7. Não adicionar ainda os novos detectores complexos da V2.
+5. registry deve ser explícito e determinístico.
+6. feature deve continuar atravessando application -> HTTP DTO -> UI mapper -> ViewModel.
+7. Não adicionar ainda novos detectores complexos da V2.
 8. Garantir compatibilidade com realtime, prefetch, refresh e time travel atual.
 9. Criar testes unitários do framework.
 10. Fazer QA manual completo e rodar `pnpmcheck` até verde.
@@ -171,14 +171,14 @@ Requisitos:
 # V2 — Fase 2 — Contrato avançado de findings, severidade, escopo e evidência
 
 ## Objetivo
-Refinar o modelo do framework para suportar detectores mais ricos, sem explodir payload e sem tornar a UI dependente de detalhes técnicos.
+Refinar modelo do framework para suportar detectores mais ricos, sem explodir payload e sem tornar UI dependente de detalhes técnicos.
 
 ## Motivação
-Os detectores da V2 não são todos iguais:
+detectores da V2 não são todos iguais:
 - alguns são do container inteiro
 - alguns são do ETA
 - alguns são da timeline/bloco
-- alguns são mais voltados a cliente
+- alguns são mais voltados cliente
 - alguns são mais úteis para dev observability futura
 
 Precisamos modelar isso agora para evitar retrabalho.
@@ -221,8 +221,8 @@ Na V2 inicial, alguns detectores podem ser preparados mas não necessariamente e
 Definir contrato estável de agregação:
 - processo agrega containers
 - container agrega findings locais
-- shipment page expõe funil até a fonte
-- dashboard recebe apenas agregados mínimos
+- shipment page expõe funil até fonte
+- dashboard recebe agregados mínimos
 
 ## Evidence
 Separar:
@@ -246,7 +246,7 @@ Pode receber mais detalhe agregado
 Pode carregar nível mais detalhado quando necessário
 
 ## UI contract
-A UI deve conseguir:
+UI deve conseguir:
 - mostrar banner agregador no processo
 - mostrar chip no container
 - eventualmente marcar parte da timeline
@@ -272,20 +272,20 @@ A UI deve conseguir:
 
 # Prompt de implementação — Fase 2
 
-Refine o framework de plugins de validação para suportar detectores mais ricos.
+Refine framework de plugins de validação para suportar detectores mais ricos.
 
 Objetivo:
-- expandir o modelo de findings para escopo, severidade, action hint e evidência controlada
+- expandir modelo de findings para escopo, severidade, action hint e evidência controlada
 - manter dashboard leve
 - preparar shipment/timeline para detectores da V2
 
 Requisitos:
-1. Expandir os contratos internos de finding/agregação.
+1. Expandir contratos internos de finding/agregação.
 2. Introduzir escopos afetados e severidade estável.
 3. Separar `evidenceSummary` de `debugEvidence`.
 4. Garantir que dashboard continue recebendo payload mínimo.
 5. Shipment/detail pode receber mais detalhe agregado, sem exagero.
-6. Não permitir que a UI derive semântica a partir do escopo; apenas renderizar.
+6. Não permitir que UI derive semântica partir do escopo; renderizar.
 7. Atualizar DTOs, VMs e mappers explicitamente.
 8. Criar testes unitários.
 9. QA manual em dashboard e shipment.
@@ -297,23 +297,23 @@ Requisitos:
 # V2 — Fase 3 — Plugin 1: regressão impossível após marco forte
 
 ## Objetivo
-Criar o plugin que detecta regressões semanticamente impossíveis após marcos fortes do lifecycle.
+Criar plugin que detecta regressões semanticamente impossíveis após marcos fortes do lifecycle.
 
 ## Casos-alvo
 Exemplos:
 - após `DISCHARGED`, aparece `LOAD` incompatível sem contexto reconciliado
-- após `DELIVERED`, volta para fluxo de trânsito sem cair apenas no detector genérico de pós-conclusão
-- após `EMPTY_RETURNED`, reaparecem estados anteriores incompatíveis como se fosse a mesma jornada
+- após `DELIVERED`, volta para fluxo de trânsito sem cair no detector genérico de pós-conclusão
+- após `EMPTY_RETURNED`, reaparecem estados anteriores incompatíveis como se fosse mesma jornada
 
 ## Motivação
-Esse detector é mais geral e mais completo do que o caso já existente de tracking continuando após conclusão.
+Esse detector é mais geral e mais completo do que caso já existente de tracking continuando após conclusão.
 Ele captura regressões semânticas fortes na leitura atual.
 
 ## Critério semântico
-O plugin deve marcar issue quando:
-- existe um marco forte consolidado na timeline derivada
-- a leitura atual contém passo(s) posteriores incompatíveis com a monotonicidade esperada
-- e o sistema não consegue explicar isso por reconciliação legítima do fluxo
+plugin deve marcar issue quando:
+- existe marco forte consolidado na timeline derivada
+- leitura atual contém passo(s) posteriores incompatíveis com monotonicidade esperada
+- e sistema não consegue explicar isso por reconciliação legítima do fluxo
 
 ## Dependências semânticas
 - timeline derivada canônica
@@ -356,19 +356,19 @@ O plugin deve marcar issue quando:
 
 # Prompt de implementação — Fase 3
 
-Implemente o plugin de validação `IMPOSSIBLE_POST_MILESTONE_REGRESSION`.
+Implemente plugin de validação `IMPOSSIBLE_POST_MILESTONE_REGRESSION`.
 
 Objetivo:
 - detectar regressões semanticamente impossíveis após marcos fortes do lifecycle
 - integrar isso ao framework pluginável da V2
 
 Requisitos:
-1. O detector deve viver como plugin isolado no slice `validation`.
-2. Deve usar apenas contratos canônicos internos do tracking.
+1. detector deve viver como plugin isolado no slice `validation`.
+2. Deve usar contratos canônicos internos do tracking.
 3. Não pode depender de UI nem capability.
 4. Deve marcar severidade `CRITICAL`.
 5. Deve cobrir casos como delivered/discharged/empty_returned seguidos de regressão incompatível.
-6. Não deve gerar falso positivo em fluxos apenas incompletos ou out-of-order mas ainda reconciliáveis.
+6. Não deve gerar falso positivo em fluxos incompletos ou out-of-order mas ainda reconciliáveis.
 7. Criar testes unitários robustos.
 8. QA manual com casos reais/fixtures.
 9. Rodar `pnpmcheck` até verde.
@@ -379,25 +379,25 @@ Requisitos:
 # V2 — Fase 4 — Plugin 2: expected ativo incompatível com ACTUAL consolidado
 
 ## Objetivo
-Criar o plugin que detecta quando o sistema mantém ou promove um expected que já deveria estar semanticamente morto diante de ACTUAL consolidado.
+Criar plugin que detecta quando sistema mantém ou promove expected que já deveria estar semanticamente morto diante de ACTUAL consolidado.
 
 ## Casos-alvo
 Exemplos:
 - ACTUAL de chegada/descarga existe, mas expected de etapa anterior ainda governa ETA
-- ACTUAL consolidado já encerrou uma etapa, mas expected antigo permanece como referência ativa
-- expected e actual coexistem de forma semânticamente incompatível para a mesma leitura atual
+- ACTUAL consolidado já encerrou etapa, mas expected antigo permanece como referência ativa
+- expected e actual coexistem de forma semânticamente incompatível para mesma leitura atual
 
 ## Motivação
-Esse plugin ajuda a pegar:
+Esse plugin ajuda pegar:
 - superseed incompleto
 - reconcile ruim de expected plan
 - ETA incorreto mesmo quando há fato consolidado suficiente
 
 ## Critério semântico
 Disparar finding quando:
-- há ACTUAL consolidado para uma etapa que deveria invalidar a previsão anterior
+- há ACTUAL consolidado para etapa que deveria invalidar previsão anterior
 - ainda assim existe expected ativo que continua participando da leitura atual de forma incompatível
-- o conflito não é apenas histórico visível, mas afeta a interpretação corrente
+- conflito não é histórico visível, mas afeta interpretação corrente
 
 ## Escopo afetado
 - ETA
@@ -412,7 +412,7 @@ Disparar finding quando:
 - `ACTIVE_EXPECTED_INCOMPATIBLE_WITH_ACTUAL`
 
 ## Relação com o modelo formal
-O detector deve respeitar:
+detector deve respeitar:
 - ACTUAL vs EXPECTED
 - expected after actual pode ser redundante
 - conflitos devem ser expostos e não escondidos
@@ -437,17 +437,17 @@ O detector deve respeitar:
 
 # Prompt de implementação — Fase 4
 
-Implemente o plugin `ACTIVE_EXPECTED_INCOMPATIBLE_WITH_ACTUAL`.
+Implemente plugin `ACTIVE_EXPECTED_INCOMPATIBLE_WITH_ACTUAL`.
 
 Objetivo:
 - detectar quando expecteds antigos continuam semanticamente ativos mesmo diante de ACTUAL consolidado
-- capturar casos de superseed/reconcile incompleto que afetam a leitura atual
+- capturar casos de superseed/reconcile incompleto que afetam leitura atual
 
 Requisitos:
 1. Implementar como plugin isolado.
-2. Respeitar integralmente o event series model.
+2. Respeitar integralmente event series model.
 3. Não reescrever facts, não esconder histórico.
-4. Distinguir redundancy histórica inofensiva de incompatibilidade que afeta a leitura atual.
+4. Distinguir redundancy histórica inofensiva de incompatibilidade que afeta leitura atual.
 5. Usar severidade `ADVISORY` ou `CRITICAL` conforme impacto real.
 6. Atualizar agregação DTO/VM/UI se necessário.
 7. Criar testes unitários robustos.
@@ -460,13 +460,13 @@ Requisitos:
 # V2 — Fase 5 — Plugin 3: expected plan não reconciliável / fragmentação de séries expected
 
 ## Objetivo
-Criar o plugin que detecta quando o sistema não consegue reconciliar de forma segura o plano expected atual, seja por mudança brusca não explicável, seja por fragmentação indevida de séries.
+Criar plugin que detecta quando sistema não consegue reconciliar de forma segura plano expected atual, seja por mudança brusca não explicável, seja por fragmentação indevida de séries.
 
 ## Casos-alvo
 Exemplos:
-- vessel/voyage/location mudam abruptamente e o sistema não consegue produzir uma transição expected coerente
-- séries expected concorrentes para o mesmo passo sem explicação segura
-- grouping/fingerprint ruim gerando fragmentação de previsões que deveriam ser uma única série
+- vessel/voyage/location mudam abruptamente e sistema não consegue produzir transição expected coerente
+- séries expected concorrentes para mesmo passo sem explicação segura
+- grouping/fingerprint ruim gerando fragmentação de previsões que deveriam ser única série
 
 ## Motivação
 Esse plugin é central para pegar:
@@ -476,14 +476,14 @@ Esse plugin é central para pegar:
 - múltiplos expecteds ativos concorrendo pela mesma semântica
 
 ## Estratégia
-Esta fase pode implementar dois detectores irmãos ou um detector composto com subcódigos, desde que continue pluginável e testável.
+Esta fase pode implementar dois detectores irmãos ou detector composto com subcódigos, desde que continue pluginável e testável.
 
 ### Opção A
 - `EXPECTED_PLAN_NOT_RECONCILABLE`
 - `FRAGMENTED_EXPECTED_SERIES`
 
 ### Opção B
-- um plugin principal com sub-findings distintos
+- plugin principal com sub-findings distintos
 
 ## Escopo afetado
 - SERIES
@@ -519,10 +519,10 @@ Esta fase pode implementar dois detectores irmãos ou um detector composto com s
 
 # Prompt de implementação — Fase 5
 
-Implemente o detector pluginável para expected plan irreconciliável e/ou fragmentação indevida de séries expected.
+Implemente detector pluginável para expected plan irreconciliável e/ou fragmentação indevida de séries expected.
 
 Objetivo:
-- capturar casos em que a leitura expected atual ficou semanticamente insegura por replan mal reconciliado ou por split indevido de séries
+- capturar casos em que leitura expected atual ficou semanticamente insegura por replan mal reconciliado ou por split indevido de séries
 
 Requisitos:
 1. Implementar como plugin(s) isolado(s) no framework da V2.
@@ -542,25 +542,25 @@ Requisitos:
 # V2 — Fase 6 — Plugin 4: mistura provável de dois ciclos logísticos no mesmo container/processo
 
 ## Objetivo
-Criar um detector mais geral e precoce para mistura provável de dois ciclos distintos no mesmo processo/container, sem depender apenas do caso extremo já coberto de pós-conclusão.
+Criar detector mais geral e precoce para mistura provável de dois ciclos distintos no mesmo processo/container, sem depender do caso extremo já coberto de pós-conclusão.
 
 ## Casos-alvo
 Exemplos:
 - sinais fortes de duas jornadas coexistindo
 - mudança estrutural incompatível de cluster de voyage/vessel/location
-- novos marcos pertencentes a um ciclo distinto surgindo enquanto o sistema ainda tenta tratá-los como continuação do ciclo anterior
+- novos marcos pertencentes ciclo distinto surgindo enquanto sistema ainda tenta tratá-los como continuação do ciclo anterior
 
 ## Motivação
-Esse plugin é uma versão mais robusta do problema de:
+Esse plugin é versão mais robusta do problema de:
 - container reutilizado
 - BL implícito divergente
 - processo aberto demais e contaminado por novo ciclo
 
 ## Critério semântico
 Disparar quando:
-- a leitura atual revela dois clusters operacionais incompatíveis
+- leitura atual revela dois clusters operacionais incompatíveis
 - não há reconciliação segura como continuação do mesmo ciclo
-- o sistema passa a ter ambiguidade estrutural de boundary do processo/container
+- sistema passa ter ambiguidade estrutural de boundary do processo/container
 
 ## Escopo afetado
 - PROCESS
@@ -589,7 +589,7 @@ Disparar quando:
 - casos reais de container reutilizado e tracking contaminado
 
 ## Critério de pronto
-- detector novo convivendo bem com o detector antigo de post-completion
+- detector novo convivendo bem com detector antigo de post-completion
 - sem duplicidade semântica excessiva
 - 1 commit
 
@@ -597,7 +597,7 @@ Disparar quando:
 
 # Prompt de implementação — Fase 6
 
-Implemente o plugin `PROBABLE_MULTI_CYCLE_MIX`.
+Implemente plugin `PROBABLE_MULTI_CYCLE_MIX`.
 
 Objetivo:
 - detectar mistura provável de dois ciclos logísticos no mesmo processo/container
@@ -621,7 +621,7 @@ Requisitos:
 # V2 — Fase 7 — Plugin 5: bloco operacional impossível / classificação canônica estruturalmente absurda
 
 ## Objetivo
-Evoluir o detector advisory de classificação inconsistente para um plugin mais robusto de **bloco operacional impossível**, focado em incoerência estrutural da timeline canônica.
+Evoluir detector advisory de classificação inconsistente para plugin mais robusto de **bloco operacional impossível**, focado em incoerência estrutural da timeline canônica.
 
 ## Casos-alvo
 Exemplos:
@@ -631,11 +631,11 @@ Exemplos:
 - item estrutural “teleportado” para bloco incompatível no read model canônico
 
 ## Motivação
-O advisory anterior capturava incoerência localizada.
-Agora a ideia é endurecer isso como plugin estrutural, mais próximo da semântica de bloco operacional.
+advisory anterior capturava incoerência localizada.
+Agora ideia é endurecer isso como plugin estrutural, mais próximo da semântica de bloco operacional.
 
 ## Regras
-- só entra se o problema existir no backend/read model canônico
+- só entra se problema existir no backend/read model canônico
 - nunca usar bug visual puro como trigger
 - não usar NLP frouxo
 - usar sinais canônicos de bloco, milestone, phase e contexto
@@ -647,7 +647,7 @@ Agora a ideia é endurecer isso como plugin estrutural, mais próximo da semânt
 
 ## Severidade
 - ADVISORY por padrão
-- CRITICAL se comprometer a leitura principal
+- CRITICAL se comprometer leitura principal
 
 ## Código sugerido
 - `IMPOSSIBLE_OPERATIONAL_BLOCK`
@@ -659,8 +659,8 @@ Agora a ideia é endurecer isso como plugin estrutural, mais próximo da semânt
 - bug meramente visual não entra
 
 ### Manual
-- reproduzir casos parecidos com os já vistos nos chats
-- confirmar que o erro já existe antes da UI
+- reproduzir casos parecidos com já vistos nos chats
+- confirmar que erro já existe antes da UI
 
 ## Critério de pronto
 - plugin estrutural funcional
@@ -671,20 +671,20 @@ Agora a ideia é endurecer isso como plugin estrutural, mais próximo da semânt
 
 # Prompt de implementação — Fase 7
 
-Implemente o plugin `IMPOSSIBLE_OPERATIONAL_BLOCK`.
+Implemente plugin `IMPOSSIBLE_OPERATIONAL_BLOCK`.
 
 Objetivo:
 - detectar incoerências estruturais na timeline canônica em nível de bloco operacional
-- endurecer a detecção de classificação inconsistente além do advisory inicial
+- endurecer detecção de classificação inconsistente além do advisory inicial
 
 Requisitos:
-1. O erro deve existir no backend/read model canônico, nunca só na UI.
+1. erro deve existir no backend/read model canônico, nunca só na UI.
 2. Implementar como plugin isolado.
 3. Basear-se em sinais semânticos objetivos do tracking.
 4. Distinguir advisory de critical conforme impacto.
 5. Não usar heurística textual frouxa.
 6. Criar testes unitários.
-7. QA manual confirmando que o problema já existe antes da UI.
+7. QA manual confirmando que problema já existe antes da UI.
 8. Rodar `pnpmcheck` até verde.
 9. Exatamente 1 commit.
 
@@ -694,7 +694,7 @@ Requisitos:
 # V2 — Fase 8 — Plugins agregados de observabilidade do parser/provider + polimento final da V2
 
 ## Objetivo
-Fechar a V2 com detectores mais orientados a cobertura/provider e com a infraestrutura final para ligar findings customer-facing e dev-facing de forma controlada.
+Fechar V2 com detectores mais orientados cobertura/provider e com infraestrutura final para ligar findings customer-facing e dev-facing de forma controlada.
 
 ## Subobjetivos
 ### A. Plugin agregado: perda súbita de milestones críticos por provider
@@ -705,10 +705,10 @@ Detectar padrões como:
 ### B. Plugin agregado: payload semanticamente empobrecido
 Detectar quando:
 - parser continua “funcionando”
-- mas a semântica derivada fica vazia/genérica demais de forma anormal
+- mas semântica derivada fica vazia/genérica demais de forma anormal
 
 ### C. Plugin agregado: explosão de unknown/unclassified em região crítica
-Não como evento isolado, mas como padrão anormal o bastante para levantar issue
+Não como evento isolado, mas como padrão anormal bastante para levantar issue
 
 ## Natureza desses plugins
 Esses detectores são mais próximos de:
@@ -721,8 +721,8 @@ Eles podem gerar findings com consumidor:
 - BOTH
 
 ## Escopo
-- framework passa a suportar findings não necessariamente exibidos com o mesmo peso ao usuário
-- shipment/dashboard continuam consumindo só o que faz sentido
+- framework passa suportar findings não necessariamente exibidos com mesmo peso ao usuário
+- shipment/dashboard continuam consumindo só que faz sentido
 - infraestrutura fica pronta para observabilidade futura, sem implementar Sentry/email/painel agora
 
 ## Performance / storage
@@ -739,14 +739,14 @@ Eles podem gerar findings com consumidor:
 - revisar ViewModels e DTOs
 - revisar naming dos códigos
 - revisar risco de falso positivo
-- documentar como adicionar um novo plugin no futuro
+- documentar como adicionar novo plugin no futuro
 
 ## Documentação obrigatória
 Criar documentação interna do framework:
 - como criar novo detector
 - onde registrar
 - quais contratos usar
-- o que é proibido
+- que é proibido
 - como decidir entre customer-facing e dev-facing
 
 ## Testes
@@ -771,16 +771,16 @@ Criar documentação interna do framework:
 
 # Prompt de implementação — Fase 8
 
-Feche a V2 do sistema de plugins de validação.
+Feche V2 do sistema de plugins de validação.
 
 Objetivo:
-- adicionar detectores agregados voltados a health de provider/parser
+- adicionar detectores agregados voltados health de provider/parser
 - suportar findings customer-facing e dev-facing
-- polir toda a arquitetura pluginável
+- polir toda arquitetura pluginável
 - documentar como futuros plugins devem ser adicionados
 
 Requisitos:
-1. Implementar detectores agregados orientados a provider coverage degradation, com critérios objetivos e leves.
+1. Implementar detectores agregados orientados provider coverage degradation, com critérios objetivos e leves.
 2. Não depender de Sentry/email/painel que ainda não existem.
 3. Diferenciar findings que são:
    - visíveis ao cliente

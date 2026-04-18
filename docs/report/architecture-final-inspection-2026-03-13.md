@@ -10,7 +10,7 @@ Referências usadas nesta rodada:
 - `docs/plans/architecture-enforcement-next-steps.md`
 - `docs/reports/code-report/code_report_20260313_033710.txt`
 
-Observação: o arquivo `docs/reports/code-report/code_report_20260313_042259.txt` não foi encontrado no workspace; esta inspeção foi consolidada com o report `033710`.
+Observação: arquivo `docs/reports/code-report/code_report_20260313_042259.txt` não foi encontrado no workspace; esta inspeção foi consolidada com report `033710`.
 
 ---
 
@@ -22,7 +22,7 @@ Observação: o arquivo `docs/reports/code-report/code_report_20260313_042259.tx
 
 **Motivo técnico:**
 
-- Boundary está correta (sem domínio), mas o arquivo agrega múltiplas responsabilidades:
+- Boundary está correta (sem domínio), mas arquivo agrega múltiplas responsabilidades:
   - factories de ports
   - acesso Supabase
   - decode Zod
@@ -60,7 +60,7 @@ Observação: o arquivo `docs/reports/code-report/code_report_20260313_042259.tx
 
 **Motivo técnico:**
 
-- A screen concentra:
+- screen concentra:
   - resources/fetch
   - hidratação query/storage
   - reconciliação realtime
@@ -73,7 +73,7 @@ Observação: o arquivo `docs/reports/code-report/code_report_20260313_042259.tx
 
 1. Extrair hook de query/filter/sort sync (URL + localStorage).
 2. Extrair hook de realtime + local sync feedback.
-3. Extrair controller hook e manter a screen mais próxima de composição de View.
+3. Extrair controller hook e manter screen mais próxima de composição de View.
 
 ### 1.4 `src/capabilities/search/ui/SearchOverlay.panel.tsx`
 
@@ -81,14 +81,14 @@ Observação: o arquivo `docs/reports/code-report/code_report_20260313_042259.tx
 
 **Motivo técnico:**
 
-- A lógica de busca/debounce está fora (ponto positivo), mas o panel concentra:
+- lógica de busca/debounce está fora (ponto positivo), mas panel concentra:
   - trigger
   - modal
   - row rendering
   - ícones
   - formatação
   - labels/translation wiring
-- É um hub de apresentação com excesso de responsabilidades em um único arquivo.
+- É hub de apresentação com excesso de responsabilidades em único arquivo.
 
 **Refactor sugerido (cirúrgico):**
 
@@ -216,7 +216,7 @@ Justificativa:
 
 1. Boundaries principais permanecem íntegros (sem vazamento relevante de verdade de domínio para UI).
 2. Hotspots ativos estão mapeados com ações pequenas e objetivas.
-3. O risco atual é principalmente de manutenção/complexidade local, não de ruptura estrutural sistêmica.
+3. risco atual é principalmente de manutenção/complexidade local, não de ruptura estrutural sistêmica.
 
 ---
 

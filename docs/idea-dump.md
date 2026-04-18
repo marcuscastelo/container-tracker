@@ -1,6 +1,6 @@
 # Container Tracker — Clean Idea Dump
 
-Versão limpa e organizada do dump antigo.  
+Versão limpa e organizada do dump antigo.
 Itens foram **deduplicados, agrupados e normalizados** em:
 
 - Bugs
@@ -19,7 +19,7 @@ Itens obsoletos ou redundantes foram removidos.
 
 - Botões de **sync no dashboard apresentam bugs visuais** e só atualizam após refresh.
 
-- Área clicável do botão **copy** não cobre todo o botão.
+- Área clicável do botão **copy** não cobre todo botão.
 
 ---
 
@@ -29,13 +29,13 @@ Itens obsoletos ou redundantes foram removidos.
 
 - Alertas de **transbordo duplicam após sync**.
 
-  Comportamento esperado:
+Comportamento esperado:
 
   ```
   alerta deve ser único por container + navio + voyage
   ```
 
-  Casos a considerar:
+Casos considerar:
 
   ```
   Navio A -> Navio B -> Navio A -> Navio B
@@ -47,8 +47,8 @@ Itens obsoletos ou redundantes foram removidos.
 
 ## UX Improvements
 
-- Mostrar **"Última edição há Xs"** logo após criar processo  
-  para confirmar que o processo foi criado com sucesso.
+- Mostrar **"Última edição há Xs"** logo após criar processo
+para confirmar que processo foi criado com sucesso.
 
 - Adicionar **animações de abertura/fechamento de dialogs**.
 
@@ -58,10 +58,10 @@ Itens obsoletos ou redundantes foram removidos.
 
 ## Dashboard Improvements
 
-- Permitir **copiar valores da tabela com um clique**.
+- Permitir **copiar valores da tabela com clique**.
 
-- Permitir **configurar colunas visíveis do dashboard**  
-  e salvar preferências do usuário.
+- Permitir **configurar colunas visíveis do dashboard**
+e salvar preferências do usuário.
 
 - Adicionar **paginação no dashboard**.
 
@@ -82,7 +82,7 @@ Itens obsoletos ou redundantes foram removidos.
 
 ## Sync Improvements
 
-- Botão para **sincronizar apenas um container**.
+- Botão para **sincronizar container**.
 
 - Botão **"Sincronizar todos"** deve ignorar processos:
 
@@ -97,21 +97,21 @@ Itens obsoletos ou redundantes foram removidos.
 
 - Mostrar **progresso do container** no status.
 
-  Exemplo:
+Exemplo:
 
   ```
   Loaded (5/10)
   Discharged (7/10)
   ```
 
-  onde:
+onde:
 
   ```
   X = último ACTUAL
   Y = último EXPECTED
   ```
 
-  Alternativa:
+Alternativa:
 
   ```
   campo separado "Progress"
@@ -128,7 +128,7 @@ Itens obsoletos ou redundantes foram removidos.
   maersk -> hapag -> etc
   ```
 
-  Caso encontrado:
+Caso encontrado:
 
   ```
   atualizar processo automaticamente
@@ -282,7 +282,7 @@ erro de API
 
 ## Project Structure
 
-A pasta `tools/` está acumulando:
+pasta `tools/` está acumulando:
 
 ```
 scripts

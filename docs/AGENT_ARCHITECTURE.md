@@ -1,11 +1,11 @@
 # Agent Architecture (Canonical)
 
-Status: active  
+Status: active
 Scope: `apps/agent`
 
 ## Canonical root
 
-- Runtime/build/release architecture for the agent is defined under `apps/agent`.
+- Runtime/build/release architecture for agent is defined under `apps/agent`.
 - `tools/agent` references are legacy-only context in historical docs.
 
 ## Final tree

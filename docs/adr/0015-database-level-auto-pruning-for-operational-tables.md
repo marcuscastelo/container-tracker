@@ -1,7 +1,7 @@
 # ADR — Database-Level Auto-Pruning for Operational Tables
 
-Status: Accepted  
-Date: 2026-03-10  
+Status: Accepted
+Date: 2026-03-10
 Deciders: Platform Architecture
 
 ---
@@ -37,7 +37,7 @@ Sem retenção automática, essas tabelas crescem indefinidamente, causando:
 - maior custo de VACUUM
 - queries mais lentas
 
-O sistema utiliza **Postgres via Supabase**, que oferece suporte a:
+sistema utiliza **Postgres via Supabase**, que oferece suporte:
 
 ```
 pg_cron
@@ -65,7 +65,7 @@ executa função SQL
 remove registros antigos
 ```
 
-Esse mecanismo será aplicado apenas a **tabelas operacionais efêmeras**.
+Esse mecanismo será aplicado **tabelas operacionais efêmeras**.
 
 Escopo desta entrega:
 
@@ -101,7 +101,7 @@ Motivação:
 
 ### sync_requests (Fase 1)
 
-Prune apenas estados terminais atualmente existentes:
+Prune estados terminais atualmente existentes:
 
 ```
 DONE
@@ -134,7 +134,7 @@ Evolução futura (fora da Fase 1):
 
 # Non-Goals
 
-O mecanismo **não deve ser aplicado** a dados canônicos do domínio.
+mecanismo **não deve ser aplicado** dados canônicos do domínio.
 
 Exemplos de tabelas que **não devem sofrer pruning**:
 
@@ -144,7 +144,7 @@ Exemplos de tabelas que **não devem sofrer pruning**:
 - containers
 - processos
 
-Essas tabelas seguem o princípio:
+Essas tabelas seguem princípio:
 
 ```
 história preservada
@@ -220,7 +220,7 @@ Mitigação:
 
 # Implementation Strategy
 
-A implementação consiste em:
+implementação consiste em:
 
 1. SQL functions de prune
 2. jobs pg_cron diários
@@ -235,7 +235,7 @@ cron.schedule(...)
   → delete registros antigos
 ```
 
-Esses exemplos são **ilustrativos** e não representam o código final.
+Esses exemplos são **ilustrativos** e não representam código final.
 
 Janela diária definida:
 
@@ -248,21 +248,21 @@ Janela diária definida:
 
 # Future Evolution
 
-Caso o volume das tabelas aumente significativamente, podemos evoluir para:
+Caso volume das tabelas aumente significativamente, podemos evoluir para:
 
 - batch pruning
 - particionamento por data
 - retenção configurável por ambiente
 
-No estágio atual, o modelo simples baseado em `pg_cron` é suficiente.
+No estágio atual, modelo simples baseado em `pg_cron` é suficiente.
 
 ---
 
 # Summary
 
-O sistema adotará **pruning automático no nível do banco** para tabelas operacionais efêmeras.
+sistema adotará **pruning automático no nível do banco** para tabelas operacionais efêmeras.
 
-Na **Fase 1**, `sync_requests` pruneia apenas `DONE` e `FAILED`, mantendo
+Na **Fase 1**, `sync_requests` pruneia `DONE` e `FAILED`, mantendo
 `PENDING` e `LEASED` fora da política de remoção.
 
 Implementação baseada em:
@@ -271,4 +271,4 @@ Implementação baseada em:
 Postgres functions + pg_cron
 ```
 
-Isso mantém o banco saudável sem comprometer a auditabilidade do domínio.
+Isso mantém banco saudável sem comprometer auditabilidade do domínio.

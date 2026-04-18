@@ -7,7 +7,7 @@ Este documento consolida **prioridades práticas** do produto Container Tracker,
 * Ideias exploratórias
 * Débitos técnicos
 
-O objetivo é servir como **guia simples de acompanhamento**, mantendo clareza do *porquê* de cada item.
+objetivo é servir como **guia simples de acompanhamento**, mantendo clareza do *porquê* de cada item.
 
 ---
 
@@ -17,7 +17,7 @@ O objetivo é servir como **guia simples de acompanhamento**, mantendo clareza d
 
 ### P0.1 — Motor Canônico de Derivação (F0.2)
 
-**Objetivo**: Tornar explícita e testável a semântica do sistema.
+**Objetivo**: Tornar explícita e testável semântica do sistema.
 
 **Entregáveis**:
 
@@ -51,7 +51,7 @@ O objetivo é servir como **guia simples de acompanhamento**, mantendo clareza d
 
 ## 🟠 P1 — Operação Real (primeiro uso sério)
 
-> Aqui o sistema começa a *trabalhar* para o usuário.
+> Aqui sistema começa *trabalhar* para usuário.
 
 ### P1.1 — Registro Manual de Eventos (F1.2)
 
@@ -93,13 +93,13 @@ Outros:
 * Ordem garantida por `event_time`
 * Diferenciar ACTUAL vs EXPECTED
 * Buracos explícitos (não inferidos)
-* Links para fonte original do carrier (URL salva no banco) (falta migrar a url para o banco, está hardcoded hoje)
+* Links para fonte original do carrier (URL salva no banco) (falta migrar url para banco, está hardcoded hoje)
 
 ---
 
 ## 🟡 P2 — UX de Eficiência (power users)
 
-> Aqui o produto começa a *encantar*.
+> Aqui produto começa *encantar*.
 
 ### P2.1 — Busca global (Ctrl + K)
 
@@ -143,7 +143,7 @@ Outros:
 ### P3.1a - Delivery de alertas via email (MVP)
 
 - Canal UI (default)
-- Canal Email (MVP, a decidir: alertas críticos, resumo diário, etc)
+- Canal Email (MVP, decidir: alertas críticos, resumo diário, etc)
 
 ---
 
@@ -170,7 +170,7 @@ Outros:
 ### P4.2 — Limpeza conceitual
 
 * Separar Booking Number e Bill of Lading (BL)
-* Renomear BL para `Bill of Lading (BL)` em toda a UI
+* Renomear BL para `Bill of Lading (BL)` em toda UI
 * Locale i18n para alertas (não strings fixas no DB)
 
 ---
@@ -179,7 +179,7 @@ Outros:
 
 ### P5.1 — Delete / Archive
 
-**Perguntas a responder**:
+**Perguntas responder**:
 
 * Soft delete vs hard delete
 * Archive como estado?
@@ -198,9 +198,9 @@ Outros:
 
 ## Regra de ouro de priorização
 
-> **Nada novo entra se quebrar a semântica central.**
+> **Nada novo entra se quebrar semântica central.**
 
-Se um item não respeita:
+Se item não respeita:
 
 * evento ≠ estado
 * intenção ≠ observação

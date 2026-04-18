@@ -1,6 +1,6 @@
 # Architecture Rebaseline Report (Round 2)
 
-Date: 2026-03-13  
+Date: 2026-03-13
 Objective: rebaseline after enforcement-in-flow + two targeted refactors + one test-suite partition.
 
 Baselines compared:
@@ -32,16 +32,16 @@ Interpretation:
 
 ## 2) Hotspot evolution (this round)
 
-| Hotspot | Previous | Current | Delta | Action | Classification |
+|Hotspot|Previous|Current|Delta|Action|Classification|
 |---|---|---|---:|---|---|
-| `src/modules/process/ui/validation/processApi.validation.ts` | OK / 47 | OK / 22 | -25 | removed API helper re-exports; kept only UI input mapping | resolvido |
-| `src/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel.ts` | CRITICO / 566 | OK / 120 | -446 | extracted grouping/sorting/message-contract/shared-model helpers | resolvido |
-| `src/capabilities/dashboard/interface/http/tests/dashboard.controllers.test.ts` | CRITICO / 409 | removed | n/a | replaced by behavior-family suites + helper harness | melhorou |
-| `src/capabilities/dashboard/interface/http/tests/dashboard.controllers.* + helper` | n/a | 341 total | n/a | partitioned by behavior family (`operational-summary`, `monthly-chart`, `navbar-summary`) | melhorou |
-| `src/capabilities/dashboard/interface/http/dashboard.controllers.ts` | ALERTA / 264 | ALERTA / 264 | 0 | no functional change this round | neutro |
-| `src/modules/process/ui/screens/DashboardScreen.tsx` | CRITICO / 661 | CRITICO / 661 | 0 | no extraction in this round | neutro |
-| `src/capabilities/search/ui/SearchOverlay.panel.tsx` | CRITICO / 547 | CRITICO / 547 | 0 | no extraction in this round | neutro |
-| `src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts` | CRITICO / 392 | CRITICO / 392 | 0 | no change in this round | neutro |
+|`src/modules/process/ui/validation/processApi.validation.ts`|OK / 47|OK / 22|-25|removed API helper re-exports; kept only UI input mapping|resolvido|
+|`src/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel.ts`|CRITICO / 566|OK / 120|-446|extracted grouping/sorting/message-contract/shared-model helpers|resolvido|
+|`src/capabilities/dashboard/interface/http/tests/dashboard.controllers.test.ts`|CRITICO / 409|removed|n/|replaced by behavior-family suites + helper harness|melhorou|
+|`src/capabilities/dashboard/interface/http/tests/dashboard.controllers.* + helper`|n/|341 total|n/|partitioned by behavior family (`operational-summary`, `monthly-chart`, `navbar-summary`)|melhorou|
+|`src/capabilities/dashboard/interface/http/dashboard.controllers.ts`|ALERTA / 264|ALERTA / 264|0|no functional change this round|neutro|
+|`src/modules/process/ui/screens/DashboardScreen.tsx`|CRITICO / 661|CRITICO / 661|0|no extraction in this round|neutro|
+|`src/capabilities/search/ui/SearchOverlay.panel.tsx`|CRITICO / 547|CRITICO / 547|0|no extraction in this round|neutro|
+|`src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts`|CRITICO / 392|CRITICO / 392|0|no change in this round|neutro|
 
 No hotspot got worse in this round.
 
