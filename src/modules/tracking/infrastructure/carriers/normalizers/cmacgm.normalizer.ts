@@ -16,7 +16,7 @@ import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/carriers/sche
 import { CalendarDate } from '~/shared/time/calendar-date'
 import { systemClock } from '~/shared/time/clock'
 import { parseInstantFromIso } from '~/shared/time/parsing'
-import { parseIsoOrRfcString, parseMsDateString } from '~/shared/utils/parseDate'
+import { parseMsDateString } from '~/shared/utils/parseDate'
 
 /**
  * Maps CMA-CGM `StatusDescription` strings to canonical ObservationType.
@@ -99,10 +99,34 @@ const MONTHS_BY_ABBREVIATION = new Map<string, number>([
 ])
 
 const CMA_DATE_TEXT_PATTERN = /(?:[A-Z]{3,9}[,\s]+)?(\d{1,2})-([A-Z]{3})-(\d{4})/iu
+const CMA_ISO_DATE_PREFIX_PATTERN = /^(\d{4})-(\d{2})-(\d{2})(?:\b|T)/u
 const CMA_TIME_TEXT_PATTERN = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/iu
 
+function toTrimmedOrNull(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length === 0 ? null : trimmed
+}
+
 function parseCmaCgmCalendarDate(value: string): CalendarDate | null {
-  const match = value.trim().match(CMA_DATE_TEXT_PATTERN)
+  const normalized = value.trim()
+  const isoPrefixMatch = normalized.match(CMA_ISO_DATE_PREFIX_PATTERN)
+  if (
+    isoPrefixMatch &&
+    isoPrefixMatch[1] !== undefined &&
+    isoPrefixMatch[2] !== undefined &&
+    isoPrefixMatch[3] !== undefined
+  ) {
+    try {
+      return CalendarDate.fromIsoDate(
+        `${isoPrefixMatch[1]}-${isoPrefixMatch[2]}-${isoPrefixMatch[3]}`,
+      )
+    } catch {
+      return null
+    }
+  }
+
+  const match = normalized.match(CMA_DATE_TEXT_PATTERN)
   if (!match || match[1] === undefined || match[2] === undefined || match[3] === undefined) {
     return null
   }
@@ -140,6 +164,18 @@ function parseCmaCgmMeridiemTime(value: string): string | null {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00.000`
 }
 
+function parseCmaCgmExplicitAbsoluteInstant(
+  value: string | null | undefined,
+): ReturnType<typeof parseInstantFromIso> {
+  const normalized = toTrimmedOrNull(value)
+  if (normalized === null) return null
+
+  const msDate = parseMsDateString(normalized)
+  if (msDate !== null) return msDate
+
+  return parseInstantFromIso(normalized)
+}
+
 /**
  * Parse CMA-CGM date strings.
  *
@@ -153,36 +189,13 @@ function parseCmaCgmDate(
   locationCode: string | null | undefined,
   locationDisplay: string | null | undefined,
 ): Pick<ObservationDraft, 'event_time' | 'raw_event_time' | 'event_time_source'> {
-  const rawEventTime = composeTrackingRawEventTime(dateStringField, timeStringField)
-
-  // Prefer the provider absolute timestamp when it exists.
-  if (dateField) {
-    const ms = parseMsDateString(dateField)
-    if (ms) {
-      return buildAbsoluteTrackingTemporal({
-        instant: ms,
-        rawEventTime: rawEventTime ?? dateField.trim(),
-      })
-    }
-
-    const d = parseIsoOrRfcString(dateField)
-    if (d) {
-      return buildAbsoluteTrackingTemporal({
-        instant: d,
-        rawEventTime: rawEventTime ?? dateField.trim(),
-      })
-    }
-  }
+  const normalizedDateField = toTrimmedOrNull(dateField)
+  const rawEventTime =
+    composeTrackingRawEventTime(dateStringField, timeStringField) ?? normalizedDateField
+  const normalizedLocationCode = toTrimmedOrNull(locationCode)?.toUpperCase() ?? null
+  const normalizedLocationDisplay = toTrimmedOrNull(locationDisplay)
 
   if (dateStringField) {
-    const explicitInstant = parseInstantFromIso(dateStringField.trim())
-    if (explicitInstant) {
-      return buildAbsoluteTrackingTemporal({
-        instant: explicitInstant,
-        rawEventTime: rawEventTime ?? dateStringField.trim(),
-      })
-    }
-
     const parsedDate = parseCmaCgmCalendarDate(dateStringField)
     if (parsedDate) {
       if (timeStringField) {
@@ -190,20 +203,28 @@ function parseCmaCgmDate(
         if (parsedTime) {
           return buildLocalDateTimeTrackingTemporal({
             localDateTime: `${parsedDate.toIsoDate()}T${parsedTime}`,
-            rawEventTime: rawEventTime ?? dateStringField.trim(),
-            locationCode,
-            locationDisplay,
+            rawEventTime,
+            locationCode: normalizedLocationCode,
+            locationDisplay: normalizedLocationDisplay,
           })
         }
       }
 
       return buildDateOnlyTrackingTemporal({
         date: parsedDate,
-        rawEventTime: rawEventTime ?? dateStringField.trim(),
-        locationCode,
-        locationDisplay,
+        rawEventTime,
+        locationCode: normalizedLocationCode,
+        locationDisplay: normalizedLocationDisplay,
       })
     }
+  }
+
+  const explicitAbsoluteInstant = parseCmaCgmExplicitAbsoluteInstant(normalizedDateField)
+  if (explicitAbsoluteInstant !== null) {
+    return buildAbsoluteTrackingTemporal({
+      instant: explicitAbsoluteInstant,
+      rawEventTime,
+    })
   }
 
   return {
@@ -277,7 +298,7 @@ export function normalizeCmaCgmSnapshot(snapshot: Snapshot): ObservationDraft[] 
   }
 
   const cmacgmData = parseResult.data
-  const containerNumber = cmacgmData.ContainerReference?.toUpperCase() ?? 'UNKNOWN'
+  const containerNumber = toTrimmedOrNull(cmacgmData.ContainerReference)?.toUpperCase() ?? 'UNKNOWN'
 
   const drafts: ObservationDraft[] = []
 
