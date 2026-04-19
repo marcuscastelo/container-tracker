@@ -8,6 +8,6 @@ export function recordReleaseFailure(command: {
   readonly crashLoopWindowMs: number
   readonly crashLoopThreshold: number
   readonly maxActivationFailures: number
-}) {
+}): ReturnType<typeof withRecordedFailure> {
   return withRecordedFailure(command)
 }
