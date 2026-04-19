@@ -120,6 +120,19 @@ export function compareSeriesObservationsByObservedAt(
   return left.created_at.localeCompare(right.created_at)
 }
 
+function compareActualObservationsForPrimarySelection(
+  left: ObservationLike,
+  right: ObservationLike,
+): number {
+  const observedAtCompare = compareSeriesObservationsByObservedAt(left, right)
+  if (observedAtCompare !== 0) return observedAtCompare
+
+  if (left.event_time === null && right.event_time !== null) return -1
+  if (left.event_time !== null && right.event_time === null) return 1
+
+  return compareTrackingTemporalValues(left.event_time, right.event_time)
+}
+
 export function pickLatestObservedExpected<T extends ObservationLike>(
   series: readonly T[],
 ): T | null {
@@ -141,7 +154,7 @@ export function pickLatestObservedExpected<T extends ObservationLike>(
  * This function implements the safe-first classification rules:
  * 1. Detects EXPECTED entries after ACTUAL (redundant/invalid)
  * 2. Detects multiple ACTUAL entries (conflict)
- * 3. Selects safe-first primary (latest ACTUAL, or latest observed EXPECTED while valid)
+ * 3. Selects safe-first primary (latest observed ACTUAL, or latest observed EXPECTED while valid)
  * 4. Assigns appropriate labels to all observations
  *
  * @param series - Array of observations in the same series (same semantic milestone)
@@ -171,16 +184,12 @@ export function classifySeries<T extends ObservationLike>(
   const conflict = resolveConflict(actuals, hasActualConflict)
 
   // Safe-first primary selection
+  // For ACTUAL conflicts, primary means latest observed carrier revision.
   let primaryActual: T | null = null
   if (actuals.length > 0) {
-    primaryActual = actuals.reduce((latest, current) => {
-      if (current.event_time === null && latest.event_time !== null) return latest
-      if (current.event_time !== null && latest.event_time === null) return current
-      const eventTimeCompare = compareTrackingTemporalValues(current.event_time, latest.event_time)
-      if (eventTimeCompare > 0) return current
-      if (eventTimeCompare < 0) return latest
-      return current.created_at > latest.created_at ? current : latest
-    })
+    primaryActual = actuals.reduce((latest, current) =>
+      compareActualObservationsForPrimarySelection(current, latest) > 0 ? current : latest,
+    )
   }
 
   const lastActualTime = primaryActual?.event_time ?? null
@@ -265,7 +274,7 @@ export function classifySeries<T extends ObservationLike>(
   // Determine primary for main timeline
   let primary: T | null = null
   if (primaryActual) {
-    // Rule: If any ACTUAL exists, primary = primaryActual (latest)
+    // Rule: If any ACTUAL exists, primary = latest observed ACTUAL.
     primary = primaryActual
   } else {
     // Rule: Use latest observed EXPECTED only while it is still active.

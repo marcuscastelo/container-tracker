@@ -318,6 +318,67 @@ describe('buildTrackingPredictionHistoryReadModel', () => {
     ])
   })
 
+  it('marks the latest observed ACTUAL correction as current even when its event_time is older', () => {
+    const predictionHistory = requirePredictionHistory(
+      [
+        makeObservation({
+          id: 'arrival-actual-latest-event-time',
+          type: 'ARRIVAL',
+          event_time_type: 'ACTUAL',
+          event_time: '2026-05-12',
+          vessel_name: 'MSC BIANCA SILVIA',
+          voyage: 'UX614R',
+          location_code: 'BRSSZ',
+          location_display: 'SANTOS, BR',
+          created_at: '2026-04-03T09:00:00.000Z',
+        }),
+        makeObservation({
+          id: 'arrival-actual-latest-observed',
+          type: 'ARRIVAL',
+          event_time_type: 'ACTUAL',
+          event_time: '2026-05-10',
+          vessel_name: 'MSC BIANCA SILVIA',
+          voyage: 'UX614R',
+          location_code: 'BRSSZ',
+          location_display: 'SANTOS, BR',
+          created_at: '2026-04-04T09:00:00.000Z',
+        }),
+      ],
+      'arrival-actual-latest-observed',
+      '2026-04-05T00:00:00.000Z',
+    )
+
+    expect(predictionHistory.header).toEqual({
+      tone: 'neutral',
+      summary_kind: 'HISTORY_UPDATED',
+      current_version_id: 'arrival-actual-latest-observed',
+      previous_version_id: null,
+      original_version_id: 'arrival-actual-latest-event-time',
+      reason_kind: 'ESTIMATE_CHANGED',
+    })
+    expect(
+      predictionHistory.versions.map((version) => ({
+        id: version.id,
+        isCurrent: version.is_current,
+        eventTime: version.event_time,
+        state: version.version_state,
+      })),
+    ).toEqual([
+      {
+        id: 'arrival-actual-latest-observed',
+        isCurrent: true,
+        eventTime: { kind: 'date', value: '2026-05-10', timezone: null },
+        state: 'CONFIRMED',
+      },
+      {
+        id: 'arrival-actual-latest-event-time',
+        isCurrent: false,
+        eventTime: { kind: 'date', value: '2026-05-12', timezone: null },
+        state: 'CONFIRMED_BEFORE',
+      },
+    ])
+  })
+
   it('marks non-conflicting voyage substitutions as substituted without a conflict banner', () => {
     const predictionHistory = requirePredictionHistory(
       [

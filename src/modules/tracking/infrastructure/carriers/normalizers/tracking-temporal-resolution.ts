@@ -30,6 +30,7 @@ const LOCATION_CODE_TIMEZONES: Readonly<Record<string, string>> = {
   ESZAZ: 'Europe/Madrid',
   ESTUD: 'Europe/Madrid',
   ITNAP: 'Europe/Rome',
+  LBBEY: 'Asia/Beirut',
   MAPTM: 'Africa/Casablanca',
   PKKHI: 'Asia/Karachi',
   PKLHE: 'Asia/Karachi',

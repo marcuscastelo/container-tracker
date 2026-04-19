@@ -1,5 +1,5 @@
-import type { PredictionHistorySource } from '~/modules/process/ui/mappers/predictionHistory.ui-mapper'
 import type { AlertIncidentVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
+import type { PredictionHistorySource } from '~/modules/process/ui/viewmodels/prediction-history.vm'
 import type { ContainerObservationVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
 import {

@@ -58,6 +58,12 @@ function isSuccessfulCarrierEnvelope(envelope: {
 }
 
 async function postOneSearch(containerNumber: string): Promise<OneHttpResult> {
+  console.log('[tracking:one] request', {
+    endpoint: 'search',
+    method: 'POST',
+    containerNumber,
+  })
+
   const response = await axios.post(
     `${ONE_BASE_URL}/api/v1/edh/containers/track-and-trace/search`,
     {
@@ -85,6 +91,7 @@ async function postOneSearch(containerNumber: string): Promise<OneHttpResult> {
     endpoint: 'search',
     containerNumber,
     statusCode: response.status,
+    ok: response.status >= 200 && response.status < 300,
   })
 
   return {
@@ -97,6 +104,13 @@ async function getOneEndpoint(command: {
   readonly endpoint: 'voyage-list' | 'cop-events'
   readonly params: Record<string, string>
 }): Promise<OneHttpResult> {
+  console.log('[tracking:one] request', {
+    endpoint: command.endpoint,
+    method: 'GET',
+    bookingNo: command.params.booking_no,
+    containerNumber: command.params.container_no ?? null,
+  })
+
   const response = await axios.get(
     `${ONE_BASE_URL}/api/v1/edh/${command.endpoint === 'voyage-list' ? 'vessel' : 'containers'}/track-and-trace/${command.endpoint}`,
     {
@@ -117,6 +131,7 @@ async function getOneEndpoint(command: {
     bookingNo: command.params.booking_no,
     containerNumber: command.params.container_no ?? null,
     statusCode: response.status,
+    ok: response.status >= 200 && response.status < 300,
   })
 
   return {

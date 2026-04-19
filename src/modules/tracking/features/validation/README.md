@@ -1,12 +1,12 @@
 # Tracking Validation Plugin Framework
 
-This slice owns pluginable tracking validation detection inside the Tracking BC.
+This slice owns pluggable tracking validation detection inside Tracking BC.
 
 It exists to answer:
 
-> Is the system currently lacking enough confidence in its own tracking interpretation?
+> Is system currently lacking enough confidence in its own tracking interpretation?
 
-It does not create a new status, rewrite facts, or move semantics to UI/capabilities.
+It does not create new status, rewrite facts, or move semantics to UI/capabilities.
 
 ## Where Things Live
 
@@ -24,28 +24,28 @@ It does not create a new status, rewrite facts, or move semantics to UI/capabili
 - `EXPECTED_PLAN_NOT_RECONCILABLE`
 - `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
 
-These detectors are the agreed V1-V1.2 validation set. Final polish phases must keep them on the same registry path instead of opening any parallel wiring.
+These detectors are agreed V1-V1.2 validation set. Final polish phases must keep them on same registry path instead of opening any parallel wiring.
 
-Container reuse after strong completion is no longer a tracking-validation detector. It is handled by the dedicated containment slice so the product surfaces one informational concept instead of overlapping warning semantics.
+Container reuse after strong completion is no longer tracking-validation detector. It is handled by dedicated containment slice so product surfaces one informational concept instead of overlapping warning semantics.
 
 ## Contract Ownership By Layer
 
 - Domain-only detector output: `TrackingValidationFinding`
 - Application/read-model display contract: `TrackingValidationDisplayIssue`
-- HTTP/UI consume only compact summaries derived from the application projection
+- HTTP/UI consume only compact summaries derived from application projection
 
-`TrackingValidationDisplayIssue` is intentionally not a detector/domain contract. It exists to expose compact product-safe explanation metadata without leaking detector internals across BC boundaries.
+`TrackingValidationDisplayIssue` is intentionally not detector/domain contract. It exists to expose compact product-safe explanation metadata without leaking detector internals across BC boundaries.
 
 ## Detector Conventions
 
 - Add one detector per file in `domain/detectors/`.
 - Register it explicitly in `domain/detectors/trackingValidationDetectors.ts`.
-- `detectorId` and `code` must be the same value.
+- `detectorId` and `code` must be same value.
 - `detectorId` and `code` must use `UPPER_SNAKE_CASE`.
 - `summaryKey` must stay under `tracking.validation.*`.
-- `detectorVersion` must be explicit and stable for the detector implementation.
+- `detectorVersion` must be explicit and stable for detector implementation.
 - `affectedScope` must stay conservative.
-  If a new persisted scope is needed, add detector + code + DDL in the same phase.
+If new persisted scope is needed, add detector + code + DDL in same phase.
 
 ## Finding Contract
 
@@ -55,7 +55,7 @@ Important fields:
 
 - `evidenceSummary`: short, product-safe, lifecycle-safe summary text
 - `debugEvidence`: technical internal detail for troubleshooting only
-- `lifecycleKey`: stable issue identity owned by the detector
+- `lifecycleKey`: stable issue identity owned by detector
 - `stateFingerprint`: stable detector-owned fingerprint for transition tracking
 
 Rules:
@@ -67,14 +67,14 @@ Rules:
 
 ## Severity Guidance
 
-- Use `ADVISORY` when the reading is suspicious but still plausibly usable.
-- Use `CRITICAL` when there is a strong chance the current tracking interpretation is dangerously wrong.
+- Use `ADVISORY` when reading is suspicious but still plausibly usable.
+- Use `CRITICAL` when there is strong chance current tracking interpretation is dangerously wrong.
 - Do not escalate severity for visual emphasis alone.
-- Severity is domain-owned. UI only maps the compact severity already derived.
+- Severity is domain-owned. UI only maps compact severity already derived.
 
 ## Affected Scope Guidance
 
-Use the narrowest scope that remains semantically true.
+Use narrowest scope that remains semantically true.
 
 Current persisted scopes are intentionally conservative:
 
@@ -90,14 +90,14 @@ Do not invent new scopes in UI or capability code.
 ## What Is Forbidden
 
 - Deriving validation issues in UI, capability, route, or dev preview code
-- Bypassing the registry with ad hoc detector execution
+- Bypassing registry with ad hoc detector execution
 - Persisting debug payloads or raw snapshots as validation lifecycle state
 - Hiding conflicting facts to reduce noise
-- Turning this slice into a generic rules engine or shared kernel
+- Turning this slice into generic rules engine or shared kernel
 
 ## How To Add a Detector
 
-1. Create a new detector file in `domain/detectors/`.
+1. Create new detector file in `domain/detectors/`.
 2. Use only `TrackingValidationContext` and tracking-owned canonical data.
 3. Return findings with:
    - `detectorId === code`
@@ -105,7 +105,7 @@ Do not invent new scopes in UI or capability code.
    - stable `stateFingerprint`
    - safe `evidenceSummary`
    - optional `debugEvidence`
-4. Register the detector in `domain/detectors/trackingValidationDetectors.ts`.
+4. Register detector in `domain/detectors/trackingValidationDetectors.ts`.
 5. Add detector unit tests.
 6. Add regression coverage for aggregation and non-leak where relevant.
 

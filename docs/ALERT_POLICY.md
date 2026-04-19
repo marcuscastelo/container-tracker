@@ -83,7 +83,7 @@ Alerts must prioritize:
 - Deterministic behavior
 - No silent suppression of data
 
-Status-neutral operational events (for example `TERMINAL_MOVE`) are still facts, but they must not independently advance container status or be treated as lifecycle completion.
+Status-neutral operational events (for example `TERMINAL_MOVE`) are still facts, but they must not independently advance container status or be treated lifecycle completion.
 
 ---
 
@@ -91,6 +91,6 @@ Status-neutral operational events (for example `TERMINAL_MOVE`) are still facts,
 
 Alert semantics remain backend-derived (fact/monitoring and severity rules).
 
-In shipment view, alerts are supporting operational metadata and should be rendered in supporting panels/sidebar, without interrupting the primary chronological timeline flow.
+In shipment view, alerts are supporting operational metadata and should be rendered in supporting panels/sidebar, without interrupting primary chronological timeline flow.
 
 UI may change visual treatment, but must not recalculate alert semantics.

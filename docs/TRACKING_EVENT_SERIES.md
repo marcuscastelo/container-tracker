@@ -9,14 +9,14 @@ Carrier APIs frequently:
 - Emit ACTUAL events after multiple EXPECTED updates
 - Occasionally duplicate ACTUAL events
 
-The system must:
+system must:
 
 - Preserve full history
 - Display only one “primary” event per semantic step
-- Avoid confusing the operator
+- Avoid confusing operator
 - Remain explainable
 
-This document formalizes the Event Series model.
+This document formalizes Event Series model.
 
 ---
 
@@ -24,7 +24,7 @@ This document formalizes the Event Series model.
 
 ### Observation
 
-A normalized fact derived from snapshot ingestion.
+normalized fact derived from snapshot ingestion.
 
 Key fields:
 
@@ -37,12 +37,12 @@ Observations are immutable and append-only.
 
 ### Observation Type Nuance: `TERMINAL_MOVE`
 
-`TERMINAL_MOVE` is a canonical observation type for internal terminal operations
+`TERMINAL_MOVE` is canonical observation type for internal terminal operations
 (for example positioned in/out during transshipment).
 
 Rules:
 
-- It is preserved as fact in timeline history.
+- It is preserved fact in timeline history.
 - It is status-neutral by default (does not advance lifecycle stage by itself).
 - It must not be promoted to ARRIVAL/LOAD by UI interpretation.
 
@@ -50,7 +50,7 @@ Rules:
 
 ### Series
 
-A **Series** is a group of Observations referring to the same semantic milestone.
+**Series** is group of Observations referring to same semantic milestone.
 
 Series key is derived from:
 
@@ -58,7 +58,7 @@ Series key is derived from:
 
 Example:
 
-- LOAD at port A
+- LOAD at port
 - Multiple EXPECTED LOAD updates
 - Later ACTUAL LOAD
 
@@ -68,7 +68,7 @@ All belong to one series.
 
 ## 3. Valid Series Shapes
 
-A series may contain:
+series may contain:
 
 1. Single ACTUAL
 2. Single EXPECTED
@@ -84,12 +84,16 @@ A series may contain:
 Algorithm:
 
 1. If any ACTUAL exists:
-   - Select the latest ACTUAL as primary.
+   - Select latest observed ACTUAL primary.
+   - "Latest observed" means observation recency (`created_at`/observed-at), not
+     the largest ACTUAL event date.
+   - If ACTUAL observed-at ties, use `event_time` deterministic secondary
+     tiebreak.
 2. Else:
-   - Select the latest observed EXPECTED revision as primary only while it is non-expired.
+   - Select latest observed EXPECTED revision primary only while it is non-expired.
    - "Latest observed" means observation recency (`created_at`/observed-at), not
      the largest predicted event date.
-   - Do not fall back to an older EXPECTED revision just because it has a later
+   - Do not fall back to older EXPECTED revision because it has later
      predicted event date.
 
 This ensures monotonic correctness and operator safety.
@@ -98,7 +102,7 @@ This ensures monotonic correctness and operator safety.
 
 ## 5. Derived States
 
-Each observation is classified as:
+Each observation is classified:
 
 - ACTUAL
 - ACTIVE_EXPECTED
@@ -117,8 +121,8 @@ Rules:
 
 If multiple ACTUAL events exist in one series:
 
-- Latest ACTUAL is primary
-- Series marked as conflicted
+- Latest observed ACTUAL is primary
+- Series marked conflicted
 - Data alert may be emitted
 
 System must never discard conflicting ACTUAL facts.
@@ -142,8 +146,8 @@ UI decides presentation with boundary constraints:
 
 - UI may format and visually group provided read-model data.
 - UI must not recalculate primary selection or series classification.
-- Shipment view should keep chronology as primary (timeline-first) and keep supporting metadata in sidebar panels.
-- When timeline read models expose operational grouping (for example voyage/transshipment blocks), UI should preserve that grouping instead of flattening into a generic event list.
+- Shipment view should keep chronology primary (timeline-first) and keep supporting metadata in sidebar panels.
+- When timeline read models expose operational grouping (for example voyage/transshipment blocks), UI should preserve that grouping instead of flattening into generic event list.
 
 Reference:
 
@@ -153,9 +157,9 @@ Reference:
 
 ## 8. Transshipment Timeline Example
 
-A realistic transshipment sequence may appear as:
+realistic transshipment sequence may appear:
 
-- DISCHARGE (vessel A)
+- DISCHARGE (vessel)
 - TERMINAL_MOVE
 - TERMINAL_MOVE
 - LOAD (vessel B)

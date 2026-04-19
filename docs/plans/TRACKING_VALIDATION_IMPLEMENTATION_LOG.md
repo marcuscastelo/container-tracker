@@ -18,32 +18,32 @@
 - Em andamento:
   - nenhuma frente em andamento nesta fase
 - Falta:
-  - iniciar a Fase 3 em cima da base pluginável já consolidada
+  - iniciar Fase 3 em cima da base pluginável já consolidada
 
 ## A.1 Kickoff da Fase 2
 - Entendimento inicial:
-  - a Fase 2 pluginável combina a UI mínima funcional real com o primeiro detector real, sem abrir caminho paralelo fora do registry
-  - o detector precisa nascer no Tracking BC, operando por série e preservando a regra safe-first
+  - Fase 2 pluginável combina UI mínima funcional real com primeiro detector real, sem abrir caminho paralelo fora do registry
+  - detector precisa nascer no Tracking BC, operando por série e preservando regra safe-first
   - dashboard deve continuar leve e shipment deve continuar timeline-first
 - Status herdado da Fase 1:
   - plumbing E2E já existe até DTO/VM/UI
-  - o registry está integrado, mas ainda vazio
-  - a UI já tem slots reais para a feature, porém com copy provisória e sem detector ativo
+  - registry está integrado, mas ainda vazio
+  - UI já tem slots reais para feature, porém com copy provisória e sem detector ativo
 - Plano cirúrgico desta fase:
   - alinhar `TrackingValidationSeverity`, `TrackingValidationAffectedScope` e `TrackingValidationFinding` ao contrato canônico mínimo da V1
   - implementar `CONFLICTING_CRITICAL_ACTUALS` como plugin isolado em `modules/tracking/features/validation/domain/detectors`
-  - registrar o detector apenas via registry explícito
+  - registrar detector via registry explícito
   - manter DTO/VM compactos, mapeando severidade interna para severity presentation-only na fronteira HTTP
-  - consolidar o naming final em dashboard, shipment header e container-level chip após QA visual em tela real
+  - consolidar naming final em dashboard, shipment header e container-level chip após QA visual em tela real
 
 ## B. Decisões fechadas
 - Tracking continua dono exclusivo da semântica de validation issues.
-- O framework pluginável é local ao Tracking BC, explícito e determinístico.
-- O registry de produção nasce vazio na Fase 1; não há detector real ativo ainda.
-- A UI recebe apenas agregados mínimos; findings completos continuam internos ao Tracking.
-- O dashboard recebe somente `has_issues`, `highest_severity` e `affected_container_count`.
-- O shipment detail recebe resumo de processo e resumo por container; não recebe findings.
-- A UI de shipment continua timeline-first; validation aparece só como suporte no header/container selector.
+- framework pluginável é local ao Tracking BC, explícito e determinístico.
+- registry de produção nasce vazio na Fase 1; não há detector real ativo ainda.
+- UI recebe agregados mínimos; findings completos continuam internos ao Tracking.
+- dashboard recebe somente `has_issues`, `highest_severity` e `affected_container_count`.
+- shipment detail recebe resumo de processo e resumo por container; não recebe findings.
+- UI de shipment continua timeline-first; validation aparece só como suporte no header/container selector.
 - Não foi criado novo status canônico, novo alert system nem persistência de lifecycle de validation.
 
 ## C. Arquivos tocados
@@ -83,7 +83,7 @@
   - `src/modules/process/ui/components/ContainerSelector.tsx`
   - `src/routes/dev/tracking-scenarios.tsx`
   - `src/locales/pt-BR.json`
-  - suites de teste afetadas em tracking/process/UI para cobrir o novo contrato
+  - suites de teste afetadas em tracking/process/UI para cobrir novo contrato
 
 ## D. Contratos criados
 - Tracking:
@@ -104,9 +104,9 @@
   - `ProcessDetailResponse.containers[].tracking_validation`
 
 ## E. Riscos / dívidas locais
-- O registry vazio garante contrato e wiring, mas não cobre cenários positivos em runtime fora de testes.
-- A Fase 1 entrega só agregados; quando detectores reais entrarem, será preciso cuidar do payload do shipment para não vazar details pesados cedo demais.
-- A semântica ainda não possui lifecycle persistido; Fase 2+ precisa manter histórico sem apagar fatos.
+- registry vazio garante contrato e wiring, mas não cobre cenários positivos em runtime fora de testes.
+- Fase 1 entrega só agregados; quando detectores reais entrarem, será preciso cuidar do payload do shipment para não vazar details pesados cedo demais.
+- semântica ainda não possui lifecycle persistido; Fase 2+ precisa manter histórico sem apagar fatos.
 - Qualquer BC/capability que monte `ProcessResponse` manualmente precisa continuar incluindo `tracking_validation`.
 
 ## F. Testes
@@ -156,11 +156,11 @@
 - Problemas encontrados:
   - nenhum problema visual/funcional específico da Fase 1
 - Sinal adicional:
-  - console do browser sem erros durante a passada manual
+  - console do browser sem erros durante passada manual
 
 ## H. Próximo passo recomendado
-- Iniciar Fase 2 implementando o primeiro detector real no registry explícito.
-- Manter findings internos ao Tracking enquanto valida o shape/custo do shipment payload.
+- Iniciar Fase 2 implementando primeiro detector real no registry explícito.
+- Manter findings internos ao Tracking enquanto valida shape/custo do shipment payload.
 - Definir estratégia de lifecycle/histórico sem apagar fatos nem esconder conflitos históricos.
 
 ## I. Fechamento da Fase 2
@@ -175,33 +175,33 @@
 ### I.1 O que foi implementado
 - Tracking BC:
   - `conflictingCriticalActuals.detector.ts` criado no slice pluginável e ligado via `domain/detectors/index.ts`
-  - regra conservadora: conflita apenas ACTUALs críticos irreconciliáveis nas séries `ARRIVAL | DISCHARGE | DELIVERY | EMPTY_RETURN`
-  - um finding por série conflitada, sem apagar facts, sem esconder conflito histórico e sem mexer na primary selection safe-first
+  - regra conservadora: conflita ACTUALs críticos irreconciliáveis nas séries `ARRIVAL | DISCHARGE | DELIVERY | EMPTY_RETURN`
+  - finding por série conflitada, sem apagar facts, sem esconder conflito histórico e sem mexer na primary selection safe-first
 - Contrato canônico:
-  - `TrackingValidationSeverity` passou a usar `ADVISORY | CRITICAL`
-  - `TrackingValidationAffectedScope` passou a incluir `SERIES` no contrato interno
-  - `TrackingValidationFinding` passou a carregar `detectorVersion`, `summaryKey`, `evidenceSummary` e `isActive`
-  - o registry passou a validar `detectorId` + `detectorVersion`
-  - a derivação passou a resumir apenas findings ativos, preservando a lista completa internamente
+  - `TrackingValidationSeverity` passou usar `ADVISORY | CRITICAL`
+  - `TrackingValidationAffectedScope` passou incluir `SERIES` no contrato interno
+  - `TrackingValidationFinding` passou carregar `detectorVersion`, `summaryKey`, `evidenceSummary` e `isActive`
+  - registry passou validar `detectorId` + `detectorVersion`
+  - derivação passou resumir findings ativos, preservando lista completa internamente
 - Fronteiras:
   - HTTP segue presentation-oriented, mapeando `CRITICAL -> danger` e `ADVISORY -> warning`
   - VM permaneceu leve e sem semântica adicional
-  - shipment continuou timeline-first; dashboard continuou usando apenas agregado mínimo
+  - shipment continuou timeline-first; dashboard continuou usando agregado mínimo
 - UI:
-  - dashboard mostra o chip real quando o processo contém container com validation issue
-  - shipment header mostra o banner agregador acima da timeline
-  - selector/lista de containers mostra o chip do container afetado
-  - o styling visual do badge/banner/container chip foi centralizado em presenter presentation-only
+  - dashboard mostra chip real quando processo contém container com validation issue
+  - shipment header mostra banner agregador acima da timeline
+  - selector/lista de containers mostra chip do container afetado
+  - styling visual do badge/banner/container chip foi centralizado em presenter presentation-only
 
 ### I.2 Naming escolhido
 - Label final:
   - `Validação necessária`
 - Motivo da escolha:
-  - foi o melhor equilíbrio entre clareza semântica e compacidade visual nas telas reais
-  - diferencia validation issue de alertas operacionais; `Atenção necessária` ficou vago demais e conflitou semanticamente com o universo de alertas
+  - foi melhor equilíbrio entre clareza semântica e compacidade visual nas telas reais
+  - diferencia validation issue de alertas operacionais; `Atenção necessária` ficou vago demais e conflitou semanticamente com universo de alertas
   - evita leitura de backlog/fila implícita; `Validação pendente` parecia “pendência operacional”, não “conflito de leitura atual”
-  - os rótulos `Rastreamento requer validação` e `Rastreamento requer atenção` ficaram longos demais para o chip de container/mobile
-  - o rótulo escolhido coube sem quebra problemática no banner do shipment e no chip do container em desktop e mobile
+  - rótulos `Rastreamento requer validação` e `Rastreamento requer atenção` ficaram longos demais para chip de container/mobile
+  - rótulo escolhido coube sem quebra problemática no banner do shipment e no chip do container em desktop e mobile
 
 ### I.3 Arquivos tocados na Fase 2
 - Criados:
@@ -254,9 +254,9 @@
   - scenario-lab `discharge_basic`
   - shipment real: `/shipments/75616f85-4345-4024-9b03-933b64581b81`
 - Validações executadas:
-  - dashboard real mostra o processo com chip de validation issue
+  - dashboard real mostra processo com chip de validation issue
   - shipment real com issue mostra banner agregador acima da timeline
-  - container afetado mostra chip próprio sem poluir a timeline
+  - container afetado mostra chip próprio sem poluir timeline
   - shipment controle não mostra banner/chip de validation issue
   - mobile mantém banner/chip legíveis e sem quebra problemática no label escolhido
   - refresh/prefetch/reconciliação não apresentaram regressão perceptível na passada manual
@@ -269,17 +269,17 @@
   - `/tmp/phase2-shipment-control-mobile.png`
 
 ### I.6 Problemas encontrados
-- O Playwright MCP permitiu parte da inspeção inicial, mas passou a bloquear cliques/navegações locais no meio da validação
-- Houve também limitação do headless screenshot fallback para gerar uma matriz automática com os 5 labels em runtime
-- Mesmo com a limitação do tooling, a decisão final de naming foi fechada por inspeção manual nas telas reais de dashboard/shipment e pelo ajuste conservador ao espaço disponível em mobile/container chip
+- Playwright MCP permitiu parte da inspeção inicial, mas passou bloquear cliques/navegações locais no meio da validação
+- Houve também limitação do headless screenshot fallback para gerar matriz automática com 5 labels em runtime
+- Mesmo com limitação do tooling, decisão final de naming foi fechada por inspeção manual nas telas reais de dashboard/shipment e pelo ajuste conservador ao espaço disponível em mobile/container chip
 
 ### I.7 Checks finais
-- `pnpm check` verde em 2026-04-03 após a integração completa da Fase 2
+- `pnpm check` verde em 2026-04-03 após integração completa da Fase 2
 
 ## J. Próximo passo recomendado
-- Iniciar a Fase 3 adicionando novos detectores plugináveis sem abrir caminhos paralelos fora do registry
-- Definir o próximo incremento de lifecycle/histórico de validation issue mantendo os conflitos históricos visíveis
-- Avaliar se a próxima fase precisa expor detalhe adicional no shipment sem inflar o payload nem quebrar a filosofia timeline-first
+- Iniciar Fase 3 adicionando novos detectores plugináveis sem abrir caminhos paralelos fora do registry
+- Definir próximo incremento de lifecycle/histórico de validation issue mantendo conflitos históricos visíveis
+- Avaliar se próxima fase precisa expor detalhe adicional no shipment sem inflar payload nem quebrar filosofia timeline-first
 
 ## K. Kickoff da Fase 3
 - Data de início: 2026-04-03
@@ -287,17 +287,17 @@
 - Estado herdado das Fases 1 e 2:
   - framework pluginável do Tracking BC já está estável, explícito e determinístico
   - detector `CONFLICTING_CRITICAL_ACTUALS` já está ativo via registry, com payload público compacto preservado
-  - dashboard, shipment header e container chip já consomem apenas o agregado `tracking_validation`, sem findings brutos
+  - dashboard, shipment header e container chip já consomem agregado `tracking_validation`, sem findings brutos
   - naming visual já foi fechado em `Validação necessária`
 - Entendimento inicial:
-  - a Fase 3 precisa adicionar apenas o detector real `POST_COMPLETION_TRACKING_CONTINUED`
-  - o detector deve identificar tracking incompatível após encerramento forte (`DELIVERED` ou `EMPTY_RETURNED`) sem truncar fatos
-  - a cadeia pública deve continuar leve; findings completos permanecem internos ao Tracking
-  - shipment deve continuar timeline-first e o dashboard deve continuar recebendo só agregados mínimos
+  - Fase 3 precisa adicionar detector real `POST_COMPLETION_TRACKING_CONTINUED`
+  - detector deve identificar tracking incompatível após encerramento forte (`DELIVERED` ou `EMPTY_RETURNED`) sem truncar fatos
+  - cadeia pública deve continuar leve; findings completos permanecem internos ao Tracking
+  - shipment deve continuar timeline-first e dashboard deve continuar recebendo só agregados mínimos
 - Plano da Fase 3:
   - extrair helper semântico compartilhado no status domain para localizar marcos fortes e reduzir drift com `deriveStatus`
   - implementar `postCompletionTrackingContinued.detector.ts` como plugin isolado no slice `validation`
-  - registrar o detector apenas no registry explícito
+  - registrar detector no registry explícito
   - manter DTO/VM/UI sem expansão de payload por padrão
   - adicionar testes unitários do detector e ajustes leves nos testes de agregação/mappers
   - criar cenários de QA no scenario-lab para delivery + novo ciclo e empty return + novo ciclo
@@ -308,21 +308,21 @@
 - Escopo entregue:
   - detector pluginável real `POST_COMPLETION_TRACKING_CONTINUED` adicionado ao registry explícito do Tracking BC
   - helper semântico compartilhado extraído para localizar marcos fortes de encerramento sem drift com `deriveStatus`
-  - agregação container/processo mantida canônica e propagada até DTO/VM/UI sem inflar o contrato público
+  - agregação container/processo mantida canônica e propagada até DTO/VM/UI sem inflar contrato público
   - cenários de QA adicionados ao scenario-lab para validar continuação espúria após `DELIVERED` e `EMPTY_RETURNED`
 
 ### L.1 O que foi implementado
 - Tracking BC:
   - `postCompletionTrackingContinued.detector.ts` criado no slice pluginável e ligado via `domain/detectors/index.ts`
-  - regra conservadora: detecta apenas continuação objetivamente incompatível após encerramento forte
+  - regra conservadora: detecta continuação objetivamente incompatível após encerramento forte
   - findings permanecem internos ao Tracking e continuam resumidos publicamente como agregado compacto
 - Status / semântica de encerramento:
-  - `strongCompletionMilestone.ts` extraído para consolidar marcos fortes explícitos (`DELIVERY`, `EMPTY_RETURN`) e os fallbacks terminais por `GATE_OUT`
-  - `deriveStatus.ts` passou a reutilizar o helper compartilhado para evitar drift semântico entre status final e detector
+  - `strongCompletionMilestone.ts` extraído para consolidar marcos fortes explícitos (`DELIVERY`, `EMPTY_RETURN`) e fallbacks terminais por `GATE_OUT`
+  - `deriveStatus.ts` passou reutilizar helper compartilhado para evitar drift semântico entre status final e detector
   - fallback terminal por `GATE_OUT` deixa de se sustentar quando há continuação ACTUAL posterior do lifecycle
 - Fronteiras:
   - DTO/VM/UI públicos permaneceram compactos; nenhuma reason/detail extra foi exposta
-  - dashboard continua recebendo apenas o resumo mínimo `tracking_validation`
+  - dashboard continua recebendo resumo mínimo `tracking_validation`
   - shipment continua timeline-first com banner agregador já existente
 
 ### L.2 Arquivos tocados na Fase 3
@@ -369,7 +369,7 @@
   - `EMPTY_RETURNED` seguido de novo ciclo incompatível dispara
   - continuação legítima `DELIVERED -> EMPTY_RETURN` não dispara
   - dashboard continua recebendo agregado mínimo
-  - shipment continua recebendo detalhe suficiente apenas via agregado
+  - shipment continua recebendo detalhe suficiente via agregado
 
 ### L.5 QA manual realizado
 - Ambiente:
@@ -399,26 +399,26 @@
   - `phase3-shipment-empty-return-positive-desktop.png`
   - `phase3-shipment-empty-return-positive-mobile.png`
 - Comportamento observado:
-  - dashboard positivo mostra o chip `Validação necessária`
+  - dashboard positivo mostra chip `Validação necessária`
   - dashboard controle permanece limpo, sem chip extra
   - shipment positivo mostra banner agregador e chip no container afetado
   - timeline histórica continua visível e mantém leitura timeline-first
   - facts posteriores ao encerramento continuam visíveis; nada é truncado
   - mobile permaneceu legível, sem quebra relevante de layout
-  - detector da Fase 2 continuou funcional durante a passada manual
+  - detector da Fase 2 continuou funcional durante passada manual
 
 ### L.6 Problemas encontrados
-- O seed do cenário histórico `delivery_explicit` step 2 falhou em runtime com erro de persistência em `tracking_alerts.autoResolveMany`
-- O bloqueio não impactou o escopo da Fase 3 porque os cenários novos do scenario-lab cobriram o caso positivo e o controle necessários para a validação manual
+- seed do cenário histórico `delivery_explicit` step 2 falhou em runtime com erro de persistência em `tracking_alerts.autoResolveMany`
+- bloqueio não impactou escopo da Fase 3 porque cenários novos do scenario-lab cobriram caso positivo e controle necessários para validação manual
 
 ### L.7 Limitações intencionais
-- A Fase 3 não introduz corte manual, truncamento automático ou reassociação de processo/container
-- O payload público continua compacto e não expõe findings completos nem reason-specific UI
-- O banner/copy visual permanece genérico em `Validação necessária`; o motivo específico segue interno ao Tracking BC
+- Fase 3 não introduz corte manual, truncamento automático ou reassociação de processo/container
+- payload público continua compacto e não expõe findings completos nem reason-specific UI
+- banner/copy visual permanece genérico em `Validação necessária`; motivo específico segue interno ao Tracking BC
 
 ### L.8 Próximo passo recomendado para a Fase 4
-- Consolidar a severidade `ADVISORY | CRITICAL` como comportamento E2E real, preservando dashboard leve e shipment timeline-first
-- Avaliar se o shipment precisa de detalhe compacto adicional de motivo sem expor findings brutos nem abrir payload paralelo
+- Consolidar severidade `ADVISORY | CRITICAL` como comportamento E2E real, preservando dashboard leve e shipment timeline-first
+- Avaliar se shipment precisa de detalhe compacto adicional de motivo sem expor findings brutos nem abrir payload paralelo
 
 ## M. Kickoff da Fase 4
 - Data de início: 2026-04-03
@@ -429,19 +429,19 @@
   - `tracking_validation` público segue compacto em dashboard e shipment, sem findings brutos
   - naming visual já está fechado em `Validação necessária`
 - Entendimento inicial:
-  - a severidade interna já existe no domínio (`ADVISORY | CRITICAL`), mas ainda não está exercitada E2E com advisory real no runtime
-  - o dashboard ainda não recebe um sinal backend-derived de triagem que considere validation crítica sem empurrar composição para a UI
-  - a integração com alertas nesta fase deve permanecer apenas visual/operacional no dashboard; não haverá `TrackingAlert` novo nem lifecycle paralelo
+  - severidade interna já existe no domínio (`ADVISORY | CRITICAL`), mas ainda não está exercitada E2E com advisory real no runtime
+  - dashboard ainda não recebe sinal backend-derived de triagem que considere validation crítica sem empurrar composição para UI
+  - integração com alertas nesta fase deve permanecer visual/operacional no dashboard; não haverá `TrackingAlert` novo nem lifecycle paralelo
 - Plano da Fase 4:
-  - expandir o contexto pluginável com sinais derivados owned pelo Tracking validation, populados a partir de projeções canônicas já existentes
-  - adicionar um detector pluginável advisory mínimo e conservador para um subconjunto objetivo de `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
-  - manter os detectores críticos atuais intactos e cobertos por regressão
-  - preservar o contrato público de `tracking_validation` e acrescentar um único campo leve de triagem backend-derived no payload de processo/dashboard
-  - mapear esse novo sinal até VM e usar o campo pronto em row/filter/sort do dashboard, sem composição local na UI
-  - reforçar a diferença visual advisory vs critical em banner/chips sem mudar o naming nem poluir a timeline
+  - expandir contexto pluginável com sinais derivados owned pelo Tracking validation, populados partir de projeções canônicas já existentes
+  - adicionar detector pluginável advisory mínimo e conservador para subconjunto objetivo de `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+  - manter detectores críticos atuais intactos e cobertos por regressão
+  - preservar contrato público de `tracking_validation` e acrescentar único campo leve de triagem backend-derived no payload de processo/dashboard
+  - mapear esse novo sinal até VM e usar campo pronto em row/filter/sort do dashboard, sem composição local na UI
+  - reforçar diferença visual advisory vs critical em banner/chips sem mudar naming nem poluir timeline
 
 ### M.1 Implementação concluída
-- A severidade passou a atravessar a cadeia inteira de forma explícita:
+- severidade passou atravessar cadeia inteira de forma explícita:
   - detector pluginável
   - finding/sumário agregado
   - projection/read model
@@ -449,14 +449,14 @@
   - mapper UI
   - ViewModel
   - rendering final
-- O contexto pluginável recebeu sinais derivados owned pelo Tracking BC via `trackingValidationContext.signals`, sem importar read models de process para o domínio.
-- Foi adicionado o detector advisory mínimo `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`, limitado a um subconjunto objetivo de inconsistência canônica de timeline marítima pós-chegada.
-- Os detectores críticos herdados (`CONFLICTING_CRITICAL_ACTUALS` e `POST_COMPLETION_TRACKING_CONTINUED`) permaneceram ativos e cobertos por regressão.
-- O dashboard passou a receber `attention_severity` como sinal backend-derived leve:
-  - `CRITICAL` em validation eleva a triagem visual para `danger`
+- contexto pluginável recebeu sinais derivados owned pelo Tracking BC via `trackingValidationContext.signals`, sem importar read models de process para domínio.
+- Foi adicionado detector advisory mínimo `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`, limitado subconjunto objetivo de inconsistência canônica de timeline marítima pós-chegada.
+- detectores críticos herdados (`CONFLICTING_CRITICAL_ACTUALS` e `POST_COMPLETION_TRACKING_CONTINUED`) permaneceram ativos e cobertos por regressão.
+- dashboard passou receber `attention_severity` como sinal backend-derived leve:
+  - `CRITICAL` em validation eleva triagem visual para `danger`
   - `ADVISORY` não cria destaque agressivo extra
   - `highest_alert_severity` continua separado e preservado
-- Shipment/detail manteve o banner agregador e os chips por container, mas agora com distinção visual mais clara entre advisory e critical.
+- Shipment/detail manteve banner agregador e chips por container, mas agora com distinção visual mais clara entre advisory e critical.
 
 ### M.2 Contratos alterados
 - Internos Tracking validation:
@@ -466,10 +466,10 @@
 - Processo/read model:
   - `ProcessOperationalSummary` agora inclui `attention_severity`
 - HTTP:
-  - `ProcessResponseSchema` passou a expor `attention_severity`
+  - `ProcessResponseSchema` passou expor `attention_severity`
   - `tracking_validation.highest_severity` continuou compacto em `info | warning | danger | null`
 - UI/VM:
-  - `ProcessSummaryVM` passou a carregar `attentionSeverity`
+  - `ProcessSummaryVM` passou carregar `attentionSeverity`
   - dashboard consome esse campo pronto em row accent, filter e sort
 
 ### M.3 Comportamento final de severidade
@@ -479,23 +479,23 @@
   - domínio `ADVISORY` -> DTO/VM `warning`
   - domínio `CRITICAL` -> DTO/VM `danger`
 - Agregação:
-  - por container e por processo, a maior severidade vence
-  - `ADVISORY` continua visível corretamente mesmo quando é o único tipo presente
-  - `CRITICAL` preserva prioridade até a UI
+  - por container e por processo, maior severidade vence
+  - `ADVISORY` continua visível corretamente mesmo quando é único tipo presente
+  - `CRITICAL` preserva prioridade até UI
 - Dashboard:
   - permanece binário no topo para validation (`tem issue` / `não tem issue`)
-  - passa a destacar visualmente `CRITICAL` via `attention_severity`
+  - passa destacar visualmente `CRITICAL` via `attention_severity`
   - não recebe findings, reasons nem payload extra pesado
 - Shipment:
   - continua timeline-first
-  - banner/chip usam a severidade já pronta, sem rederivação local
+  - banner/chip usam severidade já pronta, sem rederivação local
 
 ### M.4 Integração com alertas
 - Não houve integração com `TrackingAlert` persistido nesta fase.
 - Decisão explícita:
   - não criar lifecycle paralelo de ack/resolution para validation issues
-  - não duplicar a semântica de alertas operacionais
-  - manter a integração apenas como triagem visual backend-derived no dashboard via `attention_severity`
+  - não duplicar semântica de alertas operacionais
+  - manter integração como triagem visual backend-derived no dashboard via `attention_severity`
 
 ### M.5 Testes criados / ajustados
 - Tracking validation:
@@ -516,17 +516,17 @@
   - `src/modules/process/ui/viewmodels/tests/dashboard-sort-interaction.vm.test.ts`
   - `src/modules/process/ui/components/tests/tracking-review-display.presenter.test.ts`
 - Cenários mínimos cobertos:
-  - critical preserva severidade até a UI
-  - advisory preserva severidade até a UI
+  - critical preserva severidade até UI
+  - advisory preserva severidade até UI
   - agregação escolhe highest severity
   - dashboard continua leve
-  - shipment/detail reflete melhor a severidade
+  - shipment/detail reflete melhor severidade
   - detectores das Fases 2 e 3 continuam funcionando
 
 ### M.6 QA manual realizado
 - Ambiente:
   - dev server iniciado com `pnpm run dev -- --host localhost --port 3009`
-  - runtime local serviu a aplicação em `http://localhost:3002`
+  - runtime local serviu aplicação em `http://localhost:3002`
 - Rotas verificadas:
   - dashboard `/`
   - shipment clean `/shipments/77f8a69a-0684-4395-8bdb-5318a127871f`
@@ -553,65 +553,65 @@
   - dashboard clean permaneceu sem badge de validation
   - dashboard advisory mostrou `Validação necessária` sem inflar triagem agressiva
   - dashboard critical mostrou `Validação necessária` com destaque coerente via triagem backend-derived
-  - shipment advisory exibiu banner/chip em tom warning e preservou a timeline como artefato principal
-  - shipment critical exibiu banner/chip em tom danger mais forte e preservou o histórico posterior
+  - shipment advisory exibiu banner/chip em tom warning e preservou timeline como artefato principal
+  - shipment critical exibiu banner/chip em tom danger mais forte e preservou histórico posterior
   - refresh, prefetch e reconciliation não apresentaram regressão visível na passada manual
 
 ### M.7 Problemas encontrados
-- O preview da rota dev `tracking-scenarios` precisou ser alinhado ao novo `attentionSeverity` para continuar compatível com `ProcessSummaryVM`.
-- O lint falhou ao final da implementação por excesso de linhas em dois blocos de teste; a correção foi estrutural, dividindo os `describe` sem reduzir cobertura.
+- preview da rota dev `tracking-scenarios` precisou ser alinhado ao novo `attentionSeverity` para continuar compatível com `ProcessSummaryVM`.
+- lint falhou ao final da implementação por excesso de linhas em dois blocos de teste; correção foi estrutural, dividindo `describe` sem reduzir cobertura.
 
 ### M.8 Limitações intencionais e próximo passo
 - Limitações intencionais:
-  - advisory entrou apenas no subconjunto objetivo necessário para validar a cadeia E2E
+  - advisory entrou no subconjunto objetivo necessário para validar cadeia E2E
   - nenhum finding bruto foi exposto publicamente
   - não houve persistência de validation como alert
-- Próximo passo recomendado para a Fase 5:
-  - expandir detectores advisory reais sobre inconsistências canônicas adicionais, ainda via registry/plugin system, sem mover semântica para UI nem inflar o dashboard
+- Próximo passo recomendado para Fase 5:
+  - expandir detectores advisory reais sobre inconsistências canônicas adicionais, ainda via registry/plugin system, sem mover semântica para UI nem inflar dashboard
 
 ## N. Kickoff da Fase 5 Hardening
 - Data de início: 2026-04-03
 - Fase atual: V1 pluginável / Fase 5 hardening
 - Estado herdado da branch:
-  - o detector `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT` já existe no slice pluginável do Tracking BC
-  - o detector já está registrado via registry explícito, com cenário `post_carriage_maritime_inconsistent`, testes unitários e propagação E2E até DTO/VM/UI
+  - detector `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT` já existe no slice pluginável do Tracking BC
+  - detector já está registrado via registry explícito, com cenário `post_carriage_maritime_inconsistent`, testes unitários e propagação E2E até DTO/VM/UI
   - `pnpm check` já estava verde antes desta continuação
 - Drift identificado:
-  - os planos plugináveis ainda descrevem a Fase 5 como se fosse a primeira introdução desse detector
-  - o código e o log da Fase 4 mostram que o advisory mínimo já entrou na branch antes desta etapa
-  - a rota dev `tracking-scenarios` ainda recomputa `attentionSeverity` localmente para o preview de dashboard, criando um caminho presentation-only fora do dado backend-derived
+  - planos plugináveis ainda descrevem Fase 5 como se fosse primeira introdução desse detector
+  - código e log da Fase 4 mostram que advisory mínimo já entrou na branch antes desta etapa
+  - rota dev `tracking-scenarios` ainda recomputa `attentionSeverity` localmente para preview de dashboard, criando caminho presentation-only fora do dado backend-derived
 - Entendimento inicial:
   - esta continuação deve ser tratada como hardening/alinhamento, não como greenfield
-  - o recorte mínimo do detector deve permanecer objetivo: apenas contexto marítimo forte dentro de `post-carriage` no read model canônico
-  - shipment deve continuar timeline-first e o dashboard deve continuar leve
+  - recorte mínimo do detector deve permanecer objetivo: contexto marítimo forte dentro de `post-carriage` no read model canônico
+  - shipment deve continuar timeline-first e dashboard deve continuar leve
 - Plano desta continuação:
-  - auditar detector e sinais derivados para confirmar que a inconsistência nasce antes da UI
-  - remover a composição paralela residual no preview dev e voltar a consumir a severidade backend-derived do dashboard
+  - auditar detector e sinais derivados para confirmar que inconsistência nasce antes da UI
+  - remover composição paralela residual no preview dev e voltar consumir severidade backend-derived do dashboard
   - reforçar teste negativo para provar que contexto marítimo normal dentro da perna canônica não vira advisory
-  - atualizar o log com o drift encontrado, o hardening aplicado, QA manual e próximo passo da Fase 6
+  - atualizar log com drift encontrado, hardening aplicado, QA manual e próximo passo da Fase 6
 
 ## O. Fechamento da Fase 5 Hardening
 - Data de fechamento: 2026-04-03
 - Escopo entregue:
   - hardening do trilho pluginável já existente para `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
   - remoção do único caminho paralelo residual identificado fora da cadeia backend-derived
-  - reforço de regressão para blindar o recorte mínimo do detector
+  - reforço de regressão para blindar recorte mínimo do detector
 
 ### O.1 O que foi implementado
 - Preview dev / dashboard:
-  - a rota `src/routes/dev/tracking-scenarios.tsx` deixou de montar um `ProcessSummaryVM` derivado do shipment detail
-  - o preview de dashboard passou a consumir diretamente `fetchDashboardProcessSummaries()`, preservando `attentionSeverity` e `trackingValidation` como dados backend-derived
-  - com isso, o cenário de laboratório parou de recompor severidade localmente a partir de alertas + validation
+  - rota `src/routes/dev/tracking-scenarios.tsx` deixou de montar `ProcessSummaryVM` derivado do shipment detail
+  - preview de dashboard passou consumir diretamente `fetchDashboardProcessSummaries()`, preservando `attentionSeverity` e `trackingValidation` como dados backend-derived
+  - com isso, cenário de laboratório parou de recompor severidade localmente partir de alertas + validation
 - Detector / recorte mínimo:
-  - o detector `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT` e o sinal `canonicalTimeline.postCarriageMaritimeEvents` foram auditados
-  - o recorte mínimo foi mantido sem expansão:
+  - detector `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT` e sinal `canonicalTimeline.postCarriageMaritimeEvents` foram auditados
+  - recorte mínimo foi mantido sem expansão:
     - contexto marítimo objetivo em bloco terminal `post-carriage`
     - severidade `ADVISORY`
     - scope `TIMELINE`
   - nenhuma nova heurística frouxa foi adicionada
 - Boundaries:
   - tracking continua dono exclusivo da semântica de validation
-  - HTTP continuou expondo apenas `tracking_validation` compacto e `attention_severity`
+  - HTTP continuou expondo `tracking_validation` compacto e `attention_severity`
   - UI continuou consumindo somente `Response DTO -> ViewModel`, sem findings brutos nem nova derivação local
 
 ### O.2 Arquivos tocados nesta continuação
@@ -626,7 +626,7 @@
   - nenhum campo novo foi adicionado ao dashboard ou shipment
 - Internos:
   - nenhum contrato interno canônico mudou
-  - o hardening foi comportamental, removendo recomposição local no preview dev
+  - hardening foi comportamental, removendo recomposição local no preview dev
 
 ### O.4 Testes criados / ajustados
 - Reforço de regressão:
@@ -634,7 +634,7 @@
 - Cenário adicional coberto:
   - contexto marítimo normal dentro da perna canônica não dispara advisory
 - Baseline revalidado:
-  - detector advisory segue positivo apenas no caso objetivo de `post-carriage`
+  - detector advisory segue positivo no caso objetivo de `post-carriage`
   - agregação container/processo continua preservando `ADVISORY`
   - DTO -> VM e presenter continuam compactos e presentation-only
   - detectores `CONFLICTING_CRITICAL_ACTUALS` e `POST_COMPLETION_TRACKING_CONTINUED` seguem verdes
@@ -642,7 +642,7 @@
 ### O.5 QA manual realizado
 - Ambiente:
   - dev server iniciado com `pnpm run dev -- --host localhost --port 3009`
-  - runtime local serviu a aplicação em `http://localhost:3003`
+  - runtime local serviu aplicação em `http://localhost:3003`
 - Rotas verificadas:
   - scenario-lab `/dev/tracking-scenarios`
 - Cenários usados:
@@ -662,55 +662,55 @@
   - `phase5-hardening-advisory-mobile.png`
   - `phase5-hardening-critical-mobile.png`
 - Comportamento observado:
-  - clean: o preview de dashboard permaneceu sem badge de validation e o shipment preview não exibiu banner/chip de validation
-  - advisory: o preview de dashboard exibiu `Validação necessária` sem escalada agressiva de triagem, e o shipment preview mostrou banner agregador + chip por container com leitura timeline-first preservada
-  - critical: o preview de dashboard exibiu `Validação necessária` com destaque coerente de severidade e o shipment preview mostrou banner/chip em tom mais forte sem esconder fatos
-  - a troca entre cenários e steps atualizou corretamente o preview de dashboard a partir do payload backend-derived, sem recomposição local visível de `attentionSeverity`
+  - clean: preview de dashboard permaneceu sem badge de validation e shipment preview não exibiu banner/chip de validation
+  - advisory: preview de dashboard exibiu `Validação necessária` sem escalada agressiva de triagem, e shipment preview mostrou banner agregador + chip por container com leitura timeline-first preservada
+  - critical: preview de dashboard exibiu `Validação necessária` com destaque coerente de severidade e shipment preview mostrou banner/chip em tom mais forte sem esconder fatos
+  - troca entre cenários e steps atualizou corretamente preview de dashboard partir do payload backend-derived, sem recomposição local visível de `attentionSeverity`
   - nenhuma quebra relevante de layout foi observada em desktop ou mobile
-  - console do browser sem erros durante a passada manual
+  - console do browser sem erros durante passada manual
 
 ### O.6 Problemas encontrados
-- O problema arquitetural concreto desta continuação foi o drift entre planos/log e estado real da branch.
-- O único desvio de implementação encontrado no código ativo foi a recomposição local de `attentionSeverity` no preview dev.
+- problema arquitetural concreto desta continuação foi drift entre planos/log e estado real da branch.
+- único desvio de implementação encontrado no código ativo foi recomposição local de `attentionSeverity` no preview dev.
 
 ### O.7 Limitações intencionais
-- O detector advisory não foi ampliado além do subconjunto mínimo já fechado.
+- detector advisory não foi ampliado além do subconjunto mínimo já fechado.
 - Não houve mudança de `affectedScope` para `TIMELINE_BLOCK`.
 - Não houve integração de validation issue com `TrackingAlert` persistido.
 
 ### O.8 Próximo passo recomendado para a Fase 6
-- Iniciar a fase seguinte real do trilho pluginável sem reabrir o advisory já consolidado.
-- Priorizar evolução em cima de observabilidade/histórico operacional ou do próximo detector ainda não implementado, sempre preservando o registry/plugin system como único caminho canônico.
+- Iniciar fase seguinte real do trilho pluginável sem reabrir advisory já consolidado.
+- Priorizar evolução em cima de observabilidade/histórico operacional ou do próximo detector ainda não implementado, sempre preservando registry/plugin system como único caminho canônico.
 
 ## P. Kickoff da Fase 6
 - Data de início: 2026-04-03
 - Fase atual: V1 pluginável / Fase 6 lifecycle operacional por transição
 - Estado herdado das fases anteriores:
-  - o framework pluginável de validation já estava estabelecido dentro do Tracking BC
-  - os detectores ativos eram:
+  - framework pluginável de validation já estava estabelecido dentro do Tracking BC
+  - detectores ativos eram:
     - `CONFLICTING_CRITICAL_ACTUALS`
     - `POST_COMPLETION_TRACKING_CONTINUED`
     - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
-  - `severity` já atravessava a cadeia como semântica canônica no domínio (`ADVISORY | CRITICAL`) e como compactação DTO/VM na UI (`warning | danger`)
+  - `severity` já atravessava cadeia como semântica canônica no domínio (`ADVISORY | CRITICAL`) e como compactação DTO/VM na UI (`warning | danger`)
   - dashboard já permanecia leve com `tracking_validation` compacto e `attention_severity`
   - shipment já permanecia timeline-first, sem findings brutos nem heurística local
 - Entendimento consolidado:
-  - a Fase 6 precisava persistir apenas transições `activated | changed | resolved`
+  - Fase 6 precisava persistir transições `activated | changed | resolved`
   - esse dado teria natureza operacional/auxiliar, não truth canônica
-  - a fonte de verdade continuaria sendo `snapshot -> observations -> timeline/status/alerts/validation derivada`
-  - a persistência deveria ser econômica, baseada em transição, sem snapshot completo por sync
+  - fonte de verdade continuaria sendo `snapshot -> observations -> timeline/status/alerts/validation derivada`
+  - persistência deveria ser econômica, baseada em transição, sem snapshot completo por sync
 - Riscos arquiteturais identificados antes de codar:
-  - deixar a identidade de issue fora do plugin system
+  - deixar identidade de issue fora do plugin system
   - mover semântica de lifecycle para UI/capability
-  - inflar o banco com payloads ou estado redundante por sync
-  - acoplar a persistência operacional ao shape público de shipment/dashboard
-- Plano fechado para a fase:
+  - inflar banco com payloads ou estado redundante por sync
+  - acoplar persistência operacional ao shape público de shipment/dashboard
+- Plano fechado para fase:
   - tornar `lifecycleKey` e `stateFingerprint` obrigatórios no finding pluginável
-  - atualizar os detectores ativos para produzirem identidade operacional própria
+  - atualizar detectores ativos para produzirem identidade operacional própria
   - criar serviço de derivação de transições `activated | changed | resolved`
   - criar tabela/repositório operacional leve para transições
-  - integrar a persistência ao pipeline canônico sem alterar `PipelineResult`, DTOs ou VMs públicos
-  - estender o scenario-lab com reuse incremental no mesmo processo/container para QA real da sequência `activated -> changed -> resolved`
+  - integrar persistência ao pipeline canônico sem alterar `PipelineResult`, DTOs ou VMs públicos
+  - estender scenario-lab com reuse incremental no mesmo processo/container para QA real da sequência `activated -> changed -> resolved`
 
 ## Q. Fechamento da Fase 6
 - Data de fechamento: 2026-04-03
@@ -723,11 +723,11 @@
 ### Q.1 O que foi implementado
 - Contrato pluginável:
   - `TrackingValidationFinding` agora exige `lifecycleKey` e `stateFingerprint`
-  - o registry passou a validar explicitamente que esses campos existem e não estão vazios
+  - registry passou validar explicitamente que esses campos existem e não estão vazios
 - Detectores ativos:
-  - `CONFLICTING_CRITICAL_ACTUALS` passou a emitir `lifecycleKey` estável por série e fingerprint derivado dos ACTUAL fingerprints conflitantes
-  - `POST_COMPLETION_TRACKING_CONTINUED` passou a emitir `lifecycleKey` estável por container e fingerprint do marco forte + continuação incompatível
-  - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT` passou a emitir `lifecycleKey` estável por container e fingerprint do conjunto relevante de sinais marítimos
+  - `CONFLICTING_CRITICAL_ACTUALS` passou emitir `lifecycleKey` estável por série e fingerprint derivado dos ACTUAL fingerprints conflitantes
+  - `POST_COMPLETION_TRACKING_CONTINUED` passou emitir `lifecycleKey` estável por container e fingerprint do marco forte + continuação incompatível
+  - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT` passou emitir `lifecycleKey` estável por container e fingerprint do conjunto relevante de sinais marítimos
 - Domínio / serviço:
   - criado `deriveTrackingValidationLifecycleTransitions()`
   - regras:
@@ -736,11 +736,11 @@
     - state ativo persistido sem finding atual correspondente -> `resolved`
     - state inalterado -> nada persiste
 - Persistência operacional:
-  - criado o port `TrackingValidationLifecycleRepository`
-  - criada a migration `20260403_01_tracking_validation_issue_lifecycle_transitions.sql`
-  - criada a tabela operacional `tracking_validation_issue_transitions`
-  - criada a infra `supabaseTrackingValidationLifecycleRepository`
-  - a persistência grava somente:
+  - criado port `TrackingValidationLifecycleRepository`
+  - criada migration `20260403_01_tracking_validation_issue_lifecycle_transitions.sql`
+  - criada tabela operacional `tracking_validation_issue_transitions`
+  - criada infra `supabaseTrackingValidationLifecycleRepository`
+  - persistência grava somente:
     - `process_id`
     - `container_id`
     - `issue_code`
@@ -755,7 +755,7 @@
     - `provider`
     - `snapshot_id`
     - `occurred_at`
-  - lookup de `process_id` permanece na infra, via `containers`, sem puxar semântica de Process BC para o domínio de tracking validation
+  - lookup de `process_id` permanece na infra, via `containers`, sem puxar semântica de Process BC para domínio de tracking validation
   - foi criado índice de dedupe por `(container_id, lifecycle_key, transition_type, state_fingerprint, snapshot_id)`
 - Pipeline:
   - `processSnapshot()` agora:
@@ -764,14 +764,14 @@
     - deriva transições
     - persiste apenas transições novas/relevantes
   - `PipelineResult` continuou inalterado
-  - shipment/dashboard continuaram consumindo apenas summaries/read models já existentes
+  - shipment/dashboard continuaram consumindo summaries/read models já existentes
 - Scenario-lab:
   - `ScenarioLoadCommand` ganhou `reuseProcessId`
   - `ScenarioBuildResult` agora carrega `containerNumbersByKey`
-  - o seeder passou a suportar reuso do mesmo processo/container quando solicitado
-  - a rota `/api/dev/scenarios/load` expõe `reuse_process_id`
-  - a UI `tracking-scenarios` passou a reutilizar automaticamente o processo atual ao avançar steps do mesmo cenário
-  - o cenário `post_carriage_maritime_inconsistent` foi expandido para:
+  - seeder passou suportar reuso do mesmo processo/container quando solicitado
+  - rota `/api/dev/scenarios/load` expõe `reuse_process_id`
+  - UI `tracking-scenarios` passou reutilizar automaticamente processo atual ao avançar steps do mesmo cenário
+  - cenário `post_carriage_maritime_inconsistent` foi expandido para:
     - step 1: clean
     - step 2: advisory activated
     - step 3: advisory changed
@@ -793,10 +793,10 @@
   - reconstrução futura por `lifecycle_key`
 
 ### Q.3 Decisões de retenção / volume
-- Mantido o princípio da V1:
+- Mantido princípio da V1:
   - persistir transição, não snapshot completo
 - Não foi implementado pruning nesta fase.
-- A contenção de volume veio de:
+- contenção de volume veio de:
   - dedupe por batch
   - dedupe por índice único operacional
   - `stateFingerprint` detector-owned
@@ -827,7 +827,7 @@
 ### Q.5 QA manual realizado
 - Ambiente:
   - dev server iniciado com `pnpm run dev -- --host localhost --port 3009`
-  - runtime local serviu a aplicação em `http://localhost:3003`
+  - runtime local serviu aplicação em `http://localhost:3003`
 - QA backend funcional:
   - fluxo incremental `activated -> changed -> resolved` validado no pipeline por integração local com repositório lifecycle in-memory e cenário real `post_carriage_maritime_inconsistent`
   - dedupe de `activated` reprocessado validado com `discharge_multiple_actual`
@@ -847,20 +847,20 @@
   - dashboard continuou leve e íntegro
   - shipment continuou timeline-first
   - `tracking_validation` continuou chegando compacto nas projeções existentes
-  - nenhum finding bruto ou detalhe de lifecycle vazou para as telas
-  - os cenários já existentes de advisory/critical continuaram renderizando consistentemente
+  - nenhum finding bruto ou detalhe de lifecycle vazou para telas
+  - cenários já existentes de advisory/critical continuaram renderizando consistentemente
 
 ### Q.6 Problemas encontrados
-- O tooling Supabase disponível nesta sessão está em modo read-only para DDL.
+- tooling Supabase disponível nesta sessão está em modo read-only para DDL.
 - Consequência objetiva:
-  - não foi possível aplicar a migration remota via MCP
-  - a tabela `tracking_validation_issue_transitions` não existe ainda no banco remoto desta sessão
-  - o runtime local registrou falha operacional ao tentar processar writes reais contra essa tabela ausente
+  - não foi possível aplicar migration remota via MCP
+  - tabela `tracking_validation_issue_transitions` não existe ainda no banco remoto desta sessão
+  - runtime local registrou falha operacional ao tentar processar writes reais contra essa tabela ausente
 - Tratamento adotado:
-  - a migration foi criada no repositório
+  - migration foi criada no repositório
   - `database.types.ts` foi atualizado
-  - a lógica foi validada por testes de integração locais
-  - a limitação foi registrada explicitamente aqui, sem mascarar a ausência do schema remoto
+  - lógica foi validada por testes de integração locais
+  - limitação foi registrada explicitamente aqui, sem mascarar ausência do schema remoto
 
 ### Q.7 Limitações intencionais
 - Nenhuma UI pública nova foi criada para lifecycle.
@@ -882,87 +882,87 @@
 - Data de início: 2026-04-04
 - Fase atual: V1 pluginável / Fase 7 time travel, refresh, realtime e payload refinement
 - Estado herdado das fases anteriores:
-  - o framework pluginável continua centralizado no Tracking BC e o registry permanece explícito
-  - os detectores ativos seguem:
+  - framework pluginável continua centralizado no Tracking BC e registry permanece explícito
+  - detectores ativos seguem:
     - `CONFLICTING_CRITICAL_ACTUALS`
     - `POST_COMPLETION_TRACKING_CONTINUED`
     - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
-  - o payload público atual permanece compacto:
+  - payload público atual permanece compacto:
     - dashboard com agregado mínimo
     - shipment current com resumo por processo/container
-  - a Fase 6 já persiste lifecycle operacional por transição sem snapshot completo por sync
+  - Fase 6 já persiste lifecycle operacional por transição sem snapshot completo por sync
 - Entendimento inicial:
-  - a UI histórica por snapshot precisa refletir `tracking_validation` derivado do checkpoint selecionado, não o resumo atual do shipment
-  - o lifecycle persistido continua operacional/observável, mas não deve governar o render histórico principal
-  - a integração desta fase deve acontecer no replay/time-travel read model, preservando dashboard leve e shipment timeline-first
+  - UI histórica por snapshot precisa refletir `tracking_validation` derivado do checkpoint selecionado, não resumo atual do shipment
+  - lifecycle persistido continua operacional/observável, mas não deve governar render histórico principal
+  - integração desta fase deve acontecer no replay/time-travel read model, preservando dashboard leve e shipment timeline-first
 - Auditoria consolidada antes de codar:
-  - o gap principal identificado está no trilho de time travel:
+  - gap principal identificado está no trilho de time travel:
     - timeline/status/alerts históricos já trocam por snapshot
     - banner de validation e chip do selector ainda dependem do `ShipmentDetailVM` atual
-  - o endpoint lazy de time travel ainda não expõe `tracking_validation` por checkpoint
-  - o controller de time travel ainda não depende do `trackingFreshnessToken`, então pode ficar defasado após refresh/reconciliation/realtime
-- Plano fechado para a fase:
-  - consolidar helper tracking-owned para derivação compacta de validation a partir de um estado já reconstruído
+  - endpoint lazy de time travel ainda não expõe `tracking_validation` por checkpoint
+  - controller de time travel ainda não depende do `trackingFreshnessToken`, então pode ficar defasado após refresh/reconciliation/realtime
+- Plano fechado para fase:
+  - consolidar helper tracking-owned para derivação compacta de validation partir de estado já reconstruído
   - reutilizar esse helper no hot-read atual e no replay histórico
-  - estender `TrackingTimeTravelCheckpoint` e o DTO HTTP com `tracking_validation` compacto
+  - estender `TrackingTimeTravelCheckpoint` e DTO HTTP com `tracking_validation` compacto
   - mapear esse resumo até `TrackingTimeTravelSyncVM`
-  - ajustar a composição do shipment em modo histórico para:
+  - ajustar composição do shipment em modo histórico para:
     - usar banner do container/snapshot selecionado
     - sobrescrever apenas o chip do container selecionado no selector
     - não inventar agregado histórico do processo inteiro
-  - fazer o resource de time travel refetchar quando o `trackingFreshnessToken` mudar
+  - fazer resource de time travel refetchar quando `trackingFreshnessToken` mudar
 
 ## S. Fechamento da Fase 7
 - Data de fechamento: 2026-04-04
 - Escopo entregue:
-  - `tracking_validation` passou a ser derivado por checkpoint no replay/time travel, sem snapshot completo persistido por sync
-  - shipment histórico passou a consumir VM histórico pronto, sem heurística local de UI
-  - time travel passou a refetchar com mudanças de `trackingFreshnessToken`
+  - `tracking_validation` passou ser derivado por checkpoint no replay/time travel, sem snapshot completo persistido por sync
+  - shipment histórico passou consumir VM histórico pronto, sem heurística local de UI
+  - time travel passou refetchar com mudanças de `trackingFreshnessToken`
   - dashboard permaneceu com payload mínimo
   - lifecycle persistido continuou como apoio operacional, não como source of truth histórica
 
 ### S.1 O que foi implementado
 - Tracking BC:
-  - `trackingValidation.projection.ts` passou a expor derivação compacta a partir de estado já reconstruído
-  - `tracking.hot-read.projections.ts` foi alinhado a esse helper para manter paridade entre presente e replay
-  - `tracking-time-travel.readmodel.ts` passou a incluir `trackingValidation` compacto em cada checkpoint
-  - o replay histórico continua derivando a partir de:
+  - `trackingValidation.projection.ts` passou expor derivação compacta partir de estado já reconstruído
+  - `tracking.hot-read.projections.ts` foi alinhado esse helper para manter paridade entre presente e replay
+  - `tracking-time-travel.readmodel.ts` passou incluir `trackingValidation` compacto em cada checkpoint
+  - replay histórico continua derivando partir de:
     - observations
     - timeline
     - status
     - transshipment
     - `effectiveNow`
 - HTTP / DTO / VM:
-  - `tracking.schemas.ts` e `tracking.http.mappers.ts` passaram a expor `tracking_validation` por checkpoint apenas com:
+  - `tracking.schemas.ts` e `tracking.http.mappers.ts` passaram expor `tracking_validation` por checkpoint com:
     - `has_issues`
     - `highest_severity`
     - `finding_count`
-  - `tracking-time-travel.ui-mapper.ts` e `tracking-time-travel.vm.ts` passaram a carregar esse resumo até `TrackingTimeTravelSyncVM`
+  - `tracking-time-travel.ui-mapper.ts` e `tracking-time-travel.vm.ts` passaram carregar esse resumo até `TrackingTimeTravelSyncVM`
 - UI / shipment:
-  - o modo histórico do shipment passou a usar banner do container/snapshot selecionado
-  - o chip do selector/container passou a refletir o sync selecionado apenas no container ativo
-  - o modo atual continua usando o resumo do `ShipmentDetailVM`
+  - modo histórico do shipment passou usar banner do container/snapshot selecionado
+  - chip do selector/container passou refletir sync selecionado no container ativo
+  - modo atual continua usando resumo do `ShipmentDetailVM`
 - Refresh / realtime:
   - `useTrackingTimeTravelController` agora usa chave com `trackingFreshnessToken`
-  - o resource lazy de time travel refaz a leitura quando o shipment atual é reconciliado/refrescado
+  - resource lazy de time travel refaz leitura quando shipment atual é reconciliado/refrescado
 
 ### S.2 Como ficou a reconstrução por sync
-- A visão histórica agora vem do replay por sync no Tracking BC.
-- O endpoint lazy de time travel carrega só o resumo compacto de validation por checkpoint.
+- visão histórica agora vem do replay por sync no Tracking BC.
+- endpoint lazy de time travel carrega só resumo compacto de validation por checkpoint.
 - Não foi criado snapshot completo de validation por sync.
-- A paridade entre presente e histórico passou a depender do mesmo caminho canônico de derivação pluginável.
+- paridade entre presente e histórico passou depender do mesmo caminho canônico de derivação pluginável.
 
 ### S.3 Como o lifecycle persistido está sendo usado
 - Continua sendo operacional/observável:
   - `activated`
   - `changed`
   - `resolved`
-- Não governa o render histórico do shipment.
-- Não substitui a derivação do replay por sync.
-- Nesta fase o pipeline ficou resiliente a indisponibilidade do repositório/tabela de lifecycle:
+- Não governa render histórico do shipment.
+- Não substitui derivação do replay por sync.
+- Nesta fase pipeline ficou resiliente indisponibilidade do repositório/tabela de lifecycle:
   - falha operacional é logada
   - derivação canônica de timeline/status/alerts/validation continua
-  - a UI histórica não fica bloqueada por ausência da tabela operacional
+  - UI histórica não fica bloqueada por ausência da tabela operacional
 
 ### S.4 Ajustes de payload / VM
 - Dashboard:
@@ -1021,7 +1021,7 @@
     - sem `lifecycle`
 - Coerência dinâmica:
   - shipment com time travel aberto foi revalidado após avanço do mesmo processo via Scenario Lab (`reuse_process_id`)
-  - o resource histórico passou a refletir novos syncs após mudança do `trackingFreshnessToken`
+  - resource histórico passou refletir novos syncs após mudança do `trackingFreshnessToken`
 - Evidências:
   - `phase7-dashboard-desktop.png`
   - `phase7-dashboard-mobile.png`
@@ -1029,23 +1029,23 @@
   - `phase7-shipment-critical-mobile.png`
 
 ### S.7 Problemas encontrados
-- O ambiente local usado no QA não tinha a tabela operacional `tracking_validation_issue_transitions` disponível no banco remoto da sessão.
-- Sem resiliência, isso quebrava o Scenario Lab e o runtime local com `500`.
+- ambiente local usado no QA não tinha tabela operacional `tracking_validation_issue_transitions` disponível no banco remoto da sessão.
+- Sem resiliência, isso quebrava Scenario Lab e runtime local com `500`.
 - Tratamento aplicado nesta fase:
-  - a falha do lifecycle operacional passou a degradar graciosamente no pipeline
-  - a derivação canônica seguiu funcionando
-  - o problema operacional continua explícito via log
-- Durante a retomada pós-crash, o dev server também revelou uma incompatibilidade de parser com um type annotation intermediário; o contrato foi simplificado e alinhado com runtime + build.
+  - falha do lifecycle operacional passou degradar graciosamente no pipeline
+  - derivação canônica seguiu funcionando
+  - problema operacional continua explícito via log
+- Durante retomada pós-crash, dev server também revelou incompatibilidade de parser com type annotation intermediário; contrato foi simplificado e alinhado com runtime + build.
 
 ### S.8 Limitações intencionais
 - Não foi criada leitura pública de lifecycle operacional.
 - Não foi adicionada observabilidade externa nova.
 - Não foi criado snapshot completo por sync.
 - Não foi movida nenhuma semântica de validation para UI.
-- O dashboard continua sem detalhe histórico de validation por design.
+- dashboard continua sem detalhe histórico de validation por design.
 
 ### S.9 Próximo passo recomendado para a Fase 8
-- Fechar a camada de leitura operacional do lifecycle persistido dentro do Tracking BC para:
+- Fechar camada de leitura operacional do lifecycle persistido dentro do Tracking BC para:
   - duração de issues
   - incidência por detector/provider
   - debugging operacional interno
@@ -1058,7 +1058,7 @@
 - Data de início: 2026-04-04
 - Fase atual: V1 pluginável / Fase 8 hardening do framework pluginável
 - Estado herdado das fases anteriores:
-  - o framework pluginável segue centralizado no Tracking BC, com registry explícito e determinístico
+  - framework pluginável segue centralizado no Tracking BC, com registry explícito e determinístico
   - detectores ativos em produção:
     - `CONFLICTING_CRITICAL_ACTUALS`
     - `POST_COMPLETION_TRACKING_CONTINUED`
@@ -1067,24 +1067,24 @@
   - dashboard permanece com payload mínimo e shipment permanece timeline-first
   - lifecycle operacional por transição já existe, mas continua auxiliar e não governa render atual/histórico
 - Drift identificado:
-  - o crosswalk canônico preserva o plano antigo de time travel/payload na Fase 7 e reserva a Fase 8 pluginável para hardening/documentação do framework
-  - o próximo passo sugerido ao fim da Fase 7 fala em leitura operacional do lifecycle, mas isso não substitui o objetivo canônico desta Fase 8
-  - o slice ainda usa `metadata` como campo genérico do finding, sem uma separação explícita entre evidência de produto e evidência técnica
-  - o detector advisory ainda usa `detectorId` em kebab-case, divergindo da convenção desejada em `UPPER_SNAKE_CASE`
+  - crosswalk canônico preserva plano antigo de time travel/payload na Fase 7 e reserva Fase 8 pluginável para hardening/documentação do framework
+  - próximo passo sugerido ao fim da Fase 7 fala em leitura operacional do lifecycle, mas isso não substitui objetivo canônico desta Fase 8
+  - slice ainda usa `metadata` como campo genérico do finding, sem separação explícita entre evidência de produto e evidência técnica
+  - detector advisory ainda usa `detectorId` em kebab-case, divergindo da convenção desejada em `UPPER_SNAKE_CASE`
 - Entendimento inicial:
   - esta fase deve endurecer contratos e convenções do slice `validation` antes da entrada de novos detectores na Fase 9
   - `evidenceSummary` deve continuar curta, segura e apropriada para summary/lifecycle/UI controlada
   - `debugEvidence` deve permanecer interna ao domínio, útil para troubleshooting, sem vazar para dashboard, shipment current ou time travel
-  - a implementação precisa manter o framework explícito e local ao Tracking BC, sem virar engine genérica
+  - implementação precisa manter framework explícito e local ao Tracking BC, sem virar engine genérica
 - Decisão fechada desta fase:
-  - normalizar `detectorId` agora para a convenção única em `UPPER_SNAKE_CASE`
-  - aceitar e documentar explicitamente o drift de identidade no lifecycle persistido já gravado, sem backfill nesta etapa
+  - normalizar `detectorId` agora para convenção única em `UPPER_SNAKE_CASE`
+  - aceitar e documentar explicitamente drift de identidade no lifecycle persistido já gravado, sem backfill nesta etapa
 - Plano cirúrgico:
   - substituir `metadata` por `debugEvidence` em `TrackingValidationFinding`
-  - tornar o input de projeção explícito em vez de usar `Omit<TrackingValidationContext, 'signals'>`
-  - deixar o bloco de sinais derivados mais explícito no contrato do contexto sem expandir abstração
-  - endurecer o registry com validações de `detectorId`, `code`, `summaryKey` e `evidenceSummary`
-  - normalizar os detectores ativos para a convenção única de `detectorId` e `code`
+  - tornar input de projeção explícito em vez de usar `Omit<TrackingValidationContext, 'signals'>`
+  - deixar bloco de sinais derivados mais explícito no contrato do contexto sem expandir abstração
+  - endurecer registry com validações de `detectorId`, `code`, `summaryKey` e `evidenceSummary`
+  - normalizar detectores ativos para convenção única de `detectorId` e `code`
   - preservar payloads públicos compactos e adicionar regressões de non-leak para HTTP/UI/time travel
   - criar documentação interna prática em `src/modules/tracking/features/validation/README.md`
 
@@ -1092,7 +1092,7 @@
 - Data de fechamento: 2026-04-04
 - Status final: concluído
 - Resultado geral:
-  - o framework pluginável de Tracking Validation ficou mais explícito, mais rígido e mais documentado
+  - framework pluginável de Tracking Validation ficou mais explícito, mais rígido e mais documentado
   - `evidenceSummary` e `debugEvidence` agora têm papéis separados no contrato do domínio
   - dashboard permaneceu leve e shipment permaneceu timeline-first
   - detectores atuais seguiram funcionando sem abrir caminho paralelo fora do registry
@@ -1103,13 +1103,13 @@
   - `debugEvidence` foi introduzido como evidência técnica interna, leve e tipada
   - `evidenceSummary` permaneceu como texto curto, seguro para produto e apropriado para lifecycle
 - `TrackingValidationContext`:
-  - o bloco de sinais derivados passou a se chamar `derivedSignals`
-  - os helpers foram renomeados para refletir que esses sinais existem para a fase detector/projection, sem parecer contrato público genérico
+  - bloco de sinais derivados passou se chamar `derivedSignals`
+  - helpers foram renomeados para refletir que esses sinais existem para fase detector/projection, sem parecer contrato público genérico
 - Projeção:
   - `TrackingValidationProjectionInput` deixou de depender de `Omit<TrackingValidationContext, 'signals'>`
-  - a entrada passou a ser explícita, reduzindo fragilidade estrutural e ambiguidade sem inflar abstração
+  - entrada passou ser explícita, reduzindo fragilidade estrutural e ambiguidade sem inflar abstração
 - Registry:
-  - passou a validar convenções de `detectorId`, `code`, `summaryKey` e `evidenceSummary`
+  - passou validar convenções de `detectorId`, `code`, `summaryKey` e `evidenceSummary`
   - reforço de paridade:
     - `detectorId === code`
     - `detectorId` em `UPPER_SNAKE_CASE`
@@ -1117,13 +1117,13 @@
     - `evidenceSummary` obrigatória, curta e não vazia
 
 ### U.2 Convenções consolidadas
-- Detectores ativos normalizados para a convenção única:
+- Detectores ativos normalizados para convenção única:
   - `CONFLICTING_CRITICAL_ACTUALS`
   - `POST_COMPLETION_TRACKING_CONTINUED`
   - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
-- `code` e `detectorId` agora seguem a mesma convenção canônica no framework.
+- `code` e `detectorId` agora seguem mesma convenção canônica no framework.
 - `affectedScope` permaneceu conservador nesta fase.
-- A decisão operacional desta fase foi não abrir novos scopes persistidos e não expandir o framework para uma engine genérica.
+- decisão operacional desta fase foi não abrir novos scopes persistidos e não expandir framework para engine genérica.
 
 ### U.3 Documentação interna criada
 - Arquivo novo:
@@ -1137,7 +1137,7 @@
   - guidance de `affectedScope`
   - práticas proibidas
   - como testar sem vazar semântica para UI/capability
-- `src/modules/tracking/README.md` foi atualizado para apontar para a documentação do slice.
+- `src/modules/tracking/README.md` foi atualizado para apontar para documentação do slice.
 
 ### U.4 Mudanças em payload / DTO / VM
 - Dashboard:
@@ -1153,7 +1153,7 @@
   - checkpoints continuam carregando só resumo compacto
   - nenhuma transição operacional, finding bruto ou `debugEvidence` foi exposta
 - UI mappers / VMs:
-  - permaneceram consumindo apenas Response DTO -> ViewModel
+  - permaneceram consumindo Response DTO -> ViewModel
   - foram adicionadas regressões explícitas de non-leak para bloquear `debugEvidence`
 
 ### U.5 Testes criados / ajustados
@@ -1171,8 +1171,8 @@
   - enforcement das convenções do registry
   - separação entre `evidenceSummary` e `debugEvidence`
   - non-leak de `debugEvidence` em DTO/VM/time travel
-  - compatibilidade dos detectores ativos após o hardening
-  - lifecycle continuando a comparar/persistir apenas `evidenceSummary`
+  - compatibilidade dos detectores ativos após hardening
+  - lifecycle continuando comparar/persistir `evidenceSummary`
 
 ### U.6 QA manual realizado
 - Ambiente:
@@ -1206,16 +1206,16 @@
     - `sync 1/3` limpo
     - nenhum detalhe técnico visível na UI
 - Mobile:
-  - captura crítica mobile realizada com fallback mínimo de screenshot Playwright CLI quando o resize do MCP foi bloqueado
-  - o shipment crítico permaneceu visualmente coerente e sem vazamento técnico
+  - captura crítica mobile realizada com fallback mínimo de screenshot Playwright CLI quando resize do MCP foi bloqueado
+  - shipment crítico permaneceu visualmente coerente e sem vazamento técnico
 
 ### U.7 Problemas encontrados
-- O Playwright MCP bloqueou um `resize` usado apenas para o viewport mobile durante o QA manual.
+- Playwright MCP bloqueou `resize` usado para viewport mobile durante QA manual.
 - Tratamento aplicado:
-  - mantivemos o fluxo principal de QA pelo MCP
-  - usamos apenas um fallback mínimo de screenshot Playwright CLI para fechar a evidência mobile
+  - mantivemos fluxo principal de QA pelo MCP
+  - usamos fallback mínimo de screenshot Playwright CLI para fechar evidência mobile
 - Impacto conhecido e intencional:
-  - a normalização de `detectorId` nesta fase cria drift de identidade para registros antigos do lifecycle persistido
+  - normalização de `detectorId` nesta fase cria drift de identidade para registros antigos do lifecycle persistido
   - não houve backfill nesta etapa
 
 ### U.8 Limitações intencionais
@@ -1223,7 +1223,7 @@
 - Não foi criada infra externa nova.
 - Não foi criada leitura pública do lifecycle operacional.
 - `debugEvidence` continua restrito ao domínio e não sai para payload público.
-- O framework continua explícito e local ao Tracking BC, sem shared kernel e sem engine genérica.
+- framework continua explícito e local ao Tracking BC, sem shared kernel e sem engine genérica.
 
 ### U.9 Checks executados
 - Testes direcionados do slice/plugin framework e das fronteiras HTTP/UI
@@ -1233,14 +1233,14 @@
   - verde em 2026-04-04
 
 ### U.10 Próximo passo recomendado para a Fase 9
-- Implementar os detectores V1.1 em cima desta base endurecida.
-- Reaproveitar a convenção única de `detectorId/code`, manter `debugEvidence` interno e abrir novos `affectedScope` apenas quando o detector realmente exigir e junto do respectivo contrato/persistência.
+- Implementar detectores V1.1 em cima desta base endurecida.
+- Reaproveitar convenção única de `detectorId/code`, manter `debugEvidence` interno e abrir novos `affectedScope` quando detector realmente exigir e junto do respectivo contrato/persistência.
 
 ## V. Kickoff da Fase 8.5
 - Data de início: 2026-04-04
 - Fase atual: V1 pluginável / Fase 8.5 explicabilidade pluginável user-facing
 - Estado herdado das fases anteriores:
-  - o framework pluginável continua centralizado no Tracking BC, com registry explícito e sem trilhos paralelos
+  - framework pluginável continua centralizado no Tracking BC, com registry explícito e sem trilhos paralelos
   - detectores ativos em produção:
     - `CONFLICTING_CRITICAL_ACTUALS`
     - `POST_COMPLETION_TRACKING_CONTINUED`
@@ -1248,12 +1248,12 @@
   - `severity` já atravessa domínio -> projection -> DTO -> VM -> UI
   - `evidenceSummary` e `debugEvidence` já foram separados na Fase 8
   - dashboard segue leve e shipment segue timeline-first
-  - time travel já reconstrói `tracking_validation` por sync a partir da derivação canônica do Tracking BC
+  - time travel já reconstrói `tracking_validation` por sync partir da derivação canônica do Tracking BC
 - Entendimento inicial:
-  - a Fase 8.5 precisa explicar ao operador por que a validation issue existe e onde ela impacta, sem mover semântica para a UI
-  - essa explicabilidade deve nascer no backend/read model a partir do finding pluginável, não de heurística em mapper/componente
-  - o dashboard continua sendo superfície de triagem, então deve receber apenas `topIssue` leve para tooltip
-  - o shipment continua sendo a superfície principal de entendimento, então deve receber uma lista curta ordenada de reasons do container selecionado
+  - Fase 8.5 precisa explicar ao operador por que validation issue existe e onde ela impacta, sem mover semântica para UI
+  - essa explicabilidade deve nascer no backend/read model partir do finding pluginável, não de heurística em mapper/componente
+  - dashboard continua sendo superfície de triagem, então deve receber `topIssue` leve para tooltip
+  - shipment continua sendo superfície principal de entendimento, então deve receber lista curta ordenada de reasons do container selecionado
 - Decisões fechadas antes de codar:
   - reaproveitar `summaryKey` como `reasonKey` público, sem criar chave semântica paralela
   - usar contrato público `key + metadados` em vez de texto final serializado no backend
@@ -1261,29 +1261,29 @@
   - dashboard fica em `chip + tooltip`; shipment fica em `banner agregador + detalhe compacto do container selecionado`
 - Plano cirúrgico:
   - estender `TrackingValidationFinding` com metadados públicos mínimos detector-owned (`affectedLocation`, `affectedBlockLabelKey`)
-  - criar read model compacto `TrackingValidationDisplayIssue` e derivá-lo no Tracking BC a partir de findings ativos ordenados
+  - criar read model compacto `TrackingValidationDisplayIssue` e derivá-lo no Tracking BC partir de findings ativos ordenados
   - expandir hot-read e replay/time travel para carregar explicabilidade sem criar use case paralelo
-  - expor `top_issue` apenas no agregado de processo e `active_issues` apenas em container/detail/time travel
+  - expor `top_issue` no agregado de processo e `active_issues` em container/detail/time travel
   - mapear DTO -> VM explicitamente e renderizar explicabilidade sem rederivar semântica na UI
 
 ## W. Fase 8.5 concluída
 ### W.1 O que foi implementado
-- O Tracking BC passou a publicar explicabilidade canônica curta para validation issues ativas via `TrackingValidationDisplayIssue`.
-- O finding pluginável ganhou metadados públicos mínimos e seguros para produto:
+- Tracking BC passou publicar explicabilidade canônica curta para validation issues ativas via `TrackingValidationDisplayIssue`.
+- finding pluginável ganhou metadados públicos mínimos e seguros para produto:
   - `affectedLocation`
   - `affectedBlockLabelKey`
-- A projeção pluginável agora deriva e ordena:
+- projeção pluginável agora deriva e ordena:
   - `activeIssues` por container (`severity desc`, depois `code asc`)
   - `topIssue` por processo (`severity desc`, `containerNumber asc`, `code asc`)
 - Hot-read, process summary e replay/time travel foram estendidos pelo mesmo trilho pluginável, sem use case paralelo.
 - DTOs públicos foram ajustados para expor:
   - dashboard/process list: `tracking_validation.top_issue`
   - shipment/time travel: `tracking_validation.active_issues`
-- A UI passou a consumir esses campos apenas via DTO -> VM, sem montar motivo semântico por heurística.
+- UI passou consumir esses campos via DTO -> VM, sem montar motivo semântico por heurística.
 
 ### W.2 Contrato final escolhido para explicabilidade
 - Chave semântica pública:
-  - `reasonKey` reaproveitando o `summaryKey` do finding
+  - `reasonKey` reaproveitando `summaryKey` do finding
 - Metadados públicos:
   - `code`
   - `severity`
@@ -1297,25 +1297,25 @@
   - `debugEvidence`: continua estritamente interna e fora dos payloads públicos
 
 ### W.3 Shipment após a Fase 8.5
-- O shipment permaneceu timeline-first.
-- O banner agregador continuou compacto.
-- Foi adicionada uma superfície discreta logo abaixo do seletor de container:
+- shipment permaneceu timeline-first.
+- banner agregador continuou compacto.
+- Foi adicionada superfície discreta logo abaixo do seletor de container:
   - título `Motivo da validação`
   - descrição curta por container selecionado
   - chip/lista compacta com severidade, motivo e metadados de área/bloco/local
-- O operador agora consegue identificar no shipment:
-  - por que a validação é necessária
+- operador agora consegue identificar no shipment:
+  - por que validação é necessária
   - qual container está afetado
   - onde revisar (`timeline`, `série`, bloco e/ou local quando aplicável)
 
 ### W.4 Dashboard após a Fase 8.5
-- O dashboard permaneceu agregado e leve.
-- A linha continua com `chip + tooltip`.
-- O tooltip agora usa `topIssue` backend-derived para mostrar:
+- dashboard permaneceu agregado e leve.
+- linha continua com `chip + tooltip`.
+- tooltip agora usa `topIssue` backend-derived para mostrar:
   - resumo agregado
   - motivo curto
   - área/bloco/local quando aplicável
-- O dashboard não recebe lista de findings, não vira tela diagnóstica e não serializa `debugEvidence`.
+- dashboard não recebe lista de findings, não vira tela diagnóstica e não serializa `debugEvidence`.
 
 ### W.5 Detectores cobertos
 - `CONFLICTING_CRITICAL_ACTUALS`
@@ -1396,7 +1396,7 @@
 - Time travel / reconstruction:
   - rota `/shipments/9dde34d0-f0b7-42d9-9f4b-aae8c4723ab0`
   - `Sync 3/3` mostrou explicação advisory completa
-  - `Sync 1/3` removeu o bloco `Motivo da validação`, confirmando paridade com o estado histórico limpo
+  - `Sync 1/3` removeu bloco `Motivo da validação`, confirmando paridade com estado histórico limpo
 - Screenshots gerados:
   - `qa-dashboard-desktop.png`
   - `qa-dashboard-mobile.png`
@@ -1419,17 +1419,17 @@
   - nenhuma lista pública de findings técnicos fora do contrato leve definido
 
 ### W.9 Problemas encontrados
-- O Playwright MCP estava preso a um browser anterior (`mcp-chrome-818ffda`) e precisou de limpeza local do processo antes do QA.
-- O lint da camada visual trata imports contendo `validation` como suspeitos de schema/parsing.
+- Playwright MCP estava preso browser anterior (`mcp-chrome-818ffda`) e precisou de limpeza local do processo antes do QA.
+- lint da camada visual trata imports contendo `validation` como suspeitos de schema/parsing.
   - ajuste aplicado:
     - contratos/viewmodels e helpers de copy foram movidos para paths neutros (`tracking-review*`)
     - a semântica permaneceu intacta
 
 ### W.10 Limitações intencionais
-- O contrato público continua baseado em `key + metadados`, não em frase final serializada no backend.
+- contrato público continua baseado em `key + metadados`, não em frase final serializada no backend.
 - `evidenceSummary` continua separado, mas não foi exposto publicamente nesta fase.
-- O dashboard continua mostrando apenas `topIssue`, não a lista completa de findings.
-- A fase não introduziu i18n paralela nem rederivação de `affectedArea`/severity no frontend.
+- dashboard continua mostrando `topIssue`, não lista completa de findings.
+- fase não introduziu i18n paralela nem rederivação de `affectedArea`/severity no frontend.
 
 ### W.11 Checks finais
 - `pnpm run type-check`
@@ -1440,28 +1440,28 @@
 
 ### W.12 Próximo passo recomendado
 - Fase 9:
-  - aprofundar a família de detectores plugináveis
+  - aprofundar família de detectores plugináveis
   - decidir quando vale expor `evidenceSummary` em superfícies especializadas sem contaminar dashboard/shipment default
-  - considerar ordenação/agrupamento multi-finding por família sem perder a regra timeline-first
+  - considerar ordenação/agrupamento multi-finding por família sem perder regra timeline-first
 
 ## X. Kickoff da Fase 9
 - Data de início: 2026-04-04
 - Fase atual: V1 pluginável / Fase 9 detectores V1.1 conservadores
 - Estado herdado das fases anteriores:
-  - o framework pluginável segue centralizado no Tracking BC, com registry explícito, ordem determinística e sem caminho paralelo
+  - framework pluginável segue centralizado no Tracking BC, com registry explícito, ordem determinística e sem caminho paralelo
   - detectores ativos em produção:
     - `CONFLICTING_CRITICAL_ACTUALS`
     - `POST_COMPLETION_TRACKING_CONTINUED`
     - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
   - `severity` já cruza domínio -> projection -> DTO -> VM -> UI
-  - `debugEvidence` permanece interno; dashboard/process/shipment/time travel continuam consumindo apenas contrato público compacto
+  - `debugEvidence` permanece interno; dashboard/process/shipment/time travel continuam consumindo contrato público compacto
   - dashboard segue leve com `top_issue`; shipment e time travel seguem timeline-first com `active_issues`
-  - lifecycle operacional continua auxiliar e não governa a renderização atual/histórica
+  - lifecycle operacional continua auxiliar e não governa renderização atual/histórica
 - Entendimento inicial:
-  - a Fase 9 precisa ampliar a cobertura semântica com exatamente 2 detectores novos, mantendo a feature inteiramente dentro do framework pluginável da Fase 1
-  - os candidatos válidos são `UNRECONCILABLE_TRACKING_STATE`, `EXPECTED_PLAN_NOT_RECONCILABLE` e `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
-  - a escolha deve privilegiar critério formal, baixo falso positivo e alto valor operacional
-  - a fase não pode transformar dado apenas incompleto em validation issue; a ausência simples continua válida sem contradição objetiva
+  - Fase 9 precisa ampliar cobertura semântica com exatamente 2 detectores novos, mantendo feature inteiramente dentro do framework pluginável da Fase 1
+  - candidatos válidos são `UNRECONCILABLE_TRACKING_STATE`, `EXPECTED_PLAN_NOT_RECONCILABLE` e `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
+  - escolha deve privilegiar critério formal, baixo falso positivo e alto valor operacional
+  - fase não pode transformar dado incompleto em validation issue; ausência simples continua válida sem contradição objetiva
 - Detectores escolhidos para esta fase:
   - `EXPECTED_PLAN_NOT_RECONCILABLE`
     - regra inicial fechada: série crítica com `ACTUAL` primário e `EXPECTED` remanescente classificado como `REDUNDANT_AFTER_ACTUAL` no mesmo `seriesKey`
@@ -1477,14 +1477,14 @@
   - `UNRECONCILABLE_TRACKING_STATE`
     - permanece fora da Fase 9 porque ainda está amplo demais e tenderia a virar umbrella/catch-all ou duplicar detectores mais específicos da V2
 - Justificativa da escolha:
-  - ambos os detectores escolhidos podem ser ancorados em semântica canônica já disponível no Tracking BC (`classifySeries`, cronologia ACTUAL, series/timeline/status read models)
-  - ambos têm cenário de controle claro e conseguem distinguir comportamento legítimo de ruído sem jogar semântica para a UI
-  - o detector excluído exigiria, nesta altura, critérios amplos demais para continuar conservador
+  - ambos detectores escolhidos podem ser ancorados em semântica canônica já disponível no Tracking BC (`classifySeries`, cronologia ACTUAL, series/timeline/status read models)
+  - ambos têm cenário de controle claro e conseguem distinguir comportamento legítimo de ruído sem jogar semântica para UI
+  - detector excluído exigiria, nesta altura, critérios amplos demais para continuar conservador
 - Plano cirúrgico:
-  - registrar os dois plugins em `domain/detectors/*` e conectá-los ao registry existente
-  - manter o contrato público intacto, adicionando apenas novos `code` / `reasonKey`
-  - cobrir os novos detectores com testes unitários positivos/negativos e regressões de projection/DTO/VM
-  - atualizar `pt-BR` com as novas chaves de razão
+  - registrar dois plugins em `domain/detectors/*` e conectá-los ao registry existente
+  - manter contrato público intacto, adicionando novos `code` / `reasonKey`
+  - cobrir novos detectores com testes unitários positivos/negativos e regressões de projection/DTO/VM
+  - atualizar `pt-BR` com novas chaves de razão
   - executar QA manual real com Scenario Lab para:
     - `expected_after_actual`
     - `missing_departure`
@@ -1519,19 +1519,19 @@
     - `affectedScope = TIMELINE`
     - severidade: `ADVISORY`
 - Registry / framework:
-  - os dois detectores foram ligados exclusivamente via `domain/detectors/index.ts`
+  - dois detectores foram ligados exclusivamente via `domain/detectors/index.ts`
   - nenhum helper genérico novo ou trilho paralelo foi introduzido
   - `UNRECONCILABLE_TRACKING_STATE` permaneceu explicitamente fora desta fase
 - Fronteiras:
   - nenhum shape público novo foi criado
-  - a mudança pública foi só a entrada de novos `code` e `reason_key` dentro do contrato já existente
+  - mudança pública foi só entrada de novos `code` e `reason_key` dentro do contrato já existente
   - `debugEvidence` e `evidenceSummary` continuaram internos ao Tracking BC
 
 ### Y.2 Critérios objetivos adotados
-- `EXPECTED_PLAN_NOT_RECONCILABLE` só considera a mesma série e só dispara quando o `EXPECTED` remanescente já é formalmente redundante frente a um `ACTUAL` confirmado.
-- `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT` só considera ACTUALs marítimos fortes e exige milestone posterior objetiva para provar a contradição.
-- Ambas as regras foram limitadas a `ADVISORY` nesta fase porque exigem revisão humana, mas não provam sozinhas risco operacional tão forte quanto os detectores críticos já existentes.
-- O candidato excluído `UNRECONCILABLE_TRACKING_STATE` ficou fora porque ainda exigiria umbrella semântica ampla demais para continuar conservador.
+- `EXPECTED_PLAN_NOT_RECONCILABLE` só considera mesma série e só dispara quando `EXPECTED` remanescente já é formalmente redundante frente `ACTUAL` confirmado.
+- `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT` só considera ACTUALs marítimos fortes e exige milestone posterior objetiva para provar contradição.
+- Ambas regras foram limitadas `ADVISORY` nesta fase porque exigem revisão humana, mas não provam sozinhas risco operacional tão forte quanto detectores críticos já existentes.
+- candidato excluído `UNRECONCILABLE_TRACKING_STATE` ficou fora porque ainda exigiria umbrella semântica ampla demais para continuar conservador.
 
 ### Y.3 Contratos alterados
 - Públicos:
@@ -1566,7 +1566,7 @@
 - Ambiente:
   - app local validado em `http://localhost:3002`
 - Scenario Lab utilizado:
-  - `expected_after_actual` step 2 reutilizando o mesmo processo do step 1
+  - `expected_after_actual` step 2 reutilizando mesmo processo do step 1
   - `missing_departure` step 1
   - `missing_arrival` step 1
   - `booking.basic` step 1 como controle sem issue
@@ -1576,7 +1576,7 @@
   - `/api/tracking/containers/:id/time-travel`
 - Validações executadas:
   - dashboard mostra processo com `top_issue` compacto dos detectores novos
-  - shipment com `EXPECTED_PLAN_NOT_RECONCILABLE` mostra banner/chip/motivo sem poluir a timeline
+  - shipment com `EXPECTED_PLAN_NOT_RECONCILABLE` mostra banner/chip/motivo sem poluir timeline
   - shipment com `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT` mostra banner/chip/motivo sem rederivar semântica na UI
   - shipment controle permanece sem banner/chip indevido
   - time travel preserva `tracking_validation.active_issues` no sync histórico sem expor `debugEvidence`
@@ -1591,11 +1591,11 @@
   - `phase9-time-travel-missing-arrival-desktop.png`
 
 ### Y.6 Problemas encontrados
-- O Playwright MCP começou a sessão preso a um browser anterior e precisou de limpeza do processo antes da passada manual final.
-- O `pnpm check` inicial falhou apenas por formatação/import order dos detectores novos e por um detalhe de tipagem em fixture de `tracking-time-travel.ui-mapper.test.ts`; ambos foram corrigidos antes do fechamento final.
+- Playwright MCP começou sessão preso browser anterior e precisou de limpeza do processo antes da passada manual final.
+- `pnpm check` inicial falhou por formatação/import order dos detectores novos e por detalhe de tipagem em fixture de `tracking-time-travel.ui-mapper.test.ts`; ambos foram corrigidos antes do fechamento final.
 
 ### Y.7 Limitações intencionais
-- A fase não implementa `UNRECONCILABLE_TRACKING_STATE`.
+- fase não implementa `UNRECONCILABLE_TRACKING_STATE`.
 - Não houve mudança de severidade para `CRITICAL` nesses dois detectores.
 - Não houve expansão do payload do dashboard nem detalhe técnico adicional no shipment/time travel além dos novos `code`/`reason_key`.
 
@@ -1607,15 +1607,15 @@
   - verde em 2026-04-04
 
 ### Y.9 Próximo passo recomendado para a Fase 10
-- Introduzir o próximo detector pluginável apenas se ele puder nascer com critério tão fechado quanto os dois desta fase.
-- O melhor candidato parece ser um detector de reconciliação impossível focado em regressão/mutação estrutural específica, não um umbrella geral.
-- Se a Fase 10 precisar de detalhe extra para triagem, priorizar superfícies especializadas e manter dashboard e shipment default compactos.
+- Introduzir próximo detector pluginável se ele puder nascer com critério tão fechado quanto dois desta fase.
+- melhor candidato parece ser detector de reconciliação impossível focado em regressão/mutação estrutural específica, não umbrella geral.
+- Se Fase 10 precisar de detalhe extra para triagem, priorizar superfícies especializadas e manter dashboard e shipment default compactos.
 
 ## Z. Kickoff da Fase 10
 - Data de início: 2026-04-04
 - Fase atual: V1 pluginável / Fase 10 fechamento final
 - Estado herdado das fases anteriores:
-  - o framework pluginável segue centralizado no Tracking BC, com registry explícito, ordem determinística e sem caminho paralelo
+  - framework pluginável segue centralizado no Tracking BC, com registry explícito, ordem determinística e sem caminho paralelo
   - detectores ativos em produção:
     - `CONFLICTING_CRITICAL_ACTUALS`
     - `POST_COMPLETION_TRACKING_CONTINUED`
@@ -1625,18 +1625,18 @@
   - `severity` já cruza domínio -> projection -> DTO -> VM -> UI
   - dashboard segue leve com `top_issue`; shipment e time travel seguem timeline-first com `active_issues`
   - `debugEvidence` segue interna ao Tracking BC e não vaza para contratos públicos
-  - lifecycle operacional continua auxiliar e não governa a renderização atual/histórica
+  - lifecycle operacional continua auxiliar e não governa renderização atual/histórica
 - Entendimento inicial:
-  - a Fase 10 é de fechamento da V1/V1.1 pluginável, não de abertura de detector novo, payload novo ou rota nova
-  - o principal resíduo arquitetural remanescente é `TrackingValidationDisplayIssue` ainda viver em `domain/model` mesmo sendo consumido como contrato de projection/read model pela cadeia application -> HTTP -> UI
-  - a fase precisa revisar coerência completa detector -> projection -> DTO -> mapper -> VM -> UI, garantir que não exista drift e deixar microcopy atual/histórica mais consistente
-  - o naming visual final `Validação necessária` permanece preservado nesta fase
+  - Fase 10 é de fechamento da V1/V1.1 pluginável, não de abertura de detector novo, payload novo ou rota nova
+  - principal resíduo arquitetural remanescente é `TrackingValidationDisplayIssue` ainda viver em `domain/model` mesmo sendo consumido como contrato de projection/read model pela cadeia application -> HTTP -> UI
+  - fase precisa revisar coerência completa detector -> projection -> DTO -> mapper -> VM -> UI, garantir que não exista drift e deixar microcopy atual/histórica mais consistente
+  - naming visual final `Validação necessária` permanece preservado nesta fase
 - Plano cirúrgico:
   - mover `TrackingValidationDisplayIssue` e seus helpers para `application/projection`, mantendo `TrackingValidationFinding` como contrato estritamente de domínio
-  - atualizar imports em Tracking HTTP, Process application e Process HTTP para o novo contrato application-level
-  - polir microcopy do dashboard/shipment sem expandir payload nem mover semântica para a UI
+  - atualizar imports em Tracking HTTP, Process application e Process HTTP para novo contrato application-level
+  - polir microcopy do dashboard/shipment sem expandir payload nem mover semântica para UI
   - adicionar regressão focada do shipment header para copy atual vs histórica
-  - revisar README do slice e registrar claramente o fechamento V1/V1.1 e o que fica para V2
+  - revisar README do slice e registrar claramente fechamento V1/V1.1 e que fica para V2
 
 ## AA. Fechamento da Fase 10
 - Data de fechamento: 2026-04-04
@@ -1649,25 +1649,25 @@
 ### AA.1 Implementação concluída
 - Boundary cleanup:
   - `TrackingValidationDisplayIssue` e helpers de ordenação/área afetada foram movidos de `domain/model` para `application/projection`
-  - Process application, Process HTTP e Tracking HTTP passaram a consumir o contrato application-level
-  - o arquivo antigo em `domain/model` foi removido, eliminando o resíduo cross-BC/domain
+  - Process application, Process HTTP e Tracking HTTP passaram consumir contrato application-level
+  - arquivo antigo em `domain/model` foi removido, eliminando resíduo cross-BC/domain
 - UX / microcopy:
-  - dashboard manteve o naming visual `Validação necessária`, mas com texto agregador mais natural para singular/plural
-  - shipment atual passou a usar copy explícita para singular/plural sem truques de fallback
+  - dashboard manteve naming visual `Validação necessária`, mas com texto agregador mais natural para singular/plural
+  - shipment atual passou usar copy explícita para singular/plural sem truques de fallback
   - shipment histórico manteve copy específica por container/snapshot
-  - o painel lateral de motivos foi alinhado para `Motivos da validação`, com descrição distinta entre modo atual e histórico
+  - painel lateral de motivos foi alinhado para `Motivos da validação`, com descrição distinta entre modo atual e histórico
 - Documentação interna:
-  - README do slice de validation foi atualizado com os detectores ativos da V1/V1.1 e com a ownership rule do contrato application-level
+  - README do slice de validation foi atualizado com detectores ativos da V1/V1.1 e com ownership rule do contrato application-level
 
 ### AA.2 Contratos e payloads revisados
 - Domínio:
-  - `TrackingValidationFinding` continua sendo o contrato canônico do detector/plugin
+  - `TrackingValidationFinding` continua sendo contrato canônico do detector/plugin
 - Application / projection:
   - summary + `TrackingValidationDisplayIssue` seguem como read model compacto owned pelo Tracking BC
 - HTTP / DTO:
   - nenhum shape público novo
-  - dashboard continua apenas com `has_issues`, `highest_severity`, `affected_container_count`, `top_issue`
-  - shipment e time travel continuam apenas com `finding_count`, `active_issues`, `affected_area`, `affected_location`, `affected_block_label_key`
+  - dashboard continua com `has_issues`, `highest_severity`, `affected_container_count`, `top_issue`
+  - shipment e time travel continuam com `finding_count`, `active_issues`, `affected_area`, `affected_location`, `affected_block_label_key`
 - Segurança de payload:
   - `debugEvidence` continua interna ao Tracking BC e não vazou para dashboard, shipment ou time travel
 
@@ -1707,7 +1707,7 @@
   - detectores críticos e advisory continuam atravessando domínio -> projection -> DTO -> VM -> UI
   - detectores extras da Fase 9 continuam corretos em payload e UI
   - shipment controle sem issue permanece sem banner/chip indevido
-  - o modo histórico não expõe `debugEvidence`
+  - modo histórico não expõe `debugEvidence`
 - Evidências geradas:
   - `phase10-dashboard-desktop.png`
   - `phase10-dashboard-mobile.png`
@@ -1718,7 +1718,7 @@
 
 ### AA.5 Resíduos removidos e decisões preservadas
 - Removido:
-  - caminho residual em que um contrato de projection vivia sob `domain/model`
+  - caminho residual em que contrato de projection vivia sob `domain/model`
 - Preservado explicitamente:
   - Tracking segue único dono da semântica de validation issues
   - UI continua sem detectar issue
@@ -1728,8 +1728,8 @@
   - lifecycle operacional e time travel seguem integrados sem virarem fonte de verdade
 
 ### AA.6 Riscos residuais pequenos
-- Ainda existe risco futuro de surgir drift de copy entre superfícies se novos modos históricos forem adicionados sem reaproveitar os presenters criados nesta fase.
-- O conjunto atual de detectores continua intencionalmente conservador; alguns casos de “estado impossível” ainda permanecem fora da V1/V1.1 para evitar umbrella semântica ampla demais.
+- Ainda existe risco futuro de surgir drift de copy entre superfícies se novos modos históricos forem adicionados sem reaproveitar presenters criados nesta fase.
+- conjunto atual de detectores continua intencionalmente conservador; alguns casos de “estado impossível” ainda permanecem fora da V1/V1.1 para evitar umbrella semântica ampla demais.
 
 ### AA.7 Fechamento explícito V1 / V1.1 / V2
 - V1 entregue:

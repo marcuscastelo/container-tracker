@@ -1,6 +1,6 @@
 # Agent Platform Layout (Canonical)
 
-This document defines the canonical filesystem layout for `apps/agent` and ownership boundaries.
+This document defines canonical filesystem layout for `apps/agent` and ownership boundaries.
 
 ## Canonical Layout
 
@@ -35,9 +35,9 @@ DATA_DIR/
   - Must not compute paths; only consumes `PlatformPaths`.
 - Runtime, supervisor, updater, control, CLI
   - Consume resolved paths from `PlatformAdapter`.
-  - Must not branch on OS directly.
+  - Must not branch on `process.platform` directly.
 
 ## Public State Policy
 
 - Linux default public-state directory: `DATA_DIR/run`
-- `AGENT_PUBLIC_STATE_DIR` remains an explicit override.
+- `AGENT_PUBLIC_STATE_DIR` remains explicit override.

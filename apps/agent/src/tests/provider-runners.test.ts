@@ -58,6 +58,76 @@ describe('provider runners', () => {
     expect(result.status).toBe('blocked')
   })
 
+  it('cmacgm runner classifies unexpected snapshot shape as terminal failure', async () => {
+    const runner = createCmaCgmRunner({
+      async fetchStatus() {
+        return {
+          payload: {
+            html: '<html><body>unknown</body></html>',
+          },
+          fetchedAt: '2026-04-15T00:00:00.000Z',
+          parseError: null,
+        }
+      },
+    })
+
+    const result = await runner.run(makeInput('cmacgm'))
+    expect(result.status).toBe('terminal_failure')
+    expect(result.errorCode).toBe('PROVIDER_PARSE_ERROR')
+  })
+
+  it('cmacgm runner classifies blank container reference as terminal failure', async () => {
+    const runner = createCmaCgmRunner({
+      async fetchStatus() {
+        return {
+          payload: {
+            ContainerReference: '   ',
+            PastMoves: [
+              {
+                DateString: 'Friday,24-APR-2026',
+                TimeString: '07:00 PM',
+                State: 'DONE',
+                StatusDescription: 'Loaded on board',
+              },
+            ],
+          },
+          fetchedAt: '2026-04-15T00:00:00.000Z',
+          parseError: null,
+        }
+      },
+    })
+
+    const result = await runner.run(makeInput('cmacgm'))
+    expect(result.status).toBe('terminal_failure')
+    expect(result.errorCode).toBe('PROVIDER_PARSE_ERROR')
+  })
+
+  it('cmacgm runner keeps close-enough payload as success and emits diagnostics warning', async () => {
+    const runner = createCmaCgmRunner({
+      async fetchStatus() {
+        return {
+          payload: {
+            ContainerReference: 'MSCU1234567',
+            PastMoves: [
+              {
+                Date: null,
+                DateString: null,
+                State: 'DONE',
+                StatusDescription: null,
+              },
+            ],
+          },
+          fetchedAt: '2026-04-15T00:00:00.000Z',
+          parseError: null,
+        }
+      },
+    })
+
+    const result = await runner.run(makeInput('cmacgm'))
+    expect(result.status).toBe('success')
+    expect(Array.isArray(result.diagnostics.warnings)).toBe(true)
+  })
+
   it('pil runner classifies timeout exceptions as retryable failures', async () => {
     const runner = createPilRunner({
       async fetchStatus() {

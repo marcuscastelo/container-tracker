@@ -1,9 +1,9 @@
 # Pós-fix — notas + dívidas novas (para não esquecer)
 
 ## ✅ Estado atual
-- build-release passou a materializar deps via `pnpm deploy --prod` (sem copiar `node_modules`).
+- build-release passou materializar deps via `pnpm deploy --prod` (sem copiar `node_modules`).
 - preflight agora garante presença de `@supabase/functions-js/package.json`.
-- `pnpm agent:rebuild-restart` deixa o serviço `RUNNING`.
+- `pnpm agent:rebuild-restart` deixa serviço `RUNNING`.
 - logs WinSW sem `ERR_MODULE_NOT_FOUND`.
 
 ---
@@ -17,15 +17,15 @@ Você precisou usar:
 
 **Risco:**
 - Dependência de comportamento específico do pnpm v10.
-- Mudanças futuras de pnpm podem quebrar o release silenciosamente.
+- Mudanças futuras de pnpm podem quebrar release silenciosamente.
 
 **Mitigação recomendada (curto prazo):**
 - Fixar versão do pnpm no repo (packageManager no package.json / corepack).
 - Documentar explicitamente no `docs/agent-installer.md` e/ou `apps/agent/src/README`:
-  - que o release depende dessas flags e por quê.
+  - que release depende dessas flags e por quê.
 
 **Mitigação recomendada (médio prazo):**
-- Criar um modo de build do agent que não dependa de `node-linker=hoisted` (ex.: deploy isolado do package do agent, ou bundling).
+- Criar modo de build do agent que não dependa de `node-linker=hoisted` (ex.: deploy isolado do package do agent, ou bundling).
 
 ---
 
@@ -38,7 +38,7 @@ Você teve EINVAL ao usar `spawn('pnpm.cmd', { shell:false })` e contornou com `
 
 **Mitigação recomendada:**
 - Garantir quoting robusto dos args.
-- Logar no modo verbose (sem secrets) o comando final (somente o “shape”, sem tokens).
+- Logar no modo verbose (sem secrets) comando final (somente “shape”, sem tokens).
 - Considerar detectar e usar `process.env.ComSpec` em vez de hardcode `cmd.exe`.
 
 ---
@@ -55,7 +55,7 @@ Objetivo: reduzir “false confidence” se supabase sair do stack.
 ---
 
 ## 2.2 Mensagem de erro de preflight com ação
-Quando o check falhar, incluir:
+Quando check falhar, incluir:
 - “Release deps parecem incompletas. Rode agent:release novamente. Verifique pnpm deploy flags no build-release.ts.”
 
 Evita debug lento.
@@ -74,8 +74,8 @@ Essas duas entram como “dívidas de build/release”.
 # 4) Nova divida (installer MAERSK + browser)
 
 - `bootstrap.env` agora e instalado com `MAERSK_ENABLED=1` por default.
-- O setup agora bloqueia instalacao quando `MAERSK_ENABLED=1` e nao existe Chrome/Chromium detectavel localmente.
+- setup agora bloqueia instalacao quando `MAERSK_ENABLED=1` e nao existe Chrome/Chromium detectavel localmente.
 
 Impacto:
-- O cliente passa a ter dependencia forte de browser instalado para concluir install padrao.
-- Se quiser operar sem MAERSK, sera necessario um modo futuro (feature flag backend ou installer switch) fora do escopo atual.
+- cliente passa ter dependencia forte de browser instalado para concluir install padrao.
+- Se quiser operar sem MAERSK, sera necessario modo futuro (feature flag backend ou installer switch) fora do escopo atual.

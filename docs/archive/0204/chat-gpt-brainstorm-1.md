@@ -5060,21 +5060,21 @@ Mas isso já é engenharia de produto de verdade, não brainstorm.
 Quando quiser avançar, me diz qual dessas frentes você quer atacar 👌
 ````
 
-Perfeito. UI gerada com sucesso. Agora vamos focar em implementar as features e popular os campos do dashboard. Atualmente estamos no estado inicial:
+Perfeito. UI gerada com sucesso. Agora vamos focar em implementar features e popular campos do dashboard. Atualmente estamos no estado inicial:
 
 Resumo dos Embarques
 Processo	Cliente	Origem → Destino	Containers	Status	ETA
-Process 4f854c72	<Client>	
+Process 4f854c72	<Client>
 —
 —
-1	
+1
 ?
 Aguardando dados
 —
-Process 73aeb3ee	<Client>	
+Process 73aeb3ee	<Client>
 —
 —
-1	
+1
 ?
 Aguardando dados
 —
@@ -5082,27 +5082,27 @@ Aguardando dados
 Perfeito — agora entramos na fase mais importante do produto:
 transformar dados crus (ou ausência deles) em informação honesta e útil.
 
-Vou estruturar a resposta em 4 blocos práticos:
+Vou estruturar resposta em 4 blocos práticos:
 
 Modelo mental do dashboard
 
 Como cada coluna é populada (regras exatas)
 
-Por que hoje tudo aparece como “— / ? / Aguardando dados”
+Por que hoje tudo aparece como “— /? / Aguardando dados”
 
-Roadmap incremental de implementação (o que fazer primeiro no código)
+Roadmap incremental de implementação (que fazer primeiro no código)
 
-1️⃣ O dashboard NÃO é um espelho do banco
+1️⃣ dashboard NÃO é espelho do banco
 
-Ele é um view derivado.
+Ele é view derivado.
 
-A Home nunca lê dados diretamente do shipment ou container.
+Home nunca lê dados diretamente do shipment ou container.
 Ela lê projeções derivadas.
 
 Mental model correto:
 
 Process (shipment)
-  └─ containers[]
+└─ containers[]
        └─ events[]
              └─ derived container state
                     └─ derived shipment summary
@@ -5110,7 +5110,7 @@ Process (shipment)
 
 Ou seja:
 
-Containers são a unidade factual
+Containers são unidade factual
 
 Shipment é agregação
 
@@ -5121,7 +5121,7 @@ Dashboard é agregação da agregação
 Vamos pegar sua tabela:
 
 Resumo dos Embarques
-Processo | Cliente | Origem → Destino | Containers | Status | ETA
+Processo|Cliente|Origem → Destino|Containers|Status|ETA
 
 🔹 Processo
 
@@ -5150,10 +5150,10 @@ Fallback explícito
 
 Regra recomendada agora:
 
-client = process.client_name ?? "<Client>"
+client = process.client_name?? "<Client>"
 
 
-💡 Importante: mostrar <Client> é melhor do que esconder a coluna
+💡 Importante: mostrar <Client> é melhor do que esconder coluna
 Isso comunica claramente: “esse dado ainda não existe no produto”.
 
 🔹 Origem → Destino (INTENÇÃO)
@@ -5162,8 +5162,8 @@ NUNCA derive isso diretamente dos eventos no dashboard.
 
 Regra:
 
-origin = process.planned_origin ?? "—"
-destination = process.planned_destination ?? "—"
+origin = process.planned_origin?? "—"
+destination = process.planned_destination?? "—"
 
 
 Render:
@@ -5183,11 +5183,11 @@ ou, como você já fez:
 
 Isso não muda automaticamente
 
-A intenção só muda se o usuário editar
+intenção só muda se usuário editar
 
 🔹 Containers
 
-Essa é a coluna mais simples e sempre confiável.
+Essa é coluna mais simples e sempre confiável.
 
 Regra:
 
@@ -5203,7 +5203,7 @@ Resultado:
 
 🔹 Status (AGREGADO)
 
-Aqui está o coração do produto.
+Aqui está coração do produto.
 
 Primeiro: container status, depois shipment.
 
@@ -5220,7 +5220,7 @@ Nenhuma movimentação
 Regra:
 
 if (container.events.length === 0) {
-  status = "AWAITING_DATA"
+status = "AWAITING_DATA"
 }
 
 
@@ -5240,7 +5240,7 @@ Status do shipment (agregado)
 Regra canônica:
 
 if (all containers AWAITING_DATA) {
-  shipment_status = "AWAITING_DATA"
+shipment_status = "AWAITING_DATA"
 }
 
 
@@ -5258,14 +5258,14 @@ ETA nunca vem do processo, só dos containers.
 Regras:
 
 etas = containers
-  .map(c => c.final_eta)
-  .filter(Boolean)
+.map(c => c.final_eta)
+.filter(Boolean)
 
 if (etas.length === 0) {
-  eta = "—"
+eta = "—"
 }
 else {
-  eta = max(etas)
+eta = max(etas)
 }
 
 
@@ -5283,21 +5283,21 @@ Nenhum container tem ETA
 
 Muita gente erra aqui tentando “embelezar”.
 
-Você fez o contrário — e acertou.
+Você fez contrário — e acertou.
 
 Esse estado comunica 3 coisas importantes ao usuário:
 
-✅ O processo foi criado
+✅ processo foi criado
 
 ⚠️ Ainda não há dados operacionais
 
-🧠 O sistema não inventa informação
+🧠 sistema não inventa informação
 
 Isso gera confiança, não frustração.
 
 4️⃣ Roadmap técnico de implementação (ordem certa)
 
-Agora, como sair desse estado passo a passo sem quebrar nada.
+Agora, como sair desse estado passo passo sem quebrar nada.
 
 🔹 Fase 1 — Projeções básicas (sem carrier)
 
@@ -5313,11 +5313,11 @@ deriveShipmentETA()
 
 Mesmo que sempre retornem “Aguardando dados / —”.
 
-👉 Isso cria a infra mental do produto.
+👉 Isso cria infra mental do produto.
 
 🔹 Fase 2 — Ingestão de eventos (retroativos)
 
-Quando entrar o primeiro sync:
+Quando entrar primeiro sync:
 
 Eventos entram no passado
 
@@ -5327,7 +5327,7 @@ Status muda automaticamente
 
 Nada muda no dashboard logicamente — só nos dados.
 
-Esse é o sinal de que o design está certo.
+Esse é sinal de que design está certo.
 
 🔹 Fase 3 — Alertas
 
@@ -5339,7 +5339,7 @@ Missing ETA
 
 Divergência entre containers
 
-O dashboard começa a mostrar:
+dashboard começa mostrar:
 
 ⚠️ 1 container atrasado
 
@@ -5348,13 +5348,13 @@ Sem mudar layout.
 
 5️⃣ Regra de ouro (pra não errar daqui pra frente)
 
-Se um campo não pode ser derivado com certeza, ele deve mostrar ausência, não suposição.
+Se campo não pode ser derivado com certeza, ele deve mostrar ausência, não suposição.
 
 Seu estado atual está 100% alinhado com isso.
 
 Próximo passo recomendado
 
-Se você quiser seguir de forma incremental e segura, o próximo passo ideal é:
+Se você quiser seguir de forma incremental e segura, próximo passo ideal é:
 
 👉 Definir enums + funções puras de derivação
 

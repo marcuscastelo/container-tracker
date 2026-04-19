@@ -12,7 +12,7 @@
 
 ## Pipeline (Operational Summary)
 
-1. Persist raw carrier payload as Snapshot (immutable).
+1. Persist raw carrier payload Snapshot (immutable).
 2. `normalizeSnapshot(snapshot)` → `ObservationDraft[]` (provider-specific).
 3. `diffObservations(existing, drafts)` → new `Observation[]` (idempotent via fingerprint).
 4. Persist new Observations.
@@ -63,7 +63,7 @@ UI (currently `process/ui`) is responsible for mapping:
 - External carrier ordering/timestamps are not trusted; normalize deterministically.
 - Avoid retroactive monitoring alerts; only fact alerts may be retroactive (and must be flagged).
 - Do not delete observations; new facts are appended.
-- Fingerprint collisions: prefer persisting both and raising a `data` alert.
+- Fingerprint collisions: prefer persisting both and raising `data` alert.
 
 ---
 

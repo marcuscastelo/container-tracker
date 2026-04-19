@@ -5,10 +5,10 @@ Range de commits analisado: a077b86c2f60c3421754aaef141d06febb56dcec..HEAD
 Data do relatório: 2026-02-04
 
 Resumo rápido
-- Objetivo: mapear commits nesse range para os itens do `docs/roadmap.md` e do brainstorm `docs/chat-gpt-brainstorm-1.md`.
-- Método: listei commits do range, identifiquei aqueles que implementam ou tocam cada feature do roadmap e classifiquei o progresso como: Done / Partial / Not started.
+- Objetivo: mapear commits nesse range para itens do `docs/roadmap.md` e do brainstorm `docs/chat-gpt-brainstorm-1.md`.
+- Método: listei commits do range, identifiquei aqueles que implementam ou tocam cada feature do roadmap e classifiquei progresso como: Done / Partial / Not started.
 
-Observação: o mapeamento é baseado em mensagens de commit e alterações visíveis no repositório; em casos ambíguos preferi marcar como Partial e listar evidências/faltas.
+Observação: mapeamento é baseado em mensagens de commit e alterações visíveis no repositório; em casos ambíguos preferi marcar como Partial e listar evidências/faltas.
 
 ---
 
@@ -22,7 +22,7 @@ Commits chave:
 - c75f35e7... feat: add example JSON files for CGACGM, Maersk, and MSC tracking data
 
 Evidência: Zod schemas, exemplos de payloads e reorganização das schemas estão presentes.
-Gap: validar cobertura completa (todos os campos do modelo canônico definidos e testados) — há testes novos (06fa55...) mas revisar casos de borda de `raw_payload` e `source` obrigatórios.
+Gap: validar cobertura completa (todos campos do modelo canônico definidos e testados) — há testes novos (06fa55...) mas revisar casos de borda de `raw_payload` e `source` obrigatórios.
 
 F0.2 — Motor de Derivação de Status — STATUS: Partial
 Commits chave:
@@ -31,7 +31,7 @@ Commits chave:
 - aa477e1e... feat(adapters): implement data normalization for shipping APIs
 
 Evidência: normalizadores/adapters e tipos para states estão sendo adicionados; há melhoria na extração de eventos.
-Gap: não há um commit único que claramente exponha uma função pura `deriveContainerState(events[])` com regras documentadas e testadas. Marcar como Partial — infraestrutura pronta, motor central precisa consolidação e testes formais.
+Gap: não há commit único que claramente exponha função pura `deriveContainerState(events[])` com regras documentadas e testadas. Marcar como Partial — infraestrutura pronta, motor central precisa consolidação e testes formais.
 
 ---
 
@@ -48,14 +48,14 @@ Commits chave:
 - f6ab4b45... feat(container): replace file-based container status with Supabase persistence
 
 Evidência: diálogo de criação (Create Process), funcionalidades de validação (ISO6346 hint), checks de duplicidade e link para processo existente, persistência (Supabase) e melhorias no fluxo.
-Observação: i18n keys, UX microcopy e testes foram adicionados. Pelo conjunto de commits, a capacidade básica de criar processos e containers manualmente está implementada e persistida.
+Observação: i18n keys, UX microcopy e testes foram adicionados. Pelo conjunto de commits, capacidade básica de criar processos e containers manualmente está implementada e persistida.
 
 F1.2 — Registro Manual de Eventos — STATUS: Partial
-Commits que tocam o tema:
+Commits que tocam tema:
 - 66d083da... feat(process): add process update functionality and UI
 - f0e345ec... feat(tracking): introduce process and alert management
 
-Evidência: há UI e capacidades de update/gestão de processo; entretanto não encontrei commits explícitos que implementem um formulário/fluxo para criação manual de eventos (tipo, data/hora, local) como payloads ordenados na timeline.
+Evidência: há UI e capacidades de update/gestão de processo; entretanto não encontrei commits explícitos que implementem formulário/fluxo para criação manual de eventos (tipo, data/hora, local) como payloads ordenados na timeline.
 Recomendação: adicionar endpoint/form de `addEvent(manual)` e testes que confirmem que eventos manuais não sobrescrevem automáticos.
 
 ---
@@ -89,7 +89,7 @@ Commits chave:
 - 560ffc0d... feat: add Zod schemas for alerting
 - c7370af2... feat(container): provide detailed status and event timeline
 
-Evidência: schemas de alertas, estruturas para gerar e persistir alertas foram adicionadas; há um módulo de tracking/process management.
+Evidência: schemas de alertas, estruturas para gerar e persistir alertas foram adicionadas; há módulo de tracking/process management.
 Gap: regras de alerta (ex.: não gerar retroativamente sem fato novo), severidade calculada e cobertura por categoria (eta/movement/customs/data) precisam de testes e documentação formalizada.
 
 F3.2 — Gestão de Alertas — STATUS: Not started / Partial
@@ -107,12 +107,12 @@ Observação: chaves e colunas iniciais existem; busca global e filtros operacio
 ---
 
 6) FASE 5 e FASE 6 — STATUS: Not started
-Esses tópicos (visões agregadas, data quality layer, auditoria completa) não têm commits significativos implementando as capacidades descritas.
+Esses tópicos (visões agregadas, data quality layer, auditoria completa) não têm commits significativos implementando capacidades descritas.
 
 ---
 
 Mapping de commits (seletivo)
-Incluo abaixo os commits mais representativos do range analisado — usei hash curto e mensagem:
+Incluo abaixo commits mais representativos do range analisado — usei hash curto e mensagem:
 
 - 6782d1c4 2026-02-04 feat(shipment): implement create process functionality in ShipmentView
 - e9b273e5 2026-02-04 feat: add Create Process dialog and enhance internationalization support
@@ -128,7 +128,7 @@ Incluo abaixo os commits mais representativos do range analisado — usei hash c
 - f0e345ec 2026-02-04 feat(tracking): introduce process and alert management
 - f6ab4b45 2026-02-03 feat(container): replace file-based container status with Supabase persistence
 
-Para um log completo de commits no range, rode:
+Para log completo de commits no range, rode:
 
 ```bash
 git log --pretty=format:"%H %ad %s" --date=short a077b86c2f60c3421754aaef141d06febb56dcec..HEAD
@@ -137,16 +137,16 @@ git log --pretty=format:"%H %ad %s" --date=short a077b86c2f60c3421754aaef141d06f
 ---
 
 Recomendações práticas / próximos passos (prioridades):
-1. Consolidar e expor um motor puro `deriveContainerState(events[])` com testes unitários (prioridade F0.2). Isso facilita alertas e status confiáveis.
-2. Implementar e testar a criação manual de eventos (F1.2): endpoint + UI form, com garantia que eventos manuais não sobrescrevem automáticos.
+1. Consolidar e expor motor puro `deriveContainerState(events[])` com testes unitários (prioridade F0.2). Isso facilita alertas e status confiáveis.
+2. Implementar e testar criação manual de eventos (F1.2): endpoint + UI form, com garantia que eventos manuais não sobrescrevem automáticos.
 3. Completar alertas: regras por categoria + ack/snooze API + UI (F3.1 + F3.2).
 4. Validar timeline ordering/representation por testes E2E / snapshot: garantir order by event_time e buracos explícitos (F2.2).
-5. Implementar filtros operacionais na `ShipmentsTable` e buscar um caminho para a Busca Global (F4).
+5. Implementar filtros operacionais na `ShipmentsTable` e buscar caminho para Busca Global (F4).
 
 ---
 
 Apêndice — Observações sobre qualidade e testes
-- Há vários commits adicionando testes (06fa55..., 4e604f7e..., etc.). Recomendo rodar o conjunto de testes e corrigir gaps antes de avançar com motor de derivação.
+- Há vários commits adicionando testes (06fa55..., 4e604f7e..., etc.). Recomendo rodar conjunto de testes e corrigir gaps antes de avançar com motor de derivação.
 - Sugestão de comando para rodar testes locais:
 
 ```bash
@@ -163,8 +163,8 @@ Atualização do checklist (todo list usada neste trabalho):
 - Escrita de `docs/results-0204.md`: completed
 
 Se quiser, posso agora:
-- Gerar um PR com este documento adicionado e sugerir reviewers
-- Executar a suíte de testes e anexar falhas/coverage
-- Gerar uma tabela CSV/JSON com todos os commits mapeados por feature (útil para rastrear progresso automaticamente)
+- Gerar PR com este documento adicionado e sugerir reviewers
+- Executar suíte de testes e anexar falhas/coverage
+- Gerar tabela CSV/JSON com todos commits mapeados por feature (útil para rastrear progresso automaticamente)
 
-Fico aguardando sua preferência sobre os próximos passos.
+Fico aguardando sua preferência sobre próximos passos.

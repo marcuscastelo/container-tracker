@@ -28,7 +28,7 @@ Data: 2026-04-14
 
 ## Regras ativas nesta fase
 
-- Fronteira sempre muda o tipo.
+- Fronteira sempre muda tipo.
 - DTO de sync é **estrito canônico** (sem wrappers `data/result` e sem camelCase legado).
 - Parsing/validation só nas bordas; provider não valida estrutura global de job.
 - Contratos centrais não usam `Partial<>`.
