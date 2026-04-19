@@ -3,9 +3,9 @@
 
 ## Objetivo geral
 
-Implementar a feature de **Tracking Validation Issues** como um sistema **pluginável desde o início**, dentro do Tracking BC, para detectar casos em que o sistema **pode não estar interpretando corretamente o tracking com confiança suficiente**.
+Implementar feature de **Tracking Validation Issues** como sistema **pluginável desde início**, dentro do Tracking BC, para detectar casos em que sistema **pode não estar interpretando corretamente tracking com confiança suficiente**.
 
-A feature deve:
+feature deve:
 
 - preservar determinismo
 - preservar auditabilidade
@@ -25,22 +25,22 @@ Validation issue não substitui:
 - observations
 - snapshots
 
-É um **sinal derivado paralelo**.
+É **sinal derivado paralelo**.
 
 ### 2. Tracking é o dono
 Toda regra semântica de validation issue nasce no Tracking BC.
 
 ### 3. UI não detecta
-A UI:
+UI:
 - renderiza
-- agrega visualmente o funil
+- agrega visualmente funil
 - formata textos/i18n
 - destaca visualmente
 
-A UI **não decide** quem requer validação.
+UI **não decide** quem requer validação.
 
 ### 4. Pluginável por código, não plataforma genérica exagerada
-A V1 deve nascer pluginável, mas sem overengineering:
+V1 deve nascer pluginável, mas sem overengineering:
 - sem discovery mágico
 - sem config dinâmica por banco
 - sem engine genérica de rules
@@ -48,7 +48,7 @@ A V1 deve nascer pluginável, mas sem overengineering:
 
 ### 5. Dashboard leve, shipment mais detalhado
 Dashboard recebe agregados mínimos.
-Shipment/detail recebe detalhe suficiente para guiar o operador até a fonte do problema.
+Shipment/detail recebe detalhe suficiente para guiar operador até fonte do problema.
 
 ### 6. Tudo E2E por fase
 Cada fase deve atravessar:
@@ -70,7 +70,7 @@ Cada fase deve atravessar:
 # Fase 1 — Fundação pluginável mínima E2E
 
 ## Objetivo
-Criar a fundação do sistema pluginável de validation issues dentro do Tracking BC, sem ainda depender de múltiplas regras complexas.
+Criar fundação do sistema pluginável de validation issues dentro do Tracking BC, sem ainda depender de múltiplas regras complexas.
 
 ## Escopo
 - Criar feature slice:
@@ -104,7 +104,7 @@ Criar a fundação do sistema pluginável de validation issues dentro do Trackin
 
 ## Detectores reais nesta fase
 Nenhum detector real ainda.
-Pode existir um detector nulo/mock controlado apenas para wiring técnico.
+Pode existir detector nulo/mock controlado para wiring técnico.
 
 ## Regras arquiteturais
 - tracking owns validation semantics
@@ -138,7 +138,7 @@ Pode existir um detector nulo/mock controlado apenas para wiring técnico.
 
 ## UI mínima
 ### Dashboard
-Suporte para indicar que o processo contém containers com validation issue.
+Suporte para indicar que processo contém containers com validation issue.
 
 ### Shipment
 Suporte para:
@@ -173,20 +173,20 @@ Sem ainda detalhar marcação profunda da timeline.
 
 ## Prompt de implementação — Fase 1
 
-Implemente a fundação pluginável da feature de Tracking Validation Issues no Tracking BC.
+Implemente fundação pluginável da feature de Tracking Validation Issues no Tracking BC.
 
 Objetivo:
-- criar uma feature slice `modules/tracking/features/validation`
+- criar feature slice `modules/tracking/features/validation`
 - definir contratos estáveis de detector/context/finding/registry
 - integrar essa derivação ao pipeline atual do tracking
-- propagar os resultados até DTO/VM/UI
+- propagar resultados até DTO/VM/UI
 - sem ainda ativar detectores reais complexos
 
 Requisitos obrigatórios:
-1. A feature deve nascer **pluginável por código**, mas simples e explícita.
+1. feature deve nascer **pluginável por código**, mas simples e explícita.
 2. Nada de config dinâmica, rule engine genérica, DI abstrata demais ou plugin remoto.
-3. O registry deve ser explícito e determinístico.
-4. Toda a semântica deve permanecer no Tracking BC.
+3. registry deve ser explícito e determinístico.
+4. Toda semântica deve permanecer no Tracking BC.
 5. UI/capabilities/routes não podem derivar validation issue.
 6. Criar agregação por container e processo.
 7. Atualizar response DTOs, UI mappers e ViewModels.
@@ -203,17 +203,17 @@ Requisitos obrigatórios:
 # Fase 2 — UI mínima funcional + naming validado + Plugin real #1
 
 ## Objetivo
-Ativar a UI mínima real da feature e implementar o primeiro detector pluginável real:
+Ativar UI mínima real da feature e implementar primeiro detector pluginável real:
 **conflitos críticos de ACTUALs**.
 
 ## Escopo
-- Escolher o naming visual real
+- Escolher naming visual real
 - Ativar renderização real em dashboard/shipment/container
 - Implementar plugin:
   - `CONFLICTING_CRITICAL_ACTUALS`
 - Integrar severidade `CRITICAL`
 - Garantir que conflitos continuem visíveis sem apagar fatos
-- Permitir que o funil processo → container → origem do problema já exista visualmente
+- Permitir que funil processo → container → origem do problema já exista visualmente
 
 ## Naming candidates para teste visual
 - Validação necessária
@@ -229,7 +229,7 @@ Ativar a UI mínima real da feature e implementar o primeiro detector plugináve
 ### casos-alvo
 - dois `ACTUAL DISCHARGE` irreconciliáveis
 - múltiplos ACTUALs críticos incompatíveis na mesma série
-- conflito ACTUAL crítico que compromete a leitura atual
+- conflito ACTUAL crítico que compromete leitura atual
 
 ### severidade
 `CRITICAL`
@@ -271,18 +271,18 @@ Ativar a UI mínima real da feature e implementar o primeiro detector plugináve
 
 ## Prompt de implementação — Fase 2
 
-Implemente a UI mínima funcional da feature e o primeiro detector pluginável real `CONFLICTING_CRITICAL_ACTUALS`.
+Implemente UI mínima funcional da feature e primeiro detector pluginável real `CONFLICTING_CRITICAL_ACTUALS`.
 
 Objetivo:
 - testar naming visual real
-- ativar a exibição real da feature
+- ativar exibição real da feature
 - detectar conflitos críticos de ACTUALs via plugin
 
 Requisitos:
-1. Testar visualmente no app os labels candidatos.
-2. Usar Playwright para abrir e navegar as telas reais, mas decidir por inspeção manual do LLM, não por script automatizado de assert visual.
-3. Escolher o melhor label curto sem truncamento/quebra problemática.
-4. Implementar o plugin `CONFLICTING_CRITICAL_ACTUALS`.
+1. Testar visualmente no app labels candidatos.
+2. Usar Playwright para abrir e navegar telas reais, mas decidir por inspeção manual do LLM, não por script automatizado de assert visual.
+3. Escolher melhor label curto sem truncamento/quebra problemática.
+4. Implementar plugin `CONFLICTING_CRITICAL_ACTUALS`.
 5. Não apagar nem esconder fatos conflitantes.
 6. Atualizar agregação, DTO, VM e UI.
 7. Fazer testes unitários robustos.
@@ -295,7 +295,7 @@ Requisitos:
 # Fase 3 — Plugin real #2: tracking continuando após encerramento forte
 
 ## Objetivo
-Implementar o segundo detector pluginável real:
+Implementar segundo detector pluginável real:
 **tracking continuando após encerramento forte do processo/container**.
 
 ## Escopo
@@ -307,10 +307,10 @@ Implementar o segundo detector pluginável real:
   - novo load
   - nova departure
   - novos expecteds de nova jornada
-  - novos sinais de ciclo incompatível com o processo encerrado
+  - novos sinais de ciclo incompatível com processo encerrado
 
 ## Motivação
-Evitar que entregues/empty returned passem a parecer ativos com ETA por reuso de container ou tracking contaminado.
+Evitar que entregues/empty returned passem parecer ativos com ETA por reuso de container ou tracking contaminado.
 
 ## Severidade
 `CRITICAL`
@@ -323,7 +323,7 @@ Evitar que entregues/empty returned passem a parecer ativos com ETA por reuso de
 ## Fora de escopo
 - truncamento automático
 - corte manual
-- reatribuição automática a novo processo/BL
+- reatribuição automática novo processo/BL
 
 ## Testes
 ### Unit
@@ -346,7 +346,7 @@ Evitar que entregues/empty returned passem a parecer ativos com ETA por reuso de
 
 ## Prompt de implementação — Fase 3
 
-Implemente o plugin `POST_COMPLETION_TRACKING_CONTINUED`.
+Implemente plugin `POST_COMPLETION_TRACKING_CONTINUED`.
 
 Objetivo:
 - detectar tracking continuando após encerramento forte (`DELIVERED` ou `EMPTY_RETURNED`)
@@ -367,7 +367,7 @@ Requisitos:
 # Fase 4 — Severidade dupla real + agregação forte + integração com alertas onde fizer sentido
 
 ## Objetivo
-Consolidar o comportamento E2E de `ADVISORY | CRITICAL` no sistema pluginável.
+Consolidar comportamento E2E de `ADVISORY|CRITICAL` no sistema pluginável.
 
 ## Escopo
 - Tornar severidade parte real da cadeia:
@@ -377,14 +377,14 @@ Consolidar o comportamento E2E de `ADVISORY | CRITICAL` no sistema pluginável.
   - VM
   - UI
 - Definir comportamento visual diferente para advisory vs critical
-- Integrar critical ao sistema de alertas backend-derived quando o encaixe for limpo
-- Garantir que dashboard continue coerente com a semântica de alertas existente
+- Integrar critical ao sistema de alertas backend-derived quando encaixe for limpo
+- Garantir que dashboard continue coerente com semântica de alertas existente
 
 ## Decisões
 - UI principal continua binária do ponto de vista do usuário
 - internamente severidade já existe
 - dashboard não cria semântica paralela
-- quando houver critical compatível, o destaque pode seguir a lógica de alerta crítico existente
+- quando houver critical compatível, destaque pode seguir lógica de alerta crítico existente
 - advisory pode existir sem destaque agressivo
 
 ## Testes
@@ -400,7 +400,7 @@ Consolidar o comportamento E2E de `ADVISORY | CRITICAL` no sistema pluginável.
 - dashboard e shipment coerentes
 
 ## Critério de pronto
-- `ADVISORY | CRITICAL` real em toda a cadeia
+- `ADVISORY | CRITICAL` real em toda cadeia
 - semântica visual consistente
 - `pnpmcheck` verde
 - 1 commit
@@ -409,17 +409,17 @@ Consolidar o comportamento E2E de `ADVISORY | CRITICAL` no sistema pluginável.
 
 ## Prompt de implementação — Fase 4
 
-Consolide a severidade `ADVISORY | CRITICAL` no sistema pluginável de validation issues.
+Consolide severidade `ADVISORY|CRITICAL` no sistema pluginável de validation issues.
 
 Objetivo:
-- tornar a severidade parte real do fluxo E2E
-- alinhar visualmente com a semântica de alertas já existente
-- preparar o sistema para detectores advisory reais
+- tornar severidade parte real do fluxo E2E
+- alinhar visualmente com semântica de alertas já existente
+- preparar sistema para detectores advisory reais
 
 Requisitos:
 1. Atualizar contratos internos, agregação, DTO, VM e UI.
 2. Não criar semântica duplicada na UI.
-3. Integrar com alertas backend-derived apenas onde houver encaixe limpo e sem confusão.
+3. Integrar com alertas backend-derived onde houver encaixe limpo e sem confusão.
 4. Manter dashboard leve.
 5. Criar testes unitários.
 6. Fazer QA manual comparando advisory e critical.
@@ -431,18 +431,18 @@ Requisitos:
 # Fase 5 — Plugin real #3 (ADVISORY): classificação canônica inconsistente
 
 ## Objetivo
-Implementar o primeiro detector pluginável advisory real:
+Implementar primeiro detector pluginável advisory real:
 **classificação canônica inconsistente da timeline**.
 
 ## Escopo
 - Implementar plugin:
   - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
-- Capturar casos em que a inconsistência já existe no backend/read model canônico
+- Capturar casos em que inconsistência já existe no backend/read model canônico
 - Exemplo:
   - contexto fortemente marítimo/vessel aparecendo como post-carriage no read model
 
 ## Regra de fronteira
-Só entra se o erro já existir:
+Só entra se erro já existir:
 - no backend canônico
 - no read model
 - no DTO derivado
@@ -454,8 +454,8 @@ Não entra:
 - mapper UI mal posicionando dado correto
 
 ## Severidade
-`ADVISORY` por padrão  
-Pode escalar em fases futuras se o impacto for estrutural.
+`ADVISORY` por padrão
+Pode escalar em fases futuras se impacto for estrutural.
 
 ## Testes
 ### Unit
@@ -463,8 +463,8 @@ Pode escalar em fases futuras se o impacto for estrutural.
 - caso backend/canônico absurdo dispara
 
 ### Manual
-- reproduzir pelo menos um caso real semelhante aos já vistos
-- confirmar que o erro existe antes da UI
+- reproduzir pelo menos caso real semelhante aos já vistos
+- confirmar que erro existe antes da UI
 
 ## Critério de pronto
 - detector advisory #3 funcionando
@@ -476,20 +476,20 @@ Pode escalar em fases futuras se o impacto for estrutural.
 
 ## Prompt de implementação — Fase 5
 
-Implemente o plugin `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`.
+Implemente plugin `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`.
 
 Objetivo:
 - detectar inconsistências semânticas na classificação canônica da timeline
-- garantir que a regra só dispare quando o erro existir antes da UI
+- garantir que regra só dispare quando erro existir antes da UI
 
 Requisitos:
 1. Plugin isolado.
-2. Lógica apenas no Tracking BC.
+2. Lógica no Tracking BC.
 3. Nunca usar bug visual puro como gatilho.
 4. Basear-se em sinais objetivos do pipeline canônico.
 5. Severidade inicial `ADVISORY`.
 6. Criar testes unitários.
-7. Fazer QA manual confirmando que o problema já existe no read model/DTO backend.
+7. Fazer QA manual confirmando que problema já existe no read model/DTO backend.
 8. Rodar `pnpmcheck` até verde.
 9. Exatamente 1 commit.
 
@@ -498,7 +498,7 @@ Requisitos:
 # Fase 6 — Histórico operacional por transição + plugin lifecycle
 
 ## Objetivo
-Persistir o lifecycle operacional das validation issues em um modelo compatível com o framework pluginável.
+Persistir lifecycle operacional das validation issues em modelo compatível com framework pluginável.
 
 ## Escopo
 - Persistir transições:
@@ -525,7 +525,7 @@ Permitir:
 
 ## Regras
 - dado operacional, não canônico
-- não aplicar pruning a dados canônicos
+- não aplicar pruning dados canônicos
 - não duplicar registros inúteis
 
 ## Testes
@@ -548,7 +548,7 @@ Permitir:
 
 ## Prompt de implementação — Fase 6
 
-Implemente a persistência operacional do lifecycle de validation issues do sistema pluginável.
+Implemente persistência operacional do lifecycle de validation issues do sistema pluginável.
 
 Objetivo:
 - registrar transições relevantes dos findings ativos
@@ -562,7 +562,7 @@ Requisitos:
 4. Evitar duplicação de eventos idênticos.
 5. Não misturar com snapshots/observations/status truth.
 6. Criar testes unitários/integration locais.
-7. Fazer QA manual com os detectores já implementados.
+7. Fazer QA manual com detectores já implementados.
 8. Rodar `pnpmcheck` até verde.
 9. Exatamente 1 commit.
 
@@ -571,7 +571,7 @@ Requisitos:
 # Fase 7 — Integração completa com time travel, prefetch, realtime e payload optimization
 
 ## Objetivo
-Garantir que a feature pluginável se comporte corretamente em:
+Garantir que feature pluginável se comporte corretamente em:
 - time travel por sync
 - refresh
 - realtime
@@ -603,7 +603,7 @@ Sem inflar payload desnecessariamente.
 - navegar por syncs
 - validar dashboard vs shipment
 - validar realtime/refresh
-- validar que o badge acompanha corretamente o estado histórico
+- validar que badge acompanha corretamente estado histórico
 
 ## Critério de pronto
 - feature correta no time travel
@@ -616,7 +616,7 @@ Sem inflar payload desnecessariamente.
 
 ## Prompt de implementação — Fase 7
 
-Integre completamente a feature pluginável ao fluxo de time travel, refresh, realtime, prefetch e otimização de payload.
+Integre completamente feature pluginável ao fluxo de time travel, refresh, realtime, prefetch e otimização de payload.
 
 Objetivo:
 - garantir comportamento correto por sync
@@ -625,7 +625,7 @@ Objetivo:
 - revisar ViewModels e mappers para reduzir custo
 
 Requisitos:
-1. Reconstituir corretamente o estado por sync.
+1. Reconstituir corretamente estado por sync.
 2. Não usar lifecycle persistido como source of truth principal da UI histórica.
 3. Manter dashboard leve.
 4. Shipment/detail pode carregar mais detalhe quando necessário.
@@ -640,7 +640,7 @@ Requisitos:
 # Fase 8 — Hardening do framework pluginável + evidence/debug contracts + documentação de extensão
 
 ## Objetivo
-Consolidar o framework pluginável para crescimento seguro.
+Consolidar framework pluginável para crescimento seguro.
 
 ## Escopo
 - Refinar `TrackingValidationContext`
@@ -656,7 +656,7 @@ Consolidar o framework pluginável para crescimento seguro.
 - Criar documentação interna:
   - como adicionar novo detector
   - onde registrar
-  - o que é proibido
+  - que é proibido
   - como testar
   - como decidir entre advisory e critical
 
@@ -684,7 +684,7 @@ Consolidar o framework pluginável para crescimento seguro.
 
 ## Prompt de implementação — Fase 8
 
-Faça o hardening do framework pluginável de validation issues.
+Faça hardening do framework pluginável de validation issues.
 
 Objetivo:
 - refinar contracts de finding/context
@@ -696,7 +696,7 @@ Requisitos:
 1. Refinar contracts sem quebrar boundaries.
 2. Não mandar dados pesados ao dashboard.
 3. Separar melhor dados de produto e dados técnicos.
-4. Documentar o framework de extensão dentro do repositório.
+4. Documentar framework de extensão dentro do repositório.
 5. Criar testes unitários.
 6. Fazer QA manual.
 7. Rodar `pnpmcheck` até verde.
@@ -707,7 +707,7 @@ Requisitos:
 # Fase 9 — Detectores V1.1 plugináveis #4 e #5
 
 ## Objetivo
-Adicionar dois detectores plugináveis adicionais já discutidos como candidatos fortes e ainda compatíveis com a base existente.
+Adicionar dois detectores plugináveis adicionais já discutidos como candidatos fortes e ainda compatíveis com base existente.
 
 ## Detectores candidatos preferenciais
 Escolher até dois entre:
@@ -725,7 +725,7 @@ Escolher até dois entre:
 ## Escopo
 - implementar 2 detectores
 - integrar com agregação/UI
-- revisar severidade caso a caso
+- revisar severidade caso caso
 - testar fortemente
 
 ## Regras
@@ -749,19 +749,19 @@ Escolher até dois entre:
 
 ## Prompt de implementação — Fase 9
 
-Implemente dois detectores plugináveis adicionais da V1.1, escolhendo os dois mais objetivos e úteis entre:
+Implemente dois detectores plugináveis adicionais da V1.1, escolhendo dois mais objetivos e úteis entre:
 
 - `UNRECONCILABLE_TRACKING_STATE`
 - `EXPECTED_PLAN_NOT_RECONCILABLE`
 - `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
 
 Objetivo:
-- ampliar a cobertura da feature sem cair em heurística vaga
+- ampliar cobertura da feature sem cair em heurística vaga
 - usar critérios objetivos sustentados por casos reais já analisados
 
 Requisitos:
-1. Escolher apenas dois nesta fase.
-2. Justificar tecnicamente a escolha no resumo final.
+1. Escolher dois nesta fase.
+2. Justificar tecnicamente escolha no resumo final.
 3. Cada detector precisa de critério formal.
 4. Cada detector precisa de testes unitários robustos.
 5. Propagar até UI sem inflar payload desnecessariamente.
@@ -774,7 +774,7 @@ Requisitos:
 # Fase 10 — Polimento final, regressão ampla e fechamento da V1 pluginável
 
 ## Objetivo
-Fechar a V1 pluginável com:
+Fechar V1 pluginável com:
 - polimento
 - revisão de UX
 - revisão de textos/i18n
@@ -784,8 +784,8 @@ Fechar a V1 pluginável com:
 - fechamento da V1 + V1.1 acordadas
 
 ## Escopo
-- revisar todos os detectores
-- revisar todos os payloads afetados
+- revisar todos detectores
+- revisar todos payloads afetados
 - revisar dashboard/shipment/container/timeline
 - revisar realtime/prefetch/time travel/refresh
 - eliminar resíduos técnicos
@@ -819,15 +819,15 @@ Cobrir:
 
 ## Prompt de implementação — Fase 10
 
-Faça o fechamento final da V1 pluginável de Tracking Validation Issues.
+Faça fechamento final da V1 pluginável de Tracking Validation Issues.
 
 Objetivo:
-- polir toda a feature
+- polir toda feature
 - revisar UX, i18n, payloads, contratos, detectores, QA manual e regressões
-- deixar a V1/V1.1 pronta para merge
+- deixar V1/V1.1 pronta para merge
 
 Requisitos:
-1. Revisar a cadeia inteira tracking -> application/projection -> DTO -> UI mapper -> VM -> UI.
+1. Revisar cadeia inteira tracking -> application/projection -> DTO -> UI mapper -> VM -> UI.
 2. Garantir que nada da feature ficou fora do framework pluginável.
 3. Revisar textos e i18n.
 4. Revisar densidade visual e consistência.
@@ -838,8 +838,8 @@ Requisitos:
 9. Criar exatamente 1 commit final desta fase.
 
 No resumo final, incluir:
-- o que foi ajustado
-- o que foi validado manualmente
+- que foi ajustado
+- que foi validado manualmente
 - risco residual pequeno, se houver
 
 ---
@@ -847,9 +847,9 @@ No resumo final, incluir:
 ## TL;DR
 
 ### O que muda em relação ao plano antigo
-- a V1 inteira já nasce pluginável
-- o framework vem antes dos detectores
-- todas as rules entram como detectores registrados
+- V1 inteira já nasce pluginável
+- framework vem antes dos detectores
+- todas rules entram como detectores registrados
 - nada da semântica sai do Tracking BC
 
 ### Ordem prática
@@ -865,4 +865,4 @@ No resumo final, incluir:
 10. polimento final
 
 ### Resultado esperado
-Quando a fase 10 terminar, a V1 já estará pronta para crescer por novos detectores sem reabrir toda a arquitetura.
+Quando fase 10 terminar, V1 já estará pronta para crescer por novos detectores sem reabrir toda arquitetura.

@@ -4,17 +4,17 @@
 
 Prioridade definida por:
 
-1️⃣ Impacto operacional para o usuário  
-2️⃣ Risco de inconsistência de domínio  
-3️⃣ Redução de atrito de uso  
-4️⃣ Dívida técnica que pode bloquear evolução  
+1️⃣ Impacto operacional para usuário
+2️⃣ Risco de inconsistência de domínio
+3️⃣ Redução de atrito de uso
+4️⃣ Dívida técnica que pode bloquear evolução
 5️⃣ Aderência ao padrão canônico de UI operacional (`docs/UI_PHILOSOPHY.md`)
 
 ---
 
 # P0 — BLOCKERS (corrigir primeiro)
 
-Esses problemas **podem quebrar o produto** ou gerar inconsistência de dados.
+Esses problemas **podem quebrar produto** ou gerar inconsistência de dados.
 
 ---
 
@@ -283,7 +283,7 @@ Com:
 child events + interval markers
 ```
 
-Sem achatar para lista genérica quando o read model expõe agrupamentos.
+Sem achatar para lista genérica quando read model expõe agrupamentos.
 
 ---
 
@@ -355,7 +355,7 @@ default columns
 
 ## P2.4 — Copiar valores da tabela
 
-Um clique:
+clique:
 
 ```
 copy container
@@ -645,4 +645,4 @@ Evitar focar agora em:
 P4
 ```
 
-até o produto estar operacionalmente estável.
+até produto estar operacionalmente estável.

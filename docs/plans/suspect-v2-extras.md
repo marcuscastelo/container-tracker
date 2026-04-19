@@ -8,25 +8,25 @@ Tracking / Process UI
 
 ## Contexto
 
-A V1 da feature de **Validation Issue / Validação necessária** já demonstrou valor real em casos concretos de produção.
+V1 da feature de **Validation Issue / Validação necessária** já demonstrou valor real em casos concretos de produção.
 
 Casos já validados manualmente:
 - **CA083-25**: tracking continuando após marco forte de conclusão
 - **CA064-25**: conflito real na mesma série + inconsistência canônica de timeline
 - **CA052-26**: classificação canônica inconsistente com plano expected semanticamente pobre / não mapeado
 
-A V1 provou três coisas importantes:
+V1 provou três coisas importantes:
 
-1. O sistema consegue detectar casos em que a leitura atual do tracking não é confiável o suficiente.
-2. A UI consegue expor isso sem esconder a timeline.
-3. O operador consegue navegar no funil:
+1. sistema consegue detectar casos em que leitura atual do tracking não é confiável suficiente.
+2. UI consegue expor isso sem esconder timeline.
+3. operador consegue navegar no funil:
    - processo
    - container
    - motivo
    - evidência na timeline
 
-A V2 desta evolução não é sobre criar detectores inteiramente novos primeiro.
-Ela é sobre **melhorar a qualidade do produto em torno da feature já existente**, tornando-a:
+V2 desta evolução não é sobre criar detectores inteiramente novos primeiro.
+Ela é sobre **melhorar qualidade do produto em torno da feature já existente**, tornando-:
 
 - mais explicável
 - mais calibrada
@@ -38,24 +38,24 @@ Ela é sobre **melhorar a qualidade do produto em torno da feature já existente
 
 # Problema
 
-A V1 já marca corretamente casos relevantes, mas ainda existe espaço para evolução em cinco frentes:
+V1 já marca corretamente casos relevantes, mas ainda existe espaço para evolução em cinco frentes:
 
 1. **Explicabilidade**
-   - O usuário vê o motivo, mas nem sempre enxerga com máxima clareza qual evidência concreta sustentou a detecção.
+   - usuário vê motivo, mas nem sempre enxerga com máxima clareza qual evidência concreta sustentou detecção.
    - Alguns casos já têm modal/evidência suficiente; outros ainda dependem demais da leitura manual da timeline.
 
 2. **Calibração dos motivos**
-   - Em alguns casos, o detector pode acertar o problema geral, mas ainda usar um motivo muito específico ou pouco preciso.
+   - Em alguns casos, detector pode acertar problema geral, mas ainda usar motivo muito específico ou pouco preciso.
    - Precisamos reduzir risco de “motivo tecnicamente impreciso, ainda que direção geral correta”.
 
 3. **Agrupamento e herança**
-   - Hoje o processo pode herdar validação por container.
-   - Precisamos deixar mais explícita a diferença entre:
+   - Hoje processo pode herdar validação por container.
+   - Precisamos deixar mais explícita diferença entre:
      - problema local do container
      - problema estrutural compartilhado por múltiplos containers do processo
 
 4. **Qualidade de UX operacional**
-   - A feature já funciona, mas ainda pode melhorar em microcopy, densidade, ordem visual e capacidade de apontar “onde revisar”.
+   - feature já funciona, mas ainda pode melhorar em microcopy, densidade, ordem visual e capacidade de apontar “onde revisar”.
 
 5. **Preparação para V2 pluginável maior**
    - Precisamos consolidar contratos de reason/evidence/severity/aggregation para suportar detectores futuros sem retrabalho.
@@ -64,7 +64,7 @@ A V1 já marca corretamente casos relevantes, mas ainda existe espaço para evol
 
 # Objetivo
 
-Evoluir a feature de Validation Issue para uma V2 mais robusta em **explicação, evidência, calibração e agregação**, preservando:
+Evoluir feature de Validation Issue para V2 mais robusta em **explicação, evidência, calibração e agregação**, preservando:
 
 - tracking como dono da verdade derivada
 - timeline-first
@@ -82,7 +82,7 @@ Esta V2 **não** inclui:
 - Sentry / email / observabilidade externa para dev
 - sistema novo de notificações técnicas
 - plugin remoto/dinâmico por config em runtime
-- refatoração completa de todos os detectores futuros avançados
+- refatoração completa de todos detectores futuros avançados
 - corte manual de timeline por data/sync
 - reatribuição automática de tracking entre processos
 - mudança do modelo canônico de snapshots/observations
@@ -92,10 +92,10 @@ Esta V2 **não** inclui:
 
 # Hipóteses
 
-1. Usuários confiam mais na feature quando o sistema mostra não apenas o rótulo de validação, mas também a evidência navegável.
-2. A redução de motivos excessivamente genéricos ou excessivamente específicos melhora a credibilidade da feature.
+1. Usuários confiam mais na feature quando sistema mostra não rótulo de validação, mas também evidência navegável.
+2. redução de motivos excessivamente genéricos ou excessivamente específicos melhora credibilidade da feature.
 3. Separar melhor **issue local** de **issue estrutural compartilhada** reduz ruído e melhora triagem.
-4. Uma V2 de explicabilidade bem feita reduz custo futuro de debugging e expansão da feature.
+4. V2 de explicabilidade bem feita reduz custo futuro de debugging e expansão da feature.
 
 ---
 
@@ -105,10 +105,10 @@ Esta V2 **não** inclui:
 2. **UI não rederiva semântica**
 3. **Conflitos continuam visíveis**
 4. **Fatos não são apagados**
-5. **A timeline continua sendo o artefato principal**
-6. **A feature deve aumentar confiança operacional, não esconder incerteza**
-7. **Cada fronteira muda o tipo**
-8. **A explicação deve apontar para evidência concreta sempre que possível**
+5. ** timeline continua sendo artefato principal**
+6. ** feature deve aumentar confiança operacional, não esconder incerteza**
+7. **Cada fronteira muda tipo**
+8. ** explicação deve apontar para evidência concreta sempre que possível**
 
 ---
 
@@ -119,7 +119,7 @@ Esta V2 **não** inclui:
 ### Objetivo
 Todo motivo exibido ao usuário deve ficar mais próximo de responder:
 
-- o que está inconsistente
+- que está inconsistente
 - por que isso importa
 - onde revisar
 
@@ -134,27 +134,27 @@ Cada validation issue deve poder fornecer:
 - `evidenceRefs[]`
 
 ### Exemplo esperado
-Em vez de apenas:
+Em vez de:
 
-- “A classificação canônica da timeline ficou inconsistente com os eventos atuais.”
+- “ classificação canônica da timeline ficou inconsistente com eventos atuais.”
 
-A V2 deve permitir algo como:
+V2 deve permitir algo como:
 
-- “A timeline atual entrou em um bloco operacional incompatível com os eventos detectados.”
-- “Revise o bloco Pós-transporte / Entrega em Colombo.”
+- “ timeline atual entrou em bloco operacional incompatível com eventos detectados.”
+- “Revise bloco Pós-transporte / Entrega em Colombo.”
 
 ### Resultado esperado
-O usuário entende não só que existe um problema, mas **o recorte operacional concreto do problema**.
+usuário entende não só que existe problema, mas ** recorte operacional concreto do problema**.
 
 ---
 
 ## 2. Introduzir evidência navegável por motivo
 
 ### Objetivo
-Cada motivo precisa poder apontar para a evidência concreta no shipment view.
+Cada motivo precisa poder apontar para evidência concreta no shipment view.
 
 ### Requisitos
-Cada reason pode referenciar uma ou mais evidências, como:
+Cada reason pode referenciar ou mais evidências, como:
 
 - série
 - bloco de timeline
@@ -172,30 +172,30 @@ Exemplos:
 - `statusContextId`
 
 ### UX esperada
-A UI pode usar isso para:
-- destacar o bloco relevante
-- rolar até o ponto relevante
+UI pode usar isso para:
+- destacar bloco relevante
+- rolar até ponto relevante
 - abrir modal de histórico da série
 - mostrar “área afetada”
 
 ### Exemplo já validado
-No CA064, o modal de histórico da série mostrou claramente múltiplos eventos ACTUAL conflitantes. Esse tipo de capacidade deve virar padrão da feature quando aplicável.
+No CA064, modal de histórico da série mostrou claramente múltiplos eventos ACTUAL conflitantes. Esse tipo de capacidade deve virar padrão da feature quando aplicável.
 
 ---
 
 ## 3. Calibrar melhor os reasons
 
 ### Objetivo
-Evitar que o detector use reasons fortes demais ou imprecisos demais.
+Evitar que detector use reasons fortes demais ou imprecisos demais.
 
 ### Requisitos
-Criar uma camada explícita de calibração de reasons, com distinção entre:
+Criar camada explícita de calibração de reasons, com distinção entre:
 
 #### Reason primário
-O motivo mais confiável e semanticamente central.
+motivo mais confiável e semanticamente central.
 
 #### Reason secundário
-Razões complementares, úteis para contexto, mas não necessariamente a primeira explicação do caso.
+Razões complementares, úteis para contexto, mas não necessariamente primeira explicação do caso.
 
 ### Exemplos
 #### Bom
@@ -203,23 +203,23 @@ Razões complementares, úteis para contexto, mas não necessariamente a primeir
 - secundário: timeline ficou inconsistente
 
 #### Evitar
-- motivo técnico hiper-específico quando a evidência não sustenta com segurança
-- motivo genérico demais quando a evidência concreta está disponível
+- motivo técnico hiper-específico quando evidência não sustenta com segurança
+- motivo genérico demais quando evidência concreta está disponível
 
 ### Regra
-O sistema deve preferir o **motivo mais explicável e tecnicamente correto**.
+sistema deve preferir **motivo mais explicável e tecnicamente correto**.
 
 ---
 
 ## 4. Separar issue estrutural compartilhada de issue local do container
 
 ### Objetivo
-Melhorar a leitura de processos com múltiplos containers.
+Melhorar leitura de processos com múltiplos containers.
 
 ### Problema atual
-Um processo pode aparecer com 4 containers validados, mas nem sempre fica claro se:
-- os 4 têm problemas independentes
-- ou os 4 herdaram a mesma inconsistência estrutural
+processo pode aparecer com 4 containers validados, mas nem sempre fica claro se:
+- 4 têm problemas independentes
+- ou 4 herdaram mesma inconsistência estrutural
 
 ### Requisitos
 Introduzir, internamente, dois níveis de origem:
@@ -228,7 +228,7 @@ Introduzir, internamente, dois níveis de origem:
 - `SHARED_PROCESS_STRUCTURE_ISSUE`
 
 ### UX esperada
-Na shipment page, o banner de processo pode dizer algo como:
+Na shipment page, banner de processo pode dizer algo como:
 
 - “Este processo contém containers que requerem validação.”
 - “Motivo estrutural compartilhado entre 4 containers.”
@@ -237,14 +237,14 @@ Ou, se não compartilhado:
 - “4 containers possuem validações independentes.”
 
 ### Benefício
-Reduz ruído e melhora a capacidade de triagem.
+Reduz ruído e melhora capacidade de triagem.
 
 ---
 
 ## 5. Melhorar a seção “Motivos da validação”
 
 ### Objetivo
-Transformar essa seção em um componente mais operacional e mais autoexplicativo.
+Transformar essa seção em componente mais operacional e mais autoexplicativo.
 
 ### Requisitos
 Cada motivo deve exibir:
@@ -266,7 +266,7 @@ Cada motivo deve exibir:
 
 ### Regra
 Sem cards gigantes e sem poluição visual.
-A seção continua densa e operacional.
+seção continua densa e operacional.
 
 ---
 
@@ -287,8 +287,8 @@ Revisar:
 ### Exemplos de melhoria
 Trocar textos estranhos ou pouco naturais por variantes mais claras, por exemplo:
 - “Veja abaixo por que este container requer validação.”
-- “Revise os pontos destacados na timeline.”
-- “A série abaixo contém eventos reais conflitantes.”
+- “Revise pontos destacados na timeline.”
+- “ série abaixo contém eventos reais conflitantes.”
 
 ### Regra
 Linguagem operacional, curta, clara e auditável.
@@ -298,12 +298,12 @@ Linguagem operacional, curta, clara e auditável.
 ## 7. Tornar a feature mais compatível com time travel
 
 ### Objetivo
-Quando o usuário navega por syncs/histórico, a explicação deve continuar coerente com aquele ponto do tempo.
+Quando usuário navega por syncs/histórico, explicação deve continuar coerente com aquele ponto do tempo.
 
 ### Requisitos
-- o estado de validation issue mostrado no time travel deve ser consistente com o snapshot derivado daquele sync
+- estado de validation issue mostrado no time travel deve ser consistente com snapshot derivado daquele sync
 - `evidenceRefs[]` precisam continuar válidos no contexto histórico
-- a UI não pode usar reason/evidence do estado atual quando o usuário estiver vendo um sync passado
+- UI não pode usar reason/evidence do estado atual quando usuário estiver vendo sync passado
 
 ### Benefício
 Evita confusão entre:
@@ -316,7 +316,7 @@ Evita confusão entre:
 ## 8. Melhorar contrato backend → DTO → VM para evidence e reason grouping
 
 ### Objetivo
-Formalizar melhor a travessia da feature entre camadas.
+Formalizar melhor travessia da feature entre camadas.
 
 ### Requisitos
 Criar ou consolidar tipos explícitos para:
@@ -339,10 +339,10 @@ Criar ou consolidar tipos explícitos para:
 ## 9. Preparar compatibilidade com detectores V2 mais avançados
 
 ### Objetivo
-Sem implementar todos agora, deixar a V2 pronta para suportar evolução.
+Sem implementar todos agora, deixar V2 pronta para suportar evolução.
 
 ### Requisitos
-Os contratos novos devem suportar:
+contratos novos devem suportar:
 - múltiplos reasons por issue
 - reason ranking
 - evidência múltipla
@@ -377,21 +377,21 @@ Os contratos novos devem suportar:
 
 ## Dashboard
 - manter agregados mínimos
-- melhorar apenas o suficiente para refletir melhor a origem compartilhada/local, se couber sem poluir
+- melhorar suficiente para refletir melhor origem compartilhada/local, se couber sem poluir
 
 ---
 
 # Requisitos não funcionais
 
 ## 1. Determinismo
-Dado o mesmo conjunto de observations, os mesmos reasons/evidence devem ser produzidos.
+Dado mesmo conjunto de observations, mesmos reasons/evidence devem ser produzidos.
 
 ## 2. Auditabilidade
 Nenhuma evidência pode depender de lógica semântica inventada na UI.
 
 ## 3. Performance
 - dashboard continua leve
-- shipment detail recebe só o necessário
+- shipment detail recebe só necessário
 - sem payload técnico pesado
 - `debugEvidence` não deve vazar para superfícies compactas
 
@@ -401,8 +401,8 @@ Nenhuma evidência pode depender de lógica semântica inventada na UI.
 - sem misturar DTO com contratos internos
 
 ## 5. UX operacional
-A timeline continua sendo o artefato principal.
-A feature deve apoiar a leitura, não competir com ela.
+timeline continua sendo artefato principal.
+feature deve apoiar leitura, não competir com ela.
 
 ---
 
@@ -421,10 +421,10 @@ Validation issue pode agregar múltiplos reasons, mas deve ter reason primário.
 Todo reason user-facing deve, quando possível, apontar para evidência navegável.
 
 ## Rule 5
-O processo pode herdar issue estrutural compartilhada; o container pode ter issue local independente.
+processo pode herdar issue estrutural compartilhada; container pode ter issue local independente.
 
 ## Rule 6
-A UI nunca decide se algo é validation issue; só renderiza o que veio do backend.
+UI nunca decide se algo é validation issue; só renderiza que veio do backend.
 
 ---
 
@@ -432,18 +432,18 @@ A UI nunca decide se algo é validation issue; só renderiza o que veio do backe
 
 ## CA083-25
 ### O que a V2 deve melhorar
-- explicar ainda melhor o vínculo entre marco forte de conclusão e tracking posterior
-- apontar visualmente a região do corte quebrado
+- explicar ainda melhor vínculo entre marco forte de conclusão e tracking posterior
+- apontar visualmente região do corte quebrado
 
 ## CA064-25
 ### O que a V2 deve melhorar
 - reason ranking entre conflito de série e inconsistência estrutural
-- navegação direta para a série conflitante
+- navegação direta para série conflitante
 - ligação mais forte entre modal de histórico e motivo principal
 
 ## CA052-26
 ### O que a V2 deve melhorar
-- evidenciar melhor que o problema é de classificação/plano expected ruim
+- evidenciar melhor que problema é de classificação/plano expected ruim
 - apontar bloco/trecho inconsistente com precisão
 - separar problema estrutural compartilhado dos 4 containers
 
@@ -453,7 +453,7 @@ A UI nunca decide se algo é validation issue; só renderiza o que veio do backe
 
 ## Produto
 - aumento da confiança manual do operador/dev na feature
-- menos casos em que o badge parece “mágico”
+- menos casos em que badge parece “mágico”
 - menor necessidade de inspeção cega da timeline inteira
 
 ## Técnica
@@ -463,11 +463,11 @@ A UI nunca decide se algo é validation issue; só renderiza o que veio do backe
 - nenhum aumento relevante de payload no dashboard
 
 ## Qualitativa
-Em review manual, o usuário deve conseguir responder:
-1. por que o container foi validado?
-2. onde está a evidência?
-3. isso é um problema só deste container ou do processo inteiro?
-4. a explicação bate com a timeline?
+Em review manual, usuário deve conseguir responder:
+1. por que container foi validado?
+2. onde está evidência?
+3. isso é problema só deste container ou do processo inteiro?
+4. explicação bate com timeline?
 
 ---
 
@@ -557,21 +557,21 @@ Iterar microcopy com casos reais.
 
 # Conclusão
 
-A V2 desta evolução deve transformar a feature de Validation Issue de:
+V2 desta evolução deve transformar feature de Validation Issue de:
 - **detecção correta, porém ainda parcialmente opaca**
 
 para:
 - **detecção correta, explicável, navegável e calibrada**
 
-O foco não é só detectar.
-É fazer o sistema explicar **com confiança e com evidência** por que a leitura atual do tracking requer validação.
+foco não é só detectar.
+É fazer sistema explicar **com confiança e com evidência** por que leitura atual do tracking requer validação.
 
 ---
 
 # TL;DR
 
 ## O que é
-Uma V2 da feature de Validation Issue focada em:
+V2 da feature de Validation Issue focada em:
 - explicabilidade
 - evidência navegável
 - calibração dos motivos
@@ -597,4 +597,4 @@ Uma V2 da feature de Validation Issue focada em:
 - CA052-26
 
 ## Resultado esperado
-Uma feature que não só detecta bem, mas também **explica bem**.
+feature que não só detecta bem, mas também **explica bem**.

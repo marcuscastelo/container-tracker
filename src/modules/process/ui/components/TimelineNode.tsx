@@ -393,6 +393,7 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
 
       <PredictionHistoryModal
         predictionHistory={predictionHistoryModalVm()}
+        predictionHistorySource={predictionHistory.predictionHistorySource()}
         activityLabel={labelPresentation().label}
         isOpen={predictionHistory.showPredictionHistory()}
         loading={predictionHistory.seriesHistoryLoading()}

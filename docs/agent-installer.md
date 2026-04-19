@@ -1,11 +1,11 @@
 # Agent Installer (Windows x64, Per-User)
 
-This document defines the canonical one-click flow for the Windows Agent installer.
+This document defines canonical one-click flow for Windows Agent installer.
 
 ## TL;DR (UX)
 
 - User runs `Setup.exe` without elevation.
-- If `MAERSK_ENABLED=1`, installer shows a dependency checklist for Chrome/Chromium.
+- If `MAERSK_ENABLED=1`, installer shows dependency checklist for Chrome/Chromium.
   - If Chrome is already installed, checkbox appears pre-checked.
   - If Chrome is missing, user can check to trigger automatic install via `winget`.
 - Installer completes and configures per-user logon startup through `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
@@ -72,8 +72,8 @@ pnpm run agent:e2e:linux
 
 This command simulates setup effects on Linux:
 
-- materializes a per-user layout under `/tmp/.../LocalAppData`
-- writes `bootstrap.env`, runs agent, performs runtime enrollment against a local mock backend
+- materializes per-user layout under `/tmp/.../LocalAppData`
+- writes `bootstrap.env`, runs agent, performs runtime enrollment against local mock backend
 - validates generated `config.env`, consumed bootstrap redaction, and authenticated target polling
 - fails if any created path contains `ProgramData`
 
@@ -81,8 +81,8 @@ Use this during development to validate installer/runtime wiring and enrollment 
 
 ## What the installer does
 
-Installer does not require internet for the core install flow.
-If automatic Chrome install is selected on the dependency page, setup calls `winget` and may use the internet.
+Installer does not require internet for core install flow.
+If automatic Chrome install is selected on dependency page, setup calls `winget` and may use internet.
 
 - Copies binaries to `%LOCALAPPDATA%\Programs\ContainerTrackerAgent\`
 - Copies `ct-agent-startup.exe` to `%LOCALAPPDATA%\Programs\ContainerTrackerAgent\`
@@ -94,8 +94,8 @@ If automatic Chrome install is selected on the dependency page, setup calls `win
 - Copies `bootstrap.env` to `%LOCALAPPDATA%\ContainerTracker\bootstrap.env`
 - Registers `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\ContainerTrackerAgent`
   - value points to `%LOCALAPPDATA%\Programs\ContainerTrackerAgent\ct-agent-startup.exe`
-- Launches the startup bootstrap once after install
-- On uninstall: removes the Run key entry and installed binaries (user data directory is preserved)
+- Launches startup bootstrap once after install
+- On uninstall: removes Run key entry and installed binaries (user data directory is preserved)
 
 ## Runtime startup behavior
 

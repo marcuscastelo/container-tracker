@@ -1,14 +1,14 @@
 # Container Tracker — Module Capability Map
 
-Este documento é um **mapa operacional** para navegação do monólito modular.
+Este documento é **mapa operacional** para navegação do monólito modular.
 Ele descreve “capabilities internas” *por bounded context* (módulos em `src/modules/*`),
-sem conflitar com o conceito de `src/capabilities/*` (features transversais).
+sem conflitar com conceito de `src/capabilities/*` (features transversais).
 
 Definições rápidas:
 
 - **Bounded Context (BC)**: dono da semântica e regras do domínio (`src/modules/*`).
-- **Internal capability** (neste doc): agrupamento funcional para organizar mentalmente o BC
-  (ex.: identity, query, reconciliation). Não é uma pasta obrigatória; é um “mapa”.
+- **Internal capability** (neste doc): agrupamento funcional para organizar mentalmente BC
+(ex.: identity, query, reconciliation). Não é pasta obrigatória; é “mapa”.
 
 ---
 
@@ -16,7 +16,7 @@ Definições rápidas:
 
 ### Visão
 `container` é identidade + lifecycle + lookup + persistência do container como entidade física,
-associada a `process`.
+associada `process`.
 
 ### A) identity
 - Value objects e validações de identidade.
@@ -116,7 +116,7 @@ associada a `process`.
   - `interface/http/*`
 
 ### I) ui-shipment-view (nota)
-A UI de shipment vive atualmente no módulo `process/ui`.
+UI de shipment vive atualmente no módulo `process/ui`.
 Isso é aceitável **enquanto** ela não introduzir semântica nem orquestração cross-BC.
 Se virar composição cross-BC (dashboard), deve ser promovida para `src/capabilities/*`.
 
@@ -134,7 +134,7 @@ Referência:
 ## 3) `tracking` — internal capabilities
 
 ### Visão
-`tracking` é o motor event-driven:
+`tracking` é motor event-driven:
 snapshots → observations → derive (timeline/status/alerts) + normalizers por carrier.
 
 ### A) domain-model
@@ -184,6 +184,6 @@ snapshots → observations → derive (timeline/status/alerts) + normalizers por
 
 ## 4) Cross-cutting Capabilities (src/capabilities/*)
 
-As capabilities em `src/capabilities/*` são features transversais (Ctrl+K search, dashboard etc.).
+capabilities em `src/capabilities/*` são features transversais (Ctrl+K search, dashboard etc.).
 Elas podem depender de BCs (application layer) e compor read models.
 Elas não devem importar `modules/*/domain`.
