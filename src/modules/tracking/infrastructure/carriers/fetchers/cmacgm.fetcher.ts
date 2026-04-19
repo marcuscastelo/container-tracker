@@ -2,17 +2,9 @@ import axios from 'axios'
 import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/fetch-result'
 import { systemClock } from '~/shared/time/clock'
 
-function normalizeLogText(value: string, maxLength = 180): string {
-  const compact = value.replace(/\s+/g, ' ').trim()
-  if (compact.length <= maxLength) {
-    return compact
-  }
-  return `${compact.slice(0, maxLength)}...`
-}
-
 function isParseFailurePayload(payload: unknown): payload is {
   readonly parse_failure: true
-  readonly raw_html_snippet: string
+  readonly response_bytes: number
   readonly reason: 'response_data_not_found' | 'invalid_response_data_json'
 } {
   if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
@@ -103,6 +95,7 @@ export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchR
     })
 
   const html: string = response.data
+  const responseBytes = Buffer.byteLength(html, 'utf8')
   console.log('[tracking:cmacgm] response', {
     method: 'POST',
     url,
@@ -110,7 +103,7 @@ export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchR
     status: response.status,
     ok: response.status >= 200 && response.status < 300,
     durationMs: Date.now() - startedAtMs,
-    htmlPreview: normalizeLogText(html),
+    responseBytes,
   })
 
   const payload = extractResponseData(html)
@@ -120,10 +113,9 @@ export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchR
       method: 'POST',
       url,
       containerNumber,
-      error: normalizeLogText(parseError),
-      htmlSnippet: isParseFailurePayload(payload)
-        ? normalizeLogText(payload.raw_html_snippet)
-        : null,
+      error: parseError,
+      parseFailureReason: isParseFailurePayload(payload) ? payload.reason : null,
+      responseBytes: isParseFailurePayload(payload) ? payload.response_bytes : responseBytes,
     })
   } else {
     console.log('[tracking:cmacgm] parse success', {
@@ -150,11 +142,11 @@ function extractResponseData(html: string): unknown {
   const match = html.match(regex)
 
   if (!match?.[2]) {
-    // No embedded JSON found — store the raw HTML snippet for debugging
+    // No embedded JSON found — expose non-sensitive metadata only.
     return {
       parse_failure: true,
       reason: 'response_data_not_found',
-      raw_html_snippet: html.slice(0, 2000),
+      response_bytes: Buffer.byteLength(html, 'utf8'),
     }
   }
 
@@ -173,7 +165,7 @@ function extractResponseData(html: string): unknown {
     return {
       parse_failure: true,
       reason: 'invalid_response_data_json',
-      raw_html_snippet: html.slice(0, 2000),
+      response_bytes: Buffer.byteLength(html, 'utf8'),
     }
   }
 }

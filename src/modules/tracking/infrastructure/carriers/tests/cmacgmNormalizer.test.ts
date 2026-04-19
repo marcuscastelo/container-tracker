@@ -594,6 +594,27 @@ describe('normalizeCmaCgmSnapshot', () => {
       expect(drafts).toHaveLength(0)
     })
 
+    it('uses UNKNOWN container number when ContainerReference is blank', () => {
+      const drafts = normalizeCmaCgmSnapshot(
+        makeSnapshot({
+          ContainerReference: '   ',
+          PastMoves: [
+            {
+              State: 'DONE',
+              StatusDescription: 'Loaded on board',
+              DateString: 'Friday,24-APR-2026',
+              TimeString: '07:00 PM',
+              LocationCode: 'ZZZZZ',
+              Location: 'Unknown Terminal',
+            },
+          ],
+        }),
+      )
+
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.container_number).toBe('UNKNOWN')
+    })
+
     it('should handle error marker payload gracefully', () => {
       const drafts = normalizeCmaCgmSnapshot(
         makeSnapshot({ _error: true, message: 'Request failed with status code 403' }),

@@ -101,39 +101,11 @@ const MONTHS_BY_ABBREVIATION = new Map<string, number>([
 const CMA_DATE_TEXT_PATTERN = /(?:[A-Z]{3,9}[,\s]+)?(\d{1,2})-([A-Z]{3})-(\d{4})/iu
 const CMA_ISO_DATE_PREFIX_PATTERN = /^(\d{4})-(\d{2})-(\d{2})(?:\b|T)/u
 const CMA_TIME_TEXT_PATTERN = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/iu
-const LBBEY_LOCATION_CODE = 'LBBEY'
-const LBBEY_LOCATION_DISPLAY_FALLBACK = 'BEIRUT'
 
 function toTrimmedOrNull(value: string | null | undefined): string | null {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   return trimmed.length === 0 ? null : trimmed
-}
-
-function resolveCmaCgmTemporalLocationContext(
-  locationCode: string | null | undefined,
-  locationDisplay: string | null | undefined,
-): {
-  readonly locationCode: string | null
-  readonly locationDisplay: string | null
-} {
-  const normalizedCode = toTrimmedOrNull(locationCode)?.toUpperCase() ?? null
-  const normalizedDisplay = toTrimmedOrNull(locationDisplay)
-
-  if (
-    normalizedCode === LBBEY_LOCATION_CODE &&
-    (normalizedDisplay === null || !/BEIRUT/iu.test(normalizedDisplay))
-  ) {
-    return {
-      locationCode: normalizedCode,
-      locationDisplay: LBBEY_LOCATION_DISPLAY_FALLBACK,
-    }
-  }
-
-  return {
-    locationCode: normalizedCode,
-    locationDisplay: normalizedDisplay,
-  }
 }
 
 function parseCmaCgmCalendarDate(value: string): CalendarDate | null {
@@ -220,10 +192,8 @@ function parseCmaCgmDate(
   const normalizedDateField = toTrimmedOrNull(dateField)
   const rawEventTime =
     composeTrackingRawEventTime(dateStringField, timeStringField) ?? normalizedDateField
-  const temporalLocationContext = resolveCmaCgmTemporalLocationContext(
-    locationCode,
-    locationDisplay,
-  )
+  const normalizedLocationCode = toTrimmedOrNull(locationCode)?.toUpperCase() ?? null
+  const normalizedLocationDisplay = toTrimmedOrNull(locationDisplay)
 
   if (dateStringField) {
     const parsedDate = parseCmaCgmCalendarDate(dateStringField)
@@ -234,8 +204,8 @@ function parseCmaCgmDate(
           return buildLocalDateTimeTrackingTemporal({
             localDateTime: `${parsedDate.toIsoDate()}T${parsedTime}`,
             rawEventTime,
-            locationCode: temporalLocationContext.locationCode,
-            locationDisplay: temporalLocationContext.locationDisplay,
+            locationCode: normalizedLocationCode,
+            locationDisplay: normalizedLocationDisplay,
           })
         }
       }
@@ -243,8 +213,8 @@ function parseCmaCgmDate(
       return buildDateOnlyTrackingTemporal({
         date: parsedDate,
         rawEventTime,
-        locationCode: temporalLocationContext.locationCode,
-        locationDisplay: temporalLocationContext.locationDisplay,
+        locationCode: normalizedLocationCode,
+        locationDisplay: normalizedLocationDisplay,
       })
     }
   }
@@ -328,7 +298,7 @@ export function normalizeCmaCgmSnapshot(snapshot: Snapshot): ObservationDraft[] 
   }
 
   const cmacgmData = parseResult.data
-  const containerNumber = cmacgmData.ContainerReference?.toUpperCase() ?? 'UNKNOWN'
+  const containerNumber = toTrimmedOrNull(cmacgmData.ContainerReference)?.toUpperCase() ?? 'UNKNOWN'
 
   const drafts: ObservationDraft[] = []
 

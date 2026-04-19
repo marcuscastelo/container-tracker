@@ -9,7 +9,7 @@ import {
   type ProviderRunner,
 } from '@agent/providers/common/provider-result'
 import { fetchCmaCgmStatus } from '~/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher'
-import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema'
+import { CmaCgmApiStrictSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema'
 
 type CmaCgmFetcher = (containerNumber: string) => Promise<{
   readonly payload: unknown
@@ -29,9 +29,9 @@ function assessPayload(payload: unknown): {
   readonly parseError: string | null
   readonly warnings: readonly string[]
 } {
-  const parseResult = CmaCgmApiSchema.safeParse(payload)
-  if (!parseResult.success) {
-    const firstIssue = parseResult.error.issues[0]
+  const strictParseResult = CmaCgmApiStrictSchema.safeParse(payload)
+  if (!strictParseResult.success) {
+    const firstIssue = strictParseResult.error.issues[0]
     if (firstIssue === undefined) {
       return {
         parseError: 'CMA-CGM payload does not match expected snapshot shape',
@@ -47,9 +47,9 @@ function assessPayload(payload: unknown): {
   }
 
   const allMoves = [
-    ...(parseResult.data.PastMoves ?? []),
-    ...(parseResult.data.CurrentMoves ?? []),
-    ...(parseResult.data.ProvisionalMoves ?? []),
+    ...(strictParseResult.data.PastMoves ?? []),
+    ...(strictParseResult.data.CurrentMoves ?? []),
+    ...(strictParseResult.data.ProvisionalMoves ?? []),
   ]
 
   const hasSemanticMove = allMoves.some(
