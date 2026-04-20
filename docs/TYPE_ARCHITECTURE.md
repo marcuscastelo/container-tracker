@@ -1,19 +1,19 @@
 # Arquitetura de Tipos e Camadas — Container Tracker (Guia Definitivo)
 
-> **Objetivo**: este documento consolida as decisões e a linguagem de arquitetura para evitar explosão de schemas/tipos, banir duck typing, e padronizar a separação entre **Domain / Application / Infrastructure / Interface(HTTP) / UI** no Container Tracker.
+> **Objetivo**: este documento consolida decisões e linguagem de arquitetura para evitar explosão de schemas/tipos, banir duck typing, e padronizar separação entre **Domain / Application / Infrastructure / Interface(HTTP) / UI** no Container Tracker.
 
 ---
 
 ## 1) Problema que estamos resolvendo
 
-O código estava ficando insustentável por:
+código estava ficando insustentável por:
 
 * múltiplos schemas (banco, DTO, UI, parciais)
 * `Partial<>`, `Omit<>`, `Pick<>` espalhados
 * duck typing implícito e objetos “parecidos”
 * risco de esquecer props no caminho (mapas e spreads ad hoc)
 
-**Meta**: ter um modelo previsível onde **cada fronteira muda o tipo**, com contratos explícitos, mapeamento centralizado e validações bem definidas.
+**Meta**: ter modelo previsível onde **cada fronteira muda tipo**, com contratos explícitos, mapeamento centralizado e validações bem definidas.
 
 ---
 
@@ -49,17 +49,17 @@ Evite nomes genéricos (“Input”, “DTO”) sem qualificador. Use termos que
 
 ### 3.1 Tipos principais
 
-| Termo                           | Camada              | O que é                                       | Exemplo                  |
+|Termo|Camada|que é|Exemplo|
 | ------------------------------- | ------------------- | --------------------------------------------- | ------------------------ |
-| **Row**                         | Infra               | espelho do banco                              | `ContainerRow`           |
-| **Entity**                      | Domain              | objeto de negócio com identidade              | `ContainerEntity`        |
-| **Aggregate**                   | Domain              | entidade raiz que garante invariantes         | `ProcessAggregate`       |
-| **Command**                     | Application         | intenção do usuário para um use case          | `CreateContainerCommand` |
-| **Result**                      | Application         | retorno do use case (não HTTP)                | `CreateContainerResult`  |
-| **Record** (Persistence Record) | Application ↔ Infra | contrato do repository p/ persistir/consultar | `InsertContainerRecord`  |
-| **Request DTO**                 | Interface/HTTP      | body/query params validados (Zod)             | `CreateProcessRequest`   |
-| **Response DTO**                | Interface/HTTP      | shape serializável retornado                  | `ProcessResponse`        |
-| **ViewModel (VM)**              | UI                  | dados prontos p/ renderizar                   | `ProcessListItemVM`      |
+|**Row**|Infra|espelho do banco|`ContainerRow`|
+|**Entity**|Domain|objeto de negócio com identidade|`ContainerEntity`|
+|**Aggregate**|Domain|entidade raiz que garante invariantes|`ProcessAggregate`|
+|**Command**|Application|intenção do usuário para use case|`CreateContainerCommand`|
+|**Result**|Application|retorno do use case (não HTTP)|`CreateContainerResult`|
+|**Record** (Persistence Record)|Application ↔ Infra|contrato do repository p/ persistir/consultar|`InsertContainerRecord`|
+|**Request DTO**|Interface/HTTP|body/query params validados (Zod)|`CreateProcessRequest`|
+|**Response DTO**|Interface/HTTP|shape serializável retornado|`ProcessResponse`|
+|**ViewModel (VM)**|UI|dados prontos p/ renderizar|`ProcessListItemVM`|
 
 > **Regra Absoluta**: **Command não entra na infra** e **Row não sobe para application/UI**.
 
@@ -74,7 +74,7 @@ Evite nomes genéricos (“Input”, “DTO”) sem qualificador. Use termos que
 
 ### 4.1 Entidade/Aggregate deve ser “cross”?
 
-**Não.** Entity/Aggregate são modelos de consistência e regras. O frontend consome **DTO** e produz **ViewModel**.
+**Não.** Entity/Aggregate são modelos de consistência e regras. frontend consome **DTO** e produz **ViewModel**.
 
 ### 4.2 Validar no front e no back
 
@@ -83,14 +83,14 @@ Sim, mas com distinção:
 * **Validação de UX (frontend)**: sintaxe, formato, required, feedback imediato.
 * **Validação de Consistência (backend)**: regras dependentes de estado global/banco, concorrência, invariantes.
 
-| Tipo de regra                                | Front | Back |
+|Tipo de regra|Front|Back|
 | -------------------------------------------- | ----- | ---- |
-| Formato/sintaxe (regex, length)              | ✅     | ✅    |
-| Normalização (trim/upper)                    | ✅     | ✅    |
-| Dependente de banco (unicidade, ownership)   | ❌     | ✅    |
-| Invariantes do agregado (não remover último) | ❌     | ✅    |
+|Formato/sintaxe (regex, length)|✅|✅|
+|Normalização (trim/upper)|✅|✅|
+|Dependente de banco (unicidade, ownership)|❌|✅|
+|Invariantes do agregado (não remover último)|❌|✅|
 
-**Como compartilhar sem acoplar**: compartilhar apenas **funções puras de validação/normalização** (ex: `validateContainerNumber`) — não Entities/Aggregates.
+**Como compartilhar sem acoplar**: compartilhar **funções puras de validação/normalização** (ex: `validateContainerNumber`) — não Entities/Aggregates.
 
 ---
 
@@ -98,7 +98,7 @@ Sim, mas com distinção:
 
 ### 5.1 Regras
 
-* Nada de aceitar “qualquer objeto com os campos” (duck typing implícito).
+* Nada de aceitar “qualquer objeto com campos” (duck typing implícito).
 * Evitar `Partial<Entity>` e `Omit<Entity, ...>` como modelos de escrita.
 * Evitar `as SomeType` fora de funções `toX()`/brand controladas.
 
@@ -108,7 +108,7 @@ Use branded types e funções `toX()`:
 
 * `ContainerId`, `ProcessId`, `ContainerNumber`, `CarrierCode` etc.
 
-Ou marker interno `__type` (opcional), mas o essencial é **não permitir criação ad hoc**.
+Ou marker interno `__type` (opcional), mas essencial é **não permitir criação ad hoc**.
 
 ### 5.3 Factories
 
@@ -126,7 +126,7 @@ Sem literais soltos.
 ### 6.1 Infra persistence mappers
 
 * Ficam em: `modules/<mod>/infrastructure/persistence/*.mappers.ts`
-* São o **único lugar** onde snake_case e nomes de colunas existem.
+* São **único lugar** onde snake_case e nomes de colunas existem.
 
 Recebem/retornam:
 
@@ -235,13 +235,13 @@ src/modules/container
 
 * Vive em `application/container.facade.ts`
 * **Só compõe** use cases. Sem regra.
-* Retorna um objeto com métodos (`createContainer`, `reconcileForProcess`, etc.).
+* Retorna objeto com métodos (`createContainer`, `reconcileForProcess`, etc.).
 
 ### 8.3 Bootstrap
 
 * Vive em `infrastructure/bootstrap/*`
 * Faz wiring: `facade + repo impl`.
-* É o **composition root** do módulo.
+* É **composition root** do módulo.
 
 ---
 
@@ -272,7 +272,7 @@ src/infrastructure
 
 ### 10.1 Não colocar lógica na rota
 
-A rota SolidStart (`src/routes/api/...`) deve ser um adapter fino:
+rota SolidStart (`src/routes/api/...`) deve ser adapter fino:
 
 * chama controller
 * retorna response
@@ -297,7 +297,7 @@ Controller:
 
 ## 11) Process: domínio a partir do schema antigo
 
-O schema antigo (Zod) era um **modelo de transporte**, não domínio.
+schema antigo (Zod) era **modelo de transporte**, não domínio.
 
 No domínio:
 
@@ -310,10 +310,10 @@ Exemplo de evolução:
 * `reference?: string | null` (DTO) → `ProcessReference | null` (domain)
 * `created_at: Date` (DTO) → `createdAt: Date` (domain)
 
-E o relacionamento com containers:
+E relacionamento com containers:
 
-* **não é o banco que define** se `Process` “tem containers” no domínio
-* quem define é a presença de invariantes (ex: não remover último container)
+* **não é banco que define** se `Process` “tem containers” no domínio
+* quem define é presença de invariantes (ex: não remover último container)
 
 ---
 
@@ -334,7 +334,7 @@ Exemplos:
 * `ProcessListItemProjection`
 * `ProcessOperationalState`
 
-**Não criar uma “terceira entidade viva (X)” como Aggregate** só para leitura — isso deve ser projection/read model.
+**Não criar “terceira entidade viva (X)” como Aggregate** só para leitura — isso deve ser projection/read model.
 
 ---
 
@@ -353,17 +353,17 @@ Exemplos:
 
 ## 14) Regras práticas de evolução
 
-1. **Cada fronteira muda o tipo**.
+1. **Cada fronteira muda tipo**.
 2. **Entidade/Aggregate é backend-only**.
-3. Front valida apenas UX (formato), back valida verdade (consistência).
-4. Um método no repository deve existir por **intenção**, não por “CRUD genérico”.
+3. Front valida UX (formato), back valida verdade (consistência).
+4. método no repository deve existir por **intenção**, não por “CRUD genérico”.
 5. Mappers são centralizados e pequenos.
 
 ---
 
 ## 15) Próximos passos recomendados
 
-1. Aplicar a mesma refatoração do `container` ao `process`:
+1. Aplicar mesma refatoração do `container` ao `process`:
 
    * domain com value objects + entity/aggregate
    * repository contract (throw)
@@ -402,7 +402,7 @@ DTO é contrato de fronteira HTTP, não contrato interno.
 Regras:
 
 * Sufixo `DTO` deve ficar em `interface/http` e `shared/api-schemas`.
-* Application/Domain/UI devem usar `Result`, `Projection`, `ReadModel`, `VM` conforme a camada.
+* Application/Domain/UI devem usar `Result`, `Projection`, `ReadModel`, `VM` conforme camada.
 * `snake_case` em tipos internos só é permitido em mappers de persistência e mappers de fronteira HTTP.
 
 Pipeline obrigatório:
@@ -429,7 +429,7 @@ Correção:
 Para shipment/process screen:
 
 * layout canônico: timeline-first (coluna principal) + sidebar de metadados de suporte.
-* cronologia é artefato primário; cards de suporte não devem interromper o fluxo cronológico.
+* cronologia é artefato primário; cards de suporte não devem interromper fluxo cronológico.
 * agrupamentos operacionais da timeline devem ser preservados quando presentes no contrato de leitura.
 
 ---
@@ -452,7 +452,7 @@ LLMs must NOT:
 * derivar status/timeline/alerts na UI
 * transformar DTO HTTP em contrato interno de aplicação
 * simplificar semântica de séries ACTUAL/EXPECTED
-* achatar timeline operacional agrupada em lista genérica quando o read model já fornece blocos semânticos
+* achatar timeline operacional agrupada em lista genérica quando read model já fornece blocos semânticos
 * esconder conflitos de ACTUAL ou incerteza operacional
 * mover regra de domínio para capability
 * criar shared kernel implícito

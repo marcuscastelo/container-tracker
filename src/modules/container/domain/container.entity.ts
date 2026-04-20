@@ -3,13 +3,14 @@ import type { CarrierCode } from '~/modules/container/domain/identity/carrier-co
 import type { ContainerId } from '~/modules/container/domain/identity/container-id.vo'
 import type { ContainerNumber } from '~/modules/container/domain/identity/container-number.vo'
 import type { ProcessId } from '~/modules/container/domain/identity/process-id.vo'
+import type { Instant } from '~/shared/time/instant'
 
 export type ContainerEntityProps = {
   id: ContainerId
   processId: ProcessId
   carrierCode: CarrierCode
   containerNumber: ContainerNumber
-  createdAt: Date
+  createdAt: Instant
 }
 
 export type ContainerEntity = ContainerBrand<Readonly<ContainerEntityProps>, 'ContainerEntity'>

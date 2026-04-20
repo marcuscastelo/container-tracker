@@ -1,10 +1,32 @@
+import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import { trackingTemporalValueToDto } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import type { TrackingAlertDisplayReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
+import { toTrackingAlertDisplayReadModels } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 import { toTrackingAlertMessageContract } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import type {
+  TrackingReplayDebugResult,
+  TrackingReplaySeries,
+  TrackingReplayState,
+  TrackingReplayStep,
+  TrackingTimeTravelCheckpoint,
+  TrackingTimeTravelDiff,
+  TrackingTimeTravelResult,
+} from '~/modules/tracking/features/replay/application/tracking.replay.types'
+import type { TrackingPredictionHistoryReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.prediction-history.readmodel'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import type {
   AlertResponseDto,
   SnapshotResponseDto,
+  TimelinePredictionHistoryResponseDto,
+  TrackingReplayDebugResponseDto,
+  TrackingTimeTravelCheckpointResponseDto,
+  TrackingTimeTravelDiffResponseDto,
+  TrackingTimeTravelResponseDto,
 } from '~/modules/tracking/interface/http/tracking.schemas'
 
 // ---------------------------------------------------------------------------
@@ -17,7 +39,11 @@ import type {
  * This is the only place that shapes alert display data for the HTTP boundary.
  */
 export function toAlertResponseDto(alert: TrackingAlertDisplayReadModel): AlertResponseDto {
-  const lifecycleState = resolveAlertLifecycleState(alert)
+  const lifecycleState = resolveAlertLifecycleState({
+    acked_at: alert.acked_at,
+    ...(alert.lifecycle_state === undefined ? {} : { lifecycle_state: alert.lifecycle_state }),
+    ...(alert.resolved_at === undefined ? {} : { resolved_at: alert.resolved_at }),
+  })
   return {
     id: alert.id,
     container_number: alert.container_number,
@@ -50,5 +76,352 @@ export function toSnapshotResponseDto(snapshot: Snapshot): SnapshotResponseDto {
     provider: snapshot.provider,
     fetched_at: snapshot.fetched_at,
     parse_error: snapshot.parse_error ?? null,
+  }
+}
+
+export function toObservationResponseDto(observation: Observation) {
+  return {
+    id: observation.id,
+    fingerprint: observation.fingerprint,
+    type: observation.type,
+    carrier_label: observation.carrier_label ?? null,
+    event_time: trackingTemporalValueToDto(observation.event_time),
+    event_time_type: observation.event_time_type,
+    raw_event_time: observation.raw_event_time ?? null,
+    event_time_source: observation.event_time_source ?? null,
+    location_code: observation.location_code,
+    location_display: observation.location_display,
+    vessel_name: observation.vessel_name,
+    voyage: observation.voyage,
+    is_empty: observation.is_empty,
+    confidence: observation.confidence,
+    provider: observation.provider,
+    created_from_snapshot_id: observation.created_from_snapshot_id,
+    retroactive: observation.retroactive ?? false,
+    created_at: observation.created_at,
+  }
+}
+
+function toReplaySeriesResponseDto(series: TrackingReplaySeries) {
+  return {
+    key: series.key,
+    primary: {
+      id: series.primary.id,
+      type: series.primary.type,
+      event_time: series.primary.eventTime,
+      event_time_type: series.primary.eventTimeType,
+    },
+    has_actual_conflict: series.hasActualConflict,
+    items: series.items.map((item) => ({
+      id: item.id,
+      type: item.type,
+      event_time: item.eventTime,
+      event_time_type: item.eventTimeType,
+      created_at: item.createdAt,
+      series_label: item.seriesLabel,
+      vessel_name: item.vesselName ?? null,
+      voyage: item.voyage ?? null,
+      change_kind: item.changeKind ?? null,
+    })),
+  }
+}
+
+function toTrackingSeriesConflictResponseDto(
+  conflict: NonNullable<TrackingTimelineItem['seriesConflict']>,
+) {
+  return {
+    kind: conflict.kind,
+    fields: [...conflict.fields],
+  }
+}
+
+function toReplayTimelineItemResponseDto(item: TrackingTimelineItem) {
+  return {
+    id: item.id,
+    observation_id: item.observationId,
+    type: item.type,
+    carrier_label: item.carrierLabel ?? null,
+    location: item.location ?? null,
+    event_time: item.eventTime,
+    event_time_type: item.eventTimeType,
+    derived_state: item.derivedState,
+    vessel_name: item.vesselName ?? null,
+    voyage: item.voyage ?? null,
+    series_conflict:
+      item.seriesConflict == null ? null : toTrackingSeriesConflictResponseDto(item.seriesConflict),
+    has_series_history: item.hasSeriesHistory,
+    series_history: item.seriesHistory
+      ? toTrackingSeriesHistoryResponseDto(item.seriesHistory)
+      : null,
+  }
+}
+
+function toReplayAlertsResponseDto(
+  alerts: TrackingReplayState['alerts'],
+  containerNumber: string | null,
+): readonly AlertResponseDto[] {
+  if (containerNumber === null) return []
+  return toTrackingAlertDisplayReadModels(alerts, () => containerNumber).map(toAlertResponseDto)
+}
+
+function toReplayStateResponseDto(state: TrackingReplayState, containerNumber: string | null) {
+  return {
+    observations: state.observations.map(toObservationResponseDto),
+    series: state.series.map(toReplaySeriesResponseDto),
+    timeline: state.timeline.map(toReplayTimelineItemResponseDto),
+    status: state.status,
+    alerts: [...toReplayAlertsResponseDto(state.alerts, containerNumber)],
+  }
+}
+
+function toReplayStepResponseDto(step: TrackingReplayStep, containerNumber: string | null) {
+  return {
+    step_index: step.stepIndex,
+    snapshot_id: step.snapshotId,
+    observation_id: step.observationId,
+    stage: step.stage,
+    input: step.input,
+    output: step.output,
+    timestamp: step.timestamp,
+    state: toReplayStateResponseDto(step.state, containerNumber),
+  }
+}
+
+function toTrackingOperationalEtaResponseDto(eta: TrackingTimeTravelCheckpoint['eta']) {
+  if (eta === null) return null
+
+  return {
+    event_time: eta.eventTime,
+    event_time_type: eta.eventTimeType,
+    state: eta.state,
+    type: eta.type,
+    location_code: eta.locationCode,
+    location_display: eta.locationDisplay,
+  }
+}
+
+function toTrackingOperationalCurrentContextResponseDto(
+  currentContext: TrackingOperationalSummary['currentContext'],
+) {
+  return {
+    location_code: currentContext.locationCode,
+    location_display: currentContext.locationDisplay,
+    vessel_name: currentContext.vesselName,
+    voyage: currentContext.voyage,
+    vessel_visible: currentContext.vesselVisible,
+  }
+}
+
+function toTrackingOperationalNextLocationResponseDto(
+  nextLocation: TrackingOperationalSummary['nextLocation'],
+) {
+  if (nextLocation === null) return null
+
+  return {
+    event_time: nextLocation.eventTime,
+    event_time_type: nextLocation.eventTimeType,
+    type: nextLocation.type,
+    location_code: nextLocation.locationCode,
+    location_display: nextLocation.locationDisplay,
+  }
+}
+
+function toTrackingOperationalSummaryResponseDto(summary: TrackingOperationalSummary) {
+  return {
+    status: summary.status,
+    eta: toTrackingOperationalEtaResponseDto(summary.eta),
+    ...(summary.etaApplicable === undefined ? {} : { eta_applicable: summary.etaApplicable }),
+    ...(summary.lifecycleBucket === undefined ? {} : { lifecycle_bucket: summary.lifecycleBucket }),
+    current_context: toTrackingOperationalCurrentContextResponseDto(summary.currentContext),
+    next_location: toTrackingOperationalNextLocationResponseDto(summary.nextLocation),
+    transshipment: {
+      has_transshipment: summary.transshipment.hasTransshipment,
+      count: summary.transshipment.count,
+      ports: summary.transshipment.ports.map((port) => ({
+        code: port.code,
+        display: port.display,
+      })),
+    },
+    ...(summary.dataIssue === undefined ? {} : { data_issue: summary.dataIssue }),
+  }
+}
+
+function toTrackingTimeTravelDiffResponseDto(
+  diff: TrackingTimeTravelDiff,
+): TrackingTimeTravelDiffResponseDto {
+  if (diff.kind === 'initial') {
+    return {
+      kind: 'initial',
+    }
+  }
+
+  return {
+    kind: 'comparison',
+    status_changed: diff.statusChanged,
+    previous_status: diff.previousStatus,
+    current_status: diff.currentStatus,
+    timeline_changed: diff.timelineChanged,
+    added_timeline_item_ids: [...diff.addedTimelineItemIds],
+    removed_timeline_item_ids: [...diff.removedTimelineItemIds],
+    alerts_changed: diff.alertsChanged,
+    new_alert_fingerprints: [...diff.newAlertFingerprints],
+    resolved_alert_fingerprints: [...diff.resolvedAlertFingerprints],
+    eta_changed: diff.etaChanged,
+    previous_eta: toTrackingOperationalEtaResponseDto(diff.previousEta),
+    current_eta: toTrackingOperationalEtaResponseDto(diff.currentEta),
+    actual_conflict_appeared: diff.actualConflictAppeared,
+    actual_conflict_resolved: diff.actualConflictResolved,
+  }
+}
+
+function toTrackingValidationSeverityResponse(
+  severity: TrackingValidationContainerSummary['highestSeverity'],
+): 'warning' | 'danger' | null {
+  switch (severity) {
+    case 'ADVISORY':
+      return 'warning'
+    case 'CRITICAL':
+      return 'danger'
+    default:
+      return null
+  }
+}
+
+function toTrackingValidationDisplayIssueResponseDto(issue: TrackingValidationDisplayIssue) {
+  const severity = toTrackingValidationSeverityResponse(issue.severity)
+  if (severity === null) {
+    throw new Error(`tracking validation issue severity missing: ${issue.code}`)
+  }
+
+  return {
+    code: issue.code,
+    severity,
+    reason_key: issue.reasonKey,
+    affected_area: issue.affectedArea,
+    affected_location: issue.affectedLocation,
+    affected_block_label_key: issue.affectedBlockLabelKey,
+  }
+}
+
+function toTrackingTimeTravelTrackingValidationResponseDto(
+  summary: TrackingValidationContainerSummary,
+) {
+  return {
+    has_issues: summary.hasIssues,
+    highest_severity: toTrackingValidationSeverityResponse(summary.highestSeverity),
+    finding_count: summary.findingCount,
+    active_issues: summary.activeIssues.map((issue) =>
+      toTrackingValidationDisplayIssueResponseDto(issue),
+    ),
+  }
+}
+
+function toTrackingTimeTravelCheckpointResponseDto(
+  checkpoint: TrackingTimeTravelCheckpoint,
+  containerNumber: string | null,
+): TrackingTimeTravelCheckpointResponseDto {
+  return {
+    snapshot_id: checkpoint.snapshotId,
+    fetched_at: checkpoint.fetchedAt,
+    position: checkpoint.position,
+    timeline: checkpoint.timeline.map(toReplayTimelineItemResponseDto),
+    status: checkpoint.status,
+    alerts: [...toReplayAlertsResponseDto(checkpoint.alerts, containerNumber)],
+    eta: toTrackingOperationalEtaResponseDto(checkpoint.eta),
+    operational: toTrackingOperationalSummaryResponseDto(checkpoint.operational),
+    tracking_validation: toTrackingTimeTravelTrackingValidationResponseDto(
+      checkpoint.trackingValidation,
+    ),
+    diff_from_previous: toTrackingTimeTravelDiffResponseDto(checkpoint.diffFromPrevious),
+    debug_available: true,
+  }
+}
+
+export function toTrackingTimeTravelResponseDto(
+  replay: TrackingTimeTravelResult,
+): TrackingTimeTravelResponseDto {
+  return {
+    container_id: replay.containerId,
+    container_number: replay.containerNumber,
+    reference_now: replay.referenceNow,
+    selected_snapshot_id: replay.selectedSnapshotId,
+    sync_count: replay.syncCount,
+    syncs: replay.syncs.map((checkpoint) =>
+      toTrackingTimeTravelCheckpointResponseDto(checkpoint, replay.containerNumber),
+    ),
+  }
+}
+
+export function toTrackingSeriesHistoryResponseDto(
+  seriesHistory: NonNullable<TrackingTimelineItem['seriesHistory']>,
+) {
+  return {
+    has_actual_conflict: seriesHistory.hasActualConflict,
+    conflict:
+      seriesHistory.conflict === undefined || seriesHistory.conflict === null
+        ? null
+        : toTrackingSeriesConflictResponseDto(seriesHistory.conflict),
+    classified: seriesHistory.classified.map((historyItem) => ({
+      id: historyItem.id,
+      type: historyItem.type,
+      event_time: historyItem.event_time,
+      event_time_type: historyItem.event_time_type,
+      created_at: historyItem.created_at,
+      series_label: historyItem.seriesLabel,
+      vessel_name: historyItem.vesselName ?? null,
+      voyage: historyItem.voyage ?? null,
+      change_kind: historyItem.changeKind ?? null,
+    })),
+  }
+}
+
+export function toTimelinePredictionHistoryResponseDto(
+  predictionHistory: TrackingPredictionHistoryReadModel,
+): TimelinePredictionHistoryResponseDto {
+  return {
+    header: {
+      tone: predictionHistory.header.tone,
+      summary_kind: predictionHistory.header.summary_kind,
+      current_version_id: predictionHistory.header.current_version_id,
+      previous_version_id: predictionHistory.header.previous_version_id,
+      original_version_id: predictionHistory.header.original_version_id,
+      reason_kind: predictionHistory.header.reason_kind,
+    },
+    versions: predictionHistory.versions.map((version) => ({
+      id: version.id,
+      is_current: version.is_current,
+      type: version.type,
+      event_time: version.event_time,
+      event_time_type: version.event_time_type,
+      vessel_name: version.vessel_name,
+      voyage: version.voyage,
+      version_state: version.version_state,
+      explanatory_text_kind: version.explanatory_text_kind,
+      transition_kind_from_previous_version: version.transition_kind_from_previous_version,
+      observed_at_count: version.observed_at_count,
+      observed_at_list: [...version.observed_at_list],
+      first_observed_at: version.first_observed_at,
+      last_observed_at: version.last_observed_at,
+    })),
+  }
+}
+
+export function toTrackingReplayDebugResponseDto(
+  replay: TrackingReplayDebugResult,
+): TrackingReplayDebugResponseDto {
+  return {
+    container_id: replay.containerId,
+    container_number: replay.containerNumber,
+    snapshot_id: replay.snapshotId,
+    fetched_at: replay.fetchedAt,
+    position: replay.position,
+    reference_now: replay.referenceNow,
+    total_observations: replay.totalObservations,
+    total_steps: replay.totalSteps,
+    steps: replay.steps.map((step) => toReplayStepResponseDto(step, replay.containerNumber)),
+    checkpoint: toTrackingTimeTravelCheckpointResponseDto(
+      replay.checkpoint,
+      replay.containerNumber,
+    ),
   }
 }

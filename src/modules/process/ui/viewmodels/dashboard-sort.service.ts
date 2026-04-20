@@ -4,6 +4,8 @@ import type {
   DashboardSortSelection,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import { toComparableInstant } from '~/shared/time/compare-temporal'
+import { parseInstantFromIso, parseTemporalValue } from '~/shared/time/parsing'
 
 const PT_BR_COLLATOR =
   typeof Intl !== 'undefined' && typeof Intl.Collator !== 'undefined'
@@ -29,6 +31,15 @@ function toDirectionMultiplier(direction: DashboardSortDirection): 1 | -1 {
 
 function compareByDirection(baseComparison: number, direction: DashboardSortDirection): number {
   return baseComparison * toDirectionMultiplier(direction)
+}
+
+function getDefaultSortDirection(field: DashboardSortField): DashboardSortDirection {
+  if (field === 'eta') return 'asc'
+  return 'desc'
+}
+
+function getOppositeSortDirection(direction: DashboardSortDirection): DashboardSortDirection {
+  return direction === 'asc' ? 'desc' : 'asc'
 }
 
 function normalizeSortableString(value: string | null | undefined): string | null {
@@ -96,30 +107,36 @@ function compareNullableDateValues(
 }
 
 function toCreatedAtSortValue(process: ProcessSummaryVM): number | null {
-  // Prefer dominantAlertCreatedAt (alert age basis). Fall back to lastEventAt for compatibility.
-  const ts = process.dominantAlertCreatedAt ?? process.lastEventAt
+  const ts = process.dominantIncident?.triggeredAt ?? process.lastEventAt
   if (!ts) return null
-  const parsed = Date.parse(ts)
-  return Number.isNaN(parsed) ? null : parsed
+  if (typeof ts === 'string') {
+    return parseInstantFromIso(ts)?.toEpochMs() ?? null
+  }
+
+  const parsedTemporal = parseTemporalValue(ts)
+  if (parsedTemporal === null) return null
+  return toComparableInstant(parsedTemporal, {
+    timezone: 'UTC',
+    strategy: 'start-of-day',
+  }).toEpochMs()
 }
 
 function toProcessNumberSortValue(process: ProcessSummaryVM): string | null {
   return normalizeSortableString(process.reference)
 }
 
-/** Severity weight for sort ordering (lower = higher priority). */
+/** Severity weight for sort ordering (higher = higher priority). */
 const SEVERITY_RANK: Record<string, number> = {
-  danger: 0,
-  warning: 1,
-  info: 2,
-  none: 3,
+  danger: 3,
+  warning: 2,
+  info: 1,
+  none: 0,
 }
 
 function toAlertsSortValue(process: ProcessSummaryVM): number {
-  const sevRank = SEVERITY_RANK[process.highestAlertSeverity ?? 'none'] ?? 3
-  // Pack severity and count into a single number: lower severity rank = higher priority,
-  // then higher count = higher priority within the same severity tier.
-  return sevRank * 10_000 - process.alertsCount
+  const sevRank = SEVERITY_RANK[process.attentionSeverity ?? 'none'] ?? 3
+  // Pack severity, incident count, and affected scope into a single number.
+  return sevRank * 1_000_000 + process.activeIncidentCount * 1_000 + process.affectedContainerCount
 }
 
 function compareBySortField(
@@ -229,13 +246,14 @@ export function nextDashboardSortSelection(
   field: DashboardSortField,
 ): DashboardSortSelection {
   const currentDirection = getActiveDashboardSortDirection(currentSelection, field)
+  const defaultDirection = getDefaultSortDirection(field)
 
   if (!currentDirection) {
-    return { field, direction: 'desc' }
+    return { field, direction: defaultDirection }
   }
 
-  if (currentDirection === 'desc') {
-    return { field, direction: 'asc' }
+  if (currentDirection === defaultDirection) {
+    return { field, direction: getOppositeSortDirection(defaultDirection) }
   }
 
   return null

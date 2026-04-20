@@ -1,6 +1,7 @@
 import type { useNavigate } from '@solidjs/router'
 import type { Accessor } from 'solid-js'
 import { createEffect, createSignal } from 'solid-js'
+import { clearDashboardPrefetchCache } from '~/modules/process/ui/api/process.api'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { clearPrefetchedProcessDetailById } from '~/modules/process/ui/fetchProcess'
 import {
@@ -63,6 +64,7 @@ export function useShipmentDialogsController(
     const result = await submitCreateProcess(formData)
 
     if (result.kind === 'created') {
+      clearDashboardPrefetchCache()
       setIsCreateDialogOpen(false)
       navigateToProcess({
         navigate: command.navigate,
@@ -87,6 +89,7 @@ export function useShipmentDialogsController(
 
     if (result.kind === 'updated') {
       clearPrefetchedProcessDetailById(currentProcessId)
+      clearDashboardPrefetchCache()
       await command.refetchShipment()
       setIsEditOpen(false)
       return

@@ -11,28 +11,38 @@ import {
   toOperationalStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
+import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
+import {
+  aggregateTrackingValidationProjection,
+  pickTopTrackingValidationIssueForProcess,
+  type TrackingValidationContainerSummary,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import { systemClock } from '~/shared/time/clock'
+import { compareTemporal } from '~/shared/time/compare-temporal'
+import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
+import type { Instant } from '~/shared/time/instant'
+import { parseInstantFromIso, parseTemporalValue } from '~/shared/time/parsing'
+import type { TemporalValue } from '~/shared/time/temporal-value'
 
 /**
  * Minimal tracking summary needed for process-level aggregation.
  * Matches the subset of GetContainerSummaryResult we consume.
  */
 type ContainerTrackingSummary = {
+  readonly container_number: string
   readonly status: string
   readonly operational?: {
     readonly eta: {
-      readonly eventTimeIso: string
+      readonly eventTime: TemporalValueDto
+      readonly state: 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
     } | null
     readonly etaApplicable?: boolean
     readonly lifecycleBucket?: 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
   }
-  readonly alerts: readonly {
-    readonly severity: string
-    readonly type: string
-    readonly triggered_at: string
-  }[]
-  readonly timeline: {
-    readonly observations: readonly { readonly event_time: string | null }[]
-  }
+  readonly tracking_validation: TrackingValidationContainerSummary
+  readonly has_observations: boolean
+  readonly last_event_at: TemporalValue | null
 }
 
 type ContainerSyncMetadata = {
@@ -51,10 +61,13 @@ export type ProcessSyncSummaryReadModel = {
 }
 
 type TrackingFacade = {
-  getContainerSummary(
-    containerId: string,
-    containerNumber: string,
-  ): Promise<ContainerTrackingSummary>
+  findContainersHotReadProjection(command: {
+    readonly containers: readonly {
+      readonly containerId: string
+      readonly containerNumber: string
+    }[]
+    readonly now: Instant
+  }): Promise<FindContainersHotReadProjectionResult>
   getContainersSyncMetadata(command: {
     readonly containerNumbers: readonly string[]
   }): Promise<readonly ContainerSyncMetadata[]>
@@ -72,6 +85,13 @@ type ProcessWithOperationalSummary = {
   readonly sync: ProcessSyncSummaryReadModel
 }
 
+function toTrackingValidationAttentionSeverity(summary: {
+  readonly highestSeverity: 'ADVISORY' | 'CRITICAL' | null
+}): 'danger' | null {
+  if (summary.highestSeverity === 'CRITICAL') return 'danger'
+  return null
+}
+
 type ListProcessesWithOperationalSummaryResult = {
   readonly processes: readonly ProcessWithOperationalSummary[]
 }
@@ -80,10 +100,51 @@ function normalizeContainerNumber(value: string): string {
   return value.trim().toUpperCase()
 }
 
+function assertTrackingCoverage(
+  containers: readonly {
+    readonly id: string
+  }[],
+  trackingByContainerId: ReadonlyMap<
+    string,
+    FindContainersHotReadProjectionResult['containers'][number]
+  >,
+): void {
+  const missingContainerIds = containers
+    .map((container) => String(container.id))
+    .filter((containerId) => !trackingByContainerId.has(containerId))
+
+  if (missingContainerIds.length === 0) return
+
+  throw new Error(
+    `tracking.findContainersHotReadProjection missing list containers: ${missingContainerIds.join(', ')}`,
+  )
+}
+
 function toTimestampOrNegativeInfinity(value: string | null): number {
   if (!value) return Number.NEGATIVE_INFINITY
-  const parsed = Date.parse(value)
-  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
+  return parseInstantFromIso(value)?.toEpochMs() ?? Number.NEGATIVE_INFINITY
+}
+
+const PROCESS_SUMMARY_ETA_COMPARE_OPTIONS = {
+  timezone: 'UTC',
+  strategy: 'start-of-day',
+} as const
+
+function compareNullableTemporalValues(
+  left: TemporalValueDto | null,
+  right: TemporalValueDto | null,
+): number {
+  if (left === null && right === null) return 0
+  if (left === null) return 1
+  if (right === null) return -1
+
+  const leftTemporal = parseTemporalValue(left)
+  const rightTemporal = parseTemporalValue(right)
+  if (leftTemporal && rightTemporal) {
+    return compareTemporal(leftTemporal, rightTemporal, PROCESS_SUMMARY_ETA_COMPARE_OPTIONS)
+  }
+
+  return JSON.stringify(left).localeCompare(JSON.stringify(right))
 }
 
 function pickMostRecentTimestamp(current: string | null, candidate: string | null): string | null {
@@ -124,24 +185,43 @@ function createFallbackContainerSyncMetadata(containerNumber: string): Container
   }
 }
 
-function shouldPreferAlertByTriggeredAt(
-  candidate: { readonly triggered_at: string },
-  current: { readonly triggered_at: string },
-): boolean {
-  const candidateTimestamp = Date.parse(candidate.triggered_at)
-  const currentTimestamp = Date.parse(current.triggered_at)
+function toContainerTrackingOperational(command: {
+  readonly eta: {
+    readonly eventTime: TemporalValueDto
+    readonly state: 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
+  } | null
+  readonly etaApplicable: boolean | undefined
+  readonly lifecycleBucket:
+    | 'pre_arrival'
+    | 'post_arrival_pre_delivery'
+    | 'final_delivery'
+    | undefined
+}): NonNullable<ContainerTrackingSummary['operational']> {
+  return {
+    eta: command.eta,
+    ...(command.etaApplicable === undefined ? {} : { etaApplicable: command.etaApplicable }),
+    ...(command.lifecycleBucket === undefined ? {} : { lifecycleBucket: command.lifecycleBucket }),
+  }
+}
 
-  if (!Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
+function shouldPreferIncidentByTriggeredAt(
+  candidate: { readonly triggeredAt: string },
+  current: { readonly triggeredAt: string },
+): boolean {
+  const candidateTimestamp = parseInstantFromIso(candidate.triggeredAt)?.toEpochMs()
+  const currentTimestamp = parseInstantFromIso(current.triggeredAt)?.toEpochMs()
+
+  if (candidateTimestamp !== undefined && currentTimestamp !== undefined) {
     if (candidateTimestamp !== currentTimestamp) {
       return candidateTimestamp > currentTimestamp
     }
-  } else if (!Number.isNaN(candidateTimestamp) && Number.isNaN(currentTimestamp)) {
+  } else if (candidateTimestamp !== undefined && currentTimestamp === undefined) {
     return true
-  } else if (Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
+  } else if (candidateTimestamp === undefined && currentTimestamp !== undefined) {
     return false
   }
 
-  return candidate.triggered_at > current.triggered_at
+  return candidate.triggeredAt > current.triggeredAt
 }
 
 function toLifecycleBucketFromStatus(
@@ -184,8 +264,19 @@ function deriveProcessLifecycleBucket(
   return 'post_arrival_pre_delivery'
 }
 
+function toProcessEtaDisplay(command: {
+  readonly finalDeliveryComplete: boolean
+  readonly eta: TemporalValueDto | null
+  readonly arrivedEta: TemporalValueDto | null
+}): ProcessOperationalSummary['eta_display'] {
+  if (command.finalDeliveryComplete) return { kind: 'delivered' }
+  if (command.eta !== null) return { kind: 'date', value: command.eta }
+  if (command.arrivedEta !== null) return { kind: 'arrived', value: command.arrivedEta }
+  return { kind: 'unavailable' }
+}
+
 function hasAnyTrackingObservation(summaries: readonly ContainerTrackingSummary[]): boolean {
-  return summaries.some((summary) => summary.timeline.observations.length > 0)
+  return summaries.some((summary) => summary.has_observations)
 }
 
 function shouldUseNotSyncedStatus(command: {
@@ -288,7 +379,8 @@ export function aggregateOperationalSummary(
   carrier: string | null,
   containerCount: number,
   summaries: readonly ContainerTrackingSummary[],
-  now?: string,
+  activeOperationalIncidents: readonly OperationalIncidentReadModel[],
+  now?: TemporalValueDto,
 ): ProcessOperationalSummary {
   // --- Process Status ---
   const statuses: OperationalStatus[] = summaries.map((summary) =>
@@ -311,25 +403,37 @@ export function aggregateOperationalSummary(
 
   // --- ETA ---
   // Select earliest future ETA among ETA-eligible containers.
-  const nowIso = now ?? new Date().toISOString()
-  let eta: string | null = null
+  const nowTemporal = now ?? { kind: 'instant', value: systemClock.now().toIsoString() }
+  let eta: TemporalValueDto | null = null
+  let arrivedEta: TemporalValueDto | null = null
   let etaEligibleTotal = 0
   let etaWithValue = 0
   for (let index = 0; index < summaries.length; index += 1) {
     const summary = summaries[index]
+    if (summary === undefined) continue
+
     const bucket = lifecycleBuckets[index] ?? 'pre_arrival'
     const etaApplicable = resolveEtaApplicable(summary, bucket)
     if (!etaApplicable) continue
 
     etaEligibleTotal += 1
-    const etaIso = summary.operational?.eta?.eventTimeIso ?? null
-    if (etaIso === null) continue
+    const etaTemporal = summary.operational?.eta?.eventTime ?? null
+    if (etaTemporal === null) continue
     etaWithValue += 1
 
-    if (etaIso > nowIso) {
-      if (eta === null || etaIso < eta) {
-        eta = etaIso
+    if (compareNullableTemporalValues(etaTemporal, nowTemporal) > 0) {
+      if (eta === null || compareNullableTemporalValues(etaTemporal, eta) < 0) {
+        eta = etaTemporal
       }
+
+      continue
+    }
+
+    if (
+      summary.operational?.eta?.state === 'ACTUAL' &&
+      (arrivedEta === null || compareNullableTemporalValues(etaTemporal, arrivedEta) > 0)
+    ) {
+      arrivedEta = etaTemporal
     }
   }
 
@@ -342,59 +446,54 @@ export function aggregateOperationalSummary(
   const fullLogisticsComplete =
     statuses.length > 0 && statuses.every((status) => status === 'EMPTY_RETURNED')
 
-  // --- Alerts ---
-  const allActiveAlerts: Array<{
-    readonly severity: string
-    readonly type: string
-    readonly triggered_at: string
-  }> = []
-  for (const s of summaries) {
-    for (const a of s.alerts) {
-      allActiveAlerts.push(a)
-    }
-  }
-
-  const alertsCount = allActiveAlerts.length
-
+  // --- Operational incidents ---
   const severityOrder: Record<'info' | 'warning' | 'danger', number> = {
     info: 1,
     warning: 2,
     danger: 3,
   }
-  let highestAlertSeverity: 'info' | 'warning' | 'danger' | null = null
+  let highestIncidentSeverity: 'info' | 'warning' | 'danger' | null = null
   let highestSeverityIdx = 0
-  let dominantAlertCreatedAt: string | null = null
-  let dominantAlert: (typeof allActiveAlerts)[number] | null = null
-  for (const a of allActiveAlerts) {
-    const severity = toOperationalAlertSeverity(a.severity)
+  let dominantIncident: OperationalIncidentReadModel | null = null
+  for (const incident of activeOperationalIncidents) {
+    const severity = toOperationalAlertSeverity(incident.severity)
     if (!severity) continue
     const idx = severityOrder[severity]
     if (idx > highestSeverityIdx) {
       highestSeverityIdx = idx
-      highestAlertSeverity = severity
-      dominantAlert = a
-      dominantAlertCreatedAt = a.triggered_at
+      highestIncidentSeverity = severity
+      dominantIncident = incident
       continue
     }
 
-    if (idx === highestSeverityIdx && dominantAlert !== null) {
-      if (shouldPreferAlertByTriggeredAt(a, dominantAlert)) {
-        dominantAlert = a
-        dominantAlertCreatedAt = a.triggered_at
+    if (idx === highestSeverityIdx && dominantIncident !== null) {
+      if (shouldPreferIncidentByTriggeredAt(incident, dominantIncident)) {
+        dominantIncident = incident
       }
     }
   }
-
-  // --- Transshipment ---
-  const hasTransshipment = allActiveAlerts.some((a) => a.type === 'TRANSSHIPMENT')
+  const trackingValidation = aggregateTrackingValidationProjection(
+    summaries.map((summary) => summary.tracking_validation),
+  )
+  const trackingValidationTopIssue = pickTopTrackingValidationIssueForProcess(
+    summaries.map((summary) => ({
+      containerNumber: summary.container_number,
+      topIssue: summary.tracking_validation.topIssue,
+    })),
+  )
+  const validationAttentionSeverity = toTrackingValidationAttentionSeverity(trackingValidation)
+  const attentionSeverity =
+    validationAttentionSeverity === null ? highestIncidentSeverity : validationAttentionSeverity
 
   // --- Last Event ---
-  let lastEventAt: string | null = null
+  let lastEventAt: TemporalValue | null = null
   for (const s of summaries) {
-    for (const obs of s.timeline.observations) {
-      if (obs.event_time && (lastEventAt === null || obs.event_time > lastEventAt)) {
-        lastEventAt = obs.event_time
-      }
+    if (
+      s.last_event_at &&
+      (lastEventAt === null ||
+        compareTemporal(s.last_event_at, lastEventAt, PROCESS_SUMMARY_ETA_COMPARE_OPTIONS) > 0)
+    ) {
+      lastEventAt = s.last_event_at
     }
   }
 
@@ -412,16 +511,45 @@ export function aggregateOperationalSummary(
     final_delivery_complete: finalDeliveryComplete,
     full_logistics_complete: fullLogisticsComplete,
     eta,
+    eta_display: toProcessEtaDisplay({
+      finalDeliveryComplete,
+      eta,
+      arrivedEta,
+    }),
     eta_coverage: {
       total: containerCount,
       eligible_total: etaEligibleTotal,
       with_eta: etaWithValue,
     },
-    alerts_count: alertsCount,
-    highest_alert_severity: highestAlertSeverity,
-    dominant_alert_created_at: dominantAlertCreatedAt,
-    has_transshipment: hasTransshipment,
-    last_event_at: lastEventAt,
+    operational_incidents: {
+      summary: {
+        active_incidents_count: activeOperationalIncidents.length,
+        affected_containers_count: new Set(
+          activeOperationalIncidents.flatMap((incident) =>
+            incident.scope.containers.map((container) => container.containerId),
+          ),
+        ).size,
+        recognized_incidents_count: 0,
+      },
+      dominant:
+        dominantIncident === null
+          ? null
+          : {
+              incidentKey: dominantIncident.incidentKey,
+              category: dominantIncident.category,
+              type: dominantIncident.type,
+              severity: dominantIncident.severity,
+              fact: dominantIncident.fact,
+              action: dominantIncident.action,
+              detectedAt: dominantIncident.detectedAt,
+              triggeredAt: dominantIncident.triggeredAt,
+              scope: dominantIncident.scope,
+            },
+    },
+    attention_severity: attentionSeverity,
+    tracking_validation: trackingValidation,
+    tracking_validation_top_issue: trackingValidationTopIssue,
+    last_event_at: lastEventAt ? toTemporalValueDto(lastEventAt) : null,
   }
 }
 
@@ -445,41 +573,59 @@ export function createListProcessesWithOperationalSummaryUseCase(
     })
 
     // Calculate 'now' once for consistent ETA comparison across all processes
-    const now = new Date().toISOString()
+    const nowInstant = systemClock.now()
+    const now = { kind: 'instant', value: nowInstant.toIsoString() } as const
+    const allContainers = Array.from(containersByProcessId.values()).flat()
+    const hotReadProjection = await deps.trackingUseCases.findContainersHotReadProjection({
+      containers: allContainers.map((container) => ({
+        containerId: String(container.id),
+        containerNumber: String(container.containerNumber),
+      })),
+      now: nowInstant,
+    })
+    const hotReadByContainerId = new Map(
+      hotReadProjection.containers.map((container) => [container.containerId, container] as const),
+    )
+    assertTrackingCoverage(allContainers, hotReadByContainerId)
 
     const processes: ProcessWithOperationalSummary[] = await Promise.all(
       allProcesses.map(async (process) => {
         const containers = containersByProcessId.get(process.id) ?? []
         const pwc: ProcessWithContainers = { process, containers }
+        const processContainerIds = new Set(containers.map((container) => String(container.id)))
 
-        // For each container, get tracking summary
-        const summaries = await Promise.all(
-          containers.map(async (c) => {
-            try {
-              return await deps.trackingUseCases.getContainerSummary(
-                String(c.id),
-                String(c.containerNumber),
-              )
-            } catch (err) {
-              console.error(
-                `Failed to get tracking summary for container ${String(c.containerNumber)} (${String(c.id)}):`,
-                err,
-              )
-              // Return a minimal fallback summary
-              const fallback: ContainerTrackingSummary = {
-                status: 'UNKNOWN',
-                operational: {
-                  eta: null,
-                  etaApplicable: true,
-                  lifecycleBucket: 'pre_arrival',
-                },
-                alerts: [],
-                timeline: { observations: [] },
-              }
-              return fallback
-            }
-          }),
-        )
+        const summaries = containers.map((container) => {
+          const hotRead = hotReadByContainerId.get(String(container.id))
+          if (hotRead === undefined) {
+            throw new Error(
+              `tracking.findContainersHotReadProjection missing process list container ${String(container.id)}`,
+            )
+          }
+
+          return {
+            container_number: hotRead.containerNumber,
+            status: hotRead.status,
+            operational: toContainerTrackingOperational({
+              eta: hotRead.operational.eta
+                ? {
+                    eventTime: hotRead.operational.eta.eventTime,
+                    state: hotRead.operational.eta.state,
+                  }
+                : null,
+              etaApplicable: hotRead.operational.etaApplicable,
+              lifecycleBucket: hotRead.operational.lifecycleBucket,
+            }),
+            tracking_validation: hotRead.trackingValidation,
+            has_observations: hotRead.hasObservations,
+            last_event_at: hotRead.lastEventAt,
+          } satisfies ContainerTrackingSummary
+        })
+        const activeOperationalIncidents =
+          hotReadProjection.activeOperationalIncidents.active.filter((incident) =>
+            incident.triggerRefs.some((triggerRef) =>
+              processContainerIds.has(triggerRef.containerId),
+            ),
+          )
 
         const summary = aggregateOperationalSummary(
           process.id,
@@ -487,6 +633,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
           process.carrier ?? null,
           containers.length,
           summaries,
+          activeOperationalIncidents,
           now,
         )
         const sync = deriveProcessSyncSummary({

@@ -1,9 +1,11 @@
+import type { TemporalValue } from '~/shared/time/temporal-value'
+
 export type TrackingObservationProjection = {
   readonly id: string
   readonly type: string
   // Projection mirrors canonical observation fields used by tracking read models.
   readonly carrier_label?: string | null
-  readonly event_time: string | null
+  readonly event_time: TemporalValue | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   readonly location_code: string | null
   readonly location_display: string | null
@@ -16,7 +18,7 @@ type TrackingObservationSource = {
   readonly id: string
   readonly type: string
   readonly carrier_label?: string | null
-  readonly event_time: string | null
+  readonly event_time: TemporalValue | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   readonly location_code: string | null
   readonly location_display: string | null

@@ -13,7 +13,9 @@ export function parseWithStack<T extends z.core.$ZodType>(schema: T, data: unkno
   } catch (err) {
     if (err instanceof ZodError) {
       const error = new Error(err.message)
-      error.stack = err.stack // preserve original stack trace
+      if (err.stack !== undefined) {
+        error.stack = err.stack
+      }
       // Attach Zod issues for debugging
       // @ts-expect-error: Forced typing
       error.issues = err.issues

@@ -1,5 +1,4 @@
 // @refresh reload
-import '~/shared/localization/i18n'
 import { mount, StartClient } from '@solidjs/start/client'
 import { render } from 'solid-js/web'
 import { initializeTheme } from '~/lib/theme'
@@ -92,8 +91,8 @@ function getClientRuntimeState(): ClientRuntimeState | null {
 function disposeRuntime(runtime: ClientRuntimeState): void {
   runtime.disposeApp?.()
   runtime.disposeGlobalHandlers?.()
-  runtime.disposeApp = undefined
-  runtime.disposeGlobalHandlers = undefined
+  delete runtime.disposeApp
+  delete runtime.disposeGlobalHandlers
 }
 
 function mountClientApp(root: HTMLElement): DisposeFn {
@@ -133,10 +132,10 @@ try {
         disposeGlobalHandlers()
 
         if (runtime.disposeApp === disposeApp) {
-          runtime.disposeApp = undefined
+          delete runtime.disposeApp
         }
         if (runtime.disposeGlobalHandlers === disposeGlobalHandlers) {
-          runtime.disposeGlobalHandlers = undefined
+          delete runtime.disposeGlobalHandlers
         }
       })
     }

@@ -1,4 +1,5 @@
 import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
+import { toAlertIncidentsVm } from '~/modules/process/ui/mappers/alertIncident.ui-mapper'
 import {
   createNeverContainerSyncVM,
   normalizeContainerNumber,
@@ -9,18 +10,22 @@ import {
   toProcessStatusCode,
 } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import { toProcessStatusMicrobadgeVM } from '~/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper'
-import { toAlertDisplayVMs } from '~/modules/process/ui/mappers/trackingAlert.ui-mapper'
 import {
   toTrackingStatusCode,
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type {
-  ContainerObservationVM,
-  ShipmentDetailVM,
-} from '~/modules/process/ui/viewmodels/shipment.vm'
+  ContainerTrackingValidationVM,
+  ProcessTrackingValidationVM,
+  TrackingValidationIssueVM,
+} from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
+import { systemClock } from '~/shared/time/clock'
+import { toInstantDto } from '~/shared/time/dto'
+import { Instant } from '~/shared/time/instant'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 function processAggregatedStatusToVariant(status: ProcessAggregatedStatus) {
@@ -30,13 +35,21 @@ function processAggregatedStatusToVariant(status: ProcessAggregatedStatus) {
 type ContainerOperational = NonNullable<ProcessDetailResponse['containers'][number]['operational']>
 type OperationalEta = NonNullable<ContainerOperational['eta']>
 type OperationalTransshipment = ContainerOperational['transshipment']
+type OperationalCurrentContext = ContainerOperational['current_context']
+type OperationalNextLocation = ContainerOperational['next_location']
+type ContainerTrackingValidationResponse =
+  ProcessDetailResponse['containers'][number]['tracking_validation']
+type ContainerTrackingContainmentResponse =
+  ProcessDetailResponse['containers'][number]['tracking_containment']
+type ProcessTrackingValidationResponse = ProcessDetailResponse['tracking_validation']
 
 type TimelineResponseItem = NonNullable<
   ProcessDetailResponse['containers'][number]['timeline']
 >[number]
-type ObservationResponseItem = NonNullable<
-  ProcessDetailResponse['containers'][number]['observations']
->[number]
+
+type TrackingValidationIssueResponse = NonNullable<
+  ProcessDetailResponse['tracking_validation']['top_issue']
+>
 
 function toProcessAggregatedStatus(status: string | null | undefined): ProcessAggregatedStatus {
   const normalizedStatus = toProcessStatusCode(status)
@@ -69,6 +82,14 @@ function toTimelineSeriesHistory(
 
   return {
     hasActualConflict: seriesHistory.has_actual_conflict,
+    ...(seriesHistory.conflict === null || seriesHistory.conflict === undefined
+      ? {}
+      : {
+          conflict: {
+            kind: seriesHistory.conflict.kind,
+            fields: [...seriesHistory.conflict.fields],
+          },
+        }),
     classified: seriesHistory.classified.map((entry) => ({
       id: entry.id,
       type: entry.type,
@@ -76,43 +97,39 @@ function toTimelineSeriesHistory(
       event_time_type: entry.event_time_type,
       created_at: entry.created_at,
       seriesLabel: entry.series_label,
+      ...(entry.vessel_name === undefined ? {} : { vesselName: entry.vessel_name }),
+      ...(entry.voyage === undefined ? {} : { voyage: entry.voyage }),
+      ...(entry.change_kind === undefined ? {} : { changeKind: entry.change_kind }),
     })),
   }
 }
 
 function toTimelineItem(item: TimelineResponseItem): TrackingTimelineItem {
-  return {
-    id: item.id,
-    type: item.type,
-    carrierLabel: item.carrier_label ?? undefined,
-    location: item.location ?? undefined,
-    eventTimeIso: item.event_time_iso,
-    eventTimeType: item.event_time_type,
-    derivedState: item.derived_state,
-    vesselName: item.vessel_name,
-    voyage: item.voyage,
-    seriesHistory: toTimelineSeriesHistory(item.series_history),
-  }
-}
+  const seriesHistory = toTimelineSeriesHistory(item.series_history)
 
-function toContainerObservationVm(item: ObservationResponseItem): ContainerObservationVM {
   return {
     id: item.id,
+    observationId: item.observation_id,
     type: item.type,
     eventTime: item.event_time,
     eventTimeType: item.event_time_type,
-    locationCode: item.location_code,
-    locationDisplay: item.location_display,
-    vesselName: item.vessel_name,
-    voyage: item.voyage,
-    isEmpty: item.is_empty,
-    provider: item.provider,
-    carrierLabel: item.carrier_label ?? null,
-    confidence: item.confidence,
-    retroactive: item.retroactive ?? false,
-    fingerprint: item.fingerprint,
-    createdAt: item.created_at,
-    createdFromSnapshotId: item.created_from_snapshot_id ?? null,
+    derivedState: item.derived_state,
+    hasSeriesHistory: item.has_series_history,
+    ...(item.carrier_label === null || item.carrier_label === undefined
+      ? {}
+      : { carrierLabel: item.carrier_label }),
+    ...(item.location === null || item.location === undefined ? {} : { location: item.location }),
+    ...(item.vessel_name === undefined ? {} : { vesselName: item.vessel_name }),
+    ...(item.voyage === undefined ? {} : { voyage: item.voyage }),
+    ...(item.series_conflict === null || item.series_conflict === undefined
+      ? {}
+      : {
+          seriesConflict: {
+            kind: item.series_conflict.kind,
+            fields: [...item.series_conflict.fields],
+          },
+        }),
+    ...(seriesHistory === undefined ? {} : { seriesHistory }),
   }
 }
 
@@ -129,10 +146,38 @@ function toEtaTone(
   }
 }
 
+function toDateEtaChipVm(
+  eta: OperationalEta,
+  locale: string,
+): ShipmentDetailVM['containers'][number]['etaChipVm'] {
+  return {
+    state: eta.state,
+    tone: toEtaTone(eta.state),
+    date: formatDateForLocale(eta.event_time, locale),
+  }
+}
+
 function toContainerEtaChipVm(
+  etaDisplay: ContainerOperational['eta_display'] | undefined,
   eta: ContainerOperational['eta'] | undefined,
   locale: string,
 ): ShipmentDetailVM['containers'][number]['etaChipVm'] {
+  if (etaDisplay?.kind === 'delivered') {
+    return {
+      state: 'DELIVERED',
+      tone: 'positive',
+      date: null,
+    }
+  }
+
+  if (etaDisplay?.kind === 'unavailable') {
+    return {
+      state: 'UNAVAILABLE',
+      tone: 'neutral',
+      date: null,
+    }
+  }
+
   if (!eta?.event_time) {
     return {
       state: 'UNAVAILABLE',
@@ -141,17 +186,18 @@ function toContainerEtaChipVm(
     }
   }
 
-  return {
-    state: eta.state,
-    tone: toEtaTone(eta.state),
-    date: formatDateForLocale(eta.event_time, locale),
-  }
+  return toDateEtaChipVm(eta, locale)
 }
 
 function toContainerEtaDetailVm(
+  etaDisplay: ContainerOperational['eta_display'] | undefined,
   eta: ContainerOperational['eta'] | undefined,
   locale: string,
 ): ShipmentDetailVM['containers'][number]['selectedEtaVm'] {
+  if (etaDisplay?.kind === 'delivered' || etaDisplay?.kind === 'unavailable') {
+    return null
+  }
+
   if (!eta?.event_time) return null
 
   return {
@@ -159,6 +205,79 @@ function toContainerEtaDetailVm(
     tone: toEtaTone(eta.state),
     date: formatDateForLocale(eta.event_time, locale),
     type: eta.type,
+  }
+}
+
+function toProcessEtaDisplayVm(
+  processOperational: ProcessDetailResponse['process_operational'],
+  locale: string,
+): ShipmentDetailVM['processEtaDisplayVm'] {
+  const etaDisplay = processOperational?.eta_display
+  if (etaDisplay?.kind === 'delivered') {
+    return { kind: 'delivered' }
+  }
+
+  if (etaDisplay?.kind === 'date' || etaDisplay?.kind === 'arrived') {
+    return {
+      kind: etaDisplay.kind,
+      date: formatDateForLocale(etaDisplay.value, locale),
+    }
+  }
+
+  if (processOperational?.eta_max?.event_time) {
+    return {
+      kind: 'date',
+      date: formatDateForLocale(processOperational.eta_max.event_time, locale),
+    }
+  }
+
+  return { kind: 'unavailable' }
+}
+
+function toProcessEtaDate(
+  processEtaDisplayVm: ShipmentDetailVM['processEtaDisplayVm'],
+): string | null {
+  if (processEtaDisplayVm.kind === 'date' || processEtaDisplayVm.kind === 'arrived') {
+    return processEtaDisplayVm.date
+  }
+
+  return null
+}
+
+function toCurrentContextVm(
+  currentContext: OperationalCurrentContext | undefined,
+): ShipmentDetailVM['containers'][number]['currentContext'] {
+  if (!currentContext) {
+    return {
+      locationCode: null,
+      locationDisplay: null,
+      vesselName: null,
+      voyage: null,
+      vesselVisible: true,
+    }
+  }
+
+  return {
+    locationCode: currentContext.location_code,
+    locationDisplay: currentContext.location_display,
+    vesselName: currentContext.vessel_name,
+    voyage: currentContext.voyage,
+    vesselVisible: currentContext.vessel_visible,
+  }
+}
+
+function toNextLocationVm(
+  nextLocation: OperationalNextLocation | undefined,
+  locale: string,
+): ShipmentDetailVM['containers'][number]['nextLocation'] {
+  if (!nextLocation?.event_time) return null
+
+  return {
+    date: formatDateForLocale(nextLocation.event_time, locale),
+    type: nextLocation.type,
+    eventTimeType: nextLocation.event_time_type,
+    locationCode: nextLocation.location_code,
+    locationDisplay: nextLocation.location_display,
   }
 }
 
@@ -183,6 +302,62 @@ function toTransshipmentVm(
   }
 }
 
+function toProcessTrackingValidationVm(
+  trackingValidation: ProcessTrackingValidationResponse | undefined,
+): ProcessTrackingValidationVM {
+  return {
+    hasIssues: trackingValidation?.has_issues === true,
+    highestSeverity: trackingValidation?.highest_severity ?? null,
+    affectedContainerCount: trackingValidation?.affected_container_count ?? 0,
+    topIssue: toTrackingValidationIssueVm(trackingValidation?.top_issue),
+  }
+}
+
+function toTrackingValidationIssueVm(
+  issue: TrackingValidationIssueResponse | null | undefined,
+): TrackingValidationIssueVM | null {
+  if (issue === null || issue === undefined) {
+    return null
+  }
+
+  return {
+    code: issue.code,
+    severity: issue.severity,
+    reasonKey: issue.reason_key,
+    affectedArea: issue.affected_area,
+    affectedLocation: issue.affected_location ?? null,
+    affectedBlockLabelKey: issue.affected_block_label_key ?? null,
+  }
+}
+
+function toContainerTrackingValidationVm(
+  trackingValidation: ContainerTrackingValidationResponse | undefined,
+): ContainerTrackingValidationVM {
+  return {
+    hasIssues: trackingValidation?.has_issues === true,
+    highestSeverity: trackingValidation?.highest_severity ?? null,
+    findingCount: trackingValidation?.finding_count ?? 0,
+    activeIssues: (trackingValidation?.active_issues ?? [])
+      .map((issue) => toTrackingValidationIssueVm(issue))
+      .filter((issue): issue is TrackingValidationIssueVM => issue !== null),
+  }
+}
+
+function toContainerTrackingContainmentVm(
+  trackingContainment: ContainerTrackingContainmentResponse,
+): ShipmentDetailVM['containers'][number]['trackingContainment'] {
+  if (trackingContainment === null) {
+    return null
+  }
+
+  return {
+    active: true,
+    reasonCode: trackingContainment.reason_code,
+    activatedAt: trackingContainment.activated_at,
+    externalTrackingUrl: trackingContainment.external_tracking_url,
+  }
+}
+
 function toTsChipVm(
   transshipment: ShipmentDetailVM['containers'][number]['transshipment'],
 ): ShipmentDetailVM['containers'][number]['tsChipVm'] {
@@ -201,18 +376,17 @@ function toTsChipVm(
 }
 
 function toProcessEtaSecondaryVm(
-  data: ProcessDetailResponse,
+  processOperational: ProcessDetailResponse['process_operational'],
   containers: readonly ShipmentDetailVM['containers'][number][],
-  locale: string,
+  processEtaDisplayVm: ShipmentDetailVM['processEtaDisplayVm'],
 ): ShipmentDetailVM['processEtaSecondaryVm'] {
-  const total = data.process_operational?.coverage.eligible_total ?? containers.length
+  const total = processOperational?.coverage.eligible_total ?? containers.length
   const withEta =
-    data.process_operational?.coverage.with_eta ?? containers.filter((c) => c.selectedEtaVm).length
-  const etaMax = data.process_operational?.eta_max ?? null
+    processOperational?.coverage.with_eta ?? containers.filter((c) => c.selectedEtaVm).length
 
   return {
     visible: containers.length > 1 && total > 0,
-    date: etaMax?.event_time ? formatDateForLocale(etaMax.event_time, locale) : null,
+    date: toProcessEtaDate(processEtaDisplayVm),
     withEta,
     total,
     incomplete: total > 0 && withEta < total,
@@ -223,7 +397,7 @@ export function toShipmentDetailVM(
   data: ProcessDetailResponse,
   locale: string = DEFAULT_LOCALE,
 ): ShipmentDetailVM {
-  const referenceNow = new Date()
+  const referenceNow = systemClock.now()
   const syncByContainerNumber = new Map(
     data.containersSync.map((containerSync) => [
       normalizeContainerNumber(containerSync.containerNumber),
@@ -232,27 +406,35 @@ export function toShipmentDetailVM(
   )
 
   const containers = data.containers.map((container) => {
-    const observations = (container.observations ?? []).map(toContainerObservationVm)
     const timeline = (container.timeline ?? []).map(toTimelineItem)
 
     if (timeline.length === 0) {
       timeline.push({
         id: 'system-created',
         type: 'SYSTEM_CREATED',
-        location: undefined,
-        eventTimeIso: data.created_at,
+        eventTime: toInstantDto(Instant.fromIso(data.created_at)),
         eventTimeType: 'ACTUAL',
         derivedState: 'ACTUAL',
       })
     }
 
     const statusCode = toTrackingStatusCode(container.status)
-    const etaChipVm = toContainerEtaChipVm(container.operational?.eta, locale)
-    const selectedEtaVm = toContainerEtaDetailVm(container.operational?.eta, locale)
+    const etaChipVm = toContainerEtaChipVm(
+      container.operational?.eta_display,
+      container.operational?.eta,
+      locale,
+    )
+    const selectedEtaVm = toContainerEtaDetailVm(
+      container.operational?.eta_display,
+      container.operational?.eta,
+      locale,
+    )
     const etaApplicable =
       container.operational?.eta_applicable ??
       container.operational?.lifecycle_bucket === 'pre_arrival'
     const transshipment = toTransshipmentVm(container.operational?.transshipment)
+    const currentContext = toCurrentContextVm(container.operational?.current_context)
+    const nextLocation = toNextLocationVm(container.operational?.next_location, locale)
     const sync =
       syncByContainerNumber.get(normalizeContainerNumber(container.container_number)) ??
       createNeverContainerSyncVM(container.container_number)
@@ -268,12 +450,15 @@ export function toShipmentDetailVM(
       etaApplicable,
       etaChipVm,
       selectedEtaVm,
+      currentContext,
+      nextLocation,
       tsChipVm: toTsChipVm(transshipment),
       dataIssueChipVm: {
         visible: container.operational?.data_issue === true,
       },
+      trackingContainment: toContainerTrackingContainmentVm(container.tracking_containment ?? null),
+      trackingValidation: toContainerTrackingValidationVm(container.tracking_validation),
       transshipment,
-      observations,
       timeline,
     }
   })
@@ -281,28 +466,38 @@ export function toShipmentDetailVM(
   const processAggregatedStatus = toProcessAggregatedStatus(
     data.process_operational?.derived_status,
   )
-  const processEtaSecondaryVm = toProcessEtaSecondaryVm(data, containers, locale)
+  const processEtaDisplayVm = toProcessEtaDisplayVm(data.process_operational, locale)
+  const processEtaSecondaryVm = toProcessEtaSecondaryVm(
+    data.process_operational,
+    containers,
+    processEtaDisplayVm,
+  )
 
   return {
     id: data.id,
+    trackingFreshnessToken: data.tracking_freshness_token,
     processRef: data.reference || `<${data.id.slice(0, 8)}>`,
-    reference: data.reference,
+    reference: data.reference ?? null,
     carrier: data.carrier ?? null,
-    bill_of_lading: data.bill_of_lading,
-    booking_number: data.booking_number,
-    importer_name: data.importer_name,
-    exporter_name: data.exporter_name,
-    reference_importer: data.reference_importer,
-    product: data.product,
-    redestination_number: data.redestination_number,
+    bill_of_lading: data.bill_of_lading ?? null,
+    booking_number: data.booking_number ?? null,
+    importer_name: data.importer_name ?? null,
+    exporter_name: data.exporter_name ?? null,
+    reference_importer: data.reference_importer ?? null,
+    depositary: data.depositary ?? null,
+    product: data.product ?? null,
+    redestination_number: data.redestination_number ?? null,
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
     status: processAggregatedStatusToVariant(processAggregatedStatus),
     statusCode: toProcessStatusCode(processAggregatedStatus),
     statusMicrobadge: toProcessStatusMicrobadgeVM(data.process_operational?.status_microbadge),
-    eta: processEtaSecondaryVm.date,
+    eta: toProcessEtaDate(processEtaDisplayVm),
+    processEtaDisplayVm,
     processEtaSecondaryVm,
+    trackingValidation: toProcessTrackingValidationVm(data.tracking_validation),
     containers,
-    alerts: toAlertDisplayVMs(data.alerts ?? [], locale),
+    alerts: [],
+    alertIncidents: toAlertIncidentsVm(data.operational_incidents),
   }
 }

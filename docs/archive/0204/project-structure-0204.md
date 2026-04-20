@@ -1,6 +1,6 @@
 # Project Structure — Container Tracker (2026-02-04)
 
-Este documento define a **estrutura oficial do projeto** seguindo **DDD (Domain‑Driven Design)**, alinhada aos **bounded contexts mapeados**, às decisões de produto e às necessidades práticas do Container Tracker.
+Este documento define **estrutura oficial do projeto** seguindo **DDD (Domain‑Driven Design)**, alinhada aos **bounded contexts mapeados**, às decisões de produto e às necessidades práticas do Container Tracker.
 
 Ele serve como:
 
@@ -9,7 +9,7 @@ Ele serve como:
 * referência para refactors e PR reviews
 
 > **Regra de ouro:**
-> Se você não sabe onde colocar um arquivo, o problema não é a estrutura — é falta de clareza de domínio.
+> Se você não sabe onde colocar arquivo, problema não é estrutura — é falta de clareza de domínio.
 
 ---
 
@@ -45,13 +45,13 @@ src/
 
 * `modules/` **nunca importa UI**
 * `components/` **nunca conhece domínio**
-* `routes/` apenas orquestram chamadas de `application`
+* `routes/` orquestram chamadas de `application`
 
 ---
 
 ## 2. Estrutura padrão de um módulo
 
-Todo módulo DDD segue **exatamente o mesmo shape**, mesmo que alguns diretórios comecem vazios.
+Todo módulo DDD segue **exatamente mesmo shape**, mesmo que alguns diretórios comecem vazios.
 
 ```txt
 src/modules/<contexto>/
@@ -92,7 +92,7 @@ src/modules/<contexto>/
 
 `modules/process/`
 
-Responsável apenas pela **existência e metadados** do Shipment (processo).
+Responsável pela **existência e metadados** do Shipment (processo).
 
 ```txt
 domain/
@@ -126,7 +126,7 @@ application/
 **Observações:**
 
 * ISO 6346 é **warning**, não erro fatal
-* Container sempre pertence a um Shipment
+* Container sempre pertence Shipment
 
 ---
 
@@ -228,7 +228,7 @@ infrastructure/
   email/
 ```
 
-**Nota:** apenas entrega mensagens
+**Nota:** entrega mensagens
 
 ---
 
@@ -270,7 +270,7 @@ Usado por Ctrl+K, filtros e power users.
 * Auth / Billing
 * BI pesado
 
-Esses consomem domínio, mas não o definem.
+Esses consomem domínio, mas não definem.
 
 ---
 
@@ -286,7 +286,7 @@ Esses consomem domínio, mas não o definem.
 
 ## 6. Regra Final
 
-> Se uma regra começa a aparecer em mais de um módulo,
+> Se regra começa aparecer em mais de módulo,
 > ela está no lugar errado.
 
-Este documento deve evoluir junto com o produto — nunca depois.
+Este documento deve evoluir junto com produto — nunca depois.

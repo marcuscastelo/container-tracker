@@ -6,23 +6,28 @@ import {
   DashboardKpisResponseSchema,
   DashboardOperationalSummaryResponseSchema,
 } from '~/shared/api-schemas/dashboard.schemas'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 describe('dashboard controllers - boundary behavior', () => {
+  function createDashboardRequest(): Request {
+    return new Request('http://localhost/api/dashboard/operational-summary')
+  }
+
   it('returns operational summary including process exceptions in backend order', async () => {
     const summary: DashboardOperationalSummaryReadModel = {
       globalAlerts: {
-        totalActiveAlerts: 3,
+        totalActiveIncidents: 3,
+        affectedContainersCount: 2,
+        recognizedIncidentsCount: 1,
         bySeverity: {
           danger: 1,
           warning: 1,
           info: 1,
-          success: 0,
         },
         byCategory: {
           eta: 1,
           movement: 1,
           customs: 0,
-          status: 1,
           data: 0,
         },
       },
@@ -33,11 +38,19 @@ describe('dashboard controllers - boundary behavior', () => {
           origin: 'Ningbo',
           destination: 'Antwerp',
           status: 'IN_TRANSIT',
-          eta: '2026-03-10T10:00:00.000Z',
+          eta: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
           dominantSeverity: 'danger',
-          dominantAlertCreatedAt: '2026-03-10T09:30:00.000Z',
-          activeAlertsCount: 2,
-          activeAlerts: [],
+          activeIncidentCount: 2,
+          affectedContainerCount: 2,
+          dominantIncident: {
+            type: 'CUSTOMS_HOLD',
+            severity: 'danger',
+            fact: {
+              messageKey: 'incidents.fact.customsHoldDetected',
+              messageParams: { location: 'Antwerp' },
+            },
+            triggeredAt: '2026-03-10T09:30:00.000Z',
+          },
         },
         {
           processId: 'process-none',
@@ -47,29 +60,31 @@ describe('dashboard controllers - boundary behavior', () => {
           status: 'BOOKED',
           eta: null,
           dominantSeverity: 'none',
-          dominantAlertCreatedAt: null,
-          activeAlertsCount: 0,
-          activeAlerts: [],
+          activeIncidentCount: 0,
+          affectedContainerCount: 0,
+          dominantIncident: null,
         },
       ],
-      activeAlertsPanel: [],
     }
 
     const { controllers } = createDashboardControllersHarness({
       getOperationalSummaryReadModel: async () => summary,
     })
 
-    const response = await controllers.getOperationalSummary()
+    const response = await controllers.getOperationalSummary({
+      request: createDashboardRequest(),
+    })
     const body = DashboardOperationalSummaryResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)
     expect(typeof body.generated_at).toBe('string')
-    expect(body.total_active_alerts).toBe(3)
+    expect(body.total_active_incidents).toBe(3)
+    expect(body.affected_containers_count).toBe(2)
+    expect(body.recognized_incidents_count).toBe(1)
     expect(body.by_severity).toEqual({
       danger: 1,
       warning: 1,
       info: 1,
-      success: 0,
     })
     expect(body.process_exceptions.map((process) => process.process_id)).toEqual([
       'process-danger',
@@ -81,10 +96,19 @@ describe('dashboard controllers - boundary behavior', () => {
       origin: 'Ningbo',
       destination: 'Antwerp',
       derived_status: 'IN_TRANSIT',
-      eta_current: '2026-03-10T10:00:00.000Z',
+      eta_current: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
       dominant_severity: 'danger',
-      dominant_alert_created_at: '2026-03-10T09:30:00.000Z',
-      active_alert_count: 2,
+      active_incident_count: 2,
+      affected_container_count: 2,
+      dominant_incident: {
+        type: 'CUSTOMS_HOLD',
+        severity: 'danger',
+        fact: {
+          message_key: 'incidents.fact.customsHoldDetected',
+          message_params: { location: 'Antwerp' },
+        },
+        triggered_at: '2026-03-10T09:30:00.000Z',
+      },
     })
     expect(body.process_exceptions[1]).toEqual({
       process_id: 'process-none',
@@ -94,8 +118,9 @@ describe('dashboard controllers - boundary behavior', () => {
       derived_status: 'BOOKED',
       eta_current: null,
       dominant_severity: 'none',
-      dominant_alert_created_at: null,
-      active_alert_count: 0,
+      active_incident_count: 0,
+      affected_container_count: 0,
+      dominant_incident: null,
     })
   })
 
@@ -103,7 +128,8 @@ describe('dashboard controllers - boundary behavior', () => {
     const kpis: DashboardKpisReadModel = {
       activeProcesses: 24,
       trackedContainers: 61,
-      processesWithAlerts: 8,
+      activeIncidents: 8,
+      affectedContainers: 13,
       lastSyncAt: '2026-03-12T13:42:00.000Z',
     }
 
@@ -118,7 +144,8 @@ describe('dashboard controllers - boundary behavior', () => {
     expect(body).toEqual({
       activeProcesses: 24,
       trackedContainers: 61,
-      processesWithAlerts: 8,
+      activeIncidents: 8,
+      affectedContainers: 13,
       lastSyncAt: '2026-03-12T13:42:00.000Z',
     })
   })

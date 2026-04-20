@@ -2,26 +2,30 @@ import { A, useLocation } from '@solidjs/router'
 import clsx from 'clsx'
 import { Moon, Sun } from 'lucide-solid'
 import type { JSX } from 'solid-js'
-import { createSignal, Show } from 'solid-js'
+import { createSignal, Show, Suspense } from 'solid-js'
 import { getTheme, toggleTheme, type UiTheme } from '~/lib/theme'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
-import { LanguageSwitch } from '~/shared/ui/LanguageSwitch'
 import { NavbarAlertsButton } from '~/shared/ui/navbar-alerts/NavbarAlertsButton'
 
 type Props = {
   readonly onCreateProcess?: () => void
+  readonly onDashboardIntent?: () => void
+  readonly preserveDashboardScroll?: boolean
   readonly searchSlot?: JSX.Element
   readonly syncSlot?: JSX.Element
+  readonly actionsSlot?: JSX.Element
 }
 
 const OUTLINE_BUTTON_CLASS =
-  'inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-3 text-sm-ui font-medium text-text-muted transition-colors hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
+  'motion-focus-surface motion-interactive inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-3 text-sm-ui font-medium text-text-muted hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
 
 function NavLink(props: {
   readonly href: string
   readonly children: JSX.Element
   readonly end?: boolean
+  readonly preserveScroll?: boolean
+  readonly onIntent?: () => void
 }): JSX.Element {
   const location = useLocation()
   const pathname = location.pathname
@@ -38,8 +42,13 @@ function NavLink(props: {
     <A
       href={props.href}
       end={props.end}
+      noScroll={props.preserveScroll === true}
+      onPointerEnter={() => props.onIntent?.()}
+      onFocusIn={() => props.onIntent?.()}
+      onPointerDown={() => props.onIntent?.()}
       class={clsx(
         'relative px-1 py-2 text-sm-ui font-medium transition-colors hover:text-primary',
+        'motion-focus-surface',
         {
           [activeClass]: isActive(),
           [mutedClass]: !isActive() && !(props.end && startsWith),
@@ -51,20 +60,41 @@ function NavLink(props: {
   )
 }
 
-function HeaderBrand(): JSX.Element {
-  const logoSrc = () =>
-    getTheme() === 'dark' ? BRANDING.logoPrimaryDark : BRANDING.logoPrimaryLight
+function HeaderBrand(props: {
+  readonly onDashboardIntent?: () => void
+  readonly preserveDashboardScroll?: boolean
+}): JSX.Element {
+  const isDark = () => getTheme() === 'dark'
+
   return (
     <A
       href="/"
-      class="flex min-w-0 items-center gap-3 text-primary"
+      noScroll={props.preserveDashboardScroll === true}
+      onPointerEnter={() => props.onDashboardIntent?.()}
+      onFocusIn={() => props.onDashboardIntent?.()}
+      onPointerDown={() => props.onDashboardIntent?.()}
+      class="motion-focus-surface flex min-w-0 items-center gap-3 rounded-md text-primary transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       aria-label={BRANDING.displayTitle}
     >
-      <img
-        src={logoSrc()}
-        alt={BRANDING.companyName}
-        class="block h-10 w-auto shrink-0 object-contain"
-      />
+      <span class="relative block h-10 w-10 shrink-0 overflow-hidden">
+        <img
+          src={BRANDING.logoPrimaryLight}
+          alt={BRANDING.companyName}
+          class={clsx('absolute inset-0 block h-10 w-auto object-contain motion-overlay-surface', {
+            'opacity-100 scale-100': !isDark(),
+            'opacity-0 scale-95': isDark(),
+          })}
+        />
+        <img
+          src={BRANDING.logoPrimaryDark}
+          alt=""
+          aria-hidden="true"
+          class={clsx('absolute inset-0 block h-10 w-auto object-contain motion-overlay-surface', {
+            'opacity-100 scale-100': isDark(),
+            'opacity-0 scale-95': !isDark(),
+          })}
+        />
+      </span>
       <span class="flex min-w-0 flex-col">
         <span class="truncate text-lg-ui font-semibold leading-tight tracking-[-0.01em]">
           {BRANDING.productName}
@@ -80,10 +110,17 @@ function HeaderBrand(): JSX.Element {
 function HeaderNavigation(props: {
   readonly dashboardLabel: string
   readonly agentsLabel: string
+  readonly onDashboardIntent?: () => void
+  readonly preserveDashboardScroll?: boolean
 }): JSX.Element {
   return (
     <nav class="hidden shrink-0 items-center gap-6 md:flex" aria-label="Primary">
-      <NavLink href="/" end>
+      <NavLink
+        href="/"
+        end
+        {...(props.preserveDashboardScroll ? { preserveScroll: true } : {})}
+        {...(props.onDashboardIntent ? { onIntent: props.onDashboardIntent } : {})}
+      >
         {props.dashboardLabel}
       </NavLink>
       <NavLink href="/agents" end>
@@ -98,7 +135,16 @@ function HeaderSearch(props: { readonly searchSlot?: JSX.Element }): JSX.Element
     <Show when={props.searchSlot}>
       {(searchSlot) => (
         <div class="mx-auto w-full min-w-[220px] max-w-[var(--dashboard-search-width)] [&>[data-search-trigger='true']]:h-[var(--dashboard-search-height)] [&>[data-search-trigger='true']]:min-h-[var(--dashboard-search-height)] [&_[data-slot='input']]:h-[var(--dashboard-search-height)] [&_[data-slot='input']]:min-h-[var(--dashboard-search-height)]">
-          {searchSlot()}
+          <Suspense
+            fallback={
+              <div
+                class="dashboard-skeleton-shimmer h-[var(--dashboard-search-height)] min-h-[var(--dashboard-search-height)] rounded-[var(--dashboard-control-radius)] border border-border bg-surface-muted"
+                aria-hidden="true"
+              />
+            }
+          >
+            {searchSlot()}
+          </Suspense>
         </div>
       )}
     </Show>
@@ -115,7 +161,7 @@ function CreateProcessButton(props: {
         type="button"
         onClick={() => props.onCreateProcess?.()}
         aria-label={props.label}
-        class="inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] flex-none items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] bg-primary px-3.5 text-sm-ui font-medium text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        class="motion-focus-surface motion-interactive inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] flex-none items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] bg-primary px-3.5 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         <svg
           class="h-4 w-4"
@@ -166,6 +212,7 @@ function ThemeToggleButton(): JSX.Element {
 
 function HeaderActions(props: {
   readonly syncSlot?: JSX.Element
+  readonly actionsSlot?: JSX.Element
   readonly createProcessLabel: string
   readonly onCreateProcess?: () => void
 }): JSX.Element {
@@ -174,17 +221,15 @@ function HeaderActions(props: {
       <Show when={props.syncSlot}>
         {(syncSlot) => <div class="flex items-center">{syncSlot()}</div>}
       </Show>
-
       <CreateProcessButton
         label={props.createProcessLabel}
-        onCreateProcess={props.onCreateProcess}
+        {...(props.onCreateProcess ? { onCreateProcess: props.onCreateProcess } : {})}
       />
       <NavbarAlertsButton />
-
-      <div class="flex items-center">
-        <LanguageSwitch />
-      </div>
       <ThemeToggleButton />
+      <Show when={props.actionsSlot}>
+        {(actionsSlot) => <div class="flex items-center gap-2">{actionsSlot()}</div>}
+      </Show>
     </div>
   )
 }
@@ -196,10 +241,15 @@ export function AppHeader(props: Props): JSX.Element {
     <header class="border-b border-border bg-surface">
       <div class="mx-auto grid min-h-[var(--navbar-height)] w-full max-w-[var(--dashboard-container-max-width)] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-5 gap-y-2 px-[var(--dashboard-container-px)] py-2 max-[1279px]:gap-x-3.5 max-[1023px]:grid-cols-[minmax(0,1fr)_auto]">
         <div class="navbar-left flex min-w-0 items-center gap-3 max-[1279px]:gap-4 lg:gap-6">
-          <HeaderBrand />
+          <HeaderBrand
+            {...(props.onDashboardIntent ? { onDashboardIntent: props.onDashboardIntent } : {})}
+            {...(props.preserveDashboardScroll ? { preserveDashboardScroll: true } : {})}
+          />
           <HeaderNavigation
             dashboardLabel={t(keys.header.nav.dashboard)}
             agentsLabel={t(keys.header.nav.agents)}
+            {...(props.onDashboardIntent ? { onDashboardIntent: props.onDashboardIntent } : {})}
+            {...(props.preserveDashboardScroll ? { preserveDashboardScroll: true } : {})}
           />
         </div>
 
@@ -209,9 +259,10 @@ export function AppHeader(props: Props): JSX.Element {
 
         <div class="max-[1023px]:justify-self-end">
           <HeaderActions
-            syncSlot={props.syncSlot}
             createProcessLabel={t(keys.header.createProcess)}
-            onCreateProcess={props.onCreateProcess}
+            {...(props.syncSlot ? { syncSlot: props.syncSlot } : {})}
+            {...(props.actionsSlot ? { actionsSlot: props.actionsSlot } : {})}
+            {...(props.onCreateProcess ? { onCreateProcess: props.onCreateProcess } : {})}
           />
         </div>
       </div>

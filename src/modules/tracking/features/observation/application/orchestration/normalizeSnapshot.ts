@@ -1,9 +1,11 @@
-import type { Provider } from '~/modules/tracking/domain/model/provider'
+import { isKnownProvider, type Provider } from '~/modules/tracking/domain/model/provider'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import { normalizeCmaCgmSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/cmacgm.normalizer'
 import { normalizeMaerskSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/maersk.normalizer'
 import { normalizeMscSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/msc.normalizer'
+import { normalizeOneSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/one.normalizer'
+import { normalizePilSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/pil.normalizer'
 
 /**
  * Registry of provider normalizers.
@@ -15,6 +17,8 @@ const NORMALIZERS: Record<Provider, (snapshot: Snapshot) => ObservationDraft[]> 
   msc: normalizeMscSnapshot,
   maersk: normalizeMaerskSnapshot,
   cmacgm: normalizeCmaCgmSnapshot,
+  pil: normalizePilSnapshot,
+  one: normalizeOneSnapshot,
 }
 
 /**
@@ -29,6 +33,12 @@ const NORMALIZERS: Record<Provider, (snapshot: Snapshot) => ObservationDraft[]> 
  * @see docs/master-consolidated-0209.md §4.1
  */
 export function normalizeSnapshot(snapshot: Snapshot): ObservationDraft[] {
+  if (!isKnownProvider(snapshot.provider)) {
+    throw new Error(
+      `normalizeSnapshot: provider ${snapshot.provider} is not supported for normalization`,
+    )
+  }
+
   const normalizer = NORMALIZERS[snapshot.provider]
   return normalizer(snapshot)
 }

@@ -18,7 +18,7 @@ type SyncControllersBootstrapOverrides = {
   readonly syncStatusControllers?: SyncStatusControllers
 }
 
-export type SyncControllersBootstrapDeps = CreateSyncUseCasesDeps & {
+type SyncControllersBootstrapDeps = CreateSyncUseCasesDeps & {
   readonly defaultTenantId: string
 }
 

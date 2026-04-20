@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import { normalizeMaerskSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/maersk.normalizer'
 import fullPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
+import { temporalCanonicalText } from '~/shared/time/tests/helpers'
 
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
@@ -76,17 +77,64 @@ describe('normalizeMaerskSnapshot', () => {
       expect(gateOut?.location_display).toBe('PORT SAID EAST, EG')
     })
 
-    it('should set EXPECTED events with medium confidence', () => {
-      const drafts = normalizeMaerskSnapshot(makeSnapshot(fullPayload))
-      // Last events at TANGER MED and SANTOS have event_time_type=EXPECTED
-      const expected = drafts.filter((d) => d.confidence === 'medium')
-      expect(expected.length).toBeGreaterThanOrEqual(1)
+    it('should set EXPECTED events with medium confidence when time is present', () => {
+      const payload = {
+        containers: [
+          {
+            container_num: 'MNBU3094033',
+            locations: [
+              {
+                city: 'SANTOS',
+                country_code: 'BR',
+                location_code: 'BRSSZ',
+                events: [
+                  {
+                    activity: 'CONTAINER ARRIVAL',
+                    event_time: '2026-02-05T10:00:00.000Z',
+                    event_time_type: 'EXPECTED',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }
+
+      const drafts = normalizeMaerskSnapshot(makeSnapshot(payload))
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time_type).toBe('EXPECTED')
+      expect(drafts[0]?.confidence).toBe('medium')
     })
 
-    it('should set ACTUAL events with high confidence', () => {
-      const drafts = normalizeMaerskSnapshot(makeSnapshot(fullPayload))
-      const actual = drafts.filter((d) => d.confidence === 'high')
-      expect(actual.length).toBeGreaterThanOrEqual(3)
+    it('should set ACTUAL events with high confidence when time and location are present', () => {
+      const payload = {
+        containers: [
+          {
+            container_num: 'MNBU3094033',
+            locations: [
+              {
+                city: 'SANTOS',
+                country_code: 'BR',
+                location_code: 'BRSSZ',
+                events: [
+                  {
+                    activity: 'LOAD',
+                    event_time: '2026-02-05T10:00:00.000Z',
+                    event_time_type: 'ACTUAL',
+                    vessel_name: 'MAERSK BROWNSVILLE',
+                    voyage_num: '603S',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }
+
+      const drafts = normalizeMaerskSnapshot(makeSnapshot(payload))
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+      expect(drafts[0]?.confidence).toBe('high')
     })
 
     it('should set provider and snapshot_id on all drafts', () => {
@@ -102,6 +150,15 @@ describe('normalizeMaerskSnapshot', () => {
       const gateIn = drafts.find((d) => d.type === 'GATE_IN')
       expect(gateIn?.vessel_name).toBeNull()
       expect(gateIn?.voyage).toBeNull()
+    })
+
+    it('should normalize timezone-less event_time values as local datetimes with port timezone', () => {
+      const drafts = normalizeMaerskSnapshot(makeSnapshot(fullPayload))
+
+      expect(temporalCanonicalText(drafts[0]?.event_time ?? null)).toBe(
+        '2026-01-13T20:15:00.000[Africa/Cairo]',
+      )
+      expect(drafts[0]?.event_time_source).toBe('carrier_local_port_time')
     })
   })
 

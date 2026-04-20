@@ -37,6 +37,8 @@ type FormSectionsProps = {
   readonly onExporterNameInput: (value: string) => void
   readonly referenceImporter: string
   readonly onReferenceImporterInput: (value: string) => void
+  readonly depositary: string
+  readonly onDepositaryInput: (value: string) => void
   readonly product: string
   readonly onProductInput: (value: string) => void
   readonly redestinationNumber: string
@@ -99,6 +101,12 @@ type SmartPasteProps = {
   readonly onApply: () => void
   readonly onCancelOverwrite: () => void
   readonly onConfirmOverwrite: () => void
+}
+
+function toOptionalErrorProps(
+  error: string | undefined,
+): { readonly error: string } | Record<never, never> {
+  return error === undefined ? {} : { error }
 }
 
 function SmartPasteTrigger(props: { readonly onOpen: () => void }): JSX.Element {
@@ -468,6 +476,13 @@ function IdentificationSection(
           placeholder={t(keys.createProcess.field.productPlaceholder)}
         />
         <FormInput
+          label={t(keys.createProcess.field.depositary)}
+          name="depositary"
+          value={props.depositary}
+          onInput={props.onDepositaryInput}
+          placeholder={t(keys.createProcess.field.depositaryPlaceholder)}
+        />
+        <FormInput
           label={t(keys.createProcess.field.redestinationNumber)}
           name="redestinationNumber"
           value={props.redestinationNumber}
@@ -553,6 +568,8 @@ function ContainerRow(
   props: { container: ContainerInput; index: () => number } & ContainerSectionProps,
 ): JSX.Element {
   const { t, keys } = useTranslation()
+  const error = () =>
+    props.getContainerError(props.container) ?? props.getDuplicateError(props.container)
 
   return (
     <div class="flex items-start gap-3 rounded-lg border border-border bg-surface-muted p-4">
@@ -565,10 +582,8 @@ function ContainerRow(
           onPaste={(event) => props.onContainerPaste(props.container, event)}
           onBlur={() => props.onContainerBlur(props.container)}
           placeholder={t(keys.createProcess.field.containerNumberPlaceholder)}
-          error={
-            props.getContainerError(props.container) ?? props.getDuplicateError(props.container)
-          }
           required
+          {...toOptionalErrorProps(error())}
         />
 
         <Show when={props.getContainerLink(props.container)}>
@@ -719,6 +734,8 @@ export function CreateProcessDialogView(props: Props): JSX.Element {
             onExporterNameInput={props.form.onExporterNameInput}
             referenceImporter={props.form.referenceImporter}
             onReferenceImporterInput={props.form.onReferenceImporterInput}
+            depositary={props.form.depositary}
+            onDepositaryInput={props.form.onDepositaryInput}
             product={props.form.product}
             onProductInput={props.form.onProductInput}
             redestinationNumber={props.form.redestinationNumber}
@@ -760,10 +777,10 @@ export function CreateProcessDialogView(props: Props): JSX.Element {
           />
 
           <ActionsSection
-            mode={props.mode}
             onClose={props.onClose}
             submitDisabled={props.submitDisabled}
             submitTooltip={props.submitTooltip}
+            {...(props.mode === undefined ? {} : { mode: props.mode })}
           />
         </form>
       </Dialog>

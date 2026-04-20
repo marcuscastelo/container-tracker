@@ -10,9 +10,10 @@ on:
 
 permissions:
   contents: write
+  packages: read
 
 jobs:
-  build-artifact:
+  build-linux-artifact:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,12 +29,16 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          registry-url: https://npm.pkg.github.com
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Build release app
         env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN }}
+
+      - name: Build Linux release app
+        env:
+          AGENT_RELEASE_TARGET: linux-x64
           BACKEND_URL: https://agent.invalid
           INSTALLER_TOKEN: ci-installer-token
         run: pnpm run agent:release
@@ -44,34 +49,86 @@ jobs:
           mkdir -p /tmp/agent-linux-x64
           cp -R release/app/. /tmp/agent-linux-x64
           test -f /tmp/agent-linux-x64/node_modules/@supabase/supabase-js/package.json
+          ABSOLUTE_SYMLINK_COUNT="$(find /tmp/agent-linux-x64/node_modules -type l -exec readlink {} \; | awk '/^\//{c++} END {print c+0}')"
+          if [ "$ABSOLUTE_SYMLINK_COUNT" -gt 0 ]; then
+            echo "Found $ABSOLUTE_SYMLINK_COUNT absolute symlink(s) in Linux runtime node_modules." >&2
+            find /tmp/agent-linux-x64/node_modules -type l -exec readlink {} \; | awk '/^\//{print; if (++n==20) exit}' >&2
+            exit 1
+          fi
           tar -C /tmp -czf agent-linux-x64.tar.gz agent-linux-x64
           sha256sum agent-linux-x64.tar.gz | awk '{print $1}' > agent-linux-x64.sha256
 
-      - name: Package windows artifact
-        run: |
-          rm -rf /tmp/agent-windows-x64
-          mkdir -p /tmp/agent-windows-x64
-          cp -R release/app/. /tmp/agent-windows-x64
-          test -f /tmp/agent-windows-x64/node_modules/@supabase/supabase-js/package.json
-          (
-            cd /tmp
-            zip -qr "${GITHUB_WORKSPACE}/agent-windows-x64.zip" agent-windows-x64
-          )
-          sha256sum agent-windows-x64.zip | awk '{print $1}' > agent-windows-x64.sha256
-
-      - name: Upload artifact
+      - name: Upload linux artifact
         uses: actions/upload-artifact@v4
         with:
-          name: agent-release-assets
+          name: agent-release-linux-x64
           path: |
             agent-linux-x64.tar.gz
             agent-linux-x64.sha256
+          if-no-files-found: error
+
+  build-windows-artifact:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN }}
+
+      - name: Build Windows release app
+        env:
+          AGENT_RELEASE_TARGET: windows-x64
+          BACKEND_URL: https://agent.invalid
+          INSTALLER_TOKEN: ci-installer-token
+        run: pnpm run agent:release
+
+      - name: Package windows artifact
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'release/ct-agent-startup.exe')) {
+            throw 'release/ct-agent-startup.exe was not generated.'
+          }
+
+          $targetDir = Join-Path $env:RUNNER_TEMP 'agent-windows-x64'
+          Remove-Item -LiteralPath $targetDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $targetDir | Out-Null
+          Copy-Item -Path 'release/*' -Destination $targetDir -Recurse -Force
+
+          $zipPath = Join-Path $env:GITHUB_WORKSPACE 'agent-windows-x64.zip'
+          Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
+          Compress-Archive -Path (Join-Path $targetDir '*') -DestinationPath $zipPath -Force
+
+          $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLowerInvariant()
+          Set-Content -Path 'agent-windows-x64.sha256' -Value $hash -NoNewline
+
+      - name: Upload windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-release-windows-x64
+          path: |
             agent-windows-x64.zip
             agent-windows-x64.sha256
           if-no-files-found: error
 
   publish-release:
-    needs: build-artifact
+    needs:
+      - build-linux-artifact
+      - build-windows-artifact
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
@@ -79,10 +136,16 @@ jobs:
         with:
           ref: main
 
-      - name: Download artifact
+      - name: Download linux artifact
         uses: actions/download-artifact@v4
         with:
-          name: agent-release-assets
+          name: agent-release-linux-x64
+          path: .
+
+      - name: Download windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-release-windows-x64
           path: .
 
       - name: Publish prerelease
@@ -91,6 +154,7 @@ jobs:
           tag_name: agent/v${{ inputs.version }}
           name: Agent v${{ inputs.version }} (canary)
           prerelease: true
+          make_latest: false
           files: |
             agent-linux-x64.tar.gz
             agent-linux-x64.sha256

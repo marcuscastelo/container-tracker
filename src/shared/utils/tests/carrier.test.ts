@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { carrierTrackUrl } from '~/shared/utils/carrier'
+import { carrierTrackUrl, directCarrierTrackUrl } from '~/shared/utils/carrier'
 
 describe('carrierTrackUrl util', () => {
   it('returns maersk tracking URL when carrier includes maersk', () => {
@@ -17,8 +17,37 @@ describe('carrierTrackUrl util', () => {
     expect(url).toContain('cma-cgm.com')
   })
 
+  it('returns PIL tracking URL when carrier includes pil', () => {
+    const url = carrierTrackUrl('PIL', 'PCIU8712104')
+    expect(url).toContain('pilship.com')
+    expect(url).toContain('PCIU8712104')
+  })
+
+  it('returns ONE tracking URL when carrier includes one', () => {
+    const url = carrierTrackUrl('ONE', 'DRYU2434190')
+    expect(url).toContain('one-line.com')
+    expect(url).toContain('DRYU2434190')
+  })
+
+  it('returns ONE tracking URL for Ocean Network Express aliases', () => {
+    const url = carrierTrackUrl('Ocean Network Express', 'DRYU2434190')
+    expect(url).toContain('one-line.com')
+    expect(url).toContain('DRYU2434190')
+  })
+
   it('returns google search fallback for unknown carrier', () => {
     const url = carrierTrackUrl('Some Unknown Carrier', 'MRKU1234567')
     expect(url).toContain('google.com/search')
+  })
+
+  it('returns null when carrier or container number is missing', () => {
+    expect(carrierTrackUrl(null, 'MRKU1234567')).toBeNull()
+    expect(carrierTrackUrl('', 'MRKU1234567')).toBeNull()
+    expect(carrierTrackUrl('Maersk', '')).toBeNull()
+  })
+
+  it('returns null for unknown carriers when direct tracking is required', () => {
+    const url = directCarrierTrackUrl('Some Unknown Carrier', 'MRKU1234567')
+    expect(url).toBeNull()
   })
 })

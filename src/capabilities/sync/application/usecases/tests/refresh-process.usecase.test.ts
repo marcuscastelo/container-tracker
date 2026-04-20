@@ -38,11 +38,16 @@ function createDeps(overrides: Partial<RefreshProcessDeps> = {}): {
 }
 
 describe('refresh-process.usecase', () => {
-  it('enqueues supported containers and reports failures for unsupported providers', async () => {
+  it('enqueues supported containers, including ONE, and preserves dedupe metadata', async () => {
     const enqueue = vi
       .fn()
       .mockResolvedValueOnce({
         id: 'sync-1',
+        status: 'PENDING',
+        isNew: true,
+      })
+      .mockResolvedValueOnce({
+        id: 'sync-2',
         status: 'PENDING',
         isNew: true,
       })
@@ -73,12 +78,17 @@ describe('refresh-process.usecase', () => {
       processId: 'process-1',
       mode: 'process',
       requestedContainers: 3,
-      queuedContainers: 2,
-      syncRequestIds: ['sync-1'],
+      queuedContainers: 3,
+      syncRequestIds: ['sync-1', 'sync-2'],
       requests: [
         {
           containerNumber: 'MSCU1234567',
           syncRequestId: 'sync-1',
+          deduped: false,
+        },
+        {
+          containerNumber: 'MSCU7654321',
+          syncRequestId: 'sync-2',
           deduped: false,
         },
         {
@@ -87,15 +97,10 @@ describe('refresh-process.usecase', () => {
           deduped: true,
         },
       ],
-      failures: [
-        {
-          containerNumber: 'MSCU7654321',
-          error: 'unsupported_sync_provider_for_container',
-        },
-      ],
+      failures: [],
     })
 
-    expect(enqueue).toHaveBeenCalledTimes(2)
+    expect(enqueue).toHaveBeenCalledTimes(3)
   })
 
   it('returns 404 when the container does not belong to process in container mode', async () => {

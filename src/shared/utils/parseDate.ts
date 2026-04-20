@@ -1,35 +1,22 @@
-/**
- * Parse a string of the form dd/mm/yyyy and return a Date at noon UTC.
- * Returns null if the input doesn't match or creates an invalid date.
- */
-export function parseDateDDMMYYYYString(input: string): Date | null {
-  const dm = input.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
-  if (!dm) return null
-  const day = Number(dm[1])
-  const month = Number(dm[2]) - 1
-  const year = Number(dm[3])
-  // Use noon UTC to avoid timezone rollbacks when converting to local time
-  const d = new Date(Date.UTC(year, month, day, 12))
-  return Number.isNaN(d.getTime()) ? null : d
+import {
+  parseCalendarDateFromDdMmYyyy,
+  parseInstantFromMsDate,
+  parseInstantFromNumber,
+  parseInstantFromTimestampText,
+} from '~/shared/time/parsing'
+
+export function parseDateDDMMYYYYString(input: string) {
+  return parseCalendarDateFromDdMmYyyy(input)
 }
 
-/** Parse MS /Date(1234567890)/ strings (common in some SOAP responses). */
-export function parseMsDateString(input: string): Date | null {
-  const msMatch = input.match(/\/Date\((-?\d+)\)\//)
-  if (!msMatch) return null
-  const ms = Number(msMatch[1])
-  const d = new Date(ms)
-  return Number.isNaN(d.getTime()) ? null : d
+export function parseMsDateString(input: string) {
+  return parseInstantFromMsDate(input)
 }
 
-/** Parse ISO / RFC date strings using built-in Date parsing. */
-export function parseIsoOrRfcString(input: string): Date | null {
-  const d = new Date(input)
-  return Number.isNaN(d.getTime()) ? null : d
+export function parseIsoOrRfcString(input: string) {
+  return parseInstantFromTimestampText(input)
 }
 
-/** Parse numeric epoch (milliseconds) into Date. */
-export function parseDateFromNumber(input: number): Date | null {
-  const d = new Date(input)
-  return Number.isNaN(d.getTime()) ? null : d
+export function parseDateFromNumber(input: number) {
+  return parseInstantFromNumber(input)
 }

@@ -2,7 +2,7 @@ import { expect } from 'vitest'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 
-export type TransshipmentSemanticViolation = {
+type TransshipmentSemanticViolation = {
   readonly code:
     | 'latest_actual_load_with_arrival_like_status'
     | 'onboard_vessel_with_arrival_like_status'

@@ -1,6 +1,7 @@
-import { RefreshCw } from 'lucide-solid'
+import { CircleAlert, RefreshCw, TriangleAlert } from 'lucide-solid'
 import type { JSX } from 'solid-js'
-import { Match, Switch } from 'solid-js'
+import { Match, Show, Switch } from 'solid-js'
+import type { DashboardProcessSyncIssueVM } from '~/modules/process/ui/viewmodels/dashboard-sync-batch-result.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 
 // ---------------------------------------------------------------------------
@@ -11,6 +12,7 @@ export type SyncCellState = 'idle' | 'syncing' | 'success_recent' | 'failed' | '
 
 type SyncCellProps = {
   readonly state: SyncCellState
+  readonly issue?: DashboardProcessSyncIssueVM | null
   readonly onSync?: () => void
 }
 
@@ -108,13 +110,36 @@ function SyncCellIcon(props: { readonly state: SyncCellState }): JSX.Element {
   )
 }
 
+function SyncIssueBadge(props: { readonly issue: DashboardProcessSyncIssueVM }): JSX.Element {
+  return (
+    <Show
+      when={props.issue.severity === 'danger'}
+      fallback={
+        <span
+          class="pointer-events-none absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg"
+          aria-hidden="true"
+        >
+          <CircleAlert class="h-2.5 w-2.5" strokeWidth={2} />
+        </span>
+      }
+    >
+      <span
+        class="pointer-events-none absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg"
+        aria-hidden="true"
+      >
+        <TriangleAlert class="h-2.5 w-2.5" strokeWidth={2} />
+      </span>
+    </Show>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Style helpers
 // ---------------------------------------------------------------------------
 
 function toButtonClasses(state: SyncCellState): string {
   const base =
-    'inline-flex h-[var(--dashboard-sync-button-size)] w-[var(--dashboard-sync-button-size)] items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
+    'motion-focus-surface motion-interactive inline-flex h-[var(--dashboard-sync-button-size)] w-[var(--dashboard-sync-button-size)] items-center justify-center rounded-md border border-border bg-surface text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
 
   if (state === 'syncing')
     return `${base} border-tone-info-border bg-tone-info-bg text-tone-info-fg cursor-default`
@@ -139,6 +164,20 @@ function toAriaLabel(
   return t(keys.dashboard.table.sync.idle)
 }
 
+function toCompositeLabel(command: {
+  readonly state: SyncCellState
+  readonly issue: DashboardProcessSyncIssueVM | null
+  readonly t: ReturnType<typeof useTranslation>['t']
+  readonly keys: ReturnType<typeof useTranslation>['keys']
+}): string {
+  const baseLabel = toAriaLabel(command.state, command.t, command.keys)
+  if (command.issue === null) {
+    return baseLabel
+  }
+
+  return `${baseLabel}\n${command.issue.tooltip}`
+}
+
 function isInteractive(state: SyncCellState): boolean {
   return state === 'idle'
 }
@@ -159,17 +198,30 @@ export function SyncCell(props: SyncCellProps): JSX.Element {
 
   return (
     <div class="flex min-w-0 items-center justify-center px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={!isInteractive(props.state)}
-        aria-busy={props.state === 'syncing'}
-        aria-label={toAriaLabel(props.state, t, keys)}
-        title={toAriaLabel(props.state, t, keys)}
-        class={toButtonClasses(props.state)}
-      >
-        <SyncCellIcon state={props.state} />
-      </button>
+      <div class="relative">
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={!isInteractive(props.state)}
+          aria-busy={props.state === 'syncing'}
+          aria-label={toCompositeLabel({
+            state: props.state,
+            issue: props.issue ?? null,
+            t,
+            keys,
+          })}
+          title={toCompositeLabel({
+            state: props.state,
+            issue: props.issue ?? null,
+            t,
+            keys,
+          })}
+          class={toButtonClasses(props.state)}
+        >
+          <SyncCellIcon state={props.state} />
+        </button>
+        <Show when={props.issue}>{(issue) => <SyncIssueBadge issue={issue()} />}</Show>
+      </div>
     </div>
   )
 }

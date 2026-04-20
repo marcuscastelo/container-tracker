@@ -6,6 +6,7 @@ import type {
 export type OperationalStatusCounts = {
   readonly UNKNOWN: number
   readonly IN_PROGRESS: number
+  readonly BOOKED: number
   readonly LOADED: number
   readonly IN_TRANSIT: number
   readonly ARRIVED_AT_POD: number
@@ -20,7 +21,7 @@ export type ProcessStatusMicrobadge = {
   readonly count: number
 }
 
-export type ProcessStatusDispersion = {
+type ProcessStatusDispersion = {
   readonly highest_container_status: OperationalStatus | null
   readonly status_counts: OperationalStatusCounts
   readonly status_microbadge: ProcessStatusMicrobadge | null
@@ -30,6 +31,7 @@ export type ProcessStatusDispersion = {
 type MutableOperationalStatusCounts = {
   UNKNOWN: number
   IN_PROGRESS: number
+  BOOKED: number
   LOADED: number
   IN_TRANSIT: number
   ARRIVED_AT_POD: number
@@ -42,6 +44,7 @@ type MutableOperationalStatusCounts = {
 const OPERATIONAL_STATUS_LIFECYCLE_ORDER: readonly OperationalStatus[] = [
   'UNKNOWN',
   'IN_PROGRESS',
+  'BOOKED',
   'LOADED',
   'IN_TRANSIT',
   'ARRIVED_AT_POD',
@@ -54,13 +57,14 @@ const OPERATIONAL_STATUS_LIFECYCLE_ORDER: readonly OperationalStatus[] = [
 const OPERATIONAL_STATUS_ORDER_INDEX: Readonly<Record<OperationalStatus, number>> = {
   UNKNOWN: 0,
   IN_PROGRESS: 1,
-  LOADED: 2,
-  IN_TRANSIT: 3,
-  ARRIVED_AT_POD: 4,
-  DISCHARGED: 5,
-  AVAILABLE_FOR_PICKUP: 6,
-  DELIVERED: 7,
-  EMPTY_RETURNED: 8,
+  BOOKED: 2,
+  LOADED: 3,
+  IN_TRANSIT: 4,
+  ARRIVED_AT_POD: 5,
+  DISCHARGED: 6,
+  AVAILABLE_FOR_PICKUP: 7,
+  DELIVERED: 8,
+  EMPTY_RETURNED: 9,
 }
 
 const PROCESS_STATUS_ORDER = [
@@ -93,7 +97,7 @@ const MICROBADGE_MEANINGFUL_STATUSES: ReadonlySet<OperationalStatus> = new Set([
 
 function toProcessLifecycleStatus(status: OperationalStatus): ProcessLifecycleStatus {
   if (status === 'UNKNOWN') return 'UNKNOWN'
-  if (status === 'IN_PROGRESS') return 'BOOKED'
+  if (status === 'IN_PROGRESS' || status === 'BOOKED') return 'BOOKED'
   if (status === 'LOADED' || status === 'IN_TRANSIT') return 'IN_TRANSIT'
   if (status === 'ARRIVED_AT_POD') return 'ARRIVED_AT_POD'
   if (status === 'DISCHARGED' || status === 'AVAILABLE_FOR_PICKUP') return 'DISCHARGED'
@@ -117,6 +121,7 @@ function createEmptyOperationalStatusCounts(): MutableOperationalStatusCounts {
   return {
     UNKNOWN: 0,
     IN_PROGRESS: 0,
+    BOOKED: 0,
     LOADED: 0,
     IN_TRANSIT: 0,
     ARRIVED_AT_POD: 0,
@@ -138,6 +143,11 @@ function incrementStatusCount(
 
   if (status === 'IN_PROGRESS') {
     statusCounts.IN_PROGRESS += 1
+    return
+  }
+
+  if (status === 'BOOKED') {
+    statusCounts.BOOKED += 1
     return
   }
 
@@ -177,6 +187,7 @@ function incrementStatusCount(
 function toStatusCount(statusCounts: OperationalStatusCounts, status: OperationalStatus): number {
   if (status === 'UNKNOWN') return statusCounts.UNKNOWN
   if (status === 'IN_PROGRESS') return statusCounts.IN_PROGRESS
+  if (status === 'BOOKED') return statusCounts.BOOKED
   if (status === 'LOADED') return statusCounts.LOADED
   if (status === 'IN_TRANSIT') return statusCounts.IN_TRANSIT
   if (status === 'ARRIVED_AT_POD') return statusCounts.ARRIVED_AT_POD
@@ -218,7 +229,7 @@ function toPrimaryStatusOrderIndex(primaryStatus: ProcessAggregatedStatus): numb
   }
 
   if (primaryStatus === 'BOOKED') {
-    return OPERATIONAL_STATUS_ORDER_INDEX.IN_PROGRESS
+    return OPERATIONAL_STATUS_ORDER_INDEX.BOOKED
   }
 
   if (primaryStatus === 'IN_TRANSIT') {

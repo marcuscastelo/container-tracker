@@ -1,4 +1,7 @@
 import type { DashboardProcessUseCases } from '~/capabilities/dashboard/application/dashboard.processes.projection'
+import { systemClock } from '~/shared/time/clock'
+import { type Instant, isInstant } from '~/shared/time/instant'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 export type DashboardProcessesCreatedByMonthReadModelDeps = {
   readonly processUseCases: DashboardProcessUseCases
@@ -33,54 +36,46 @@ const FALLBACK_MONTH_LABELS: readonly string[] = [
   'Dec',
 ]
 
-function toMonthKeyFromDate(date: Date): string {
-  const year = date.getUTCFullYear()
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-  return `${year}-${month}`
+function toMonthKey(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, '0')}`
 }
 
-function toShortMonthLabel(date: Date): string {
-  if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat !== 'undefined') {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      timeZone: 'UTC',
-    }).format(date)
-  }
-
-  return FALLBACK_MONTH_LABELS[date.getUTCMonth()] ?? '—'
+function toMonthKeyFromInstant(instant: Instant): string {
+  return instant.toCalendarDate('UTC').toIsoDate().slice(0, 7)
 }
 
-function toCreatedAtDateOrNull(value: Date | string | null | undefined): Date | null {
-  if (value instanceof Date) {
-    if (Number.isNaN(value.getTime())) return null
-    return value
-  }
+function toShortMonthLabel(month: number): string {
+  return FALLBACK_MONTH_LABELS[month - 1] ?? '—'
+}
 
-  if (typeof value !== 'string') {
-    return null
-  }
+function toCreatedAtInstantOrNull(value: Instant | string | null | undefined): Instant | null {
+  if (isInstant(value)) return value
+  if (typeof value !== 'string') return null
+  return parseInstantFromIso(value)
+}
 
-  const timestamp = Date.parse(value)
-  if (Number.isNaN(timestamp)) {
-    return null
+function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
+  const absoluteMonth = year * 12 + (month - 1) + delta
+  return {
+    year: Math.floor(absoluteMonth / 12),
+    month: (absoluteMonth % 12) + 1,
   }
-
-  return new Date(timestamp)
 }
 
 function buildMonthWindow(
-  now: Date,
+  now: Instant,
   windowSize: DashboardMonthWindowSize,
 ): Array<{ month: string; label: string; count: number }> {
+  const nowDate = now.toCalendarDate('UTC').toIsoDate()
+  const currentYear = Number(nowDate.slice(0, 4))
+  const currentMonth = Number(nowDate.slice(5, 7))
   const window: Array<{ month: string; label: string; count: number }> = []
-  const currentYear = now.getUTCFullYear()
-  const currentMonth = now.getUTCMonth()
 
   for (let offset = windowSize - 1; offset >= 0; offset -= 1) {
-    const utcMonthDate = new Date(Date.UTC(currentYear, currentMonth - offset, 1))
+    const shifted = shiftMonth(currentYear, currentMonth, -offset)
     window.push({
-      month: toMonthKeyFromDate(utcMonthDate),
-      label: toShortMonthLabel(utcMonthDate),
+      month: toMonthKey(shifted.year, shifted.month),
+      label: toShortMonthLabel(shifted.month),
       count: 0,
     })
   }
@@ -101,24 +96,22 @@ export function createDashboardProcessesCreatedByMonthReadModelUseCase(
     const { processes } = await deps.processUseCases.listProcessesWithOperationalSummary()
     const windowSize = command.windowSize ?? DEFAULT_DASHBOARD_MONTH_WINDOW_SIZE
 
-    const monthWindow = buildMonthWindow(new Date(), windowSize)
+    const monthWindow = buildMonthWindow(systemClock.now(), windowSize)
     const monthIndexByKey = new Map(
       monthWindow.map((entry, index) => [entry.month, index] as const),
     )
 
     for (const process of processes) {
-      const createdAt = toCreatedAtDateOrNull(process.pwc.process.createdAt)
-      if (createdAt === null) {
-        continue
-      }
+      const createdAt = toCreatedAtInstantOrNull(process.pwc.process.createdAt)
+      if (createdAt === null) continue
 
-      const monthKey = toMonthKeyFromDate(createdAt)
+      const monthKey = toMonthKeyFromInstant(createdAt)
       const monthIndex = monthIndexByKey.get(monthKey)
-      if (monthIndex === undefined) {
-        continue
-      }
+      if (monthIndex === undefined) continue
 
       const currentEntry = monthWindow[monthIndex]
+      if (currentEntry === undefined) continue
+
       monthWindow[monthIndex] = {
         ...currentEntry,
         count: currentEntry.count + 1,

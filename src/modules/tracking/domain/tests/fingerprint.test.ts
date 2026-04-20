@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
+import {
+  computeFingerprint,
+  computeLegacyFingerprint,
+} from '~/modules/tracking/domain/identity/fingerprint'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
+import { resolveTemporalValue, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 function makeDraft(overrides: Partial<ObservationDraft> = {}): ObservationDraft {
   return {
     container_number: 'CXDU2058677',
     type: 'LOAD',
-    event_time: '2025-11-26T00:00:00.000Z',
+    event_time: resolveTemporalValue(
+      overrides.event_time,
+      temporalValueFromCanonical('2025-11-26T00:00:00.000Z'),
+    ),
     event_time_type: 'ACTUAL',
     location_code: 'ITNAP',
     location_display: 'NAPLES, IT',
@@ -43,10 +50,10 @@ describe('computeFingerprint', () => {
     expect(fp1).toBe(fp2)
   })
 
-  it('should be stable across different providers (unstable field ignored)', () => {
+  it('should differ when provider changes', () => {
     const fp1 = computeFingerprint(makeDraft({ provider: 'msc' }))
     const fp2 = computeFingerprint(makeDraft({ provider: 'maersk' }))
-    expect(fp1).toBe(fp2)
+    expect(fp1).not.toBe(fp2)
   })
 
   it('should be stable across different confidence levels (unstable field ignored)', () => {
@@ -67,16 +74,24 @@ describe('computeFingerprint', () => {
     expect(fp1).not.toBe(fp2)
   })
 
-  it('should differ when event_time date changes', () => {
-    const fp1 = computeFingerprint(makeDraft({ event_time: '2025-11-26T00:00:00.000Z' }))
-    const fp2 = computeFingerprint(makeDraft({ event_time: '2025-11-27T00:00:00.000Z' }))
+  it('should differ when event_time canonical value changes', () => {
+    const fp1 = computeFingerprint(
+      makeDraft({ event_time: resolveTemporalValue('2025-11-26T00:00:00.000Z', null) }),
+    )
+    const fp2 = computeFingerprint(
+      makeDraft({ event_time: resolveTemporalValue('2025-11-27T00:00:00.000Z', null) }),
+    )
     expect(fp1).not.toBe(fp2)
   })
 
-  it('should NOT differ when only the time portion changes (same date)', () => {
-    const fp1 = computeFingerprint(makeDraft({ event_time: '2025-11-26T00:00:00.000Z' }))
-    const fp2 = computeFingerprint(makeDraft({ event_time: '2025-11-26T12:30:00.000Z' }))
-    expect(fp1).toBe(fp2)
+  it('should differ when only the time portion changes for an instant', () => {
+    const fp1 = computeFingerprint(
+      makeDraft({ event_time: resolveTemporalValue('2025-11-26T00:00:00.000Z', null) }),
+    )
+    const fp2 = computeFingerprint(
+      makeDraft({ event_time: resolveTemporalValue('2025-11-26T12:30:00.000Z', null) }),
+    )
+    expect(fp1).not.toBe(fp2)
   })
 
   it('should differ when location_code changes', () => {
@@ -122,5 +137,23 @@ describe('computeFingerprint', () => {
     const fp1 = computeFingerprint(makeDraft({ event_time_type: 'ACTUAL' }))
     const fp2 = computeFingerprint(makeDraft({ event_time_type: 'EXPECTED' }))
     expect(fp1).not.toBe(fp2)
+  })
+
+  it('should differ when carrier_label changes', () => {
+    const fp1 = computeFingerprint(makeDraft({ carrier_label: 'Vessel Loading' }))
+    const fp2 = computeFingerprint(makeDraft({ carrier_label: 'Vessel Discharge' }))
+    expect(fp1).not.toBe(fp2)
+  })
+
+  it('should differ when location_display changes and location_code is absent', () => {
+    const fp1 = computeFingerprint(makeDraft({ location_code: null, location_display: 'QINGDAO' }))
+    const fp2 = computeFingerprint(makeDraft({ location_code: null, location_display: 'SANTOS' }))
+    expect(fp1).not.toBe(fp2)
+  })
+
+  it('should keep legacy fingerprint stable across provider changes', () => {
+    const fp1 = computeLegacyFingerprint(makeDraft({ provider: 'msc' }))
+    const fp2 = computeLegacyFingerprint(makeDraft({ provider: 'pil' }))
+    expect(fp1).toBe(fp2)
   })
 })

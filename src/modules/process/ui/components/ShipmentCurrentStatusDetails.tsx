@@ -1,19 +1,15 @@
 import type { JSX } from 'solid-js'
-import { createMemo, Show } from 'solid-js'
+import { createMemo } from 'solid-js'
 import { toContainerSyncLabel } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
-import {
-  deriveCurrentLocationFromTimeline,
-  deriveCurrentVesselFromTimeline,
-  shouldHideCurrentVesselForCompletedLeg,
-} from '~/modules/process/ui/utils/current-tracking-context'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import type { Instant } from '~/shared/time/instant'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 type Props = {
   readonly container: ContainerDetailVM
-  readonly syncNow: Date
+  readonly syncNow: Instant
 }
 
 type StatusFieldProps = {
@@ -34,14 +30,12 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const unknown = () => t(keys.shipmentView.currentStatus.unknown)
   const vesselNotApplicable = () => t(keys.shipmentView.currentStatus.vesselNotApplicable)
-
-  const currentVessel = createMemo(() => deriveCurrentVesselFromTimeline(props.container.timeline))
-  const currentLocation = createMemo(() =>
-    deriveCurrentLocationFromTimeline(props.container.timeline),
-  )
-  const hideCurrentVessel = createMemo(() =>
-    shouldHideCurrentVesselForCompletedLeg(props.container.timeline),
-  )
+  const etaUnavailable = () => t(keys.shipmentView.operational.chips.etaMissing)
+  const etaDelivered = () => t(keys.tracking.status.DELIVERED)
+  const currentLocation = () =>
+    props.container.currentContext.locationDisplay ?? props.container.currentContext.locationCode
+  const currentVessel = () => props.container.currentContext.vesselName
+  const hideCurrentVessel = () => props.container.currentContext.vesselVisible === false
 
   const syncLabel = createMemo(() =>
     toContainerSyncLabel(
@@ -57,6 +51,13 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
       { now: props.syncNow, locale: locale() },
     ),
   )
+  const etaValue = createMemo(() => {
+    if (props.container.etaChipVm.state === 'DELIVERED') {
+      return etaDelivered()
+    }
+
+    return props.container.etaChipVm.date ?? etaUnavailable()
+  })
 
   return (
     <div class="space-y-4">
@@ -72,14 +73,7 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
 
       <StatusField
         label={t(keys.shipmentView.currentStatus.eta)}
-        value={
-          <Show
-            when={props.container.etaChipVm.date}
-            fallback={<span class="font-medium text-text-muted">{unknown()}</span>}
-          >
-            {(date) => <span class="tabular-nums">{date()}</span>}
-          </Show>
-        }
+        value={<span class="tabular-nums">{etaValue()}</span>}
       />
 
       <StatusField

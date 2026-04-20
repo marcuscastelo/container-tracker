@@ -10,6 +10,11 @@ import {
   assertNoTransshipmentSemanticViolations,
   collectTransshipmentSemanticViolations,
 } from '~/modules/tracking/infrastructure/carriers/tests/helpers/transshipmentSemanticAudit'
+import {
+  instantFromIsoText,
+  temporalCanonicalText,
+  temporalValueFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000711'
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000712'
@@ -46,7 +51,7 @@ function toDomainObservation(
     provider: draft.provider,
     created_from_snapshot_id: draft.snapshot_id,
     carrier_label: draft.carrier_label ?? null,
-    created_at: draft.event_time ?? `2026-03-12T11:00:0${index}.000Z`,
+    created_at: temporalCanonicalText(draft.event_time) ?? `2026-03-12T11:00:0${index}.000Z`,
   }
 }
 
@@ -57,7 +62,7 @@ function deriveRegressionTimelineAndStatus(forcedStatus?: ContainerStatus) {
     CONTAINER_ID,
     CONTAINER_NUMBER,
     observations,
-    new Date('2026-03-12T12:00:00.000Z'),
+    instantFromIsoText('2026-03-12T12:00:00.000Z'),
   )
   const status = forcedStatus ?? deriveStatus(timeline)
   return { timeline, status }
@@ -93,7 +98,7 @@ describe('CMA-CGM transshipment semantic audit helper', () => {
           container_id: CONTAINER_ID,
           container_number: CONTAINER_NUMBER,
           type: 'LOAD',
-          event_time: '2026-01-10T09:00:00.000Z',
+          event_time: temporalValueFromCanonical('2026-01-10T09:00:00.000Z'),
           event_time_type: 'ACTUAL',
           location_code: 'TZTGT',
           location_display: 'TANGA, TZ',
@@ -112,7 +117,7 @@ describe('CMA-CGM transshipment semantic audit helper', () => {
           container_id: CONTAINER_ID,
           container_number: CONTAINER_NUMBER,
           type: 'ARRIVAL',
-          event_time: '2026-02-01T06:00:00.000Z',
+          event_time: temporalValueFromCanonical('2026-02-01T06:00:00.000Z'),
           event_time_type: 'ACTUAL',
           location_code: 'BRSSZ',
           location_display: 'SANTOS, BR',
@@ -126,7 +131,7 @@ describe('CMA-CGM transshipment semantic audit helper', () => {
           created_at: '2026-02-01T06:00:00.000Z',
         },
       ],
-      new Date('2026-03-12T12:00:00.000Z'),
+      instantFromIsoText('2026-03-12T12:00:00.000Z'),
     )
 
     expect(collectTransshipmentSemanticViolations(timeline, 'ARRIVED_AT_POD')).toEqual([])

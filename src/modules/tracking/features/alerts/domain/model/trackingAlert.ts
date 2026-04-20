@@ -1,28 +1,28 @@
-import type { Provider } from '~/modules/tracking/domain/model/provider'
+import type { PersistedProvider, Provider } from '~/modules/tracking/domain/model/provider'
 
 /**
  * Tracking Alert — derived signal from timeline/status analysis.
  *
  * Alerts are divided into:
  *   - fact: derived from observed facts (e.g. transshipment). Can be retroactive.
- *   - monitoring: time-based (e.g. no movement). NEVER retroactive.
+ *   - monitoring: time-based (e.g. ETA state). NEVER retroactive.
  *
  * @see docs/master-consolidated-0209.md §3
  */
-export type TrackingAlertCategory = 'fact' | 'monitoring'
-export type TrackingAlertSeverity = 'info' | 'warning' | 'danger'
+type TrackingAlertCategory = 'fact' | 'monitoring'
+type TrackingAlertSeverity = 'info' | 'warning' | 'danger'
 export type TrackingAlertLifecycleState = 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED'
 export type TrackingAlertResolvedReason = 'condition_cleared' | 'terminal_state'
 
 export type TrackingAlertType =
   /** Transshipment detected */
   | 'TRANSSHIPMENT'
+  /** Planned transshipment detected from coherent expected continuation */
+  | 'PLANNED_TRANSSHIPMENT'
   /** Customs hold */
   | 'CUSTOMS_HOLD'
   /** Final port changed */
   | 'PORT_CHANGE'
-  /** No movement for X days */
-  | 'NO_MOVEMENT'
   /** ETA passed without arrival */
   | 'ETA_PASSED'
   /** ETA missing */
@@ -44,18 +44,17 @@ export type TrackingAlertMessageContract =
       }
     }
   | {
-      readonly message_key: 'alerts.customsHoldDetected'
+      readonly message_key: 'alerts.plannedTransshipmentDetected'
       readonly message_params: {
-        readonly location: string
+        readonly port: string
+        readonly fromVessel: string
+        readonly toVessel: string
       }
     }
   | {
-      readonly message_key: 'alerts.noMovementDetected'
+      readonly message_key: 'alerts.customsHoldDetected'
       readonly message_params: {
-        readonly threshold_days: number
-        readonly days_without_movement: number
-        readonly days: number
-        readonly lastEventDate: string
+        readonly location: string
       }
     }
   | {
@@ -76,7 +75,6 @@ export type TrackingAlertMessageContract =
     }
 
 export type TrackingAlertMessageKey = TrackingAlertMessageContract['message_key']
-export type TrackingAlertMessageParams = TrackingAlertMessageContract['message_params']
 
 type TrackingAlertBase = {
   /** Lifecycle state of this alert record */
@@ -117,7 +115,7 @@ type TrackingAlertBase = {
   retroactive: boolean
 
   /** Provider, if attributable */
-  provider: Provider | null
+  provider: PersistedProvider | null
 
   /** When acknowledged by user (UTC ISO) */
   acked_at: string | null
@@ -141,9 +139,30 @@ type TrackingAlertBase = {
 export type TrackingAlert = TrackingAlertBase & TrackingAlertMessageContract
 
 /**
+ * Minimal alert state required by alert derivation and monitoring transitions.
+ *
+ * This boundary intentionally excludes heavyweight read-model fields that are
+ * not needed during snapshot processing.
+ */
+export type TrackingAlertDerivationState = Pick<
+  TrackingAlert,
+  | 'id'
+  | 'category'
+  | 'type'
+  | 'message_params'
+  | 'detected_at'
+  | 'source_observation_fingerprints'
+  | 'alert_fingerprint'
+  | 'acked_at'
+  | 'resolved_at'
+>
+
+/**
  * Shape for inserting a new tracking alert.
  */
-type NewTrackingAlertBase = Omit<TrackingAlertBase, 'id'>
+type NewTrackingAlertBase = Omit<TrackingAlertBase, 'id' | 'provider'> & {
+  provider: Provider | null
+}
 export type NewTrackingAlert = NewTrackingAlertBase & TrackingAlertMessageContract
 
 export function resolveAlertLifecycleState(alert: {

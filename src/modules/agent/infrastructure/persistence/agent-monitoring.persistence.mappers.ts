@@ -2,10 +2,19 @@ import type {
   AgentActivityEventRecord,
   AgentActivityInsertRecord,
   AgentAuthenticatedIdentity,
+  AgentControlCommandType,
+  AgentInfraConfigRecord,
+  AgentLogEventRecord,
+  AgentLogInsertRecord,
   AgentMonitoringRecord,
+  AgentRemoteCommandRecord,
+  AgentRemotePolicyRecord,
   AgentRuntimeStateUpdate,
 } from '~/modules/agent/application/agent-monitoring.repository'
 import type {
+  AgentControlCommandRow,
+  AgentLogEventInsert,
+  AgentLogEventRow,
   TrackingAgentActivityEventInsert,
   TrackingAgentActivityEventRow,
   TrackingAgentRow,
@@ -50,7 +59,7 @@ function toAgentLeaseHealth(value: string): AgentMonitoringRecord['leaseHealth']
   return 'unknown'
 }
 
-function toAgentEnrollmentMethod(value: string): AgentMonitoringRecord['enrollmentMethod'] {
+function toAgentEnrollmentMethod(value: string | null): AgentMonitoringRecord['enrollmentMethod'] {
   if (value === 'bootstrap-token') return 'bootstrap-token'
   if (value === 'manual') return 'manual'
   return 'unknown'
@@ -73,6 +82,14 @@ function toAgentActivityType(value: string): AgentActivityEventRecord['type'] {
   if (value === 'UPDATE_APPLY_STARTED') return 'UPDATE_APPLY_STARTED'
   if (value === 'UPDATE_APPLY_FAILED') return 'UPDATE_APPLY_FAILED'
   if (value === 'RESTART_FOR_UPDATE') return 'RESTART_FOR_UPDATE'
+  if (value === 'LOCAL_UPDATE_PAUSED') return 'LOCAL_UPDATE_PAUSED'
+  if (value === 'LOCAL_UPDATE_RESUMED') return 'LOCAL_UPDATE_RESUMED'
+  if (value === 'CHANNEL_CHANGED') return 'CHANNEL_CHANGED'
+  if (value === 'CONFIG_UPDATED') return 'CONFIG_UPDATED'
+  if (value === 'RELEASE_ACTIVATED') return 'RELEASE_ACTIVATED'
+  if (value === 'LOCAL_RESET') return 'LOCAL_RESET'
+  if (value === 'REMOTE_RESET') return 'REMOTE_RESET'
+  if (value === 'REMOTE_FORCE_UPDATE') return 'REMOTE_FORCE_UPDATE'
   return 'ROLLBACK_EXECUTED'
 }
 
@@ -81,6 +98,11 @@ function toAgentActivitySeverity(value: string): AgentActivityEventRecord['sever
   if (value === 'danger') return 'danger'
   if (value === 'success') return 'success'
   return 'info'
+}
+
+function toAgentLogChannel(value: string): AgentLogEventRecord['channel'] {
+  if (value === 'stderr') return 'stderr'
+  return 'stdout'
 }
 
 function toCapabilities(value: unknown): readonly string[] {
@@ -109,10 +131,25 @@ function toAgentUpdaterState(value: string): AgentMonitoringRecord['updaterState
   return 'unknown'
 }
 
-function toNullableInteger(value: number | null | undefined): number | null | undefined {
-  if (value === undefined) return undefined
+function toNullableInteger(value: number | null): number | null {
   if (value === null) return null
   return Math.max(0, Math.round(value))
+}
+
+function toJsonRecord(value: unknown): Readonly<Record<string, unknown>> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {}
+  }
+
+  return Object.fromEntries(Object.entries(value))
+}
+
+function toControlCommandType(value: string): AgentControlCommandType {
+  if (value === 'RESET_AGENT') {
+    return 'RESET_AGENT'
+  }
+
+  return 'RESTART_AGENT'
 }
 
 export const agentMonitoringPersistenceMappers = {
@@ -121,6 +158,7 @@ export const agentMonitoringPersistenceMappers = {
       agentId: row.id,
       tenantId: row.tenant_id,
       hostname: row.hostname,
+      os: row.os,
       version: row.agent_version,
       currentVersion: row.current_version,
       desiredVersion: row.desired_version,
@@ -130,6 +168,8 @@ export const agentMonitoringPersistenceMappers = {
       updaterLastError: row.updater_last_error,
       updateReadyVersion: row.update_ready_version,
       restartRequestedAt: row.restart_requested_at,
+      remoteUpdatesPaused: row.remote_updates_paused,
+      remoteBlockedVersions: row.remote_blocked_versions,
       bootStatus: toAgentBootStatus(row.boot_status),
       status: toAgentStatus(row.status),
       enrolledAt: row.enrolled_at,
@@ -144,6 +184,8 @@ export const agentMonitoringPersistenceMappers = {
       intervalSec: row.interval_sec,
       lastError: row.last_error,
       queueLagSeconds: row.queue_lag_seconds,
+      logsSupported: row.logs_supported,
+      lastLogAt: row.last_log_at,
     }
   },
 
@@ -192,6 +234,8 @@ export const agentMonitoringPersistenceMappers = {
         ? { queue_lag_seconds: toNullableInteger(command.queueLagSeconds) }
         : {}),
       ...(command.lastError !== undefined ? { last_error: command.lastError } : {}),
+      ...(command.logsSupported !== undefined ? { logs_supported: command.logsSupported } : {}),
+      ...(command.lastLogAt !== undefined ? { last_log_at: command.lastLogAt } : {}),
     }
   },
 
@@ -217,6 +261,63 @@ export const agentMonitoringPersistenceMappers = {
       severity: event.severity,
       metadata: event.metadata,
       occurred_at: event.occurredAt,
+    }
+  },
+
+  fromLogEventRow(row: AgentLogEventRow): AgentLogEventRecord {
+    return {
+      id: row.id,
+      agentId: row.agent_id,
+      tenantId: row.tenant_id,
+      channel: toAgentLogChannel(row.channel),
+      message: row.message,
+      sequence: row.sequence,
+      truncated: row.truncated,
+      occurredAt: row.occurred_at,
+    }
+  },
+
+  toLogEventInsertRow(event: AgentLogInsertRecord): AgentLogEventInsert {
+    return {
+      agent_id: event.agentId,
+      tenant_id: event.tenantId,
+      sequence: event.sequence,
+      channel: event.channel,
+      message: event.message,
+      occurred_at: event.occurredAt,
+      truncated: event.truncated,
+    }
+  },
+
+  toRemotePolicyRecord(row: TrackingAgentRow): AgentRemotePolicyRecord {
+    return {
+      desiredVersion: row.desired_version,
+      updateChannel: row.update_channel,
+      updatesPaused: row.remote_updates_paused,
+      blockedVersions: row.remote_blocked_versions,
+      restartRequestedAt: row.restart_requested_at,
+    }
+  },
+
+  fromControlCommandRow(row: AgentControlCommandRow): AgentRemoteCommandRecord {
+    return {
+      id: row.id,
+      agentId: row.agent_id,
+      tenantId: row.tenant_id,
+      type: toControlCommandType(row.command_type),
+      payload: toJsonRecord(row.payload),
+      requestedAt: row.requested_at,
+    }
+  },
+
+  toInfraConfigRecord(row: TrackingAgentRow): AgentInfraConfigRecord | null {
+    if (row.supabase_url === null || row.supabase_anon_key === null) {
+      return null
+    }
+
+    return {
+      supabaseUrl: row.supabase_url,
+      supabaseAnonKey: row.supabase_anon_key,
     }
   },
 }

@@ -17,6 +17,7 @@ const BASE_RECORD: AgentMonitoringRecord = {
   agentId: AGENT_ID,
   tenantId: TENANT_ID,
   hostname: 'agent-host',
+  os: 'linux',
   version: '1.0.0',
   currentVersion: '1.0.0',
   desiredVersion: null,
@@ -26,6 +27,8 @@ const BASE_RECORD: AgentMonitoringRecord = {
   updaterLastError: null,
   updateReadyVersion: null,
   restartRequestedAt: null,
+  remoteUpdatesPaused: false,
+  remoteBlockedVersions: [],
   bootStatus: 'healthy',
   status: 'CONNECTED',
   enrolledAt: '2026-03-09T10:00:00.000Z',
@@ -40,6 +43,8 @@ const BASE_RECORD: AgentMonitoringRecord = {
   intervalSec: 60,
   lastError: null,
   queueLagSeconds: null,
+  logsSupported: true,
+  lastLogAt: '2026-03-09T10:01:00.000Z',
 }
 
 function createRepository(

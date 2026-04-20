@@ -7,11 +7,13 @@ import { toProcessId } from '~/modules/process/domain/identity/process-id.vo'
 import { toProcessReference } from '~/modules/process/domain/identity/process-reference.vo'
 import { toProcessSource } from '~/modules/process/domain/identity/process-source.vo'
 import { createProcessEntity, type ProcessEntity } from '~/modules/process/domain/process.entity'
+import { normalizeDepositary } from '~/modules/process/domain/process.validation'
 import type {
   ProcessInsertRow,
   ProcessRow,
   ProcessUpdateRow,
 } from '~/modules/process/infrastructure/persistence/process.row'
+import { Instant } from '~/shared/time/instant'
 
 // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/13
 export const processMappers = {
@@ -27,12 +29,13 @@ export const processMappers = {
       importerName: row.importer_name == null ? null : String(row.importer_name),
       exporterName: row.exporter_name == null ? null : String(row.exporter_name),
       referenceImporter: row.reference_importer == null ? null : String(row.reference_importer),
+      depositary: normalizeDepositary(row.depositary == null ? null : String(row.depositary)),
       product: row.product == null ? null : String(row.product),
       redestinationNumber:
         row.redestination_number == null ? null : String(row.redestination_number),
       source: toProcessSource(row.source),
-      createdAt: new Date(String(row.created_at)),
-      updatedAt: new Date(String(row.updated_at)),
+      createdAt: Instant.fromIso(String(row.created_at)),
+      updatedAt: Instant.fromIso(String(row.updated_at)),
     })
   },
 
@@ -47,6 +50,7 @@ export const processMappers = {
       importer_name: record.importer_name,
       exporter_name: record.exporter_name,
       reference_importer: record.reference_importer,
+      depositary: normalizeDepositary(record.depositary),
       product: record.product ?? null,
       redestination_number: record.redestination_number ?? null,
       source: record.source,
@@ -67,6 +71,9 @@ export const processMappers = {
       ...(record.exporter_name !== undefined ? { exporter_name: record.exporter_name } : {}),
       ...(record.reference_importer !== undefined
         ? { reference_importer: record.reference_importer }
+        : {}),
+      ...(record.depositary !== undefined
+        ? { depositary: normalizeDepositary(record.depositary) }
         : {}),
       ...(record.product !== undefined ? { product: record.product ?? null } : {}),
       ...(record.redestination_number !== undefined

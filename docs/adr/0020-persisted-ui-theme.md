@@ -1,14 +1,16 @@
 # ADR — Persisted UI Theme (Light/Dark) with Semantic Tokens
 
-Status: Accepted  
-Date: 2026-03-11  
+Status: Accepted
+Date: 2026-03-11
 Owner: UI Architecture
+
+Last updated: 2026-03-31
 
 ---
 
 # Context
 
-The application uses Tailwind v4 and semantic tokens defined via `@theme`.
+application uses Tailwind v4 and semantic tokens defined via `@theme`.
 
 Example:
 
@@ -18,7 +20,7 @@ text-foreground
 border-border
 ```
 
-The UI must support:
+UI must support:
 
 - light theme
 - dark theme
@@ -32,19 +34,19 @@ Constraints:
 - avoid inline `<script>` bootstrapping logic
 - allow runtime switching without full reload
 
-Additionally, the design system should remain compatible with Tailwind v4 token generation through `@theme`.
+design system should remain compatible with Tailwind v4 token generation through `@theme`.
 
 ---
 
 # Decision
 
-The theme system will be implemented using the following architecture:
+theme system will be implemented using following architecture:
 
 1. Semantic tokens declared in `@theme`
 2. Token values overridden under `html.dark`
-3. Theme switching via toggling the root class `dark`
+3. Theme switching via toggling root class `dark`
 4. User preference persisted in `localStorage`
-5. Theme initialization executed by the UI runtime (not inline HTML)
+5. Theme initialization executed by UI runtime (not inline HTML)
 
 Theme state is therefore controlled by:
 
@@ -92,7 +94,7 @@ bg-accent
 
 # Dark Mode Override
 
-The dark theme overrides only token values:
+dark theme overrides only token values:
 
 ```css
 html.dark {
@@ -116,7 +118,7 @@ Example:
 
 # Runtime Theme Control
 
-Theme switching operates exclusively by toggling the root class.
+Theme switching operates exclusively by toggling root class.
 
 Example:
 
@@ -124,10 +126,10 @@ Example:
 document.documentElement.classList.toggle("dark")
 ```
 
-The UI runtime is responsible for:
+UI runtime is responsible for:
 
 - reading persisted preference
-- applying the class on boot
+- applying class on boot
 - persisting changes
 
 ---
@@ -190,12 +192,12 @@ dark:bg-...
 
 # Architectural Principles
 
-The system follows these rules:
+system follows these rules:
 
 1. Components consume semantic tokens only.
-2. Theme switching is a root concern.
+2. Theme switching is root concern.
 3. UI does not contain theme conditionals.
-4. The root class controls the entire theme.
+4. root class controls entire theme.
 
 ---
 
@@ -221,7 +223,7 @@ Positive:
 Tradeoffs:
 
 - requires token discipline
-- root class becomes a global styling dependency
+- root class becomes global styling dependency
 
 Both are acceptable.
 
@@ -235,7 +237,6 @@ Implemented in:
 - `src/entry-client.tsx`
 - `src/shared/ui/theme.css`
 - `src/shared/ui/AppHeader.tsx`
-- `src/shared/ui/LanguageSwitch.tsx`
 - `src/modules/process/ui/components/DashboardRefreshButton.tsx`
 - `src/modules/process/ui/components/SyncCell.tsx`
 - `src/modules/process/ui/components/DashboardProcessTable.tsx`
@@ -245,9 +246,7 @@ Implemented in:
 
 Locale updates for theme labels:
 
-- `src/locales/en-US.json`
 - `src/locales/pt-BR.json`
-- `src/locales/pt-PT.json`
 
 Result:
 

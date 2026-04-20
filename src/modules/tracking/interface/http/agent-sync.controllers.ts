@@ -5,6 +5,7 @@ import {
   IngestLeaseConflictResponseSchema,
   IngestSnapshotAcceptedResponseSchema,
   IngestSnapshotBodySchema,
+  IngestSnapshotFailedResponseSchema,
   type SyncRequestRow,
 } from '~/modules/tracking/interface/http/agent-sync.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
@@ -13,6 +14,7 @@ import { jsonResponse } from '~/shared/api/typedRoute'
 type AgentAuthIdentity = {
   readonly tenantId: string
   readonly agentId: string
+  readonly capabilities: readonly string[]
 }
 
 type ContainerLookupRecord = {
@@ -56,6 +58,8 @@ export type AgentSyncControllersDeps = {
     readonly agentId: string
     readonly limit: number
     readonly leaseMinutes: number
+    readonly includeOwnedActiveLeases: boolean
+    readonly processableProviders: readonly Provider[]
   }) => Promise<readonly SyncRequestRow[]>
   readonly findLeasedSyncRequest: (command: {
     readonly tenantId: string
@@ -81,8 +85,13 @@ export type AgentSyncControllersDeps = {
     readonly containerNumber: string
     readonly provider: Provider
     readonly payload: unknown
+    readonly parseError?: string | null
     readonly fetchedAt: string
-  }) => Promise<{ readonly snapshotId: string }>
+  }) => Promise<{
+    readonly snapshotId: string
+    readonly newObservationsCount: number
+    readonly newAlertsCount: number
+  }>
   readonly authenticateAgentToken: (command: {
     readonly token: string
   }) => Promise<AgentAuthIdentity | null>
@@ -123,6 +132,13 @@ function normalizeContainerNumber(value: string): string {
 
 function normalizeCarrierCode(value: string): string {
   return value.toLowerCase().trim()
+}
+
+const PROCESSABLE_PROVIDER_ORDER: readonly Provider[] = ['maersk', 'msc', 'cmacgm', 'pil', 'one']
+
+function toProcessableProviders(capabilities: readonly string[]): readonly Provider[] {
+  const capabilitySet = new Set(capabilities)
+  return PROCESSABLE_PROVIDER_ORDER.filter((provider) => capabilitySet.has(provider))
 }
 
 async function ensureAgentAuth(
@@ -193,6 +209,7 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
       const parsedQuery = GetAgentTargetsQuerySchema.safeParse({
         tenant_id: url.searchParams.get('tenant_id'),
         limit: url.searchParams.get('limit') ?? undefined,
+        recover_owned_leases: url.searchParams.get('recover_owned_leases') ?? undefined,
       })
 
       if (!parsedQuery.success) {
@@ -204,11 +221,14 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
       }
 
       const runtimeAgentId = getAgentId(request)
+      const processableProviders = toProcessableProviders(authResult.capabilities)
       const leased = await deps.leaseSyncRequests({
         tenantId: parsedQuery.data.tenant_id,
         agentId: authResult.agentId,
         limit: parsedQuery.data.limit,
         leaseMinutes: deps.leaseMinutes,
+        includeOwnedActiveLeases: parsedQuery.data.recover_owned_leases,
+        processableProviders,
       })
 
       const queueLagSeconds = await deps.getTenantQueueLagSeconds({
@@ -402,14 +422,69 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
       }
 
       const container = matchingContainers[0]
+      if (container === undefined) {
+        return jsonResponse({ error: 'Container resolution failed' }, 422)
+      }
 
       const saveResult = await deps.saveAndProcess({
         containerId: container.id,
         containerNumber: container.containerNumber,
         provider: body.provider,
         payload: body.raw,
+        parseError: body.parse_error ?? null,
         fetchedAt: body.observed_at,
       })
+
+      const parseError = body.parse_error
+      if (parseError !== null && parseError !== undefined) {
+        const markedFailed = await deps.markSyncRequestFailed({
+          tenantId: body.tenant_id,
+          syncRequestId: body.sync_request_id,
+          agentId: authResult.agentId,
+          errorMessage: parseError,
+        })
+
+        if (!markedFailed) {
+          return jsonResponse(
+            { error: 'lease_conflict', snapshot_id: saveResult.snapshotId },
+            409,
+            IngestLeaseConflictResponseSchema,
+          )
+        }
+
+        await runTelemetrySafely(async () => {
+          await deps.updateAgentRuntimeState({
+            agentId: authResult.agentId,
+            tenantId: authResult.tenantId,
+            lastSeenAt: nowIso,
+            processingState: 'backing_off',
+            leaseHealth: 'healthy',
+            activeJobs: 0,
+            lastError: parseError,
+          })
+          await deps.recordAgentActivity({
+            agentId: authResult.agentId,
+            tenantId: authResult.tenantId,
+            type: 'REQUEST_FAILED',
+            message: parseError,
+            severity: 'danger',
+            metadata: {
+              syncRequestId: body.sync_request_id,
+              snapshotId: saveResult.snapshotId,
+              provider: body.provider,
+              ref: body.ref.value,
+              runtimeAgentId,
+            },
+            occurredAt: nowIso,
+          })
+        })
+
+        return jsonResponse(
+          { error: parseError, snapshot_id: saveResult.snapshotId },
+          422,
+          IngestSnapshotFailedResponseSchema,
+        )
+      }
 
       const markedDone = await deps.markSyncRequestDone({
         tenantId: body.tenant_id,
@@ -478,6 +553,8 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
         {
           ok: true,
           snapshot_id: saveResult.snapshotId,
+          new_observations_count: saveResult.newObservationsCount,
+          new_alerts_count: saveResult.newAlertsCount,
         },
         202,
         IngestSnapshotAcceptedResponseSchema,

@@ -1,19 +1,17 @@
 import type {
   NewTrackingAlert,
   TrackingAlert,
+  TrackingAlertDerivationState,
   TrackingAlertLifecycleState,
   TrackingAlertMessageContract,
   TrackingAlertMessageKey,
   TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { stringsToJson, toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
-import { normalizeNoMovementThresholdDays } from '~/modules/tracking/infrastructure/persistence/tracking.no-movement-threshold'
 import {
   isRecord,
   normalizeAlertIso,
-  optionalFiniteNumber,
-  optionalProvider,
-  requireFiniteNumber,
+  optionalReadProvider,
   requireString,
 } from '~/modules/tracking/infrastructure/persistence/tracking.persistence.mapper-primitives'
 import type {
@@ -33,9 +31,9 @@ const ALERT_CATEGORY_MAP: Record<string, AlertCategory> = {
 
 const ALERT_TYPE_MAP: Record<string, AlertType> = {
   TRANSSHIPMENT: 'TRANSSHIPMENT',
+  PLANNED_TRANSSHIPMENT: 'PLANNED_TRANSSHIPMENT',
   CUSTOMS_HOLD: 'CUSTOMS_HOLD',
   PORT_CHANGE: 'PORT_CHANGE',
-  NO_MOVEMENT: 'NO_MOVEMENT',
   ETA_PASSED: 'ETA_PASSED',
   ETA_MISSING: 'ETA_MISSING',
   DATA_INCONSISTENT: 'DATA_INCONSISTENT',
@@ -49,8 +47,8 @@ const ALERT_SEVERITY_MAP: Record<string, AlertSeverity> = {
 
 const ALERT_MESSAGE_KEY_MAP: Record<string, TrackingAlertMessageKey> = {
   'alerts.transshipmentDetected': 'alerts.transshipmentDetected',
+  'alerts.plannedTransshipmentDetected': 'alerts.plannedTransshipmentDetected',
   'alerts.customsHoldDetected': 'alerts.customsHoldDetected',
-  'alerts.noMovementDetected': 'alerts.noMovementDetected',
   'alerts.etaMissing': 'alerts.etaMissing',
   'alerts.etaPassed': 'alerts.etaPassed',
   'alerts.portChange': 'alerts.portChange',
@@ -167,28 +165,22 @@ function requireAlertMessageContract(
     }
   }
 
+  if (messageKey === 'alerts.plannedTransshipmentDetected') {
+    return {
+      message_key: messageKey,
+      message_params: {
+        port: requireString(params.port, `${field}.port`),
+        fromVessel: requireString(params.fromVessel, `${field}.fromVessel`),
+        toVessel: requireString(params.toVessel, `${field}.toVessel`),
+      },
+    }
+  }
+
   if (messageKey === 'alerts.customsHoldDetected') {
     return {
       message_key: messageKey,
       message_params: {
         location: requireString(params.location, `${field}.location`),
-      },
-    }
-  }
-
-  if (messageKey === 'alerts.noMovementDetected') {
-    const days = requireFiniteNumber(params.days, `${field}.days`)
-    const thresholdCandidate = optionalFiniteNumber(params.threshold_days) ?? days
-    const thresholdDays = normalizeNoMovementThresholdDays(thresholdCandidate)
-    const daysWithoutMovement = optionalFiniteNumber(params.days_without_movement) ?? days
-
-    return {
-      message_key: messageKey,
-      message_params: {
-        threshold_days: thresholdDays,
-        days_without_movement: daysWithoutMovement,
-        days,
-        lastEventDate: requireString(params.lastEventDate, `${field}.lastEventDate`),
       },
     }
   }
@@ -260,12 +252,53 @@ export function alertRowToDomain(row: TrackingAlertRow): TrackingAlert {
     source_observation_fingerprints: fingerprints,
     alert_fingerprint: row.alert_fingerprint ?? null,
     retroactive: row.retroactive,
-    provider: optionalProvider(row.provider, 'alert.provider'),
+    provider: optionalReadProvider(row.provider, 'alert.provider'),
     acked_at: ackedAtIso,
     acked_by: row.acked_by ?? null,
     acked_source: optionalAlertAckSource(row.acked_source, 'alert.acked_source'),
     resolved_at: resolvedAtIso,
     resolved_reason: optionalAlertResolvedReason(row.resolved_reason, 'alert.resolved_reason'),
+  }
+}
+
+export function alertRowToDerivationState(
+  row: Pick<
+    TrackingAlertRow,
+    | 'id'
+    | 'category'
+    | 'type'
+    | 'message_key'
+    | 'message_params'
+    | 'detected_at'
+    | 'source_observation_fingerprints'
+    | 'alert_fingerprint'
+    | 'acked_at'
+    | 'resolved_at'
+  >,
+): TrackingAlertDerivationState {
+  let fingerprints: string[] = []
+  if (Array.isArray(row.source_observation_fingerprints)) {
+    fingerprints = row.source_observation_fingerprints.filter(
+      (value): value is string => typeof value === 'string',
+    )
+  }
+
+  const messageContract = requireAlertMessageContract(
+    row.message_key,
+    row.message_params,
+    'alert.message',
+  )
+
+  return {
+    id: requireString(row.id, 'alert.id'),
+    category: requireAlertCategory(row.category, 'alert.category'),
+    type: requireAlertType(row.type, 'alert.type'),
+    message_params: messageContract.message_params,
+    detected_at: requireString(row.detected_at, 'alert.detected_at'),
+    source_observation_fingerprints: fingerprints,
+    alert_fingerprint: row.alert_fingerprint ?? null,
+    acked_at: normalizeAlertIso(row.acked_at),
+    resolved_at: normalizeAlertIso(row.resolved_at),
   }
 }
 

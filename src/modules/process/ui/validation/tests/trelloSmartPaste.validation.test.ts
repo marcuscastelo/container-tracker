@@ -23,7 +23,8 @@ REDESTINAÇÃO: 129495`)
     expect(parsed.fields.exporterName).toBe('FUTURE FOR FOOD')
     expect(parsed.fields.product).toBe('AZEITONA')
     expect(parsed.fields.origin).toBe('EGITO')
-    expect(parsed.fields.destination).toBe('MOVECTA')
+    expect(parsed.fields.destination).toBeUndefined()
+    expect(parsed.fields.depositary).toBe('MOVECTA')
     expect(parsed.fields.billOfLading).toBe('EG 0017057')
     expect(parsed.fields.redestinationNumber).toBe('129495')
     expect(parsed.fields.containers).toEqual(['MRSU8798130', 'CAAU7648798'])
@@ -54,12 +55,39 @@ CTNR: mrsu8798130, CAAU7648798; TGHU1234567`)
     expect(parsed.warnings).not.toContain('no_valid_container_found')
   })
 
+  it('keeps DESTINO and DEPOSITARIO as distinct canonical fields', () => {
+    const parsed = parseTrelloSmartPaste(`DESTINO: Santos
+DEPOSITARIO: Santos Brasil
+CTNR: MSCU1234567`)
+
+    expect(parsed.fields.destination).toBe('Santos')
+    expect(parsed.fields.depositary).toBe('Santos Brasil')
+  })
+
   it('uses global container fallback when CTNR label is absent', () => {
     const parsed = parseTrelloSmartPaste(`Observações gerais
 Container principal MRSU8798130
 Reserva alternativa CAAU7648798`)
 
     expect(parsed.fields.containers).toEqual(['MRSU8798130', 'CAAU7648798'])
+  })
+
+  it('splits product and vessel when NAVIO is pasted without a line break after product', () => {
+    const parsed = parseTrelloSmartPaste(`Título:
+REF. CASTRO: CA075-25 - IMP: FLUSH - EXP: AL-HAMDOLILLAH - SAL
+
+Descrição:
+PRODUTO: SALNAVIO: GSL VIOLETTA
+BL: MEDUP6124762
+CTNR: MSCU1234567`)
+
+    expect(parsed.fields.reference).toBe('CA075-25')
+    expect(parsed.fields.importerName).toBe('FLUSH')
+    expect(parsed.fields.exporterName).toBe('AL-HAMDOLILLAH')
+    expect(parsed.fields.product).toBe('SAL')
+    expect(parsed.fields.billOfLading).toBe('MEDUP6124762')
+    expect(parsed.fields.containers).toEqual(['MSCU1234567'])
+    expect(parsed.unmappedFields).toContainEqual({ label: 'NAVIO', value: 'GSL VIOLETTA' })
   })
 
   it('returns warning when no valid container can be found', () => {

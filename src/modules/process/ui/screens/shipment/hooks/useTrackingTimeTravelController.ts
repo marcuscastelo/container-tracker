@@ -1,0 +1,216 @@
+import { type Accessor, createEffect, createMemo, createResource, createSignal } from 'solid-js'
+import {
+  fetchTrackingReplayDebug,
+  fetchTrackingTimeTravel,
+  type TrackingReplayDebugResponseDto,
+  type TrackingTimeTravelResponseDto,
+} from '~/modules/process/ui/api/tracking-time-travel.api'
+import {
+  toTrackingReplayDebugVm,
+  toTrackingTimeTravelVm,
+} from '~/modules/process/ui/mappers/tracking-time-travel.ui-mapper'
+import { toReadableErrorMessage } from '~/modules/process/ui/screens/shipment/lib/shipmentError.presenter'
+import { toTrackingTimeTravelResourceKey } from '~/modules/process/ui/screens/shipment/lib/tracking-time-travel.resource-key'
+import {
+  findTrackingTimeTravelSync,
+  selectAdjacentTrackingTimeTravelSnapshotId,
+} from '~/modules/process/ui/screens/shipment/lib/tracking-time-travel.selection.service'
+import type {
+  TrackingReplayDebugVM,
+  TrackingTimeTravelSyncVM,
+  TrackingTimeTravelVM,
+} from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
+import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import { useTranslation } from '~/shared/localization/i18n'
+import { type ResourceSnapshotLike, readResourceSnapshot } from '~/shared/solid/resourceSnapshot'
+
+type UseTrackingTimeTravelControllerCommand = {
+  readonly selectedContainer: Accessor<ContainerDetailVM | null>
+  readonly trackingFreshnessToken: Accessor<string | null>
+}
+
+export type TrackingTimeTravelControllerResult = {
+  readonly isActive: Accessor<boolean>
+  readonly isLoading: Accessor<boolean>
+  readonly errorMessage: Accessor<string | null>
+  readonly value: Accessor<TrackingTimeTravelVM | null>
+  readonly selectedSync: Accessor<TrackingTimeTravelSyncVM | null>
+  readonly isDebugOpen: Accessor<boolean>
+  readonly isDebugLoading: Accessor<boolean>
+  readonly debugErrorMessage: Accessor<string | null>
+  readonly debugValue: Accessor<TrackingReplayDebugVM | null>
+  readonly debugPayload: Accessor<unknown | null>
+  readonly open: () => void
+  readonly close: () => void
+  readonly toggleDebug: () => void
+  readonly selectSnapshot: (snapshotId: string) => void
+  readonly selectPrevious: () => void
+  readonly selectNext: () => void
+}
+
+export function toTrackingTimeTravelValue(
+  resource: ResourceSnapshotLike<TrackingTimeTravelResponseDto | undefined>,
+  currentLocale: string,
+): TrackingTimeTravelVM | null {
+  const response = readResourceSnapshot(resource)
+  if (!response) return null
+  return toTrackingTimeTravelVm(response, currentLocale)
+}
+
+export function toTrackingReplayDebugValue(
+  resource: ResourceSnapshotLike<TrackingReplayDebugResponseDto | undefined>,
+  currentLocale: string,
+): TrackingReplayDebugVM | null {
+  const response = readResourceSnapshot(resource)
+  if (!response) return null
+  return toTrackingReplayDebugVm(response, currentLocale)
+}
+
+export function useTrackingTimeTravelController(
+  command: UseTrackingTimeTravelControllerCommand,
+): TrackingTimeTravelControllerResult {
+  const { locale } = useTranslation()
+  const [isActive, setIsActive] = createSignal(false)
+  const [selectedSnapshotId, setSelectedSnapshotId] = createSignal('')
+  const [isDebugOpen, setIsDebugOpen] = createSignal(false)
+  const [activeContainerId, setActiveContainerId] = createSignal<string | null>(null)
+
+  const [timeTravelResponse] = createResource(
+    () =>
+      toTrackingTimeTravelResourceKey({
+        isActive: isActive(),
+        containerId: command.selectedContainer()?.id ?? null,
+        trackingFreshnessToken: command.trackingFreshnessToken(),
+      }),
+    async ([containerId]) => fetchTrackingTimeTravel(containerId),
+  )
+
+  const value = createMemo<TrackingTimeTravelVM | null>(() =>
+    toTrackingTimeTravelValue(timeTravelResponse, locale()),
+  )
+
+  createEffect(() => {
+    const containerId = command.selectedContainer()?.id ?? null
+    if (!isActive()) {
+      setActiveContainerId(containerId)
+      return
+    }
+
+    if (containerId !== activeContainerId()) {
+      setActiveContainerId(containerId)
+      setSelectedSnapshotId('')
+      setIsDebugOpen(false)
+    }
+  })
+
+  createEffect(() => {
+    if (!isActive()) {
+      setSelectedSnapshotId('')
+      setIsDebugOpen(false)
+      return
+    }
+
+    const vm = value()
+    if (!vm) return
+
+    const currentSelection = selectedSnapshotId()
+    const hasCurrentSelection = vm.syncs.some((sync) => sync.snapshotId === currentSelection)
+    if (hasCurrentSelection) return
+
+    setSelectedSnapshotId(vm.selectedSnapshotId ?? '')
+  })
+
+  const selectedSync = createMemo(() => {
+    const vm = value()
+    if (!vm) return null
+    return findTrackingTimeTravelSync(vm.syncs, selectedSnapshotId())
+  })
+
+  const [debugResponse] = createResource(
+    () => {
+      const container = command.selectedContainer()
+      const sync = selectedSync()
+      if (!isActive() || !isDebugOpen() || !container || !sync) return null
+      return {
+        containerId: container.id,
+        snapshotId: sync.snapshotId,
+      }
+    },
+    async (request) => fetchTrackingReplayDebug(request.containerId, request.snapshotId),
+  )
+
+  const debugValue = createMemo<TrackingReplayDebugVM | null>(() =>
+    toTrackingReplayDebugValue(debugResponse, locale()),
+  )
+
+  const open = () => {
+    if (!command.selectedContainer()) return
+    setIsActive(true)
+    setIsDebugOpen(false)
+  }
+
+  const close = () => {
+    setIsActive(false)
+    setIsDebugOpen(false)
+    setSelectedSnapshotId('')
+  }
+
+  const toggleDebug = () => {
+    setIsDebugOpen((current) => !current)
+  }
+
+  const selectSnapshot = (snapshotId: string) => {
+    setSelectedSnapshotId(snapshotId)
+  }
+
+  const selectPrevious = () => {
+    const vm = value()
+    const currentSnapshotId = selectedSnapshotId()
+    if (!vm || currentSnapshotId.length === 0) return
+    const previousSnapshotId = selectAdjacentTrackingTimeTravelSnapshotId({
+      syncs: vm.syncs,
+      currentSnapshotId,
+      direction: 'previous',
+    })
+    if (!previousSnapshotId) return
+    setSelectedSnapshotId(previousSnapshotId)
+  }
+
+  const selectNext = () => {
+    const vm = value()
+    const currentSnapshotId = selectedSnapshotId()
+    if (!vm || currentSnapshotId.length === 0) return
+    const nextSnapshotId = selectAdjacentTrackingTimeTravelSnapshotId({
+      syncs: vm.syncs,
+      currentSnapshotId,
+      direction: 'next',
+    })
+    if (!nextSnapshotId) return
+    setSelectedSnapshotId(nextSnapshotId)
+  }
+
+  return {
+    isActive,
+    isLoading: () => isActive() && timeTravelResponse.loading,
+    errorMessage: () => {
+      const error = timeTravelResponse.error
+      return error ? toReadableErrorMessage(error) : null
+    },
+    value,
+    selectedSync,
+    isDebugOpen,
+    isDebugLoading: () => isDebugOpen() && debugResponse.loading,
+    debugErrorMessage: () => {
+      const error = debugResponse.error
+      return error ? toReadableErrorMessage(error) : null
+    },
+    debugValue,
+    debugPayload: () => readResourceSnapshot(debugResponse) ?? null,
+    open,
+    close,
+    toggleDebug,
+    selectSnapshot,
+    selectPrevious,
+    selectNext,
+  }
+}

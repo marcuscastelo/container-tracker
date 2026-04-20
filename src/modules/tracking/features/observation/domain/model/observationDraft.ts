@@ -1,5 +1,6 @@
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
+import type { TemporalValue } from '~/shared/time/temporal-value'
 
 /**
  * EventTimeType — differentiates between confirmed facts and predictions.
@@ -12,6 +13,12 @@ export type EventTimeType = 'ACTUAL' | 'EXPECTED'
  * Determined during normalization based on field completeness.
  */
 export type Confidence = 'high' | 'medium' | 'low'
+export type EventTimeSource =
+  | 'carrier_explicit_timezone'
+  | 'carrier_local_port_time'
+  | 'carrier_date_only'
+  | 'derived_fallback'
+  | 'unknown'
 
 /**
  * ObservationDraft — output of normalizeSnapshot, before deduplication.
@@ -29,8 +36,8 @@ export type ObservationDraft = {
   /** Semantic type of observation */
   type: ObservationType
 
-  /** When the event occurred (UTC ISO), null if unknown */
-  event_time: string | null
+  /** When the event occurred, as an explicit temporal semantic value. */
+  event_time: TemporalValue | null
 
   /**
    * Whether this is an ACTUAL (confirmed) or EXPECTED (predicted) event.
@@ -66,6 +73,12 @@ export type ObservationDraft = {
 
   /** Original provider event label (for audit/debug), null when unavailable */
   carrier_label?: string | null
+
+  /** Raw provider temporal value preserved for audit/debug. */
+  raw_event_time?: string | null
+
+  /** Tracking-owned temporal provenance for rendering/audit decisions. */
+  event_time_source?: EventTimeSource | null
 
   /** Reference to the raw event inside the snapshot payload (for audit) */
   raw_event?: unknown

@@ -1,6 +1,7 @@
 import type { Json } from '~/shared/supabase/database.types'
 
 export type AgentStatus = 'CONNECTED' | 'DEGRADED' | 'DISCONNECTED' | 'UNKNOWN'
+export type AgentLogChannel = 'stdout' | 'stderr'
 
 export type AgentRealtimeState =
   | 'SUBSCRIBED'
@@ -47,6 +48,14 @@ export type AgentActivityType =
   | 'UPDATE_APPLY_FAILED'
   | 'RESTART_FOR_UPDATE'
   | 'ROLLBACK_EXECUTED'
+  | 'LOCAL_UPDATE_PAUSED'
+  | 'LOCAL_UPDATE_RESUMED'
+  | 'CHANNEL_CHANGED'
+  | 'CONFIG_UPDATED'
+  | 'RELEASE_ACTIVATED'
+  | 'LOCAL_RESET'
+  | 'REMOTE_RESET'
+  | 'REMOTE_FORCE_UPDATE'
 
 export type AgentActivitySeverity = 'info' | 'warning' | 'danger' | 'success'
 
@@ -64,6 +73,7 @@ export type AgentMonitoringRecord = {
   readonly agentId: string
   readonly tenantId: string
   readonly hostname: string
+  readonly os: string
   readonly version: string
   readonly currentVersion: string
   readonly desiredVersion: string | null
@@ -73,6 +83,8 @@ export type AgentMonitoringRecord = {
   readonly updaterLastError: string | null
   readonly updateReadyVersion: string | null
   readonly restartRequestedAt: string | null
+  readonly remoteUpdatesPaused: boolean
+  readonly remoteBlockedVersions: readonly string[]
   readonly bootStatus: AgentBootStatus
   readonly status: AgentStatus
   readonly enrolledAt: string | null
@@ -87,6 +99,32 @@ export type AgentMonitoringRecord = {
   readonly intervalSec: number | null
   readonly lastError: string | null
   readonly queueLagSeconds: number | null
+  readonly logsSupported: boolean
+  readonly lastLogAt: string | null
+}
+
+export type AgentControlCommandType = 'RESET_AGENT' | 'RESTART_AGENT'
+
+export type AgentRemotePolicyRecord = {
+  readonly desiredVersion: string | null
+  readonly updateChannel: string | null
+  readonly updatesPaused: boolean
+  readonly blockedVersions: readonly string[]
+  readonly restartRequestedAt: string | null
+}
+
+export type AgentRemoteCommandRecord = {
+  readonly id: string
+  readonly agentId: string
+  readonly tenantId: string
+  readonly type: AgentControlCommandType
+  readonly payload: Readonly<Record<string, unknown>>
+  readonly requestedAt: string
+}
+
+export type AgentInfraConfigRecord = {
+  readonly supabaseUrl: string
+  readonly supabaseAnonKey: string
 }
 
 export type AgentAuthenticatedIdentity = {
@@ -132,6 +170,8 @@ export type AgentRuntimeStateUpdate = {
   readonly intervalSec?: number
   readonly queueLagSeconds?: number | null
   readonly lastError?: string | null
+  readonly logsSupported?: boolean
+  readonly lastLogAt?: string | null
 }
 
 export type AgentActivityInsertRecord = {
@@ -141,6 +181,27 @@ export type AgentActivityInsertRecord = {
   readonly message: string
   readonly severity: AgentActivitySeverity
   readonly metadata: Json
+  readonly occurredAt: string
+}
+
+export type AgentLogEventRecord = {
+  readonly id: string
+  readonly agentId: string
+  readonly tenantId: string
+  readonly channel: AgentLogChannel
+  readonly message: string
+  readonly sequence: number
+  readonly truncated: boolean
+  readonly occurredAt: string
+}
+
+export type AgentLogInsertRecord = {
+  readonly agentId: string
+  readonly tenantId: string
+  readonly channel: AgentLogChannel
+  readonly message: string
+  readonly sequence: number
+  readonly truncated: boolean
   readonly occurredAt: string
 }
 
@@ -164,6 +225,12 @@ export type AgentMonitoringRepository = {
     readonly agentId: string
     readonly limit: number
   }) => Promise<readonly AgentActivityEventRecord[]>
+  readonly listRecentLogsForAgent: (command: {
+    readonly tenantId: string
+    readonly agentId: string
+    readonly channel: AgentLogChannel | 'both'
+    readonly tail: number
+  }) => Promise<readonly AgentLogEventRecord[]>
   readonly getTenantQueueLagSeconds: (command: {
     readonly tenantId: string
   }) => Promise<number | null>
@@ -173,6 +240,25 @@ export type AgentMonitoringRepository = {
   readonly updateAgentRuntimeState: (
     command: AgentRuntimeStateUpdate,
   ) => Promise<AgentMonitoringRecord | null>
+  readonly getRemoteControlState: (command: {
+    readonly tenantId: string
+    readonly agentId: string
+  }) => Promise<{
+    readonly policy: AgentRemotePolicyRecord
+    readonly commands: readonly AgentRemoteCommandRecord[]
+  } | null>
+  readonly getInfraConfig: (command: {
+    readonly tenantId: string
+    readonly agentId: string
+  }) => Promise<AgentInfraConfigRecord | null>
+  readonly acknowledgeRemoteControlCommand: (command: {
+    readonly tenantId: string
+    readonly agentId: string
+    readonly commandId: string
+    readonly acknowledgedAt: string
+    readonly status: 'APPLIED' | 'IGNORED' | 'FAILED'
+    readonly detail: string | null
+  }) => Promise<boolean>
   readonly requestAgentUpdate: (command: {
     readonly tenantId: string
     readonly agentId: string
@@ -180,10 +266,27 @@ export type AgentMonitoringRepository = {
     readonly updateChannel: string
     readonly requestedAt: string
   }) => Promise<AgentMonitoringRecord | null>
+  readonly updateAgentRemotePolicy: (command: {
+    readonly tenantId: string
+    readonly agentId: string
+    readonly updatesPaused?: boolean
+    readonly updateChannel?: string
+    readonly blockedVersions?: readonly string[]
+    readonly desiredVersion?: string | null
+  }) => Promise<AgentMonitoringRecord | null>
   readonly requestAgentRestart: (command: {
     readonly tenantId: string
     readonly agentId: string
     readonly requestedAt: string
   }) => Promise<AgentMonitoringRecord | null>
+  readonly requestAgentReset: (command: {
+    readonly tenantId: string
+    readonly agentId: string
+    readonly requestedAt: string
+  }) => Promise<AgentMonitoringRecord | null>
   readonly insertActivityEvents: (events: readonly AgentActivityInsertRecord[]) => Promise<void>
+  readonly insertLogEvents: (events: readonly AgentLogInsertRecord[]) => Promise<{
+    readonly accepted: number
+    readonly persisted: number
+  }>
 }

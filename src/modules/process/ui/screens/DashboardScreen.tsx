@@ -1,7 +1,15 @@
-import { useLocation, useNavigate, usePreloadRoute } from '@solidjs/router'
+import { useNavigate, usePreloadRoute } from '@solidjs/router'
 import { Check, CircleAlert, RefreshCw, TriangleAlert } from 'lucide-solid'
-import type { JSX } from 'solid-js'
-import { createMemo, createResource, createSignal, onCleanup, onMount, Show } from 'solid-js'
+import type { Accessor, JSX, Resource } from 'solid-js'
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  onCleanup,
+  onMount,
+  Show,
+} from 'solid-js'
 import {
   createProcessRequest,
   fetchDashboardGlobalAlertsSummary,
@@ -13,6 +21,8 @@ import { DashboardActivityChartCard } from '~/modules/process/ui/components/Dash
 import { DashboardKpiRow } from '~/modules/process/ui/components/DashboardKpiRow'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { DashboardRefreshButton } from '~/modules/process/ui/components/DashboardRefreshButton'
+import { DashboardSyncBatchResultPanel } from '~/modules/process/ui/components/DashboardSyncBatchResultPanel'
+import { ExportImportActions } from '~/modules/process/ui/components/export-import/ExportImportActions'
 import { UnifiedDashboardFilters } from '~/modules/process/ui/components/UnifiedDashboardFilters'
 import { fetchDashboardKpis } from '~/modules/process/ui/fetchDashboardKpis'
 import {
@@ -24,6 +34,14 @@ import { toDashboardKpiVMs } from '~/modules/process/ui/mappers/dashboard-kpis.u
 import { toDashboardMonthlyBarDatumVMs } from '~/modules/process/ui/mappers/dashboard-processes-created-by-month.ui-mapper'
 import { useDashboardFilterSortController } from '~/modules/process/ui/screens/dashboard/hooks/useDashboardFilterSortController'
 import { useDashboardSyncController } from '~/modules/process/ui/screens/dashboard/hooks/useDashboardSyncController'
+import { resolveDashboardChartWindowSize } from '~/modules/process/ui/utils/dashboard-chart-window-size'
+import {
+  clearDashboardNavigationState,
+  readDashboardNavigationState,
+  resolveHighlightedDashboardProcessId,
+  restoreDashboardScrollPosition,
+  saveDashboardNavigationState,
+} from '~/modules/process/ui/utils/dashboard-navigation-state'
 import { toCreateProcessInput } from '~/modules/process/ui/validation/processApi.validation'
 import {
   type ExistingProcessConflict,
@@ -40,24 +58,10 @@ import {
 import { sortDashboardProcesses } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
+import { readResourceSnapshot } from '~/shared/solid/resourceSnapshot'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
-import { navigateToProcess, prefetchProcessIntent } from '~/shared/ui/navigation/app-navigation'
-
-const DASHBOARD_CHART_TABLET_MIN_WIDTH = 768
-const DASHBOARD_CHART_DESKTOP_MIN_WIDTH = 1280
-
-function resolveDashboardChartWindowSize(viewportWidth: number): DashboardChartWindowSize {
-  if (viewportWidth >= DASHBOARD_CHART_DESKTOP_MIN_WIDTH) {
-    return 24
-  }
-
-  if (viewportWidth >= DASHBOARD_CHART_TABLET_MIN_WIDTH) {
-    return 12
-  }
-
-  return 6
-}
+import { navigateToProcess, scheduleIntentPrefetch } from '~/shared/ui/navigation/app-navigation'
 
 function getCreateErrorMessage(error: string | ExistingProcessConflict | null): string {
   if (typeof error === 'string') return error
@@ -71,14 +75,45 @@ function getCreateErrorExisting(
   return error ?? undefined
 }
 
+type DashboardResourceSnapshotState<T> = {
+  readonly data: Accessor<T | undefined>
+  readonly initialLoading: Accessor<boolean>
+  readonly refreshing: Accessor<boolean>
+  readonly hasBlockingError: Accessor<boolean>
+}
+
+function useDashboardResourceSnapshot<T>(
+  resource: Resource<T | undefined>,
+): DashboardResourceSnapshotState<T> {
+  const [snapshot, setSnapshot] = createSignal<T | undefined>(readResourceSnapshot(resource))
+
+  createEffect(() => {
+    const value = readResourceSnapshot(resource)
+    if (value === undefined) return
+    setSnapshot(() => value)
+  })
+
+  const hasSnapshot = createMemo(() => snapshot() !== undefined)
+
+  return {
+    data: () => snapshot(),
+    initialLoading: () => resource.loading && !hasSnapshot(),
+    refreshing: () => resource.loading && hasSnapshot(),
+    hasBlockingError: () => Boolean(resource.error) && !hasSnapshot(),
+  }
+}
+
 // eslint-disable-next-line max-lines-per-function
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const { t, keys, locale } = useTranslation()
-  const location = useLocation()
   const navigate = useNavigate()
   const preloadRoute = usePreloadRoute()
+  const dashboardNavigationState = readDashboardNavigationState()
   let shouldPreferPrefetchedProcesses = true
   let shouldPreferPrefetchedGlobalAlerts = true
+  let shouldPreferPrefetchedDashboardKpis = true
+  let shouldPreferPrefetchedDashboardActivity = true
+  let shouldRestoreDashboardScroll = dashboardNavigationState !== null
   const [processes, { refetch: refetchProcesses }] = createResource(() => {
     const preferPrefetched = shouldPreferPrefetchedProcesses
     shouldPreferPrefetchedProcesses = false
@@ -93,9 +128,13 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       preferPrefetched,
     })
   })
-  const [dashboardKpis, { refetch: refetchDashboardKpis }] = createResource(() =>
-    fetchDashboardKpis(),
-  )
+  const [dashboardKpis, { refetch: refetchDashboardKpis }] = createResource(() => {
+    const preferPrefetched = shouldPreferPrefetchedDashboardKpis
+    shouldPreferPrefetchedDashboardKpis = false
+    return fetchDashboardKpis({
+      preferPrefetched,
+    })
+  })
   const [dashboardChartWindowSize, setDashboardChartWindowSize] =
     createSignal<DashboardChartWindowSize>(
       (() => {
@@ -104,40 +143,52 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       })(),
     )
   const [dashboardProcessesCreatedByMonth, { refetch: refetchDashboardProcessesCreatedByMonth }] =
-    createResource(dashboardChartWindowSize, (windowSize) =>
-      fetchDashboardProcessesCreatedByMonth({ windowSize }),
-    )
+    createResource(dashboardChartWindowSize, (windowSize) => {
+      const preferPrefetched = shouldPreferPrefetchedDashboardActivity
+      shouldPreferPrefetchedDashboardActivity = false
+      return fetchDashboardProcessesCreatedByMonth(
+        { windowSize },
+        {
+          preferPrefetched,
+        },
+      )
+    })
+  const processesState = useDashboardResourceSnapshot(processes)
+  const dashboardKpisState = useDashboardResourceSnapshot(dashboardKpis)
+  const dashboardActivityState = useDashboardResourceSnapshot(dashboardProcessesCreatedByMonth)
   const {
     sortSelection,
     filterSelection,
+    isHydrated: isDashboardFilterSortHydrated,
     handleSortToggle,
     handleProviderFilterToggle,
     handleStatusFilterToggle,
     handleImporterFilterSelect,
     handleSeverityFilterSelect,
     handleClearAllFilters,
-  } = useDashboardFilterSortController({
-    pathname: () => location.pathname,
-    search: () => location.search,
-    navigate,
-  })
+  } = useDashboardFilterSortController()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
+  const [lastOpenedProcessId] = createSignal<string | null>(
+    dashboardNavigationState?.lastOpenedProcessId ?? null,
+  )
+
+  clearDashboardNavigationState()
 
   const providerFilterOptions = createMemo(() =>
-    deriveDashboardProviderFilterOptions(processes() ?? []),
+    deriveDashboardProviderFilterOptions(processesState.data() ?? []),
   )
   const importerFilterOptions = createMemo(() =>
-    deriveDashboardImporterFilterOptions(processes() ?? []),
+    deriveDashboardImporterFilterOptions(processesState.data() ?? []),
   )
   const statusFilterOptions = createMemo(() =>
-    deriveDashboardStatusFilterOptions(processes() ?? []),
+    deriveDashboardStatusFilterOptions(processesState.data() ?? []),
   )
   const severityFilterOptions = createMemo(() =>
-    deriveDashboardSeverityFilterOptions(processes() ?? []),
+    deriveDashboardSeverityFilterOptions(processesState.data() ?? []),
   )
   const dashboardKpiItems = createMemo(() => {
-    const source = dashboardKpis()
+    const source = dashboardKpisState.data()
     if (!source) return []
 
     return toDashboardKpiVMs({
@@ -146,39 +197,51 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       labels: {
         activeProcesses: t(keys.dashboard.kpis.activeProcesses),
         trackedContainers: t(keys.dashboard.kpis.trackedContainers),
-        processesWithAlerts: t(keys.dashboard.kpis.processesWithAlerts),
+        activeIncidents: t(keys.dashboard.kpis.activeIncidents),
+        affectedContainers: t(keys.dashboard.kpis.affectedContainers),
         lastSync: t(keys.dashboard.kpis.lastSync),
         lastSyncUnavailable: t(keys.dashboard.kpis.lastSyncUnavailable),
       },
       icons: {
         activeProcesses: CircleAlert,
         trackedContainers: Check,
-        processesWithAlerts: TriangleAlert,
+        activeIncidents: TriangleAlert,
         lastSync: RefreshCw,
       },
     })
   })
   const dashboardMonthlyBarData = createMemo(() => {
-    const source = dashboardProcessesCreatedByMonth()
+    const source = dashboardActivityState.data()
     if (!source) return []
     return toDashboardMonthlyBarDatumVMs(source, locale())
   })
   const filteredProcesses = createMemo(() =>
-    filterDashboardProcesses(processes() ?? [], filterSelection()),
+    filterDashboardProcesses(processesState.data() ?? [], filterSelection()),
   )
   const hasActiveFilters = createMemo(() => hasActiveDashboardFilters(filterSelection()))
   const sortedProcesses = createMemo(() =>
     sortDashboardProcesses(filteredProcesses(), sortSelection()),
   )
-  const { processesWithSyncFeedback, handleDashboardRefresh, handleProcessSync } =
-    useDashboardSyncController({
-      allProcesses: () => processes() ?? [],
-      sortedProcesses,
-      refetchProcesses,
-      refetchGlobalAlerts,
-      refetchDashboardKpis,
-      refetchDashboardProcessesCreatedByMonth,
-    })
+  const {
+    processesWithSyncFeedback,
+    dashboardSyncBatchResult,
+    dismissDashboardSyncBatchResult,
+    handleDashboardRefresh,
+    handleProcessSync,
+  } = useDashboardSyncController({
+    allProcesses: () => processesState.data() ?? [],
+    sortedProcesses,
+    refetchProcesses,
+    refetchGlobalAlerts,
+    refetchDashboardKpis,
+    refetchDashboardProcessesCreatedByMonth,
+  })
+  const highlightedProcessId = createMemo(() =>
+    resolveHighlightedDashboardProcessId({
+      processes: processesWithSyncFeedback(),
+      lastOpenedProcessId: lastOpenedProcessId(),
+    }),
+  )
 
   onMount(() => {
     const updateChartWindowSize = (): void => {
@@ -192,12 +255,29 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     })
   })
 
+  createEffect(() => {
+    if (!shouldRestoreDashboardScroll) return
+    if (!isDashboardFilterSortHydrated()) return
+    if (processesState.initialLoading()) return
+    if (dashboardKpisState.initialLoading()) return
+    if (dashboardActivityState.initialLoading()) return
+
+    shouldRestoreDashboardScroll = false
+    restoreDashboardScrollPosition({
+      state: dashboardNavigationState,
+    })
+  })
+
   const handleCreateProcess = () => {
     setCreateError(null)
     setIsCreateDialogOpen(true)
   }
 
   const handleOpenProcess = (processId: string) => {
+    saveDashboardNavigationState({
+      lastOpenedProcessId: processId,
+    })
+
     navigateToProcess({
       navigate,
       processId,
@@ -205,10 +285,10 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   }
 
   const handleProcessIntent = (processId: string) => {
-    prefetchProcessIntent({
+    scheduleIntentPrefetch({
       processId,
       preloadRoute,
-      preloadData: () => prefetchProcessDetail(processId, locale()),
+      preloadData: (prefetchedProcessId) => prefetchProcessDetail(prefetchedProcessId, locale()),
     })
   }
 
@@ -218,7 +298,12 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
       const processId = await createProcessRequest(toCreateProcessInput(data))
 
-      await Promise.all([refetchProcesses(), refetchGlobalAlerts()])
+      await Promise.all([
+        refetchProcesses(),
+        refetchGlobalAlerts(),
+        refetchDashboardKpis(),
+        refetchDashboardProcessesCreatedByMonth(),
+      ])
 
       setIsCreateDialogOpen(false)
 
@@ -251,6 +336,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           onCreateProcess={handleCreateProcess}
           searchSlot={props.searchSlot}
           syncSlot={<DashboardRefreshButton onRefresh={handleDashboardRefresh} />}
+          actionsSlot={<ExportImportActions processId={null} showImport />}
         />
         <CreateProcessDialog
           open={isCreateDialogOpen()}
@@ -262,16 +348,21 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           <Show when={createError()}>
             <ExistingProcessError
               message={getCreateErrorMessage(createError())}
-              existing={getCreateErrorExisting(createError())}
               onAcknowledge={() => setCreateError(null)}
+              existing={getCreateErrorExisting(createError()) ?? null}
             />
           </Show>
 
-          <DashboardKpiRow items={dashboardKpiItems()} loading={dashboardKpis.loading} />
+          <DashboardKpiRow
+            items={dashboardKpiItems()}
+            loading={dashboardKpisState.initialLoading()}
+            refreshing={dashboardKpisState.refreshing()}
+          />
           <DashboardActivityChartCard
             data={dashboardMonthlyBarData()}
-            loading={dashboardProcessesCreatedByMonth.loading}
-            hasError={Boolean(dashboardProcessesCreatedByMonth.error)}
+            loading={dashboardActivityState.initialLoading()}
+            refreshing={dashboardActivityState.refreshing()}
+            hasError={dashboardActivityState.hasBlockingError()}
             windowSize={dashboardChartWindowSize()}
           />
           <UnifiedDashboardFilters
@@ -290,10 +381,20 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
             onSeveritySelect={handleSeverityFilterSelect}
             onClearAllFilters={handleClearAllFilters}
           />
+          <Show when={dashboardSyncBatchResult()}>
+            {(result) => (
+              <DashboardSyncBatchResultPanel
+                result={result()}
+                onDismiss={dismissDashboardSyncBatchResult}
+              />
+            )}
+          </Show>
           <DashboardProcessTable
             processes={processesWithSyncFeedback()}
-            loading={processes.loading}
-            hasError={Boolean(processes.error)}
+            highlightedProcessId={highlightedProcessId()}
+            initialLoading={processesState.initialLoading()}
+            refreshing={processesState.refreshing()}
+            hasError={processesState.hasBlockingError()}
             hasActiveFilters={hasActiveFilters()}
             onCreateProcess={handleCreateProcess}
             onClearFilters={handleClearAllFilters}

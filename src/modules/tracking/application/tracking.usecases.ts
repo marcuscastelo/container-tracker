@@ -1,4 +1,5 @@
 import type { PipelineResult } from '~/modules/tracking/application/orchestration/pipeline'
+import type { TrackingGlobalSearchProjection } from '~/modules/tracking/application/projection/tracking.global-search.readmodel'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
 import {
@@ -6,13 +7,23 @@ import {
   fetchAndProcess,
 } from '~/modules/tracking/application/usecases/fetch-and-process.usecase'
 import {
+  type FindContainersHotReadProjectionCommand,
+  type FindContainersHotReadProjectionResult,
+  findContainersHotReadProjection,
+} from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
+import {
+  type FindContainersOperationalSummaryProjectionCommand,
+  findContainersOperationalSummaryProjection as findContainersOperationalSummaryProjectionUseCase,
+} from '~/modules/tracking/application/usecases/find-containers-operational-summary-projection.usecase'
+import {
+  findContainersRecognizedOperationalIncidentsProjection,
+  findObservationInspectorProjection,
+  findTimelineItemPredictionHistory,
+} from '~/modules/tracking/application/usecases/find-lazy-tracking-detail.usecases'
+import {
   type GetContainerSummaryResult,
   getContainerSummary,
 } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
-import {
-  type GetContainersSummaryCommand,
-  getContainersSummary as getContainersSummaryUseCase,
-} from '~/modules/tracking/application/usecases/get-containers-summary.usecase'
 import {
   type ContainerSyncRecord,
   createGetContainersSyncMetadataUseCase,
@@ -24,6 +35,7 @@ import {
   type ListActiveAlertsByContainerIdResult,
   listActiveAlertsByContainerId,
 } from '~/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase'
+import { listTrackingGlobalSearchProjections } from '~/modules/tracking/application/usecases/list-tracking-global-search-projections.usecase'
 import { saveAndProcess } from '~/modules/tracking/application/usecases/save-and-process.usecase'
 import { searchTrackingByDerivedStatusText } from '~/modules/tracking/application/usecases/search-tracking-by-derived-status-text.usecase'
 import { searchTrackingByVesselName } from '~/modules/tracking/application/usecases/search-tracking-by-vessel-name.usecase'
@@ -37,6 +49,20 @@ import {
 } from '~/modules/tracking/features/alerts/application/usecases/list-active-alert-read-model.usecase'
 import { unacknowledgeAlert } from '~/modules/tracking/features/alerts/application/usecases/unacknowledge-alert.usecase'
 import type { TrackingAlertAckSource } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import {
+  type GetTrackingReplayDebugCommand,
+  getTrackingReplayDebug,
+} from '~/modules/tracking/features/replay/application/get-tracking-replay-debug.usecase'
+import {
+  type GetTrackingTimeTravelCommand,
+  getTrackingTimeTravel,
+} from '~/modules/tracking/features/replay/application/get-tracking-time-travel.usecase'
+import type {
+  TrackingReplayDebugResult,
+  TrackingTimeTravelResult,
+} from '~/modules/tracking/features/replay/application/tracking.replay.types'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
 
 /**
  * Backward-compatible result shape for fetchAndProcess.
@@ -106,7 +132,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
         provider,
         payload,
         parseError,
-        fetchedAt,
+        ...(fetchedAt === undefined ? {} : { fetchedAt }),
       })
     },
 
@@ -117,29 +143,63 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       containerId: string,
       containerNumber: string,
       podLocationCode?: string | null,
-      now: Date = new Date(),
+      now: Instant = systemClock.now(),
       options?: { readonly includeAcknowledgedAlerts?: boolean },
     ): Promise<GetContainerSummaryResult> {
       return getContainerSummary(deps, {
         containerId,
         containerNumber,
-        podLocationCode,
         now,
         includeAcknowledgedAlerts: options?.includeAcknowledgedAlerts ?? false,
+        ...(podLocationCode === undefined ? {} : { podLocationCode }),
       })
     },
 
     /**
-     * Get operational summaries for multiple containers with partial-success behavior.
-     *
-     * Containers that fail due infra issues are returned with dataIssue=true
-     * so callers can keep rendering uncertainty explicitly.
+     * Get canonical operational summaries for multiple containers using the
+     * batch hot-read projection path.
      */
-    async getContainersSummary(
-      containers: GetContainersSummaryCommand['containers'],
-      now: Date = new Date(),
+    async findContainersOperationalSummaryProjection(
+      command: FindContainersOperationalSummaryProjectionCommand,
     ): Promise<Map<string, TrackingOperationalSummary>> {
-      return getContainersSummaryUseCase(deps, { containers, now })
+      return findContainersOperationalSummaryProjectionUseCase(deps, command)
+    },
+
+    /**
+     * Get the canonical hot-read projection for shipment detail and process list.
+     */
+    async findContainersHotReadProjection(
+      command: FindContainersHotReadProjectionCommand,
+    ): Promise<FindContainersHotReadProjectionResult> {
+      return findContainersHotReadProjection(deps, command)
+    },
+
+    async findTimelineItemPredictionHistory(command: {
+      readonly containerId: string
+      readonly timelineItemId: string
+      readonly now?: Instant
+    }) {
+      return findTimelineItemPredictionHistory(deps, {
+        containerId: command.containerId,
+        timelineItemId: command.timelineItemId,
+        now: command.now ?? systemClock.now(),
+      })
+    },
+
+    async findObservationInspectorProjection(command: {
+      readonly containerId: string
+      readonly observationId: string
+    }) {
+      return findObservationInspectorProjection(deps, command)
+    },
+
+    async findContainersRecognizedOperationalIncidentsProjection(command: {
+      readonly containers: readonly {
+        readonly containerId: string
+        readonly containerNumber: string
+      }[]
+    }) {
+      return findContainersRecognizedOperationalIncidentsProjection(deps, command)
     },
 
     /**
@@ -160,7 +220,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       query: string,
       limit: number,
     ): Promise<readonly TrackingSearchProjection[]> {
-      return searchTrackingByVesselName(deps, { query, limit, now: new Date() })
+      return searchTrackingByVesselName(deps, { query, limit, now: systemClock.now() })
     },
 
     /**
@@ -170,7 +230,13 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       query: string,
       limit: number,
     ): Promise<readonly TrackingSearchProjection[]> {
-      return searchTrackingByDerivedStatusText(deps, { query, limit, now: new Date() })
+      return searchTrackingByDerivedStatusText(deps, { query, limit, now: systemClock.now() })
+    },
+
+    async listGlobalSearchProjections(command?: {
+      readonly now?: Instant
+    }): Promise<readonly TrackingGlobalSearchProjection[]> {
+      return listTrackingGlobalSearchProjections(deps, command)
     },
 
     /**
@@ -185,7 +251,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
     ): Promise<void> {
       await acknowledgeAlert(deps, {
         alertId,
-        ackedAt: new Date().toISOString(),
+        ackedAt: systemClock.now().toIsoString(),
         ackedBy: metadata?.ackedBy ?? null,
         ackedSource: metadata?.ackedSource ?? null,
       })
@@ -210,6 +276,18 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      */
     async getLatestSnapshot(containerId: string): Promise<Snapshot | null> {
       return getLatestSnapshot(deps, { containerId })
+    },
+
+    async getTrackingTimeTravel(
+      command: GetTrackingTimeTravelCommand,
+    ): Promise<TrackingTimeTravelResult> {
+      return getTrackingTimeTravel(deps, command)
+    },
+
+    async getTrackingReplayDebug(
+      command: GetTrackingReplayDebugCommand,
+    ): Promise<TrackingReplayDebugResult> {
+      return getTrackingReplayDebug(deps, command)
     },
 
     /**

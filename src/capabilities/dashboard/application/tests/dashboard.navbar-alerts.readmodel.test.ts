@@ -3,8 +3,7 @@ import {
   createDashboardNavbarAlertsReadModelUseCase,
   type DashboardNavbarAlertsReadModelDeps,
 } from '~/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel'
-import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
-import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 
 type ProcessesProjection = Awaited<
   ReturnType<
@@ -12,90 +11,129 @@ type ProcessesProjection = Awaited<
   >
 >['processes']
 
-function makeAlert(args: {
-  readonly alertId: string
-  readonly processId: string
-  readonly containerId: string
-  readonly severity: TrackingActiveAlertReadModel['severity']
-  readonly type: TrackingActiveAlertReadModel['type']
-  readonly category: TrackingActiveAlertReadModel['category']
-  readonly generatedAt: string
-  readonly retroactive?: boolean
-  readonly isActive?: boolean
-}): TrackingActiveAlertReadModel {
-  function toMessageContract(
-    type: TrackingActiveAlertReadModel['type'],
-  ): Pick<TrackingActiveAlertReadModel, 'message_key' | 'message_params'> {
-    if (type === 'TRANSSHIPMENT') {
-      return {
-        message_key: 'alerts.transshipmentDetected',
-        message_params: {
-          port: 'SANTOS',
-          fromVessel: 'VESSEL A',
-          toVessel: 'VESSEL B',
-        },
-      }
-    }
-    if (type === 'CUSTOMS_HOLD') {
-      return {
-        message_key: 'alerts.customsHoldDetected',
-        message_params: { location: 'HAMBURG' },
-      }
-    }
-    if (type === 'NO_MOVEMENT') {
-      return {
-        message_key: 'alerts.noMovementDetected',
-        message_params: {
-          threshold_days: 10,
-          days_without_movement: 11,
-          days: 11,
-          lastEventDate: '2026-02-28',
-        },
-      }
-    }
-    if (type === 'ETA_MISSING') {
-      return {
-        message_key: 'alerts.etaMissing',
-        message_params: {},
-      }
-    }
-    if (type === 'ETA_PASSED') {
-      return {
-        message_key: 'alerts.etaPassed',
-        message_params: {},
-      }
-    }
-    if (type === 'PORT_CHANGE') {
-      return {
-        message_key: 'alerts.portChange',
-        message_params: {},
-      }
-    }
+function toIncidentFactMessageKey(
+  type: OperationalIncidentReadModel['type'],
+): 'incidents.fact.customsHoldDetected' | 'incidents.fact.etaMissing' | 'incidents.fact.etaPassed' {
+  switch (type) {
+    case 'CUSTOMS_HOLD':
+      return 'incidents.fact.customsHoldDetected'
+    case 'ETA_MISSING':
+      return 'incidents.fact.etaMissing'
+    default:
+      return 'incidents.fact.etaPassed'
+  }
+}
+
+function toIncidentAction(
+  type: OperationalIncidentReadModel['type'],
+): NonNullable<OperationalIncidentReadModel['action']> {
+  if (type === 'CUSTOMS_HOLD') {
     return {
-      message_key: 'alerts.dataInconsistent',
-      message_params: {},
+      actionKey: 'incidents.action.followUpCustoms',
+      actionParams: {},
+      actionKind: 'FOLLOW_UP_CUSTOMS',
     }
   }
 
-  const message = toMessageContract(args.type)
   return {
-    alert_id: args.alertId,
-    process_id: args.processId,
-    container_id: args.containerId,
+    actionKey: 'incidents.action.checkEta',
+    actionParams: {},
+    actionKind: 'CHECK_ETA',
+  }
+}
+
+function makeIncident(args: {
+  readonly incidentKey: string
+  readonly containerId: string
+  readonly containerNumber: string
+  readonly category: OperationalIncidentReadModel['category']
+  readonly type: OperationalIncidentReadModel['type']
+  readonly severity: OperationalIncidentReadModel['severity']
+  readonly triggeredAt: string
+}): OperationalIncidentReadModel {
+  return {
+    incidentKey: args.incidentKey,
+    bucket: 'active',
     category: args.category,
-    severity: args.severity,
     type: args.type,
-    message_key: message.message_key,
-    message_params: message.message_params,
-    generated_at: args.generatedAt,
-    fingerprint: null,
-    is_active: args.isActive ?? true,
-    retroactive: args.retroactive ?? false,
+    severity: args.severity,
+    fact: {
+      messageKey: toIncidentFactMessageKey(args.type),
+      messageParams: {},
+    },
+    action: toIncidentAction(args.type),
+    scope: {
+      affectedContainerCount: 1,
+      containers: [
+        {
+          containerId: args.containerId,
+          containerNumber: args.containerNumber,
+          lifecycleState: 'ACTIVE',
+        },
+      ],
+    },
+    detectedAt: args.triggeredAt,
+    triggeredAt: args.triggeredAt,
+    triggerRefs: [
+      {
+        alertId: `${args.incidentKey}-alert`,
+        containerId: args.containerId,
+      },
+    ],
+    members: [
+      {
+        containerId: args.containerId,
+        containerNumber: args.containerNumber,
+        lifecycleState: 'ACTIVE',
+        detectedAt: args.triggeredAt,
+        records: [
+          {
+            alertId: `${args.incidentKey}-alert`,
+            lifecycleState: 'ACTIVE',
+            detectedAt: args.triggeredAt,
+            triggeredAt: args.triggeredAt,
+            ackedAt: null,
+            resolvedAt: null,
+            resolvedReason: null,
+          },
+        ],
+      },
+    ],
+  }
+}
+
+function createDeps(args: {
+  readonly processes: ProcessesProjection
+  readonly incidents: readonly OperationalIncidentReadModel[]
+}): DashboardNavbarAlertsReadModelDeps {
+  return {
+    processUseCases: {
+      listProcessesWithOperationalSummary: vi.fn(async () => ({ processes: args.processes })),
+    },
+    trackingUseCases: {
+      findContainersHotReadProjection: vi.fn(async () => ({
+        containers: [],
+        activeOperationalIncidents: {
+          summary: {
+            activeIncidentCount: args.incidents.length,
+            affectedContainerCount: new Set(
+              args.incidents.flatMap((incident) =>
+                incident.scope.containers.map((container) => container.containerId),
+              ),
+            ).size,
+            recognizedIncidentCount: 0,
+          },
+          active: args.incidents,
+          recognized: [],
+        },
+        activeAlerts: [],
+      })),
+    },
   }
 }
 
 describe('createDashboardNavbarAlertsReadModelUseCase', () => {
-  it('groups alerts by process and container using backend sorting rules', async () => {
+  it('groups incidents by process using backend sorting rules', async () => {
     const processes: ProcessesProjection = [
       {
         pwc: {
@@ -128,145 +166,120 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
       },
     ]
 
-    const alerts: readonly TrackingActiveAlertReadModel[] = [
-      makeAlert({
-        alertId: 'alert-warning-latest',
-        processId: 'process-warning',
+    const incidents = [
+      makeIncident({
+        incidentKey: 'ETA_PASSED:container-warn-1',
         containerId: 'container-warn-1',
-        category: 'monitoring',
-        severity: 'warning',
-        type: 'NO_MOVEMENT',
-        generatedAt: '2026-03-11T12:00:00.000Z',
-      }),
-      makeAlert({
-        alertId: 'alert-danger-old',
-        processId: 'process-danger',
-        containerId: 'container-danger-1',
-        category: 'fact',
-        severity: 'danger',
-        type: 'CUSTOMS_HOLD',
-        generatedAt: '2026-03-09T12:00:00.000Z',
-        retroactive: true,
-      }),
-      makeAlert({
-        alertId: 'alert-danger-new',
-        processId: 'process-danger',
-        containerId: 'container-danger-1',
-        category: 'monitoring',
-        severity: 'danger',
+        containerNumber: 'MSCU1111111',
+        category: 'eta',
         type: 'ETA_PASSED',
-        generatedAt: '2026-03-10T12:00:00.000Z',
+        severity: 'warning',
+        triggeredAt: '2026-03-11T12:00:00.000Z',
       }),
-      makeAlert({
-        alertId: 'alert-info',
-        processId: 'process-warning',
+      makeIncident({
+        incidentKey: 'CUSTOMS_HOLD:container-danger-1',
+        containerId: 'container-danger-1',
+        containerNumber: 'MSCU2222222',
+        category: 'customs',
+        type: 'CUSTOMS_HOLD',
+        severity: 'danger',
+        triggeredAt: '2026-03-10T12:00:00.000Z',
+      }),
+      makeIncident({
+        incidentKey: 'ETA_MISSING:container-warn-2',
         containerId: 'container-warn-2',
-        category: 'monitoring',
-        severity: 'info',
+        containerNumber: 'MSCU1111112',
+        category: 'eta',
         type: 'ETA_MISSING',
-        generatedAt: '2026-03-08T12:00:00.000Z',
+        severity: 'info',
+        triggeredAt: '2026-03-08T12:00:00.000Z',
       }),
-    ]
+    ] as const
 
-    const getContainersSummary: DashboardNavbarAlertsReadModelDeps['trackingUseCases']['getContainersSummary'] =
-      vi.fn(async () => {
-        const summaries = new Map<string, TrackingOperationalSummary>([
-          [
-            'container-danger-1',
-            {
-              status: 'IN_TRANSIT',
-              eta: {
-                eventTimeIso: '2026-03-24T00:00:00.000Z',
-                eventTimeType: 'EXPECTED',
-                state: 'ACTIVE_EXPECTED',
-                type: 'ARRIVAL',
-                locationCode: 'NLRTM',
-                locationDisplay: 'Rotterdam',
-              },
-              transshipment: {
-                hasTransshipment: false,
-                count: 0,
-                ports: [],
-              },
-              dataIssue: false,
-            },
-          ],
-          [
-            'container-warn-1',
-            {
-              status: 'LOADED',
-              eta: null,
-              transshipment: {
-                hasTransshipment: false,
-                count: 0,
-                ports: [],
-              },
-              dataIssue: false,
-            },
-          ],
-          [
-            'container-warn-2',
-            {
-              status: 'BOOKED',
-              eta: null,
-              transshipment: {
-                hasTransshipment: false,
-                count: 0,
-                ports: [],
-              },
-              dataIssue: false,
-            },
-          ],
-        ])
-        return summaries
-      })
-
-    const useCase = createDashboardNavbarAlertsReadModelUseCase({
-      processUseCases: {
-        listProcessesWithOperationalSummary: vi.fn(async () => ({ processes })),
-      },
-      trackingUseCases: {
-        listActiveAlertReadModel: vi.fn(async () => ({ alerts })),
-        getContainersSummary,
-      },
-    })
+    const useCase = createDashboardNavbarAlertsReadModelUseCase(
+      createDeps({ processes, incidents }),
+    )
 
     const result = await useCase()
 
-    expect(result.totalActiveAlerts).toBe(4)
+    expect(result.totalActiveIncidents).toBe(3)
     expect(result.processes.map((process) => process.processId)).toEqual([
       'process-danger',
       'process-warning',
     ])
-    expect(result.processes[0]?.containers[0]?.alerts.map((alert) => alert.alertId)).toEqual([
-      'alert-danger-new',
-      'alert-danger-old',
+    expect(result.processes[0]?.incidents.map((incident) => incident.incidentKey)).toEqual([
+      'CUSTOMS_HOLD:container-danger-1',
     ])
-    expect(result.processes[0]?.containers[0]?.alerts[1]?.retroactive).toBe(true)
-    expect(result.processes[1]?.containers.map((container) => container.containerId)).toEqual([
-      'container-warn-1',
-      'container-warn-2',
+    expect(result.processes[1]?.incidents.map((incident) => incident.incidentKey)).toEqual([
+      'ETA_PASSED:container-warn-1',
+      'ETA_MISSING:container-warn-2',
     ])
     expect(result.processes[1]?.routeSummary).toBe('Santos → Hamburg')
-    expect(getContainersSummary).toHaveBeenCalledTimes(1)
   })
 
-  it('returns empty summary and skips container summary when no active alerts exist', async () => {
-    const getContainersSummary = vi.fn(async () => new Map())
-    const useCase = createDashboardNavbarAlertsReadModelUseCase({
-      processUseCases: {
-        listProcessesWithOperationalSummary: vi.fn(async () => ({ processes: [] })),
-      },
-      trackingUseCases: {
-        listActiveAlertReadModel: vi.fn(async () => ({ alerts: [] })),
-        getContainersSummary,
-      },
-    })
+  it('returns empty summary when no active incidents exist', async () => {
+    const useCase = createDashboardNavbarAlertsReadModelUseCase(
+      createDeps({
+        processes: [
+          {
+            pwc: {
+              process: {
+                id: 'process-1',
+                reference: 'REF-001',
+                origin: 'Santos',
+                destination: 'Hamburg',
+                carrier: 'MSC',
+              },
+              containers: [{ id: 'container-1', containerNumber: 'MSCU1111111' }],
+            },
+            summary: {},
+          },
+        ],
+        incidents: [],
+      }),
+    )
 
-    await expect(useCase()).resolves.toEqual({
-      totalActiveAlerts: 0,
+    expect(await useCase()).toEqual({
+      totalActiveIncidents: 0,
       processes: [],
     })
-    expect(getContainersSummary).not.toHaveBeenCalled()
+  })
+
+  it('normalizes blank route endpoints to placeholders for navbar display', async () => {
+    const useCase = createDashboardNavbarAlertsReadModelUseCase(
+      createDeps({
+        processes: [
+          {
+            pwc: {
+              process: {
+                id: 'process-blank-route',
+                reference: 'REF-BLANK',
+                origin: '   ',
+                destination: '',
+                carrier: 'MSC',
+              },
+              containers: [{ id: 'container-blank-1', containerNumber: 'MSCU1111111' }],
+            },
+            summary: {},
+          },
+        ],
+        incidents: [
+          makeIncident({
+            incidentKey: 'ETA_MISSING:container-blank-1',
+            containerId: 'container-blank-1',
+            containerNumber: 'MSCU1111111',
+            category: 'eta',
+            type: 'ETA_MISSING',
+            severity: 'warning',
+            triggeredAt: '2026-03-12T12:00:00.000Z',
+          }),
+        ],
+      }),
+    )
+
+    const result = await useCase()
+
+    expect(result.processes).toHaveLength(1)
+    expect(result.processes[0]?.routeSummary).toBe('— → —')
   })
 })

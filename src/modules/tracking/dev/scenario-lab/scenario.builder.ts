@@ -6,7 +6,6 @@ import type {
   ScenarioMaerskEventSpec,
   ScenarioMscEventSpec,
   ScenarioSnapshotBlueprint,
-  ScenarioStage,
   ScenarioStepSnapshot,
   TrackingScenario,
 } from '~/modules/tracking/dev/scenario-lab/scenario.types'
@@ -25,12 +24,14 @@ function providerFromBlueprint(snapshot: ScenarioSnapshotBlueprint): Provider {
 function providerToCarrierCode(provider: Provider): string {
   if (provider === 'maersk') return 'MAEU'
   if (provider === 'msc') return 'MSCU'
+  if (provider === 'pil') return 'PCIU'
   return 'CMAU'
 }
 
 function providerToContainerPrefix(provider: Provider): string {
   if (provider === 'maersk') return 'MAEU'
   if (provider === 'msc') return 'MSCU'
+  if (provider === 'pil') return 'PCIU'
   return 'CMAU'
 }
 
@@ -355,6 +356,7 @@ export function buildScenarioContainerNumbers(params: {
 export function buildScenario(params: {
   command: ScenarioLoadCommand
   runToken: string
+  containerNumbersByKey?: ContainerNumbersByKey
 }): ScenarioBuildResult {
   const scenario = getTrackingScenarioById(params.command.scenarioId)
   if (!scenario) {
@@ -362,17 +364,20 @@ export function buildScenario(params: {
   }
 
   const appliedStep = clampStep(params.command.step, scenario.steps.length)
-  const containerNumbersByKey = buildScenarioContainerNumbers({
-    scenario,
-    appliedStep,
-    runToken: params.runToken,
-  })
+  const containerNumbersByKey =
+    params.containerNumbersByKey ??
+    buildScenarioContainerNumbers({
+      scenario,
+      appliedStep,
+      runToken: params.runToken,
+    })
 
   const snapshots = buildSnapshotsUntilStep(scenario, appliedStep, containerNumbersByKey)
 
   return {
     scenario,
     appliedStep,
+    containerNumbersByKey,
     snapshots,
   }
 }
@@ -406,18 +411,4 @@ export function buildScenarioProviderByContainerKey(
   }
 
   return map
-}
-
-export function getScenarioLabelForStage(stage: ScenarioStage): string {
-  if (stage === 0) return 'Unknown'
-  if (stage === 1) return 'Booking'
-  if (stage === 2) return 'Pre-Gate'
-  if (stage === 3) return 'Gate In'
-  if (stage === 4) return 'Loaded'
-  if (stage === 5) return 'In Transit'
-  if (stage === 6) return 'Transshipment'
-  if (stage === 7) return 'Arrived POD'
-  if (stage === 8) return 'Discharged'
-  if (stage === 9) return 'Delivery'
-  return 'Empty Return'
 }

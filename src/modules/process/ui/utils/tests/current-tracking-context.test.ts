@@ -5,12 +5,13 @@ import {
   shouldHideCurrentVesselForCompletedLeg,
 } from '~/modules/process/ui/utils/current-tracking-context'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import { resolveTemporalDto, temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 function createTimelineEvent(
   overrides: {
     readonly id?: string
     readonly type?: TrackingTimelineItem['type']
-    readonly eventTimeIso?: string | null
+    readonly eventTime?: string | null
     readonly eventTimeType?: TrackingTimelineItem['eventTimeType']
     readonly derivedState?: TrackingTimelineItem['derivedState']
     readonly location?: string | null
@@ -23,14 +24,19 @@ function createTimelineEvent(
   return {
     id: overrides.id ?? 'evt-1',
     type: overrides.type ?? 'SYSTEM_CREATED',
-    eventTimeIso: overrides.eventTimeIso ?? '2026-03-09T00:00:00Z',
+    eventTime: resolveTemporalDto(
+      overrides.eventTime,
+      temporalDtoFromCanonical('2026-03-09T00:00:00Z'),
+    ),
     eventTimeType: overrides.eventTimeType ?? 'EXPECTED',
     derivedState: overrides.derivedState ?? 'ACTIVE_EXPECTED',
-    location: overrides.location ?? undefined,
-    vesselName: overrides.vesselName ?? null,
-    carrierLabel: overrides.carrierLabel,
-    voyage: overrides.voyage,
-    seriesHistory: overrides.seriesHistory,
+    ...(overrides.location === undefined || overrides.location === null
+      ? {}
+      : { location: overrides.location }),
+    ...(overrides.vesselName === undefined ? {} : { vesselName: overrides.vesselName }),
+    ...(overrides.carrierLabel === undefined ? {} : { carrierLabel: overrides.carrierLabel }),
+    ...(overrides.voyage === undefined ? {} : { voyage: overrides.voyage }),
+    ...(overrides.seriesHistory === undefined ? {} : { seriesHistory: overrides.seriesHistory }),
   }
 }
 
@@ -72,7 +78,7 @@ describe('current tracking context', () => {
 
   it('returns null when timeline has no vessel or location values', () => {
     const timeline: readonly TrackingTimelineItem[] = [
-      createTimelineEvent({ id: 'evt-1', vesselName: null, location: undefined }),
+      createTimelineEvent({ id: 'evt-1', vesselName: null }),
     ]
 
     expect(deriveCurrentVesselFromTimeline(timeline)).toBeNull()

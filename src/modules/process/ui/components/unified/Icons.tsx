@@ -3,7 +3,7 @@ import type { JSX } from 'solid-js'
 export function ChevronDownIcon(): JSX.Element {
   return (
     <svg
-      class="h-3.5 w-3.5 shrink-0 text-control-foreground transition-transform group-open:rotate-180"
+      class="motion-icon-rotate h-3.5 w-3.5 shrink-0 text-control-foreground"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"

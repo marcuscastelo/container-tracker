@@ -4,6 +4,7 @@ import {
   LogIn,
   LogOut,
   type LucideIcon,
+  Repeat,
   RotateCcw,
   Sailboat,
   ShieldAlert,
@@ -30,6 +31,10 @@ export function timelineEventIcon(eventType: string): LucideIcon | undefined {
       return Truck
     case 'EMPTY_RETURN':
       return RotateCcw
+    case 'TRANSSHIPMENT_INTENDED':
+    case 'TRANSSHIPMENT_POSITIONED_IN':
+    case 'TRANSSHIPMENT_POSITIONED_OUT':
+      return Repeat
     case 'CUSTOMS_HOLD':
       return ShieldAlert
     case 'CUSTOMS_RELEASE':

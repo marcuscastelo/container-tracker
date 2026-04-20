@@ -11,12 +11,16 @@ import type {
   NewTrackingAlert,
   TrackingAlert,
   TrackingAlertAckSource,
+  TrackingAlertDerivationState,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type {
   NewObservation,
   Observation,
 } from '~/modules/tracking/features/observation/domain/model/observation'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { Instant } from '~/shared/time/instant'
+import { resolveTemporalValue, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 class InMemorySnapshotRepository implements SnapshotRepository {
   private readonly snapshots: Snapshot[] = []
@@ -53,10 +57,11 @@ class InMemoryObservationRepository implements ObservationRepository {
   }
 
   async insertMany(newObservations: readonly NewObservation[]): Promise<readonly Observation[]> {
-    const created = newObservations.map((observation) => ({
+    const baseCreatedAt = Instant.fromIso('2026-03-09T12:00:00.000Z').toEpochMs()
+    const created = newObservations.map((observation, index) => ({
       ...observation,
       id: randomUUID(),
-      created_at: new Date().toISOString(),
+      created_at: Instant.fromEpochMs(baseCreatedAt + index).toIsoString(),
     }))
     this.observations.push(...created)
     return created
@@ -65,7 +70,18 @@ class InMemoryObservationRepository implements ObservationRepository {
   async findAllByContainerId(containerId: string): Promise<readonly Observation[]> {
     return [...this.observations]
       .filter((observation) => observation.container_id === containerId)
-      .sort((a, b) => (a.event_time ?? '').localeCompare(b.event_time ?? ''))
+      .sort(compareObservationsChronologically)
+  }
+
+  async findAllByContainerIds(containerIds: readonly string[]): Promise<readonly Observation[]> {
+    const requestedIds = new Set(containerIds)
+    return [...this.observations]
+      .filter((observation) => requestedIds.has(observation.container_id))
+      .sort((left, right) => {
+        const containerCompare = left.container_id.localeCompare(right.container_id)
+        if (containerCompare !== 0) return containerCompare
+        return compareObservationsChronologically(left, right)
+      })
   }
 
   async findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>> {
@@ -104,7 +120,23 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
     )
   }
 
+  async findActiveByContainerIds(
+    containerIds: readonly string[],
+  ): Promise<readonly TrackingAlert[]> {
+    const requestedIds = new Set(containerIds)
+    return this.alerts.filter(
+      (alert) =>
+        requestedIds.has(alert.container_id) && resolveAlertLifecycleState(alert) === 'ACTIVE',
+    )
+  }
+
   async findByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
+    return this.alerts.filter((alert) => alert.container_id === containerId)
+  }
+
+  async findAlertDerivationStateByContainerId(
+    containerId: string,
+  ): Promise<readonly TrackingAlertDerivationState[]> {
     return this.alerts.filter((alert) => alert.container_id === containerId)
   }
 
@@ -219,7 +251,10 @@ function makeObservation(
     container_id: containerId,
     container_number: containerNumber,
     type: 'OTHER',
-    event_time: '2025-11-01T00:00:00.000Z',
+    event_time: resolveTemporalValue(
+      overrides.event_time,
+      temporalValueFromCanonical('2025-11-01T00:00:00.000Z'),
+    ),
     event_time_type: 'ACTUAL',
     location_code: 'SGSIN',
     location_display: 'SINGAPORE, SG',
@@ -239,12 +274,19 @@ function makeTransshipmentObservations(
   containerNumber: string,
   dischargeFingerprint: string,
   loadFingerprint: string,
+  times?: {
+    readonly dischargeTime: string
+    readonly loadTime: string
+  },
 ): readonly Observation[] {
+  const dischargeTime = times?.dischargeTime ?? '2025-12-01T00:00:00.000Z'
+  const loadTime = times?.loadTime ?? '2025-12-03T00:00:00.000Z'
+
   return [
     makeObservation(containerId, containerNumber, {
       type: 'LOAD',
       fingerprint: 'fp-origin-load',
-      event_time: '2025-10-15T00:00:00.000Z',
+      event_time: temporalValueFromCanonical('2025-10-15T00:00:00.000Z'),
       location_code: 'CNSHA',
       location_display: 'SHANGHAI, CN',
       vessel_name: 'Vessel A',
@@ -252,7 +294,7 @@ function makeTransshipmentObservations(
     makeObservation(containerId, containerNumber, {
       type: 'DISCHARGE',
       fingerprint: dischargeFingerprint,
-      event_time: '2025-12-01T00:00:00.000Z',
+      event_time: temporalValueFromCanonical(dischargeTime),
       location_code: 'SGSIN',
       location_display: 'SINGAPORE, SG',
       vessel_name: 'Vessel A',
@@ -260,7 +302,7 @@ function makeTransshipmentObservations(
     makeObservation(containerId, containerNumber, {
       type: 'LOAD',
       fingerprint: loadFingerprint,
-      event_time: '2025-12-03T00:00:00.000Z',
+      event_time: temporalValueFromCanonical(loadTime),
       location_code: 'SGSIN',
       location_display: 'SINGAPORE, SG',
       vessel_name: 'Vessel B',
@@ -268,7 +310,7 @@ function makeTransshipmentObservations(
     makeObservation(containerId, containerNumber, {
       type: 'ARRIVAL',
       fingerprint: 'fp-recent-arrival',
-      event_time: '2099-01-01T00:00:00.000Z',
+      event_time: temporalValueFromCanonical('2099-01-01T00:00:00.000Z'),
       location_code: 'BRSSZ',
       location_display: 'SANTOS, BR',
       vessel_name: 'Vessel B',
@@ -276,12 +318,30 @@ function makeTransshipmentObservations(
   ]
 }
 
+function computeTransshipmentAlertFingerprint(params: {
+  readonly dischargeTime: string
+  readonly loadTime: string
+}): string {
+  return computeAlertFingerprint('TRANSSHIPMENT', [
+    'port:SGSIN',
+    'from:VESSEL A',
+    'to:VESSEL B',
+    `discharge:${params.dischargeTime}`,
+    `load:${params.loadTime}`,
+  ])
+}
+
 function makeTransshipmentAlert(params: {
   readonly containerId: string
   readonly dischargeFingerprint: string
   readonly loadFingerprint: string
   readonly ackedAt: string | null
+  readonly dischargeTime?: string
+  readonly loadTime?: string
 }): TrackingAlert {
+  const dischargeTime = params.dischargeTime ?? '2025-12-01T00:00:00.000Z'
+  const loadTime = params.loadTime ?? '2025-12-03T00:00:00.000Z'
+
   return {
     id: randomUUID(),
     container_id: params.containerId,
@@ -294,13 +354,13 @@ function makeTransshipmentAlert(params: {
       fromVessel: 'Vessel A',
       toVessel: 'Vessel B',
     },
-    detected_at: '2025-12-03T00:00:00.000Z',
+    detected_at: loadTime,
     triggered_at: '2025-12-03T01:00:00.000Z',
     source_observation_fingerprints: [params.dischargeFingerprint, params.loadFingerprint],
-    alert_fingerprint: computeAlertFingerprint('TRANSSHIPMENT', [
-      params.dischargeFingerprint,
-      params.loadFingerprint,
-    ]),
+    alert_fingerprint: computeTransshipmentAlertFingerprint({
+      dischargeTime,
+      loadTime,
+    }),
     retroactive: false,
     provider: null,
     acked_at: params.ackedAt,
@@ -363,6 +423,10 @@ describe('processSnapshot alert idempotency with ACK', () => {
     const oldLoadFingerprint = 'fp-load-old'
     const newDischargeFingerprint = 'fp-discharge-new'
     const newLoadFingerprint = 'fp-load-new'
+    const oldDischargeTime = '2025-12-01T00:00:00.000Z'
+    const oldLoadTime = '2025-12-03T00:00:00.000Z'
+    const newDischargeTime = '2026-01-15T00:00:00.000Z'
+    const newLoadTime = '2026-01-18T00:00:00.000Z'
 
     const snapshotRepository = new InMemorySnapshotRepository()
     const observationRepository = new InMemoryObservationRepository(
@@ -371,6 +435,10 @@ describe('processSnapshot alert idempotency with ACK', () => {
         containerNumber,
         newDischargeFingerprint,
         newLoadFingerprint,
+        {
+          dischargeTime: newDischargeTime,
+          loadTime: newLoadTime,
+        },
       ),
     )
     const trackingAlertRepository = new InMemoryTrackingAlertRepository([
@@ -379,6 +447,8 @@ describe('processSnapshot alert idempotency with ACK', () => {
         dischargeFingerprint: oldDischargeFingerprint,
         loadFingerprint: oldLoadFingerprint,
         ackedAt: '2026-03-08T15:00:00.000Z',
+        dischargeTime: oldDischargeTime,
+        loadTime: oldLoadTime,
       }),
     ])
 
@@ -392,7 +462,10 @@ describe('processSnapshot alert idempotency with ACK', () => {
 
     expect(result.newAlerts).toHaveLength(1)
     expect(result.newAlerts[0]?.alert_fingerprint).toBe(
-      computeAlertFingerprint('TRANSSHIPMENT', [newDischargeFingerprint, newLoadFingerprint]),
+      computeTransshipmentAlertFingerprint({
+        dischargeTime: newDischargeTime,
+        loadTime: newLoadTime,
+      }),
     )
     expect(await trackingAlertRepository.findByContainerId(containerId)).toHaveLength(2)
   })

@@ -2,15 +2,21 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createTrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
+import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type {
   TrackingAlert,
   TrackingAlertAckSource,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
 import { createTrackingControllers } from '~/modules/tracking/interface/http/tracking.controllers'
+import { temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 function createControllers(options?: {
   readonly activeAlerts?: readonly TrackingAlert[]
   readonly containerNumberByContainerId?: ReadonlyMap<string, string>
+  readonly observationsByContainerId?: ReadonlyMap<string, readonly Observation[]>
+  readonly snapshots?: readonly Snapshot[]
 }) {
   const acknowledge = vi.fn(
     async (
@@ -27,6 +33,13 @@ function createControllers(options?: {
   const findActiveByContainerId = vi.fn(async (containerId: string) => {
     const alerts = options?.activeAlerts ?? []
     return alerts.filter((alert) => alert.container_id === containerId)
+  })
+  const findAllObservationsByContainerId = vi.fn(async (containerId: string) => {
+    return options?.observationsByContainerId?.get(containerId) ?? []
+  })
+  const findObservationById = vi.fn(async (containerId: string, observationId: string) => {
+    const observations = options?.observationsByContainerId?.get(containerId) ?? []
+    return observations.find((observation) => observation.id === observationId) ?? null
   })
   const findContainerNumbersByIds = vi.fn(async (containerIds: readonly string[]) => {
     const map = new Map<string, string>()
@@ -48,12 +61,18 @@ function createControllers(options?: {
         throw new Error('not used')
       }),
       findLatestByContainerId: vi.fn(async () => null),
-      findAllByContainerId: vi.fn(async () => []),
+      findAllByContainerId: vi.fn(async () => options?.snapshots ?? []),
       findByIds: vi.fn(async () => []),
     },
     observationRepository: {
       insertMany: vi.fn(async () => []),
-      findAllByContainerId: vi.fn(async () => []),
+      findAllByContainerId: findAllObservationsByContainerId,
+      findAllByContainerIds: vi.fn(async (containerIds: readonly string[]) =>
+        containerIds.flatMap(
+          (containerId) => options?.observationsByContainerId?.get(containerId) ?? [],
+        ),
+      ),
+      findById: findObservationById,
       findFingerprintsByContainerId: vi.fn(async () => new Set<string>()),
       listSearchObservations: vi.fn(async () => []),
     },
@@ -61,7 +80,12 @@ function createControllers(options?: {
       insertMany: vi.fn(async () => []),
       listActiveAlertReadModel: vi.fn(async () => []),
       findActiveByContainerId,
+      findActiveByContainerIds: vi.fn(async (containerIds: readonly string[]) => {
+        const requestedIds = new Set(containerIds)
+        return (options?.activeAlerts ?? []).filter((alert) => requestedIds.has(alert.container_id))
+      }),
       findByContainerId: vi.fn(async () => []),
+      findAlertDerivationStateByContainerId: vi.fn(async () => []),
       findContainerNumbersByIds,
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge,
@@ -82,7 +106,42 @@ function createControllers(options?: {
     unacknowledge,
     autoResolveMany,
     findActiveByContainerId,
+    findAllObservationsByContainerId,
+    findObservationById,
     findContainerNumbersByIds,
+  }
+}
+
+type TrackingObservationTestOverrides = Omit<Partial<Observation>, 'event_time'> & {
+  readonly id: string
+  readonly fingerprint: string
+  readonly event_time: string
+}
+
+function makeTrackingObservation(
+  containerId: string,
+  overrides: TrackingObservationTestOverrides,
+): Observation {
+  const { event_time, ...rest } = overrides
+
+  return {
+    container_id: containerId,
+    container_number: 'FCIU2000205',
+    type: 'ARRIVAL',
+    event_time: temporalValueFromCanonical(event_time),
+    event_time_type: 'EXPECTED',
+    location_code: 'BRSSZ',
+    location_display: 'SANTOS, BR',
+    vessel_name: 'MSC BIANCA SILVIA',
+    voyage: 'UX614R',
+    is_empty: null,
+    confidence: 'medium',
+    provider: 'msc',
+    created_from_snapshot_id: 'snapshot-1',
+    carrier_label: 'Estimated Time of Arrival',
+    created_at: '2026-04-01T00:00:00.000Z',
+    retroactive: false,
+    ...rest,
   }
 }
 
@@ -114,7 +173,12 @@ describe('tracking controllers', () => {
       },
     ]
 
-    const { controllers, findActiveByContainerId, findContainerNumbersByIds } = createControllers({
+    const {
+      controllers,
+      findActiveByContainerId,
+      findAllObservationsByContainerId,
+      findContainerNumbersByIds,
+    } = createControllers({
       activeAlerts,
       containerNumberByContainerId: new Map([[containerId, 'MRSU8798130']]),
     })
@@ -149,6 +213,7 @@ describe('tracking controllers', () => {
     ])
     expect(findActiveByContainerId).toHaveBeenCalledWith(containerId)
     expect(findContainerNumbersByIds).toHaveBeenCalledWith([containerId])
+    expect(findAllObservationsByContainerId).not.toHaveBeenCalled()
   })
 
   it('acknowledge action sends null metadata when fields are omitted', async () => {
@@ -228,5 +293,558 @@ describe('tracking controllers', () => {
     expect(acknowledge).not.toHaveBeenCalled()
     expect(unacknowledge).toHaveBeenCalledTimes(1)
     expect(unacknowledge).toHaveBeenCalledWith('alert-3')
+  })
+
+  it('prediction-history drilldown returns aggregated versions for a primary item', async () => {
+    const containerId = 'container-series'
+    const observations: readonly Observation[] = [
+      {
+        id: 'obs-expected-1',
+        fingerprint: 'fp-expected-1',
+        container_id: containerId,
+        container_number: 'MSCU1234567',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-03-10T10:00:00.000Z'),
+        event_time_type: 'EXPECTED',
+        location_code: 'NLRTM',
+        location_display: 'Rotterdam',
+        vessel_name: null,
+        voyage: null,
+        is_empty: null,
+        confidence: 'high',
+        provider: 'maersk',
+        created_from_snapshot_id: 'snapshot-1',
+        carrier_label: 'MAERSK',
+        created_at: '2026-03-01T10:00:00.000Z',
+        retroactive: false,
+      },
+      {
+        id: 'obs-expected-2',
+        fingerprint: 'fp-expected-2',
+        container_id: containerId,
+        container_number: 'MSCU1234567',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-03-12T10:00:00.000Z'),
+        event_time_type: 'EXPECTED',
+        location_code: 'NLRTM',
+        location_display: 'Rotterdam',
+        vessel_name: null,
+        voyage: null,
+        is_empty: null,
+        confidence: 'high',
+        provider: 'maersk',
+        created_from_snapshot_id: 'snapshot-2',
+        carrier_label: 'MAERSK',
+        created_at: '2026-03-02T10:00:00.000Z',
+        retroactive: false,
+      },
+    ]
+
+    const { controllers, findAllObservationsByContainerId } = createControllers({
+      observationsByContainerId: new Map([[containerId, observations]]),
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/timeline-items/obs-expected-2/history?now=2026-03-05T00:00:00.000Z`,
+    )
+    const response = await controllers.detail.getTimelineItemSeriesHistory({
+      params: { containerId, timelineItemId: 'obs-expected-2' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      header: {
+        tone: 'neutral',
+        summary_kind: 'HISTORY_UPDATED',
+        current_version_id: 'obs-expected-2',
+        previous_version_id: null,
+        original_version_id: 'obs-expected-1',
+        reason_kind: 'ESTIMATE_CHANGED',
+      },
+      versions: [
+        {
+          id: 'obs-expected-2',
+          is_current: true,
+          type: 'ARRIVAL',
+          event_time: { kind: 'instant', value: '2026-03-12T10:00:00.000Z' },
+          event_time_type: 'EXPECTED',
+          vessel_name: null,
+          voyage: null,
+          version_state: 'ESTIMATE_CHANGED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: 'ESTIMATE_CHANGED',
+          observed_at_count: 1,
+          observed_at_list: ['2026-03-02T10:00:00.000Z'],
+          first_observed_at: '2026-03-02T10:00:00.000Z',
+          last_observed_at: '2026-03-02T10:00:00.000Z',
+        },
+        {
+          id: 'obs-expected-1',
+          is_current: false,
+          type: 'ARRIVAL',
+          event_time: { kind: 'instant', value: '2026-03-10T10:00:00.000Z' },
+          event_time_type: 'EXPECTED',
+          vessel_name: null,
+          voyage: null,
+          version_state: 'INITIAL',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: null,
+          observed_at_count: 1,
+          observed_at_list: ['2026-03-01T10:00:00.000Z'],
+          first_observed_at: '2026-03-01T10:00:00.000Z',
+          last_observed_at: '2026-03-01T10:00:00.000Z',
+        },
+      ],
+    })
+    expect(findAllObservationsByContainerId).toHaveBeenCalledWith(containerId)
+  })
+
+  it('prediction-history drilldown marks latest observed ETA revision current when date moves earlier', async () => {
+    const containerId = 'container-eta-revision-regression'
+    const observations: readonly Observation[] = [
+      makeTrackingObservation(containerId, {
+        id: 'eta-08',
+        fingerprint: 'fp-eta-08',
+        event_time: '2026-05-08',
+        created_at: '2026-04-04T16:08:30.906851Z',
+      }),
+      makeTrackingObservation(containerId, {
+        id: 'eta-12',
+        fingerprint: 'fp-eta-12',
+        event_time: '2026-05-12',
+        created_at: '2026-04-08T20:05:19.293794Z',
+      }),
+      makeTrackingObservation(containerId, {
+        id: 'eta-03',
+        fingerprint: 'fp-eta-03',
+        event_time: '2026-05-03',
+        created_at: '2026-04-10T10:36:02.943421Z',
+      }),
+      makeTrackingObservation(containerId, {
+        id: 'eta-05',
+        fingerprint: 'fp-eta-05',
+        event_time: '2026-05-05',
+        created_at: '2026-04-10T17:37:48.410353Z',
+      }),
+    ]
+
+    const { controllers } = createControllers({
+      observationsByContainerId: new Map([[containerId, observations]]),
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/timeline-items/eta-05/history?now=2026-04-11T00:00:00.000Z`,
+    )
+    const response = await controllers.detail.getTimelineItemSeriesHistory({
+      params: { containerId, timelineItemId: 'eta-05' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.header.current_version_id).toBe('eta-05')
+    expect(
+      body.versions.map((version: { readonly id: string; readonly is_current: boolean }) => ({
+        id: version.id,
+        isCurrent: version.is_current,
+      })),
+    ).toEqual([
+      { id: 'eta-05', isCurrent: true },
+      { id: 'eta-03', isCurrent: false },
+      { id: 'eta-12', isCurrent: false },
+      { id: 'eta-08', isCurrent: false },
+    ])
+  })
+
+  it('prediction-history drilldown includes cross-series substitutions on the promoted item', async () => {
+    const containerId = 'container-voyage-substitution'
+    const observations: readonly Observation[] = [
+      {
+        id: 'final-generic-old',
+        fingerprint: 'fp-final-generic-old',
+        container_id: containerId,
+        container_number: 'MSDU1976635',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-05-20'),
+        event_time_type: 'EXPECTED',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS, BR',
+        vessel_name: null,
+        voyage: null,
+        is_empty: null,
+        confidence: 'medium',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-1',
+        carrier_label: 'Estimated Time of Arrival',
+        created_at: '2026-04-01T00:00:00.000Z',
+        retroactive: false,
+      },
+      {
+        id: 'singapore-intended',
+        fingerprint: 'fp-singapore-intended',
+        container_id: containerId,
+        container_number: 'MSDU1976635',
+        type: 'TRANSSHIPMENT_INTENDED',
+        event_time: temporalValueFromCanonical('2026-04-23'),
+        event_time_type: 'EXPECTED',
+        location_code: 'SGSIN',
+        location_display: 'SINGAPORE, SG',
+        vessel_name: null,
+        voyage: null,
+        is_empty: null,
+        confidence: 'medium',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-2',
+        carrier_label: 'Full Intended Transshipment',
+        created_at: '2026-04-05T00:00:00.000Z',
+        retroactive: false,
+      },
+      {
+        id: 'final-specific-new',
+        fingerprint: 'fp-final-specific-new',
+        container_id: containerId,
+        container_number: 'MSDU1976635',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-05-15'),
+        event_time_type: 'EXPECTED',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS, BR',
+        vessel_name: 'SAO PAULO EXPRESS',
+        voyage: '2613W',
+        is_empty: null,
+        confidence: 'medium',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-2',
+        carrier_label: 'Estimated Time of Arrival',
+        created_at: '2026-04-05T00:00:00.000Z',
+        retroactive: false,
+      },
+    ]
+
+    const { controllers } = createControllers({
+      observationsByContainerId: new Map([[containerId, observations]]),
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/timeline-items/final-specific-new/history?now=2026-04-06T00:00:00.000Z`,
+    )
+    const response = await controllers.detail.getTimelineItemSeriesHistory({
+      params: { containerId, timelineItemId: 'final-specific-new' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      header: {
+        tone: 'neutral',
+        summary_kind: 'HISTORY_UPDATED',
+        current_version_id: 'final-specific-new',
+        previous_version_id: null,
+        original_version_id: 'final-generic-old',
+        reason_kind: 'PREVIOUS_VERSION_SUBSTITUTED',
+      },
+      versions: [
+        {
+          id: 'final-specific-new',
+          is_current: true,
+          type: 'ARRIVAL',
+          event_time: { kind: 'date', value: '2026-05-15', timezone: null },
+          event_time_type: 'EXPECTED',
+          vessel_name: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+          version_state: 'ESTIMATE_CHANGED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: 'PREVIOUS_VERSION_SUBSTITUTED',
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-05T00:00:00.000Z'],
+          first_observed_at: '2026-04-05T00:00:00.000Z',
+          last_observed_at: '2026-04-05T00:00:00.000Z',
+        },
+        {
+          id: 'final-generic-old',
+          is_current: false,
+          type: 'ARRIVAL',
+          event_time: { kind: 'date', value: '2026-05-20', timezone: null },
+          event_time_type: 'EXPECTED',
+          vessel_name: null,
+          voyage: null,
+          version_state: 'SUBSTITUTED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: null,
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-01T00:00:00.000Z'],
+          first_observed_at: '2026-04-01T00:00:00.000Z',
+          last_observed_at: '2026-04-01T00:00:00.000Z',
+        },
+      ],
+    })
+  })
+
+  it('prediction-history drilldown exposes voyage conflict metadata for merged discharge ACTUAL siblings', async () => {
+    const containerId = 'container-discharge-voyage-conflict'
+    const observations: readonly Observation[] = [
+      {
+        id: 'discharge-old',
+        fingerprint: 'fp-discharge-old',
+        container_id: containerId,
+        container_number: 'GLDU2928252',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-03-28'),
+        event_time_type: 'ACTUAL',
+        location_code: 'LKCMB',
+        location_display: 'COLOMBO, LK',
+        vessel_name: 'MSC ARICA',
+        voyage: 'IV610A',
+        is_empty: null,
+        confidence: 'high',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-1',
+        carrier_label: 'Full Transshipment Discharged',
+        created_at: '2026-04-02T19:12:43.853916Z',
+        retroactive: false,
+      },
+      {
+        id: 'discharge-new',
+        fingerprint: 'fp-discharge-new',
+        container_id: containerId,
+        container_number: 'GLDU2928252',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-03-28'),
+        event_time_type: 'ACTUAL',
+        location_code: 'LKCMB',
+        location_display: 'COLOMBO, LK',
+        vessel_name: 'MSC ARICA',
+        voyage: 'OB610R',
+        is_empty: null,
+        confidence: 'high',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-2',
+        carrier_label: 'Full Transshipment Discharged',
+        created_at: '2026-04-04T16:53:10.273469Z',
+        retroactive: false,
+      },
+    ]
+
+    const { controllers } = createControllers({
+      observationsByContainerId: new Map([[containerId, observations]]),
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/timeline-items/discharge-new/history?now=2026-04-05T00:00:00.000Z`,
+    )
+    const response = await controllers.detail.getTimelineItemSeriesHistory({
+      params: { containerId, timelineItemId: 'discharge-new' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      header: {
+        tone: 'danger',
+        summary_kind: 'CONFLICT_DETECTED',
+        current_version_id: 'discharge-new',
+        previous_version_id: 'discharge-old',
+        original_version_id: null,
+        reason_kind: 'VOYAGE_CHANGED_AFTER_CONFIRMATION',
+      },
+      versions: [
+        {
+          id: 'discharge-new',
+          is_current: true,
+          type: 'DISCHARGE',
+          event_time: { kind: 'date', value: '2026-03-28', timezone: null },
+          event_time_type: 'ACTUAL',
+          vessel_name: 'MSC ARICA',
+          voyage: 'OB610R',
+          version_state: 'CONFIRMED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: 'VOYAGE_CHANGED_AFTER_CONFIRMATION',
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-04T16:53:10.273469Z'],
+          first_observed_at: '2026-04-04T16:53:10.273469Z',
+          last_observed_at: '2026-04-04T16:53:10.273469Z',
+        },
+        {
+          id: 'discharge-old',
+          is_current: false,
+          type: 'DISCHARGE',
+          event_time: { kind: 'date', value: '2026-03-28', timezone: null },
+          event_time_type: 'ACTUAL',
+          vessel_name: 'MSC ARICA',
+          voyage: 'IV610A',
+          version_state: 'CONFIRMED_BEFORE',
+          explanatory_text_kind: 'REPORTED_AS_ACTUAL_AND_CORRECTED_LATER',
+          transition_kind_from_previous_version: null,
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-02T19:12:43.853916Z'],
+          first_observed_at: '2026-04-02T19:12:43.853916Z',
+          last_observed_at: '2026-04-02T19:12:43.853916Z',
+        },
+      ],
+    })
+  })
+
+  it('observation-inspector drilldown returns a single observation payload', async () => {
+    const containerId = 'container-observation'
+    const observation: Observation = {
+      id: 'obs-1',
+      fingerprint: 'fp-1',
+      container_id: containerId,
+      container_number: 'MSCU7654321',
+      type: 'DELIVERY',
+      event_time: temporalValueFromCanonical('2026-03-15T14:00:00.000[America/Sao_Paulo]'),
+      event_time_type: 'ACTUAL',
+      raw_event_time: '15-MAR-2026 02:00 PM',
+      event_time_source: 'carrier_local_port_time',
+      location_code: 'BRSSZ',
+      location_display: 'Santos',
+      vessel_name: null,
+      voyage: null,
+      is_empty: false,
+      confidence: 'high',
+      provider: 'maersk',
+      created_from_snapshot_id: 'snapshot-3',
+      carrier_label: 'MAERSK',
+      created_at: '2026-03-15T14:01:00.000Z',
+      retroactive: false,
+    }
+
+    const { controllers, findObservationById } = createControllers({
+      observationsByContainerId: new Map([[containerId, [observation]]]),
+    })
+
+    const response = await controllers.detail.getObservationInspector({
+      params: { containerId, observationId: observation.id },
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      id: 'obs-1',
+      type: 'DELIVERY',
+      location_display: 'Santos',
+      carrier_label: 'MAERSK',
+      raw_event_time: '15-MAR-2026 02:00 PM',
+      event_time_source: 'carrier_local_port_time',
+    })
+    expect(findObservationById).toHaveBeenCalledWith(containerId, observation.id)
+  })
+
+  it('time-travel endpoint returns snapshot checkpoints', async () => {
+    const containerId = 'container-replay'
+    const { controllers } = createControllers({
+      snapshots: [
+        {
+          id: 'snapshot-1',
+          container_id: containerId,
+          provider: 'maersk',
+          fetched_at: '2026-02-03T15:00:00.000Z',
+          payload: maerskPayload,
+        },
+      ],
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/time-travel`,
+    )
+    const response = await controllers.timeTravel.getTimeTravel({
+      params: { containerId },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.container_id).toBe(containerId)
+    expect(body.sync_count).toBe(1)
+    expect(body.selected_snapshot_id).toBe('snapshot-1')
+    expect(body.syncs[0]?.snapshot_id).toBe('snapshot-1')
+    expect(body.syncs[0]?.tracking_validation).toEqual({
+      has_issues: false,
+      highest_severity: null,
+      finding_count: 0,
+      active_issues: [],
+    })
+    expect(body.syncs[0]?.diff_from_previous.kind).toBe('initial')
+  })
+
+  it('time-travel endpoint rejects now values without timezone', async () => {
+    const containerId = 'container-replay-invalid-now'
+    const { controllers } = createControllers()
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/time-travel?now=2026-02-03T15:00:00.000`,
+    )
+    const response = await controllers.timeTravel.getTimeTravel({
+      params: { containerId },
+      request,
+    })
+
+    expect(response.status).toBe(400)
+  })
+
+  it('time-travel debug endpoint returns selected snapshot debug payload', async () => {
+    const containerId = 'container-replay-debug'
+    const { controllers } = createControllers({
+      snapshots: [
+        {
+          id: 'snapshot-1',
+          container_id: containerId,
+          provider: 'maersk',
+          fetched_at: '2026-02-03T15:00:00.000Z',
+          payload: maerskPayload,
+        },
+      ],
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/time-travel/snapshot-1/debug`,
+    )
+    const response = await controllers.timeTravel.getReplayDebug({
+      params: { containerId, snapshotId: 'snapshot-1' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.container_id).toBe(containerId)
+    expect(body.snapshot_id).toBe('snapshot-1')
+    expect(body.total_steps).toBeGreaterThan(0)
+    expect(body.checkpoint.snapshot_id).toBe('snapshot-1')
+    expect(
+      body.steps.every(
+        (step: { readonly snapshot_id: string | null }) => step.snapshot_id === 'snapshot-1',
+      ),
+    ).toBe(true)
+  })
+
+  it('time-travel debug endpoint returns 404 for unknown snapshot id', async () => {
+    const containerId = 'container-replay-missing-debug'
+    const { controllers } = createControllers({
+      snapshots: [
+        {
+          id: 'snapshot-1',
+          container_id: containerId,
+          provider: 'maersk',
+          fetched_at: '2026-02-03T15:00:00.000Z',
+          payload: maerskPayload,
+        },
+      ],
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/time-travel/unknown/debug`,
+    )
+    const response = await controllers.timeTravel.getReplayDebug({
+      params: { containerId, snapshotId: 'unknown' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(404)
+    expect(body.error).toBe('Replay snapshot not found')
   })
 })

@@ -2,20 +2,17 @@ import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js'
 import { z } from 'zod'
-import type { fetchDashboardProcessSummaries } from '~/modules/process/ui/api/process.api'
+import { fetchDashboardProcessSummaries } from '~/modules/process/ui/api/process.api'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataView'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
-import { processStatusToRank } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
-import {
-  toSortedActiveAlerts,
-  toSortedArchivedAlerts,
-} from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
+import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
+import { toSortedActiveAlerts } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
 import { nextDashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
-import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
+import { systemClock } from '~/shared/time/clock'
 
 const SCENARIO_LAB_ENABLED = import.meta.env.DEV
 
@@ -57,6 +54,7 @@ const ScenarioLoadResponseSchema = z.object({
     appliedStep: z.number().int().min(1),
     processId: z.string(),
     processReference: z.string(),
+    reusedExistingProcess: z.boolean(),
     stage: z.number().int().min(0).max(10),
     containerIds: z.array(z.string()),
     containerNumbers: z.array(z.string()),
@@ -68,6 +66,25 @@ type ScenarioCatalogResponse = z.infer<typeof ScenarioCatalogResponseSchema>
 type ScenarioSummary = z.infer<typeof ScenarioSummarySchema>
 type ScenarioLoadResult = z.infer<typeof ScenarioLoadResponseSchema>['result']
 
+const DISABLED_TIME_TRAVEL_CONTROLLER: TrackingTimeTravelControllerResult = {
+  isActive: () => false,
+  isLoading: () => false,
+  errorMessage: () => null,
+  value: () => null,
+  selectedSync: () => null,
+  isDebugOpen: () => false,
+  isDebugLoading: () => false,
+  debugErrorMessage: () => null,
+  debugValue: () => null,
+  debugPayload: () => null,
+  open: () => undefined,
+  close: () => undefined,
+  toggleDebug: () => undefined,
+  selectSnapshot: () => undefined,
+  selectPrevious: () => undefined,
+  selectNext: () => undefined,
+}
+
 async function fetchScenarioCatalog(): Promise<ScenarioCatalogResponse> {
   return typedFetch('/api/dev/scenarios/catalog', undefined, ScenarioCatalogResponseSchema)
 }
@@ -75,10 +92,12 @@ async function fetchScenarioCatalog(): Promise<ScenarioCatalogResponse> {
 async function loadScenario(params: {
   scenarioId: string
   step: number
+  reuseProcessId?: string
 }): Promise<ScenarioLoadResult> {
   const payload = {
     scenario_id: params.scenarioId,
     step: params.step,
+    ...(params.reuseProcessId === undefined ? {} : { reuse_process_id: params.reuseProcessId }),
   }
 
   const response = await typedFetch(
@@ -251,6 +270,11 @@ function ScenarioPlayback(props: {
                 <div class="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs-ui text-green-900">
                   <div>
                     Loaded process <code>{result().processReference}</code>
+                    <Show when={result().reusedExistingProcess}>
+                      <span class="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-micro font-medium text-emerald-800">
+                        reused
+                      </span>
+                    </Show>
                   </div>
                   <div class="mt-1 flex flex-wrap gap-3">
                     <A class="underline" href={`/shipments/${result().processId}`}>
@@ -287,7 +311,12 @@ function DashboardPreview(props: {
   const rows = createMemo(() => {
     const row = props.row
     if (!row) return []
-    return [row]
+    return [
+      {
+        ...row,
+        syncIssue: null,
+      },
+    ]
   })
 
   return (
@@ -303,8 +332,10 @@ function DashboardPreview(props: {
         <div class="mt-3">
           <DashboardProcessTable
             processes={rows()}
-            loading={props.rowLoading}
-            hasError={Boolean(props.rowError)}
+            highlightedProcessId={null}
+            initialLoading={props.rowLoading && rows().length === 0}
+            refreshing={props.rowLoading && rows().length > 0}
+            hasError={Boolean(props.rowError) && rows().length === 0}
             hasActiveFilters={false}
             onCreateProcess={() => {}}
             onClearFilters={() => {}}
@@ -335,12 +366,6 @@ function ShipmentPreview(props: {
     return toSortedActiveAlerts(shipment.alerts)
   })
 
-  const archivedAlerts = createMemo(() => {
-    const shipment = props.shipment
-    if (!shipment) return []
-    return toSortedArchivedAlerts(shipment.alerts)
-  })
-
   const selectedContainer = createMemo(() => {
     const shipment = props.shipment
     if (!shipment) return null
@@ -368,20 +393,21 @@ function ShipmentPreview(props: {
             <ShipmentDataView
               data={shipment()}
               activeAlerts={activeAlerts()}
-              archivedAlerts={archivedAlerts()}
+              alertIncidents={shipment().alertIncidents}
               busyAlertIds={new Set<string>()}
-              collapsingAlertIds={new Set<string>()}
+              recentlyChangedAlertIds={new Set<string>()}
               onAcknowledgeAlert={() => {}}
               onUnacknowledgeAlert={() => {}}
               onOpenEdit={() => {}}
               isRefreshing={false}
               refreshRetry={null}
               refreshHint={null}
-              syncNow={new Date()}
+              syncNow={systemClock.now()}
               onTriggerRefresh={() => {}}
               selectedContainerId={selectedContainer()?.id ?? ''}
               onSelectContainer={props.onSelectContainer}
               selectedContainer={selectedContainer()}
+              trackingTimeTravel={DISABLED_TIME_TRAVEL_CONTROLLER}
             />
           </div>
         )}
@@ -462,56 +488,8 @@ export default function TrackingScenariosPage(): JSX.Element {
       return { processId: result.processId, refresh: refreshToken() }
     },
     async (source) => {
-      // Fetch a single process detail and map to a dashboard summary to avoid
-      // loading the entire dashboard list for the preview.
-      const shipment = await fetchProcess(source.processId, DEFAULT_LOCALE, {
-        mode: 'network-only',
-        dedupeInFlight: false,
-      })
-
-      if (!shipment) return null
-
-      const containerNumbers = shipment.containers.map((c) => c.number.trim().toUpperCase())
-      const hasTransshipment = shipment.containers.some((c) => c.transshipment?.hasTransshipment)
-
-      // Derive a minimal ProcessSummaryVM from the full ShipmentDetailVM so the
-      // Dashboard preview can render without fetching the full list.
-      const highestSeverity = shipment.alerts.reduce<'danger' | 'warning' | 'info' | null>(
-        (acc, a) => {
-          if (acc === 'danger') return 'danger'
-          if (a.severity === 'danger') return 'danger'
-          if (a.severity === 'warning') return acc === 'info' || acc === null ? 'warning' : acc
-          return acc === null ? 'info' : acc
-        },
-        null,
-      )
-
-      return {
-        id: shipment.id,
-        reference: shipment.reference ?? null,
-        origin: { display_name: shipment.origin },
-        destination: { display_name: shipment.destination },
-        importerId: null,
-        importerName: shipment.importer_name ?? null,
-        exporterName: shipment.exporter_name ?? null,
-        containerCount: shipment.containers.length,
-        containerNumbers,
-        status: shipment.status,
-        statusCode: shipment.statusCode,
-        statusMicrobadge: shipment.statusMicrobadge ?? null,
-        statusRank: processStatusToRank(shipment.statusCode),
-        eta: shipment.eta ?? null,
-        etaMsOrNull: shipment.eta ? Date.parse(shipment.eta) : null,
-        carrier: shipment.carrier ?? null,
-        alertsCount: shipment.alerts.length,
-        highestAlertSeverity: highestSeverity,
-        dominantAlertCreatedAt: null,
-        redestinationNumber: shipment.redestination_number ?? null,
-        hasTransshipment,
-        lastEventAt: null,
-        syncStatus: 'idle' as const,
-        lastSyncAt: null,
-      } satisfies ProcessSummaryVM
+      const processes = await fetchDashboardProcessSummaries()
+      return processes.find((process) => process.id === source.processId) ?? null
     },
   )
 
@@ -557,9 +535,17 @@ export default function TrackingScenariosPage(): JSX.Element {
     setLoadError(null)
 
     try {
+      const previousResult = loadResult()
+      const reuseProcessId =
+        previousResult !== null &&
+        previousResult.scenarioId === scenarioId &&
+        selectedStep() >= previousResult.appliedStep
+          ? previousResult.processId
+          : undefined
       const result = await loadScenario({
         scenarioId,
         step: selectedStep(),
+        ...(reuseProcessId === undefined ? {} : { reuseProcessId }),
       })
 
       setLoadResult(result)
@@ -576,6 +562,7 @@ export default function TrackingScenariosPage(): JSX.Element {
     setSelectedScenarioId(scenarioId)
     setSelectedStep(1)
     setLoadError(null)
+    setLoadResult(null)
   }
 
   return (

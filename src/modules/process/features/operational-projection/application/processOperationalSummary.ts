@@ -8,6 +8,10 @@ import type {
   ProcessAggregatedStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { TrackingLifecycleBucket } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
+import type { TrackingValidationProcessSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
+import type { TemporalValueDto } from '~/shared/time/dto'
 
 /**
  * Process-level operational summary — Application-layer read model.
@@ -30,20 +34,53 @@ export type ProcessOperationalSummary = {
   readonly status_counts: OperationalStatusCounts
   readonly status_microbadge: ProcessStatusMicrobadge | null
   readonly has_status_dispersion: boolean
-  readonly eta: string | null
+  readonly eta: TemporalValueDto | null
   readonly lifecycle_bucket: TrackingLifecycleBucket
   readonly final_delivery_complete: boolean
   readonly full_logistics_complete: boolean
+  readonly eta_display:
+    | {
+        readonly kind: 'date'
+        readonly value: TemporalValueDto
+      }
+    | {
+        readonly kind: 'arrived'
+        readonly value: TemporalValueDto
+      }
+    | {
+        readonly kind: 'unavailable'
+      }
+    | {
+        readonly kind: 'delivered'
+      }
   readonly eta_coverage: {
     readonly total: number
     readonly eligible_total: number
     readonly with_eta: number
   }
 
-  readonly alerts_count: number
-  readonly highest_alert_severity: OperationalAlertSeverity | null
-  readonly dominant_alert_created_at: string | null
+  readonly operational_incidents: {
+    readonly summary: {
+      readonly active_incidents_count: number
+      readonly affected_containers_count: number
+      readonly recognized_incidents_count: number
+    }
+    readonly dominant: Pick<
+      OperationalIncidentReadModel,
+      | 'incidentKey'
+      | 'category'
+      | 'type'
+      | 'severity'
+      | 'fact'
+      | 'action'
+      | 'detectedAt'
+      | 'triggeredAt'
+      | 'scope'
+    > | null
+  }
+  readonly attention_severity: OperationalAlertSeverity | null
+  readonly tracking_validation: TrackingValidationProcessSummary
+  readonly tracking_validation_top_issue: TrackingValidationDisplayIssue | null
 
-  readonly has_transshipment: boolean
-  readonly last_event_at: string | null
+  readonly last_event_at: TemporalValueDto | null
 }

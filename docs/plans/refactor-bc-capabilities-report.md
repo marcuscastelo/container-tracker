@@ -108,10 +108,10 @@ Resultado:
 - `lint`: **ok**
 - `type-check`: **ok**
 - `test`: **ok** (25 arquivos / 255 testes)
-- `i18n:check`: **ok** (sem chaves ausentes; apenas avisos de chaves nao usadas e 2 falsos positivos de string de data detectada como key)
+- `i18n:check`: **ok** (sem chaves ausentes; avisos de chaves nao usadas e 2 falsos positivos de string de data detectada como key)
 
 ## Observacoes finais
 
-1. O endpoint antigo `POST /api/processes/check` foi removido sem alias temporario, conforme plano.
-2. O fluxo externo de refresh foi preservado com controllers finos e orquestracao/infra isoladas.
-3. As regras de boundary foram habilitadas apos estado verde para evitar bloquear o refactor em andamento.
+1. endpoint antigo `POST /api/processes/check` foi removido sem alias temporario, conforme plano.
+2. fluxo externo de refresh foi preservado com controllers finos e orquestracao/infra isoladas.
+3. regras de boundary foram habilitadas apos estado verde para evitar bloquear refactor em andamento.

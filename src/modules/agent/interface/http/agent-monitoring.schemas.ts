@@ -1,8 +1,8 @@
 import { z } from 'zod/v4'
 
-export const AgentStatusSchema = z.enum(['CONNECTED', 'DEGRADED', 'DISCONNECTED', 'UNKNOWN'])
+const AgentStatusSchema = z.enum(['CONNECTED', 'DEGRADED', 'DISCONNECTED', 'UNKNOWN'])
 
-export const AgentRealtimeStateSchema = z.enum([
+const AgentRealtimeStateSchema = z.enum([
   'SUBSCRIBED',
   'CHANNEL_ERROR',
   'CONNECTING',
@@ -10,7 +10,7 @@ export const AgentRealtimeStateSchema = z.enum([
   'UNKNOWN',
 ])
 
-export const AgentProcessingStateSchema = z.enum([
+const AgentProcessingStateSchema = z.enum([
   'idle',
   'leasing',
   'processing',
@@ -18,11 +18,11 @@ export const AgentProcessingStateSchema = z.enum([
   'unknown',
 ])
 
-export const AgentLeaseHealthSchema = z.enum(['healthy', 'stale', 'conflict', 'unknown'])
+const AgentLeaseHealthSchema = z.enum(['healthy', 'stale', 'conflict', 'unknown'])
 
-export const AgentBootStatusSchema = z.enum(['starting', 'healthy', 'degraded', 'unknown'])
+const AgentBootStatusSchema = z.enum(['starting', 'healthy', 'degraded', 'unknown'])
 
-export const AgentUpdaterStateSchema = z.enum([
+const AgentUpdaterStateSchema = z.enum([
   'idle',
   'checking',
   'downloading',
@@ -35,9 +35,9 @@ export const AgentUpdaterStateSchema = z.enum([
   'unknown',
 ])
 
-export const AgentEnrollmentMethodSchema = z.enum(['bootstrap-token', 'manual', 'unknown'])
+const AgentEnrollmentMethodSchema = z.enum(['bootstrap-token', 'manual', 'unknown'])
 
-export const AgentActivityTypeSchema = z.enum([
+const AgentActivityTypeSchema = z.enum([
   'ENROLLED',
   'HEARTBEAT',
   'LEASED_TARGET',
@@ -55,11 +55,22 @@ export const AgentActivityTypeSchema = z.enum([
   'UPDATE_APPLY_FAILED',
   'RESTART_FOR_UPDATE',
   'ROLLBACK_EXECUTED',
+  'LOCAL_UPDATE_PAUSED',
+  'LOCAL_UPDATE_RESUMED',
+  'CHANNEL_CHANGED',
+  'CONFIG_UPDATED',
+  'RELEASE_ACTIVATED',
+  'LOCAL_RESET',
+  'REMOTE_RESET',
+  'REMOTE_FORCE_UPDATE',
 ])
 
-export const AgentActivitySeveritySchema = z.enum(['info', 'warning', 'danger', 'success'])
+const AgentActivitySeveritySchema = z.enum(['info', 'warning', 'danger', 'success'])
+const AgentLogChannelSchema = z.enum(['stdout', 'stderr'])
+const AgentLogChannelQuerySchema = z.enum(['stdout', 'stderr', 'both'])
+const AgentControlCommandTypeSchema = z.enum(['RESET_AGENT', 'RESTART_AGENT'])
 
-export const AgentListSortFieldSchema = z.enum([
+const AgentListSortFieldSchema = z.enum([
   'status',
   'tenant',
   'lastSeen',
@@ -68,7 +79,7 @@ export const AgentListSortFieldSchema = z.enum([
   'activeJobs',
 ])
 
-export const AgentListSortDirectionSchema = z.enum(['asc', 'desc'])
+const AgentListSortDirectionSchema = z.enum(['asc', 'desc'])
 
 export const AgentListQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
@@ -79,11 +90,12 @@ export const AgentListQuerySchema = z.object({
   sort_dir: AgentListSortDirectionSchema.default('asc'),
 })
 
-export const AgentSummaryResponseSchema = z.object({
+const AgentSummaryResponseSchema = z.object({
   agentId: z.string().uuid(),
   tenantId: z.string().uuid(),
   tenantName: z.string().min(1),
   hostname: z.string().min(1),
+  os: z.string().min(1),
   version: z.string().min(1),
   currentVersion: z.string().min(1),
   desiredVersion: z.string().nullable(),
@@ -104,9 +116,11 @@ export const AgentSummaryResponseSchema = z.object({
   queueLagSeconds: z.number().int().min(0).nullable(),
   capabilities: z.array(z.string()),
   realtimeState: AgentRealtimeStateSchema,
+  logsSupported: z.boolean(),
+  lastLogAt: z.string().datetime({ offset: true }).nullable(),
 })
 
-export const AgentFleetSummaryResponseSchema = z.object({
+const AgentFleetSummaryResponseSchema = z.object({
   totalAgents: z.number().int().min(0),
   connectedCount: z.number().int().min(0),
   degradedCount: z.number().int().min(0),
@@ -122,7 +136,7 @@ export const AgentListResponseSchema = z.object({
   summary: AgentFleetSummaryResponseSchema,
 })
 
-export const AgentActivityResponseSchema = z.object({
+const AgentActivityResponseSchema = z.object({
   id: z.string().uuid(),
   occurredAt: z.string().datetime({ offset: true }),
   type: AgentActivityTypeSchema,
@@ -160,6 +174,7 @@ export const AgentHeartbeatBodySchema = z.object({
   lease_health: AgentLeaseHealthSchema.optional(),
   active_jobs: z.number().int().min(0).optional(),
   capabilities: z.array(z.string().trim().min(1)).max(32).optional(),
+  logs_supported: z.boolean().optional(),
   interval_sec: z.number().int().positive().optional(),
   queue_lag_seconds: z.number().int().min(0).nullable().optional(),
   last_error: z.string().nullable().optional(),
@@ -183,17 +198,130 @@ export const AgentHeartbeatResponseSchema = z.object({
   updatedAt: z.string().datetime({ offset: true }),
 })
 
+export const AgentLogsQuerySchema = z.object({
+  channel: AgentLogChannelQuerySchema.default('both'),
+  tail: z.coerce.number().int().min(1).max(2000).default(500),
+})
+
+const AgentLogLineResponseSchema = z.object({
+  id: z.string().uuid(),
+  agentId: z.string().uuid(),
+  channel: AgentLogChannelSchema,
+  timestamp: z.string().datetime({ offset: true }),
+  message: z.string(),
+  sequence: z.number().int().min(0),
+  truncated: z.boolean(),
+})
+
+export const AgentLogsResponseSchema = z.object({
+  agentId: z.string().uuid(),
+  os: z.string().min(1),
+  logsSupported: z.boolean(),
+  lastLogAt: z.string().datetime({ offset: true }).nullable(),
+  lines: z.array(AgentLogLineResponseSchema),
+})
+
+export const AgentLogIngestBodySchema = z.object({
+  lines: z
+    .array(
+      z.object({
+        sequence: z.number().int().min(0),
+        channel: AgentLogChannelSchema,
+        message: z.string().max(8192),
+        occurred_at: z.string().datetime({ offset: true }).optional(),
+        truncated: z.boolean().optional(),
+      }),
+    )
+    .max(1000),
+})
+
+export const AgentLogIngestResponseSchema = z.object({
+  ok: z.literal(true),
+  accepted: z.number().int().min(0),
+  persisted: z.number().int().min(0),
+  updatedAt: z.string().datetime({ offset: true }),
+})
+
 export const AgentRequestUpdateBodySchema = z.object({
   desired_version: z.string().trim().min(1),
   update_channel: z.string().trim().min(1).default('stable'),
+  reason: z.string().trim().min(1),
 })
 
-export const AgentRequestRestartBodySchema = z.object({}).optional().default({})
+export const AgentRequestRestartBodySchema = z.object({
+  reason: z.string().trim().min(1),
+})
+
+export const AgentRequestResetBodySchema = z.object({
+  reason: z.string().trim().min(1),
+})
+
+export const AgentControlStateResponseSchema = z.object({
+  policy: z.object({
+    desiredVersion: z.string().nullable(),
+    updateChannel: z.string().nullable(),
+    updatesPaused: z.boolean(),
+    blockedVersions: z.array(z.string().min(1)),
+    restartRequestedAt: z.string().datetime({ offset: true }).nullable(),
+  }),
+  commands: z.array(
+    z.object({
+      id: z.string().uuid(),
+      type: AgentControlCommandTypeSchema,
+      payload: z.record(z.string(), z.unknown()),
+      requestedAt: z.string().datetime({ offset: true }),
+    }),
+  ),
+})
+
+export const AgentRemotePolicyPatchBodySchema = z
+  .object({
+    updates_paused: z.boolean().optional(),
+    update_channel: z.string().trim().min(1).optional(),
+    blocked_versions: z.array(z.string().trim().min(1)).optional(),
+    desired_version: z.string().trim().min(1).nullable().optional(),
+    reason: z.string().trim().min(1),
+  })
+  .refine(
+    (value) =>
+      value.updates_paused !== undefined ||
+      value.update_channel !== undefined ||
+      value.blocked_versions !== undefined ||
+      value.desired_version !== undefined,
+    {
+      message:
+        'At least one of updates_paused, update_channel, blocked_versions or desired_version must be provided',
+    },
+  )
+
+export const AgentRemotePolicyOperationResponseSchema = z.object({
+  ok: z.literal(true),
+  agentId: z.string().uuid(),
+  requestedAt: z.string().datetime({ offset: true }),
+})
 
 export const AgentRequestOperationResponseSchema = z.object({
   ok: z.literal(true),
   agentId: z.string().uuid(),
   requestedAt: z.string().datetime({ offset: true }),
+})
+
+const AgentUpdateManifestAssetSchema = z.object({
+  url: z.string().url(),
+  checksum: z.string().regex(/^[a-f0-9]{64}$/iu),
+})
+
+export const AgentRuntimeUpdateManifestResponseSchema = z.object({
+  version: z.string().min(1),
+  channel: z.string().min(1),
+  published_at: z.string().datetime({ offset: true }).nullable().optional(),
+  platforms: z.record(z.string().min(1), AgentUpdateManifestAssetSchema),
+  update_available: z.boolean(),
+  desired_version: z.string().nullable(),
+  current_version: z.string().min(1),
+  update_ready_version: z.string().nullable(),
+  restart_required: z.boolean(),
+  restart_requested_at: z.string().datetime({ offset: true }).nullable(),
 })
 
 export const AgentUpdateManifestResponseSchema = z.object({

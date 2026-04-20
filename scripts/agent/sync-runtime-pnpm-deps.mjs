@@ -10,6 +10,8 @@ const AGENT_RUNTIME_DIRECT_DEPENDENCIES = [
   'puppeteer',
   'puppeteer-extra',
   'puppeteer-extra-plugin-stealth',
+  'puppeteer-extra-plugin-user-data-dir',
+  'puppeteer-extra-plugin-user-preferences',
   'zod',
 ]
 
@@ -20,6 +22,22 @@ async function pathExists(targetPath) {
   } catch {
     return false
   }
+}
+
+async function removePathSafely(targetPath) {
+  let stats
+  try {
+    stats = await fs.lstat(targetPath)
+  } catch {
+    return
+  }
+
+  if (stats.isSymbolicLink()) {
+    await fs.unlink(targetPath)
+    return
+  }
+
+  await fs.rm(targetPath, { recursive: true, force: true })
 }
 
 function toPackageNameSegments(packageName) {
@@ -44,6 +62,36 @@ function isInsideDirectory(rootDir, targetPath) {
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
 }
 
+function extractRelativePathFromAnyNodeModules(targetPath) {
+  const normalizedTargetPath = path.normalize(targetPath)
+  const marker = `${path.sep}node_modules${path.sep}`
+  const markerIndex = normalizedTargetPath.lastIndexOf(marker)
+  if (markerIndex < 0) {
+    return null
+  }
+
+  const relativePath = normalizedTargetPath.slice(markerIndex + marker.length)
+  return relativePath.length > 0 ? relativePath : null
+}
+
+function remapAbsoluteRuntimeSymlinkTarget({
+  sourceNodeModulesDir,
+  targetNodeModulesDir,
+  resolvedTargetPath,
+}) {
+  if (isInsideDirectory(sourceNodeModulesDir, resolvedTargetPath)) {
+    const relativeFromSourceRoot = path.relative(sourceNodeModulesDir, resolvedTargetPath)
+    return path.join(targetNodeModulesDir, relativeFromSourceRoot)
+  }
+
+  const relativeFromNodeModules = extractRelativePathFromAnyNodeModules(resolvedTargetPath)
+  if (!relativeFromNodeModules) {
+    return null
+  }
+
+  return path.join(targetNodeModulesDir, relativeFromNodeModules)
+}
+
 function extractPnpmDepId(pnpmStoreDir, packageDir) {
   if (!isInsideDirectory(pnpmStoreDir, packageDir)) {
     return null
@@ -60,6 +108,96 @@ function extractPnpmDepId(pnpmStoreDir, packageDir) {
   }
 
   return segments[0]
+}
+
+function parsePackagePathFromNodeModulesRelativePath(relativePath) {
+  const segments = relativePath.split(path.sep).filter((segment) => segment.length > 0)
+  const firstSegment = segments[0]
+
+  if (!firstSegment || firstSegment === '.pnpm') {
+    return null
+  }
+
+  if (firstSegment.startsWith('@')) {
+    const secondSegment = segments[1]
+    if (!secondSegment) {
+      return null
+    }
+
+    return {
+      packageName: `${firstSegment}/${secondSegment}`,
+      packageSubpath: segments.slice(2).join(path.sep),
+    }
+  }
+
+  return {
+    packageName: firstSegment,
+    packageSubpath: segments.slice(1).join(path.sep),
+  }
+}
+
+async function resolvePackagePathFromTargetPnpmStore({
+  targetNodeModulesDir,
+  relativePathFromNodeModules,
+}) {
+  const packagePath = parsePackagePathFromNodeModulesRelativePath(relativePathFromNodeModules)
+  if (!packagePath) {
+    return null
+  }
+
+  const targetPnpmStoreDir = path.join(targetNodeModulesDir, '.pnpm')
+  const packageDirFromStore = await resolvePackageDirFromPnpmStore(
+    targetPnpmStoreDir,
+    packagePath.packageName,
+  )
+  if (!packageDirFromStore) {
+    return null
+  }
+
+  if (packagePath.packageSubpath.length === 0) {
+    return packageDirFromStore
+  }
+
+  return path.join(packageDirFromStore, packagePath.packageSubpath)
+}
+
+function isPlainObject(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function collectDependencyNames(source, dependencyNames) {
+  if (!isPlainObject(source)) {
+    return
+  }
+
+  for (const [packageName, versionRange] of Object.entries(source)) {
+    if (packageName.length === 0 || typeof versionRange !== 'string') {
+      continue
+    }
+
+    dependencyNames.add(packageName)
+  }
+}
+
+async function readPackageDependencyNames(packageDir) {
+  const packageJsonPath = path.join(packageDir, 'package.json')
+  const packageJsonRaw = await fs.readFile(packageJsonPath, 'utf8')
+
+  let parsedPackageJson
+  try {
+    parsedPackageJson = JSON.parse(packageJsonRaw)
+  } catch {
+    return []
+  }
+
+  if (!isPlainObject(parsedPackageJson)) {
+    return []
+  }
+
+  const dependencyNames = new Set()
+  collectDependencyNames(parsedPackageJson.dependencies, dependencyNames)
+  collectDependencyNames(parsedPackageJson.optionalDependencies, dependencyNames)
+  return [...dependencyNames].sort((left, right) => left.localeCompare(right))
 }
 
 async function listPackageNamesInNodeModules(nodeModulesDir) {
@@ -125,26 +263,42 @@ async function resolvePackageDirFromPnpmStore(pnpmStoreDir, packageName) {
 
 async function resolveRuntimeDependencyPackage({ nodeModulesDir, pnpmStoreDir, packageName }) {
   const topLevelEntryPath = resolvePackageEntryPath(nodeModulesDir, packageName)
-  let packageDir = null
+  let topLevelPackageDir = null
 
   if (await pathExists(topLevelEntryPath)) {
-    packageDir = await fs.realpath(topLevelEntryPath)
-  } else {
-    packageDir = await resolvePackageDirFromPnpmStore(pnpmStoreDir, packageName)
+    topLevelPackageDir = await fs.realpath(topLevelEntryPath)
+    const topLevelDepId = extractPnpmDepId(pnpmStoreDir, topLevelPackageDir)
+    if (topLevelDepId) {
+      return {
+        packageName,
+        packageDir: topLevelPackageDir,
+        depId: topLevelDepId,
+      }
+    }
   }
 
-  if (!packageDir) {
+  const packageDirFromStore = await resolvePackageDirFromPnpmStore(pnpmStoreDir, packageName)
+  if (packageDirFromStore) {
+    const storeDepId = extractPnpmDepId(pnpmStoreDir, packageDirFromStore)
+    if (!storeDepId) {
+      throw new Error(`Could not derive pnpm dep id for ${packageName}: ${packageDirFromStore}`)
+    }
+
+    return {
+      packageName,
+      packageDir: packageDirFromStore,
+      depId: storeDepId,
+    }
+  }
+
+  if (!topLevelPackageDir) {
     throw new Error(`Missing runtime dependency package: ${packageName}`)
-  }
-
-  const depId = extractPnpmDepId(pnpmStoreDir, packageDir)
-  if (!depId) {
-    throw new Error(`Could not derive pnpm dep id for ${packageName}: ${packageDir}`)
   }
 
   return {
     packageName,
-    depId,
+    packageDir: topLevelPackageDir,
+    depId: null,
   }
 }
 
@@ -161,14 +315,45 @@ async function collectRuntimeDependencyIds({ nodeModulesDir, pnpmStoreDir, direc
   }
 
   const visitedDepIds = new Set()
+  const queuedDepIds = new Set()
   const dependencyIds = new Set()
-  const queue = directResolutions.map((resolution) => resolution.depId)
+  const queue = []
+
+  function enqueueDependencyId(depId) {
+    if (visitedDepIds.has(depId) || queuedDepIds.has(depId)) {
+      return
+    }
+
+    queue.push(depId)
+    queuedDepIds.add(depId)
+  }
+
+  for (const resolution of directResolutions) {
+    if (resolution.depId !== null) {
+      enqueueDependencyId(resolution.depId)
+      continue
+    }
+
+    const dependencyNames = await readPackageDependencyNames(resolution.packageDir)
+    for (const dependencyName of dependencyNames) {
+      const nestedResolution = await resolveRuntimeDependencyPackage({
+        nodeModulesDir,
+        pnpmStoreDir,
+        packageName: dependencyName,
+      })
+      if (nestedResolution.depId !== null) {
+        enqueueDependencyId(nestedResolution.depId)
+      }
+    }
+  }
 
   while (queue.length > 0) {
     const currentDepId = queue.pop()
     if (!currentDepId || visitedDepIds.has(currentDepId)) {
       continue
     }
+
+    queuedDepIds.delete(currentDepId)
 
     const currentStoreNodeModulesDir = path.join(pnpmStoreDir, currentDepId, 'node_modules')
     if (!(await pathExists(currentStoreNodeModulesDir))) {
@@ -194,17 +379,107 @@ async function collectRuntimeDependencyIds({ nodeModulesDir, pnpmStoreDir, direc
       }
 
       const nestedDepId = extractPnpmDepId(pnpmStoreDir, resolvedNestedPackageDir)
-      if (!nestedDepId || visitedDepIds.has(nestedDepId)) {
+      if (!nestedDepId) {
         continue
       }
 
-      queue.push(nestedDepId)
+      enqueueDependencyId(nestedDepId)
     }
   }
 
   return {
     directResolutions,
     dependencyIds,
+  }
+}
+
+async function normalizeAbsoluteRuntimeSymlinks({ sourceNodeModulesDir, targetNodeModulesDir }) {
+  const pendingDirs = [targetNodeModulesDir]
+  let normalizedCount = 0
+
+  while (pendingDirs.length > 0) {
+    const currentDir = pendingDirs.pop()
+    if (!currentDir) {
+      continue
+    }
+
+    const entries = await fs.readdir(currentDir, { withFileTypes: true })
+    for (const entry of entries) {
+      const entryPath = path.join(currentDir, entry.name)
+
+      if (entry.isDirectory()) {
+        pendingDirs.push(entryPath)
+        continue
+      }
+
+      if (!entry.isSymbolicLink()) {
+        continue
+      }
+
+      let rawTargetPath
+      try {
+        rawTargetPath = await fs.readlink(entryPath)
+      } catch {
+        continue
+      }
+
+      if (!path.isAbsolute(rawTargetPath)) {
+        continue
+      }
+
+      const resolvedTargetPath = path.resolve(path.dirname(entryPath), rawTargetPath)
+      let resolvedRealTargetPath = resolvedTargetPath
+      try {
+        resolvedRealTargetPath = await fs.realpath(resolvedTargetPath)
+      } catch {
+        resolvedRealTargetPath = resolvedTargetPath
+      }
+      let remappedTargetPath = remapAbsoluteRuntimeSymlinkTarget({
+        sourceNodeModulesDir,
+        targetNodeModulesDir,
+        resolvedTargetPath: resolvedRealTargetPath,
+      })
+      if (!remappedTargetPath) {
+        throw new Error(
+          `Could not remap absolute runtime symlink target: ${entryPath} -> ${rawTargetPath}`,
+        )
+      }
+
+      if (!(await pathExists(remappedTargetPath))) {
+        const relativePathFromNodeModules =
+          extractRelativePathFromAnyNodeModules(resolvedRealTargetPath)
+        if (relativePathFromNodeModules) {
+          const targetStorePackagePath = await resolvePackagePathFromTargetPnpmStore({
+            targetNodeModulesDir,
+            relativePathFromNodeModules,
+          })
+          if (targetStorePackagePath) {
+            remappedTargetPath = targetStorePackagePath
+          }
+        }
+      }
+
+      if (!(await pathExists(remappedTargetPath))) {
+        throw new Error(`Absolute runtime symlink target missing after sync: ${remappedTargetPath}`)
+      }
+
+      const targetStats = await fs.lstat(remappedTargetPath)
+      const relativeLinkTarget = path.relative(path.dirname(entryPath), remappedTargetPath)
+      let symlinkType
+      if (process.platform === 'win32') {
+        symlinkType = targetStats.isDirectory() ? 'junction' : 'file'
+      } else {
+        symlinkType = undefined
+      }
+
+      await removePathSafely(entryPath)
+      await fs.symlink(relativeLinkTarget, entryPath, symlinkType)
+      normalizedCount += 1
+    }
+  }
+
+  if (normalizedCount > 0) {
+    console.log(`[agent:linux-package] normalized ${normalizedCount} absolute runtime symlink(s)`)
   }
 }
 
@@ -238,6 +513,17 @@ async function syncRuntimeDependencies({ sourceNodeModulesDir, targetNodeModules
   const symlinkType = process.platform === 'win32' ? 'junction' : 'dir'
   for (const resolution of runtimeSnapshot.directResolutions) {
     const topLevelEntryPath = resolvePackageEntryPath(targetNodeModulesDir, resolution.packageName)
+    await fs.mkdir(path.dirname(topLevelEntryPath), { recursive: true })
+    await removePathSafely(topLevelEntryPath)
+
+    if (resolution.depId === null) {
+      await fs.cp(resolution.packageDir, topLevelEntryPath, {
+        recursive: true,
+        verbatimSymlinks: true,
+      })
+      continue
+    }
+
     const storePackagePath = path.join(
       targetPnpmStoreDir,
       resolution.depId,
@@ -249,14 +535,24 @@ async function syncRuntimeDependencies({ sourceNodeModulesDir, targetNodeModules
       throw new Error(`Runtime dependency missing after sync: ${resolution.packageName}`)
     }
 
-    await fs.mkdir(path.dirname(topLevelEntryPath), { recursive: true })
-    await fs.rm(topLevelEntryPath, { recursive: true, force: true })
     const relativeLinkTarget = path.relative(path.dirname(topLevelEntryPath), storePackagePath)
     await fs.symlink(relativeLinkTarget, topLevelEntryPath, symlinkType)
   }
 
+  await normalizeAbsoluteRuntimeSymlinks({
+    sourceNodeModulesDir,
+    targetNodeModulesDir,
+  })
+
+  const unpackedRuntimeDependencyCount = runtimeSnapshot.directResolutions.filter(
+    (resolution) => resolution.depId === null,
+  ).length
+  const unpackedSuffix =
+    unpackedRuntimeDependencyCount > 0
+      ? ` and copied ${unpackedRuntimeDependencyCount} unpacked direct runtime package(s)`
+      : ''
   console.log(
-    `[agent:linux-package] synced ${runtimeSnapshot.dependencyIds.size} pnpm snapshots and ${runtimeSnapshot.directResolutions.length} direct runtime links`,
+    `[agent:linux-package] synced ${runtimeSnapshot.dependencyIds.size} pnpm snapshots and ${runtimeSnapshot.directResolutions.length} direct runtime entries${unpackedSuffix}`,
   )
 }
 

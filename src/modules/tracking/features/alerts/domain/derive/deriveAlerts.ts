@@ -1,17 +1,19 @@
+import { normalizeVesselName } from '~/modules/tracking/domain/identity/normalizeVesselName'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
-import {
-  computeAlertFingerprint,
-  computeNoMovementAlertFingerprint,
-} from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
+import { TRACKING_CHRONOLOGY_COMPARE_OPTIONS } from '~/modules/tracking/domain/temporal/tracking-temporal'
+import { computeAlertFingerprint } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
 import type {
   NewTrackingAlert,
-  TrackingAlert,
+  TrackingAlertDerivationState,
   TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
-import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import { systemClock } from '~/shared/time/clock'
+import { toComparableInstant } from '~/shared/time/compare-temporal'
+import type { Instant } from '~/shared/time/instant'
 
 /**
  * Internal representation of a confirmed transshipment event.
@@ -25,18 +27,34 @@ type TransshipmentPair = {
   readonly vesselTo: string
 }
 
-export type MonitoringAutoResolution = {
+type TransshipmentOccurrence = {
+  readonly dischargeObs: Observation
+  readonly loadObs: Observation
+  readonly port: string
+  readonly vesselFrom: string
+  readonly vesselTo: string
+  readonly sourceObservationFingerprints: readonly string[]
+  readonly alertFingerprint: string
+}
+
+export type DerivedTransshipmentOccurrence = {
+  readonly port: string
+  readonly vesselFrom: string
+  readonly vesselTo: string
+  readonly detectedAt: string
+  readonly sourceObservationFingerprints: readonly string[]
+  readonly alertFingerprint: string
+}
+
+type MonitoringAutoResolution = {
   readonly alertId: string
   readonly reason: TrackingAlertResolvedReason
 }
 
-export type DerivedAlertTransitions = {
+type DerivedAlertTransitions = {
   readonly newAlerts: readonly NewTrackingAlert[]
   readonly monitoringAutoResolutions: readonly MonitoringAutoResolution[]
 }
-
-const TERMINAL_STATUSES: readonly ContainerStatus[] = ['DELIVERED', 'EMPTY_RETURNED']
-const NO_MOVEMENT_BREAKPOINTS_DAYS = [5, 10, 20, 30] as const
 
 function resolveObservationLocationDisplay(observation: Observation | null | undefined): string {
   const locationDisplay = observation?.location_display?.trim() ?? ''
@@ -48,55 +66,120 @@ function resolveObservationLocationDisplay(observation: Observation | null | und
   return 'unknown location'
 }
 
-function toLatestActualEventWithTime(timeline: Timeline): Observation | undefined {
-  return [...timeline.observations]
-    .filter(
-      (observation) => observation.event_time !== null && observation.event_time_type === 'ACTUAL',
-    )
-    .sort((a, b) => (b.event_time ?? '').localeCompare(a.event_time ?? ''))[0]
+function toDetectedAtIso(value: Observation['event_time'], fallback: Instant): string {
+  if (value === null) return fallback.toIsoString()
+  return toComparableInstant(value, TRACKING_CHRONOLOGY_COMPARE_OPTIONS).toIsoString()
 }
 
-function toHighestCrossedNoMovementBreakpoint(daysWithoutMovement: number): number | null {
-  const eligible = NO_MOVEMENT_BREAKPOINTS_DAYS.filter(
-    (thresholdDays) => daysWithoutMovement >= thresholdDays,
-  )
-  if (eligible.length === 0) return null
-  return eligible[eligible.length - 1] ?? null
-}
-
-function normalizeNoMovementThresholdDays(rawThresholdDays: number): number {
-  const normalizedCandidate = Math.floor(rawThresholdDays)
-  const breakpoint = toHighestCrossedNoMovementBreakpoint(normalizedCandidate)
-  if (breakpoint !== null) return breakpoint
-  return normalizedCandidate
-}
-
-function hasNoMovementBreakpointBeenEmittedForCurrentCycle(
-  existingAlerts: readonly TrackingAlert[],
-  thresholdDays: number,
-  cycleAnchorDate: string,
-  cycleAnchorObservationFingerprint: string,
-): boolean {
-  for (const alert of existingAlerts) {
-    if (alert.category !== 'monitoring') continue
-    if (alert.type !== 'NO_MOVEMENT') continue
-    if (alert.message_key !== 'alerts.noMovementDetected') continue
-    const emittedThresholdDays = normalizeNoMovementThresholdDays(
-      alert.message_params.threshold_days,
-    )
-    if (emittedThresholdDays !== thresholdDays) continue
-    if (alert.message_params.lastEventDate === cycleAnchorDate) return true
-
-    const hasSameCycleAnchorObservation = alert.source_observation_fingerprints.includes(
-      cycleAnchorObservationFingerprint,
-    )
-    if (hasSameCycleAnchorObservation) return true
+function toObservationTimeKey(observation: Observation): string {
+  if (observation.event_time === null) {
+    return `null:${observation.created_at}`
   }
-  return false
+
+  return toComparableInstant(
+    observation.event_time,
+    TRACKING_CHRONOLOGY_COMPARE_OPTIONS,
+  ).toIsoString()
 }
 
-function isMonitoringActiveAlert(alert: TrackingAlert): boolean {
-  return alert.category === 'monitoring' && resolveAlertLifecycleState(alert) === 'ACTIVE'
+function normalizeAlertVesselPart(value: string): string {
+  const normalized = normalizeVesselName(value)
+  if (normalized !== null) return normalized
+  return value.trim().toUpperCase()
+}
+
+function computeTransshipmentOccurrenceFingerprint(pair: TransshipmentPair): string {
+  return computeAlertFingerprint('TRANSSHIPMENT', [
+    `port:${pair.port}`,
+    `from:${normalizeAlertVesselPart(pair.vesselFrom)}`,
+    `to:${normalizeAlertVesselPart(pair.vesselTo)}`,
+    `discharge:${toObservationTimeKey(pair.dischargeObs)}`,
+    `load:${toObservationTimeKey(pair.loadObs)}`,
+  ])
+}
+
+function computeLegacyTransshipmentFingerprint(command: {
+  readonly dischargeObs: Observation
+  readonly loadObs: Observation
+}): string {
+  return computeAlertFingerprint('TRANSSHIPMENT', [
+    command.dischargeObs.fingerprint,
+    command.loadObs.fingerprint,
+  ])
+}
+
+function computeTransshipmentSemanticDedupKey(command: {
+  readonly port: string
+  readonly vesselFrom: string
+  readonly vesselTo: string
+  readonly detectedAt: string
+}): string {
+  return [
+    `port:${command.port.toUpperCase()}`,
+    `from:${normalizeAlertVesselPart(command.vesselFrom)}`,
+    `to:${normalizeAlertVesselPart(command.vesselTo)}`,
+    `detected:${command.detectedAt}`,
+  ].join('|')
+}
+
+function toExistingTransshipmentSemanticDedupKey(
+  alert: TrackingAlertDerivationState,
+): string | null {
+  if (alert.type !== 'TRANSSHIPMENT') return null
+
+  const messageParams = alert.message_params
+  if (!('port' in messageParams)) return null
+  if (!('fromVessel' in messageParams)) return null
+  if (!('toVessel' in messageParams)) return null
+
+  return computeTransshipmentSemanticDedupKey({
+    port: messageParams.port,
+    vesselFrom: messageParams.fromVessel,
+    vesselTo: messageParams.toVessel,
+    detectedAt: alert.detected_at,
+  })
+}
+
+function mergeObservationFingerprints(
+  current: readonly string[],
+  incoming: readonly string[],
+): readonly string[] {
+  return [...new Set([...current, ...incoming])].sort()
+}
+
+function collapseTransshipmentOccurrences(
+  pairs: readonly TransshipmentPair[],
+): readonly TransshipmentOccurrence[] {
+  const occurrences: TransshipmentOccurrence[] = []
+
+  for (const pair of pairs) {
+    const alertFingerprint = computeTransshipmentOccurrenceFingerprint(pair)
+    const evidence = [pair.dischargeObs.fingerprint, pair.loadObs.fingerprint]
+    const previousOccurrence = occurrences[occurrences.length - 1]
+
+    if (previousOccurrence?.alertFingerprint === alertFingerprint) {
+      occurrences[occurrences.length - 1] = {
+        ...previousOccurrence,
+        sourceObservationFingerprints: mergeObservationFingerprints(
+          previousOccurrence.sourceObservationFingerprints,
+          evidence,
+        ),
+      }
+      continue
+    }
+
+    occurrences.push({
+      dischargeObs: pair.dischargeObs,
+      loadObs: pair.loadObs,
+      port: pair.port,
+      vesselFrom: pair.vesselFrom,
+      vesselTo: pair.vesselTo,
+      sourceObservationFingerprints: evidence,
+      alertFingerprint,
+    })
+  }
+
+  return occurrences
 }
 
 /**
@@ -107,22 +190,25 @@ function isMonitoringActiveAlert(alert: TrackingAlert): boolean {
  * - Only LOAD and DISCHARGE events are relevant
  * - Both vessel names must be present and different
  * - ARRIVAL/DEPARTURE are irrelevant for vessel-change detection
- * - Ordering is deterministic: event_time → type → location_code → fingerprint
+ * - Ordering follows canonical observation chronology (null event_time last)
+ *   with stable timeline order as the final tiebreaker
  *
  * @see docs/TRACKING_INVARIANTS.md
  */
 function findTransshipmentPairs(timeline: Timeline): readonly TransshipmentPair[] {
-  const events = [...timeline.observations]
-    .filter((o) => (o.type === 'LOAD' || o.type === 'DISCHARGE') && o.event_time_type === 'ACTUAL')
+  const events = timeline.observations
+    .map((observation, timelineIndex) => ({ observation, timelineIndex }))
+    .filter(
+      (entry) =>
+        (entry.observation.type === 'LOAD' || entry.observation.type === 'DISCHARGE') &&
+        entry.observation.event_time_type === 'ACTUAL',
+    )
     .sort((a, b) => {
-      const timeCompare = (a.event_time ?? '').localeCompare(b.event_time ?? '')
-      if (timeCompare !== 0) return timeCompare
-      const typeCompare = a.type.localeCompare(b.type)
-      if (typeCompare !== 0) return typeCompare
-      const locCompare = (a.location_code ?? '').localeCompare(b.location_code ?? '')
-      if (locCompare !== 0) return locCompare
-      return a.fingerprint.localeCompare(b.fingerprint)
+      const chronologyCompare = compareObservationsChronologically(a.observation, b.observation)
+      if (chronologyCompare !== 0) return chronologyCompare
+      return a.timelineIndex - b.timelineIndex
     })
+    .map((entry) => entry.observation)
 
   const pairs: TransshipmentPair[] = []
 
@@ -133,13 +219,17 @@ function findTransshipmentPairs(timeline: Timeline): readonly TransshipmentPair[
     if (prev === undefined || curr === undefined) continue
     if (prev.type !== 'DISCHARGE' || curr.type !== 'LOAD') continue
 
-    const vesselFrom = prev.vessel_name?.trim() || null
-    const vesselTo = curr.vessel_name?.trim() || null
+    const vesselFrom = prev.vessel_name?.trim() ?? ''
+    const vesselTo = curr.vessel_name?.trim() ?? ''
+    const normalizedVesselFrom = normalizeVesselName(prev.vessel_name)
+    const normalizedVesselTo = normalizeVesselName(curr.vessel_name)
 
     // Cannot determine transshipment without both vessel names — conservative: skip
-    if (vesselFrom === null || vesselTo === null) continue
+    if (normalizedVesselFrom === null || normalizedVesselTo === null) {
+      continue
+    }
 
-    if (vesselFrom !== vesselTo) {
+    if (normalizedVesselFrom !== normalizedVesselTo) {
       const port = (curr.location_code ?? prev.location_code ?? 'UNKNOWN').toUpperCase()
       pairs.push({ dischargeObs: prev, loadObs: curr, port, vesselFrom, vesselTo })
     }
@@ -165,14 +255,28 @@ function findTransshipmentPairs(timeline: Timeline): readonly TransshipmentPair[
  * @see docs/TRACKING_INVARIANTS.md
  */
 export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
-  const pairs = findTransshipmentPairs(timeline)
-  const ports = [...new Set(pairs.map((p) => p.port))]
+  const occurrences = collapseTransshipmentOccurrences(findTransshipmentPairs(timeline))
+  const ports = [...new Set(occurrences.map((occurrence) => occurrence.port))]
 
   return {
-    hasTransshipment: pairs.length > 0,
-    transshipmentCount: pairs.length,
+    hasTransshipment: occurrences.length > 0,
+    transshipmentCount: occurrences.length,
     ports,
   }
+}
+
+export function deriveTransshipmentOccurrences(
+  timeline: Timeline,
+  now: Instant = systemClock.now(),
+): readonly DerivedTransshipmentOccurrence[] {
+  return collapseTransshipmentOccurrences(findTransshipmentPairs(timeline)).map((occurrence) => ({
+    port: occurrence.port,
+    vesselFrom: occurrence.vesselFrom,
+    vesselTo: occurrence.vesselTo,
+    detectedAt: toDetectedAtIso(occurrence.loadObs.event_time, now),
+    sourceObservationFingerprints: [...occurrence.sourceObservationFingerprints],
+    alertFingerprint: occurrence.alertFingerprint,
+  }))
 }
 
 /**
@@ -186,10 +290,6 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
  *   - Deduplication: by alert_fingerprint (type + evidence)
  *
  * MONITORING alerts:
- *   - NO_MOVEMENT: breakpoint escalation at 5 / 10 / 20 / 30 days since latest ACTUAL event
- *     - Emits only the highest crossed breakpoint
- *     - Acknowledgment does not allow re-emission of the same breakpoint in the same cycle
- *     - Cycle resets when a new ACTUAL event becomes the latest movement anchor
  *   - ETA_MISSING: no ETA-related data available
  *   - Deduplication: deterministic fingerprint for episode-aware monitoring alerts
  *
@@ -204,14 +304,14 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
  */
 export function deriveAlertTransitions(
   timeline: Timeline,
-  status: ContainerStatus,
-  existingAlerts: readonly TrackingAlert[],
+  _status: ContainerStatus,
+  existingAlerts: readonly TrackingAlertDerivationState[],
   isBackfill: boolean = false,
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): DerivedAlertTransitions {
   const alerts: NewTrackingAlert[] = []
   const monitoringAutoResolutions: MonitoringAutoResolution[] = []
-  const nowIso = now.toISOString()
+  const nowIso = now.toIsoString()
 
   // Build deduplication set for FACT alerts.
   // Monitoring alerts with breakpoint semantics are handled with dedicated cycle-aware checks.
@@ -221,46 +321,64 @@ export function deriveAlertTransitions(
       .map((a) => a.alert_fingerprint)
       .filter((fp): fp is string => fp !== null),
   )
+  const existingTransshipmentSemanticDedupKeys = new Set(
+    existingAlerts
+      .map(toExistingTransshipmentSemanticDedupKey)
+      .filter((key): key is string => key !== null),
+  )
 
   // === FACT-BASED ALERTS ===
   // CRITICAL: Fact-based alerts should only trigger on ACTUAL observations
 
   // 1. Transshipment detection — one alert per confirmed DISCHARGE → LOAD vessel-change pair
-  const transshipmentPairs = findTransshipmentPairs(timeline)
-  for (const pair of transshipmentPairs) {
-    const pairFingerprints = [pair.dischargeObs.fingerprint, pair.loadObs.fingerprint]
-    const alertFingerprint = computeAlertFingerprint('TRANSSHIPMENT', pairFingerprints)
+  const transshipmentOccurrences = collapseTransshipmentOccurrences(
+    findTransshipmentPairs(timeline),
+  )
+  for (const occurrence of transshipmentOccurrences) {
+    // detected_at = time the LOAD onto the new vessel was confirmed
+    const detectedAt = toDetectedAtIso(occurrence.loadObs.event_time, now)
+    const legacyFingerprint = computeLegacyTransshipmentFingerprint({
+      dischargeObs: occurrence.dischargeObs,
+      loadObs: occurrence.loadObs,
+    })
+    const semanticDedupKey = computeTransshipmentSemanticDedupKey({
+      port: occurrence.port,
+      vesselFrom: occurrence.vesselFrom,
+      vesselTo: occurrence.vesselTo,
+      detectedAt,
+    })
 
-    // Deduplicate by fingerprint — same DISCHARGE+LOAD pair must not create duplicate alerts
-    if (!existingFactFingerprints.has(alertFingerprint)) {
-      // detected_at = time the LOAD onto the new vessel was confirmed
-      const detectedAt = pair.loadObs.event_time ?? nowIso
+    // Backward compatibility during fingerprint rollout:
+    // - recognize alerts created with the older raw-observation fingerprint scheme
+    // - also dedupe semantically equivalent persisted alerts across re-ingests
+    if (existingFactFingerprints.has(occurrence.alertFingerprint)) continue
+    if (existingFactFingerprints.has(legacyFingerprint)) continue
+    if (existingTransshipmentSemanticDedupKeys.has(semanticDedupKey)) continue
 
-      alerts.push({
-        lifecycle_state: 'ACTIVE',
-        container_id: timeline.container_id,
-        category: 'fact',
-        type: 'TRANSSHIPMENT',
-        severity: 'warning',
-        message_key: 'alerts.transshipmentDetected',
-        message_params: {
-          port: pair.port,
-          fromVessel: pair.vesselFrom,
-          toVessel: pair.vesselTo,
-        },
-        detected_at: detectedAt,
-        triggered_at: nowIso,
-        source_observation_fingerprints: pairFingerprints,
-        alert_fingerprint: alertFingerprint,
-        retroactive: isBackfill,
-        provider: null,
-        acked_at: null,
-        acked_by: null,
-        acked_source: null,
-        resolved_at: null,
-        resolved_reason: null,
-      })
-    }
+    alerts.push({
+      lifecycle_state: 'ACTIVE',
+      container_id: timeline.container_id,
+      category: 'fact',
+      type: 'TRANSSHIPMENT',
+      severity: 'warning',
+      message_key: 'alerts.transshipmentDetected',
+      message_params: {
+        port: occurrence.port,
+        fromVessel: occurrence.vesselFrom,
+        toVessel: occurrence.vesselTo,
+      },
+      detected_at: detectedAt,
+      triggered_at: nowIso,
+      source_observation_fingerprints: [...occurrence.sourceObservationFingerprints],
+      alert_fingerprint: occurrence.alertFingerprint,
+      retroactive: isBackfill,
+      provider: null,
+      acked_at: null,
+      acked_by: null,
+      acked_source: null,
+      resolved_at: null,
+      resolved_reason: null,
+    })
   }
 
   // 2. Customs hold - only ACTUAL customs holds should trigger alerts
@@ -286,7 +404,7 @@ export function deriveAlertTransitions(
         message_params: {
           location: locationText,
         },
-        detected_at: firstHold?.event_time ?? nowIso,
+        detected_at: toDetectedAtIso(firstHold?.event_time ?? null, now),
         triggered_at: nowIso,
         source_observation_fingerprints: fingerprints,
         alert_fingerprint: alertFingerprint,
@@ -301,101 +419,6 @@ export function deriveAlertTransitions(
     }
   }
 
-  // === MONITORING ALERTS (never retroactive) ===
-  if (!isBackfill) {
-    const isTerminal = TERMINAL_STATUSES.includes(status)
-    const activeMonitoringAlerts = existingAlerts.filter(isMonitoringActiveAlert)
-
-    const activeNoMovementAlertIds = activeMonitoringAlerts
-      .filter((alert) => alert.type === 'NO_MOVEMENT')
-      .map((alert) => alert.id)
-
-    let hasNoMovementCondition = false
-    if (!isTerminal) {
-      // 3. No movement breakpoint escalation
-      const lastActualEvent = toLatestActualEventWithTime(timeline)
-
-      if (lastActualEvent?.event_time) {
-        const lastEventDate = new Date(lastActualEvent.event_time)
-        const daysSinceLastEvent = (now.getTime() - lastEventDate.getTime()) / (1000 * 60 * 60 * 24)
-        const daysWithoutMovement = Math.floor(daysSinceLastEvent)
-        const highestCrossedBreakpoint = toHighestCrossedNoMovementBreakpoint(daysWithoutMovement)
-
-        if (highestCrossedBreakpoint !== null) {
-          hasNoMovementCondition = true
-          // Use a stable movement identity as cycle anchor. Prefer the
-          // observation fingerprint (strong identity) and fall back to the
-          // full event_time timestamp when fingerprint is absent. Using
-          // a calendar date alone can cause false suppression when
-          // late-arriving ACTUAL observations change the latest movement
-          // within the same day.
-          const cycleAnchorObservationFingerprint = lastActualEvent.fingerprint
-
-          // Compute the legacy date-based cycle anchor first (used for the
-          // persisted fingerprint) and retain the observation fingerprint for
-          // cycle emission checks. This keeps deterministic fingerprints
-          // compatible with existing expectations while also allowing us to
-          // detect anchor changes via the stronger observation fingerprint.
-          const cycleAnchorDate = lastActualEvent.event_time.slice(0, 10)
-
-          const monitoringFingerprint = computeNoMovementAlertFingerprint(
-            timeline.container_id,
-            highestCrossedBreakpoint,
-            cycleAnchorDate,
-          )
-
-          const alreadyEmittedForCycle = hasNoMovementBreakpointBeenEmittedForCurrentCycle(
-            existingAlerts,
-            highestCrossedBreakpoint,
-            // keep legacy date param for backward compatibility checks inside
-            // the helper; the helper also considers source observation
-            // fingerprints when available
-            cycleAnchorDate,
-            cycleAnchorObservationFingerprint,
-          )
-
-          if (!alreadyEmittedForCycle) {
-            alerts.push({
-              lifecycle_state: 'ACTIVE',
-              container_id: timeline.container_id,
-              category: 'monitoring',
-              type: 'NO_MOVEMENT',
-              severity: 'warning',
-              message_key: 'alerts.noMovementDetected',
-              message_params: {
-                threshold_days: highestCrossedBreakpoint,
-                days_without_movement: daysWithoutMovement,
-                // Keep `days` for compatibility with current UI translation keys.
-                days: daysWithoutMovement,
-                lastEventDate: cycleAnchorDate,
-              },
-              detected_at: nowIso,
-              triggered_at: nowIso,
-              source_observation_fingerprints: [cycleAnchorObservationFingerprint],
-              alert_fingerprint: monitoringFingerprint,
-              retroactive: false,
-              provider: null,
-              acked_at: null,
-              acked_by: null,
-              acked_source: null,
-              resolved_at: null,
-              resolved_reason: null,
-            })
-          }
-        }
-      }
-    }
-
-    if (activeNoMovementAlertIds.length > 0 && (isTerminal || !hasNoMovementCondition)) {
-      const reason: TrackingAlertResolvedReason = isTerminal
-        ? 'terminal_state'
-        : 'condition_cleared'
-      for (const alertId of activeNoMovementAlertIds) {
-        monitoringAutoResolutions.push({ alertId, reason })
-      }
-    }
-  }
-
   return {
     newAlerts: alerts,
     monitoringAutoResolutions,
@@ -405,9 +428,9 @@ export function deriveAlertTransitions(
 export function deriveAlerts(
   timeline: Timeline,
   status: ContainerStatus,
-  existingAlerts: readonly TrackingAlert[],
+  existingAlerts: readonly TrackingAlertDerivationState[],
   isBackfill: boolean = false,
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): readonly NewTrackingAlert[] {
   return deriveAlertTransitions(timeline, status, existingAlerts, isBackfill, now).newAlerts
 }

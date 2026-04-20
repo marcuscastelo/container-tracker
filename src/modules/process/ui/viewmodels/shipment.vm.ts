@@ -1,11 +1,22 @@
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
+import type { AlertIncidentsVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
 import type { ProcessStatusMicrobadgeVM } from '~/modules/process/ui/viewmodels/process-status-microbadge.vm'
+import type {
+  ContainerTrackingValidationVM,
+  ProcessTrackingValidationVM,
+} from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import type { TemporalValueDto } from '~/shared/time/dto'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
-export type EtaChipState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED' | 'UNAVAILABLE'
+export type EtaChipState =
+  | 'ACTUAL'
+  | 'ACTIVE_EXPECTED'
+  | 'EXPIRED_EXPECTED'
+  | 'DELIVERED'
+  | 'UNAVAILABLE'
 export type EtaChipTone = 'positive' | 'informative' | 'warning' | 'neutral'
 
 export type ContainerEtaChipVM = {
@@ -19,6 +30,22 @@ export type ContainerEtaDetailVM = {
   readonly tone: EtaChipTone
   readonly date: string
   readonly type: string
+} | null
+
+export type ContainerCurrentContextVM = {
+  readonly locationCode: string | null
+  readonly locationDisplay: string | null
+  readonly vesselName: string | null
+  readonly voyage: string | null
+  readonly vesselVisible: boolean
+}
+
+export type ContainerNextLocationVM = {
+  readonly date: string
+  readonly type: string
+  readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
+  readonly locationCode: string | null
+  readonly locationDisplay: string | null
 } | null
 
 type ContainerTransshipmentPortVM = {
@@ -42,6 +69,13 @@ export type ContainerDataIssueChipVM = {
   readonly visible: boolean
 }
 
+export type ContainerTrackingContainmentVM = {
+  readonly active: true
+  readonly reasonCode: 'CONTAINER_REUSED_AFTER_COMPLETION'
+  readonly activatedAt: string
+  readonly externalTrackingUrl: string | null
+} | null
+
 export type ContainerSyncState = 'syncing' | 'ok' | 'error' | 'never'
 
 export type ContainerSyncVM = {
@@ -55,8 +89,10 @@ export type ContainerSyncVM = {
 export type ContainerObservationVM = {
   readonly id: string
   readonly type: string
-  readonly eventTime: string | null
+  readonly eventTime: TemporalValueDto | null
   readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
+  readonly rawEventTime: string | null
+  readonly eventTimeSource: string | null
   readonly locationCode: string | null
   readonly locationDisplay: string | null
   readonly vesselName: string | null
@@ -82,10 +118,13 @@ export type ContainerDetailVM = {
   readonly etaApplicable?: boolean
   readonly etaChipVm: ContainerEtaChipVM
   readonly selectedEtaVm: ContainerEtaDetailVM
+  readonly currentContext: ContainerCurrentContextVM
+  readonly nextLocation: ContainerNextLocationVM
   readonly tsChipVm: ContainerTsChipVM
   readonly dataIssueChipVm: ContainerDataIssueChipVM
+  readonly trackingContainment: ContainerTrackingContainmentVM
+  readonly trackingValidation: ContainerTrackingValidationVM
   readonly transshipment: ContainerTransshipmentVM
-  readonly observations: readonly ContainerObservationVM[]
   readonly timeline: readonly TrackingTimelineItem[]
 }
 
@@ -97,8 +136,25 @@ export type ProcessEtaSecondaryVM = {
   readonly incomplete: boolean
 }
 
+export type ProcessEtaDisplayVM =
+  | {
+      readonly kind: 'date'
+      readonly date: string
+    }
+  | {
+      readonly kind: 'arrived'
+      readonly date: string
+    }
+  | {
+      readonly kind: 'unavailable'
+    }
+  | {
+      readonly kind: 'delivered'
+    }
+
 export type ShipmentDetailVM = {
   readonly id: string
+  readonly trackingFreshnessToken: string
   readonly processRef: string
   readonly reference?: string | null
   readonly carrier?: string | null
@@ -107,6 +163,7 @@ export type ShipmentDetailVM = {
   readonly importer_name?: string | null
   readonly exporter_name?: string | null
   readonly reference_importer?: string | null
+  readonly depositary?: string | null
   readonly product?: string | null
   readonly redestination_number?: string | null
   readonly origin: string
@@ -115,7 +172,10 @@ export type ShipmentDetailVM = {
   readonly statusCode: ProcessStatusCode
   readonly statusMicrobadge: ProcessStatusMicrobadgeVM | null
   readonly eta: string | null
+  readonly processEtaDisplayVm: ProcessEtaDisplayVM
   readonly processEtaSecondaryVm: ProcessEtaSecondaryVM
+  readonly trackingValidation: ProcessTrackingValidationVM
   readonly containers: readonly ContainerDetailVM[]
   readonly alerts: readonly AlertDisplayVM[]
+  readonly alertIncidents: AlertIncidentsVM
 }

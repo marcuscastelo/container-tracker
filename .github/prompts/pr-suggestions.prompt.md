@@ -5,13 +5,13 @@ contributors can reuse it when asking the agent to implement PR review suggestio
 
 # PR Implementation Agent Prompt (Português)
 
-Você é um agente de implementação de código rodando no repositório local (Codex CLI-like). Sua tarefa é revisar e implementar sugestões de um PR específico, com qualidade de engenharia alta, mantendo arquitetura/invariantes, deixando build verde e criando commit assinado no final.
+Você é um agente de implementação de código rodando no repositório local (Codex CLI-like). Sua tarefa é revisar e implementar sugestões de um PR específico, com qualidade de engenharia alta, mantendo arquitetura/invariantes, aplicando o gate obrigatório de `pnpm sanity` no fechamento e criando commit assinado no final.
 
 OBJETIVO
 - Ler feedbacks de review/comentários do PR no GitHub usando o script local do repositório.
 - Implementar APENAS sugestões que façam sentido técnico e estejam alinhadas às regras do repositório.
 - Adicionar/ajustar testes quando necessário.
-- Garantir checks verdes.
+- Aplicar o gate obrigatório de fechamento com `pnpm sanity`, conforme `AGENTS.md` seção `11.1`.
 - Commitar no branch atual com assinatura (`git commit -S`).
 - Marcar como resolved apenas os feedbacks aprovados e implementados.
 
@@ -26,15 +26,17 @@ REGRAS GERAIS DE EXECUÇÃO
 3. NÃO quebre boundaries (domain/application/infrastructure/UI).
 4. NÃO altere regras canônicas de domínio sem justificativa explícita.
 5. NÃO reverta mudanças pré-existentes que você não criou.
-6. NÃO finalize sem checks verdes.
-7. Se houver chave de assinatura disponível, use commit assinado.
-8. Sempre registrar no relatório final: o que aplicou, o que descartou e por quê.
-9. NÃO usar allowlist de complexidade de UI para contornar falhas de qualidade. **Nunca** editar `docs/plans/ui-complexity-allowlist.json` para fazer o build passar — em vez disso, corrija o componente, extraia partes para helpers, ou abra uma issue/PR de refatoração com justificativa técnica.
-10. Só marque feedback como `resolved` quando:
+6. NÃO finalize sem executar `pnpm sanity` e comparar baseline inicial vs estado final.
+7. Se baseline inicial estiver quebrado, corrigir falhas triviais e seguras quando local ao escopo é permitido e desejável.
+8. Baseline quebrado NÃO é justificativa para degradar mais o estado do repositório.
+9. Se houver chave de assinatura disponível, use commit assinado.
+10. Sempre registrar no relatório final: o que aplicou, o que descartou e por quê.
+11. NÃO usar allowlist de complexidade de UI para contornar falhas de qualidade. **Nunca** editar `docs/plans/ui-complexity-allowlist.json` para fazer o build passar — em vez disso, corrija o componente, extraia partes para helpers, ou abra uma issue/PR de refatoração com justificativa técnica.
+12. Só marque feedback como `resolved` quando:
    - foi classificado como válido,
    - foi realmente implementado,
    - os testes/checks relevantes passaram.
-11. Feedback rejeitado, fora de escopo, incorreto ou não implementado deve permanecer `unresolved`.
+13. Feedback rejeitado, fora de escopo, incorreto ou não implementado deve permanecer `unresolved`.
 
 PASSO A PASSO DETALHADO
 
@@ -43,8 +45,10 @@ PASSO 0 — Preparação e contexto
   - `pwd`
   - `git rev-parse --abbrev-ref HEAD`
   - `git status --short`
+  - `pnpm sanity`
 - Confirme que está no branch correto de trabalho.
 - Se houver alterações não relacionadas, preserve e continue com cuidado (não resetar nada).
+- Registre o baseline inicial do `pnpm sanity` (green ou não-green e falhas existentes).
 
 PASSO 1 — Ler instruções obrigatórias do repositório
 - Leia estes arquivos antes de editar:
@@ -113,10 +117,14 @@ PASSO 6 — Testes obrigatórios do que mudou
 - Exemplo:
   - `pnpm exec vitest run <arquivo1.test.ts> <arquivo2.test.ts>`
 
-PASSO 7 — Garantir verde
-Nota: não use allowlist para ocultar regressões de complexidade; siga a regra 9 acima.
+PASSO 7 — Gate obrigatório de sanity
+Nota: não use allowlist para ocultar regressões de complexidade; siga a regra 11 acima.
 - Rode no mínimo:
-  - `pnpm check`
+  - `pnpm sanity`
+- Regra de aceitação obrigatória:
+  - se baseline inicial estava green, resultado final deve estar green;
+  - se baseline inicial estava não-green, o estado final deve ser no mínimo equivalente;
+  - não introduzir novos failures, warnings gateados, ou qualquer piora do baseline.
 - Se precisar detalhar falhas localmente, também pode rodar:
   - `pnpm run type-check`
   - `pnpm run test`
@@ -162,7 +170,9 @@ Responda com:
    - listar ids resolvidos
 4. `Validacao`
    - testes rodados e status
-   - `pnpm check` e status
+   - `pnpm sanity` inicial e status
+   - `pnpm sanity` final e status
+   - delta do sanity (corrigido / permaneceu / confirmação explícita de não regressão)
    - outros comandos relevantes e status
 5. `Commit`
    - hash curto
@@ -174,7 +184,7 @@ CRITÉRIOS DE QUALIDADE (CHECKLIST)
 - Boundaries preservados, sem vazamento domain/UI indevido.
 - Sem mudanças cosméticas desnecessárias.
 - Testes cobrindo os pontos críticos introduzidos.
-- Checks verdes.
+- Gate de `pnpm sanity` aplicado conforme baseline (sem regressão).
 - Commit assinado criado.
 - Apenas feedbacks realmente implementados foram marcados como resolved.
 
@@ -185,7 +195,7 @@ COMANDO RÁPIDO DE REFERÊNCIA
 - `rg -n "<palavra-chave>" src test`
 - editar arquivos
 - `pnpm exec vitest run <tests_afetados>`
-- `pnpm check`
+- `pnpm sanity`
 - `git add <arquivos>`
 - `git commit -S -m "<COMMIT_MSG>"`
 

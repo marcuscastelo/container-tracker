@@ -1,359 +1,1103 @@
-import type { ContainerSearchProjection } from '~/modules/container/application/container.readmodels'
-import type { ProcessSearchProjection } from '~/modules/process/application/process.readmodels'
-import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
+import {
+  getSupportedGlobalSearchFieldDefinition,
+  listEnumOptionsForField,
+  listSupportedGlobalSearchFields,
+  normalizeSearchAlias,
+} from '~/capabilities/search/application/global-search.fields'
+import type {
+  GlobalSearchDocument,
+  GlobalSearchMatch,
+  GlobalSearchMatchBucket,
+  GlobalSearchResponse,
+  GlobalSearchResult,
+  GlobalSearchSuggestion,
+  GlobalSearchSuggestionsResponse,
+  ParsedGlobalSearchFilter,
+  ParsedGlobalSearchQuery,
+  SupportedGlobalSearchFilterKey,
+} from '~/capabilities/search/application/global-search.types'
+import {
+  buildGlobalSearchDocuments,
+  type SearchProcessRecord,
+} from '~/capabilities/search/application/global-search-documents'
+import { parseGlobalSearchQuery } from '~/capabilities/search/application/parse-global-search-query'
+import type { TrackingGlobalSearchProjection } from '~/modules/tracking/application/projection/tracking.global-search.readmodel'
+import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import { compareTemporal } from '~/shared/time/compare-temporal'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import { parseCalendarDateFromDdMmYyyy, parseTemporalValue } from '~/shared/time/parsing'
 
-export type SearchMatchSource =
-  | 'container'
-  | 'process'
-  | 'importer'
-  | 'bl'
-  | 'vessel'
-  | 'status'
-  | 'carrier'
-
-export type SearchCommand = {
-  readonly query: string
-}
-
-export type SearchResultItem = {
-  readonly processId: string
-  readonly processReference: string | null
-  readonly importerName: string | null
-  readonly containers: readonly string[]
-  readonly carrier: string | null
-  readonly vesselName: string | null
-  readonly bl: string | null
-  readonly derivedStatus: string | null
-  readonly eta: string | null
-  readonly matchSource: SearchMatchSource
-}
-
-export type SearchUseCase = (command: SearchCommand) => Promise<readonly SearchResultItem[]>
-
-const MIN_SEARCH_QUERY_LENGTH = 3
 const SEARCH_RESULTS_LIMIT = 30
+const SEARCH_SUGGESTIONS_LIMIT = 8
+const TEMPORAL_COMPARE_OPTIONS = {
+  timezone: 'UTC',
+  strategy: 'start-of-day',
+} as const
 
-type ProcessSearchUseCases = {
-  searchByText(query: string, limit: number): Promise<readonly ProcessSearchProjection[]>
+const SEARCHABLE_FREE_TEXT_FIELDS: readonly SupportedGlobalSearchFilterKey[] = [
+  'process',
+  'process_id',
+  'container',
+  'bl',
+  'importer',
+  'exporter',
+  'carrier',
+  'vessel',
+  'voyage',
+  'status',
+  'origin',
+  'origin_country',
+  'destination',
+  'destination_country',
+  'terminal',
+  'depot',
+  'route',
+  'eta',
+  'eta_state',
+  'eta_type',
+  'current_location',
+  'current_vessel',
+  'current_voyage',
+  'validation',
+  'alert_category',
+]
+
+type SearchProcessUseCases = {
+  listProcessesWithOperationalSummary(): Promise<{
+    readonly processes: readonly SearchProcessRecord[]
+  }>
 }
 
-type ContainerSearchUseCases = {
-  searchByNumber(query: string, limit: number): Promise<readonly ContainerSearchProjection[]>
+type SearchTrackingUseCases = {
+  listGlobalSearchProjections(): Promise<readonly TrackingGlobalSearchProjection[]>
+  listActiveAlertReadModel(): Promise<{
+    readonly alerts: readonly TrackingActiveAlertReadModel[]
+  }>
 }
 
-type TrackingSearchUseCases = {
-  searchByVesselName(query: string, limit: number): Promise<readonly TrackingSearchProjection[]>
-  searchByDerivedStatusText(
-    query: string,
-    limit: number,
-  ): Promise<readonly TrackingSearchProjection[]>
-}
+export type SearchCommand = Readonly<{
+  query: string
+  filters?: readonly string[]
+}>
 
-export type CreateSearchUseCaseDeps = {
-  readonly processUseCases: ProcessSearchUseCases
-  readonly containerUseCases: ContainerSearchUseCases
-  readonly trackingUseCases: TrackingSearchUseCases
-}
+export type SearchSuggestionsCommand = Readonly<{
+  query: string
+  filters?: readonly string[]
+}>
 
-function normalizeQuery(query: string): string {
-  return query.trim().toLowerCase()
-}
+export type SearchUseCase = (command: SearchCommand) => Promise<GlobalSearchResponse>
+export type SearchSuggestionsUseCase = (
+  command: SearchSuggestionsCommand,
+) => Promise<GlobalSearchSuggestionsResponse>
 
-function normalizeText(value: string | null): string | null {
-  if (value === null) return null
+export type CreateSearchUseCaseDeps = Readonly<{
+  processUseCases: SearchProcessUseCases
+  trackingUseCases: SearchTrackingUseCases
+}>
 
-  const normalized = value.trim().toLowerCase()
+type RankedSearchResult = Readonly<{
+  result: GlobalSearchResult
+  matches: readonly GlobalSearchMatch[]
+}>
+
+function normalizeText(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null
+  const normalized = value
+    .normalize('NFD')
+    .replaceAll(/\p{Diacritic}/gu, '')
+    .trim()
+    .toLowerCase()
   return normalized.length > 0 ? normalized : null
 }
 
-function containsQuery(value: string | null, normalizedQuery: string): boolean {
-  const normalizedValue = normalizeText(value)
-  if (normalizedValue === null) return false
+function dedupeMatches(matches: readonly GlobalSearchMatch[]): readonly GlobalSearchMatch[] {
+  const byKey = new Map<string, GlobalSearchMatch>()
 
-  return normalizedValue.includes(normalizedQuery)
+  for (const match of matches) {
+    const signature = [
+      match.key,
+      match.source,
+      match.bucket,
+      normalizeText(match.matchedValue) ?? match.matchedValue,
+    ].join(':')
+
+    if (!byKey.has(signature)) {
+      byKey.set(signature, match)
+    }
+  }
+
+  return Array.from(byKey.values())
 }
 
-function isExactMatch(value: string | null, normalizedQuery: string): boolean {
-  const normalizedValue = normalizeText(value)
-  if (normalizedValue === null) return false
-
-  return normalizedValue === normalizedQuery
-}
-
-function resolveProcessMatchSource(
-  projection: ProcessSearchProjection,
-  normalizedQuery: string,
-): SearchMatchSource {
-  if (containsQuery(projection.reference, normalizedQuery)) return 'process'
-  if (containsQuery(projection.importerName, normalizedQuery)) return 'importer'
-  if (containsQuery(projection.billOfLading, normalizedQuery)) return 'bl'
-  if (containsQuery(projection.carrier, normalizedQuery)) return 'carrier'
-
-  return 'process'
-}
-
-const MATCH_SOURCE_PRIORITY: Readonly<Record<SearchMatchSource, number>> = {
-  container: 0,
-  process: 1,
-  importer: 2,
-  bl: 3,
-  carrier: 4,
-  vessel: 5,
-  status: 6,
-}
-
-const MATCH_RANK_PRIORITY = {
-  exactContainer: 0,
-  exactProcessReference: 1,
-  partialContainer: 2,
-  processText: 3,
-  vessel: 4,
-  status: 5,
-  fallback: 6,
-} as const
-
-type MutableSearchResultItem = {
-  processId: string
-  processReference: string | null
-  importerName: string | null
-  containers: string[]
-  carrier: string | null
-  vesselName: string | null
-  bl: string | null
-  derivedStatus: string | null
-  eta: string | null
-  matchSource: SearchMatchSource
-  hasExactContainerMatch: boolean
-  hasPartialContainerMatch: boolean
-  hasExactProcessReferenceMatch: boolean
-  hasProcessTextMatch: boolean
-  hasVesselMatch: boolean
-  hasStatusMatch: boolean
-}
-
-function createEmptySearchResultItem(
-  processId: string,
-  matchSource: SearchMatchSource,
-): MutableSearchResultItem {
+function toEmptyState() {
   return {
-    processId,
-    processReference: null,
-    importerName: null,
-    containers: [],
-    carrier: null,
-    vesselName: null,
-    bl: null,
-    derivedStatus: null,
-    eta: null,
-    matchSource,
-    hasExactContainerMatch: false,
-    hasPartialContainerMatch: false,
-    hasExactProcessReferenceMatch: false,
-    hasProcessTextMatch: false,
-    hasVesselMatch: false,
-    hasStatusMatch: false,
+    titleKey: 'search.empty.title',
+    descriptionKey: 'search.empty.description',
+    examples: [
+      'container:MSKU1234567',
+      'status:DELIVERED importer:Flush',
+      'eta:06/05/2026',
+      'eta_state:ACTIVE_EXPECTED',
+      'terminal:Movecta',
+    ],
+  } as const
+}
+
+function hasEffectiveSearchCriteria(query: ParsedGlobalSearchQuery): boolean {
+  if (query.freeTextTerms.length > 0) return true
+
+  return query.filters.some((filter) => filter.supported && filter.key !== 'event_date')
+}
+
+function parseDayMonth(value: string): Readonly<{
+  day: number
+  month: number
+}> | null {
+  const match = value.trim().match(/^(\d{1,2})\/(\d{1,2})$/)
+  if (match === null) return null
+
+  const dayPart = match[1]
+  const monthPart = match[2]
+  if (dayPart === undefined || monthPart === undefined) return null
+
+  const day = Number(dayPart)
+  const month = Number(monthPart)
+  if (!Number.isInteger(day) || !Number.isInteger(month)) return null
+  if (day < 1 || day > 31 || month < 1 || month > 12) return null
+
+  return { day, month }
+}
+
+function parseMonth(value: string): Readonly<{
+  month: number
+  year: number
+}> | null {
+  const match = value.trim().match(/^(\d{1,2})\/(\d{4})$/)
+  if (match === null) return null
+
+  const monthPart = match[1]
+  const yearPart = match[2]
+  if (monthPart === undefined || yearPart === undefined) return null
+
+  const month = Number(monthPart)
+  const year = Number(yearPart)
+  if (!Number.isInteger(month) || !Number.isInteger(year)) return null
+  if (month < 1 || month > 12) return null
+
+  return { month, year }
+}
+
+function toDateParts(value: TemporalValueDto | null): Readonly<{
+  year: number
+  month: number
+  day: number
+}> | null {
+  if (value === null) return null
+
+  const parsed = parseTemporalValue(value)
+  if (parsed === null) return null
+
+  if (parsed.kind === 'date') {
+    const [yearPart, monthPart, dayPart] = parsed.value.toIsoDate().split('-')
+    if (yearPart === undefined || monthPart === undefined || dayPart === undefined) return null
+    return {
+      year: Number(yearPart),
+      month: Number(monthPart),
+      day: Number(dayPart),
+    }
+  }
+
+  if (parsed.kind === 'local-datetime') {
+    const [yearPart, monthPart, dayPart] = parsed.value.date.toIsoDate().split('-')
+    if (yearPart === undefined || monthPart === undefined || dayPart === undefined) return null
+    return {
+      year: Number(yearPart),
+      month: Number(monthPart),
+      day: Number(dayPart),
+    }
+  }
+
+  const calendarDate = parsed.value.toCalendarDate('UTC')
+  const [yearPart, monthPart, dayPart] = calendarDate.toIsoDate().split('-')
+  if (yearPart === undefined || monthPart === undefined || dayPart === undefined) return null
+
+  return {
+    year: Number(yearPart),
+    month: Number(monthPart),
+    day: Number(dayPart),
   }
 }
 
-function mergeMatchSource(
-  currentSource: SearchMatchSource,
-  nextSource: SearchMatchSource,
-): SearchMatchSource {
-  const currentPriority = MATCH_SOURCE_PRIORITY[currentSource]
-  const nextPriority = MATCH_SOURCE_PRIORITY[nextSource]
-
-  return nextPriority < currentPriority ? nextSource : currentSource
+function toMatchedValue(value: string | null | undefined): string | null {
+  return value === undefined ? null : value
 }
 
-function getOrCreateResult(
-  consolidated: Map<string, MutableSearchResultItem>,
-  processId: string,
-  source: SearchMatchSource,
-): MutableSearchResultItem {
-  const existing = consolidated.get(processId)
-  if (existing) {
-    existing.matchSource = mergeMatchSource(existing.matchSource, source)
-    return existing
+function createMatch(command: {
+  readonly key: SupportedGlobalSearchFilterKey | 'free_text'
+  readonly source: 'filter' | 'free_text'
+  readonly matchedValue: string
+  readonly rawQueryValue: string
+  readonly bucket: GlobalSearchMatchBucket
+}): GlobalSearchMatch {
+  return {
+    key: command.key,
+    source: command.source,
+    matchedValue: command.matchedValue,
+    rawQueryValue: command.rawQueryValue,
+    bucket: command.bucket,
+  }
+}
+
+function matchTextCandidate(command: {
+  readonly key: SupportedGlobalSearchFilterKey
+  readonly source: 'filter' | 'free_text'
+  readonly rawQueryValue: string
+  readonly normalizedQueryValue: string
+  readonly candidate: string | null | undefined
+  readonly exactBucket?: GlobalSearchMatchBucket
+}): readonly GlobalSearchMatch[] {
+  const matchedValue = toMatchedValue(command.candidate)
+  const normalizedCandidate = normalizeText(matchedValue)
+  if (matchedValue === null || normalizedCandidate === null) return []
+
+  if (normalizedCandidate === command.normalizedQueryValue) {
+    return [
+      createMatch({
+        key: command.key,
+        source: command.source,
+        matchedValue,
+        rawQueryValue: command.rawQueryValue,
+        bucket:
+          command.source === 'filter'
+            ? (command.exactBucket ?? 'structured_exact')
+            : (command.exactBucket ?? 'text_prefix'),
+      }),
+    ]
   }
 
-  const created = createEmptySearchResultItem(processId, source)
-  consolidated.set(processId, created)
-  return created
+  if (normalizedCandidate.startsWith(command.normalizedQueryValue)) {
+    return [
+      createMatch({
+        key: command.key,
+        source: command.source,
+        matchedValue,
+        rawQueryValue: command.rawQueryValue,
+        bucket: command.source === 'filter' ? 'text_prefix' : 'text_prefix',
+      }),
+    ]
+  }
+
+  if (normalizedCandidate.includes(command.normalizedQueryValue)) {
+    return [
+      createMatch({
+        key: command.key,
+        source: command.source,
+        matchedValue,
+        rawQueryValue: command.rawQueryValue,
+        bucket: 'text_contains',
+      }),
+    ]
+  }
+
+  return []
 }
 
-function compareStringAsc(left: string, right: string): number {
-  if (left < right) return -1
-  if (left > right) return 1
-  return 0
-}
-
-function toSortableNullableText(value: string | null): string {
-  const normalizedValue = normalizeText(value)
-  return normalizedValue ?? '\uffff'
-}
-
-function toSortableReference(reference: string | null): string {
-  return toSortableNullableText(reference)
-}
-
-function compareNullableIsoDesc(left: string | null, right: string | null): number {
-  if (left === null && right === null) return 0
-  if (left === null) return 1
-  if (right === null) return -1
-  return compareStringAsc(right, left)
-}
-
-function compareTrackingProjectionPriority(
-  left: TrackingSearchProjection,
-  right: TrackingSearchProjection,
-): number {
-  const etaCompare = compareNullableIsoDesc(left.latestEta, right.latestEta)
-  if (etaCompare !== 0) return etaCompare
-
-  const statusCompare = compareStringAsc(left.latestDerivedStatus, right.latestDerivedStatus)
-  if (statusCompare !== 0) return statusCompare
-
-  return compareStringAsc(
-    toSortableNullableText(left.vesselName),
-    toSortableNullableText(right.vesselName),
+function matchTextCandidates(command: {
+  readonly key: SupportedGlobalSearchFilterKey
+  readonly source: 'filter' | 'free_text'
+  readonly rawQueryValue: string
+  readonly normalizedQueryValue: string
+  readonly candidates: readonly (string | null | undefined)[]
+  readonly exactBucket?: GlobalSearchMatchBucket
+}): readonly GlobalSearchMatch[] {
+  return dedupeMatches(
+    command.candidates.flatMap((candidate) =>
+      matchTextCandidate({
+        key: command.key,
+        source: command.source,
+        rawQueryValue: command.rawQueryValue,
+        normalizedQueryValue: command.normalizedQueryValue,
+        candidate,
+        ...(command.exactBucket === undefined ? {} : { exactBucket: command.exactBucket }),
+      }),
+    ),
   )
 }
 
-function selectPreferredTrackingProjection(
-  current: TrackingSearchProjection | null,
-  candidate: TrackingSearchProjection,
-): TrackingSearchProjection {
-  if (current === null) return candidate
-  return compareTrackingProjectionPriority(candidate, current) < 0 ? candidate : current
-}
-
-function resolveMatchRankPriority(item: MutableSearchResultItem): number {
-  if (item.hasExactContainerMatch) return MATCH_RANK_PRIORITY.exactContainer
-  if (item.hasExactProcessReferenceMatch) return MATCH_RANK_PRIORITY.exactProcessReference
-  if (item.hasPartialContainerMatch) return MATCH_RANK_PRIORITY.partialContainer
-  if (item.hasProcessTextMatch) return MATCH_RANK_PRIORITY.processText
-  if (item.hasVesselMatch) return MATCH_RANK_PRIORITY.vessel
-  if (item.hasStatusMatch) return MATCH_RANK_PRIORITY.status
-  return MATCH_RANK_PRIORITY.fallback
-}
-
-function compareConsolidatedResults(
-  left: MutableSearchResultItem,
-  right: MutableSearchResultItem,
-): number {
-  const rankDiff = resolveMatchRankPriority(left) - resolveMatchRankPriority(right)
-  if (rankDiff !== 0) return rankDiff
-
-  const referenceCompare = compareStringAsc(
-    toSortableReference(left.processReference),
-    toSortableReference(right.processReference),
+function matchEnumValues(command: {
+  readonly key: SupportedGlobalSearchFilterKey
+  readonly source: 'filter' | 'free_text'
+  readonly rawQueryValue: string
+  readonly normalizedQueryValue: string
+  readonly candidates: readonly string[]
+}): readonly GlobalSearchMatch[] {
+  const optionDefinitions = listEnumOptionsForField(command.key)
+  const candidateSet = new Set(
+    command.candidates.map((candidate) => normalizeSearchAlias(candidate)),
   )
-  if (referenceCompare !== 0) return referenceCompare
+  const matchingOptions = optionDefinitions.filter((option) =>
+    candidateSet.has(normalizeSearchAlias(option.value)),
+  )
 
-  return compareStringAsc(left.processId, right.processId)
+  const matches: GlobalSearchMatch[] = []
+  for (const option of matchingOptions) {
+    const aliases = [option.value, option.fallbackLabel, ...option.aliases]
+
+    for (const alias of aliases) {
+      const normalizedAlias = normalizeText(alias)
+      if (normalizedAlias === null) continue
+
+      if (normalizedAlias === command.normalizedQueryValue) {
+        matches.push(
+          createMatch({
+            key: command.key,
+            source: command.source,
+            matchedValue: option.value,
+            rawQueryValue: command.rawQueryValue,
+            bucket: command.source === 'filter' ? 'structured_exact' : 'text_prefix',
+          }),
+        )
+        continue
+      }
+
+      if (normalizedAlias.startsWith(command.normalizedQueryValue)) {
+        matches.push(
+          createMatch({
+            key: command.key,
+            source: command.source,
+            matchedValue: option.value,
+            rawQueryValue: command.rawQueryValue,
+            bucket: 'text_prefix',
+          }),
+        )
+        continue
+      }
+
+      if (normalizedAlias.includes(command.normalizedQueryValue)) {
+        matches.push(
+          createMatch({
+            key: command.key,
+            source: command.source,
+            matchedValue: option.value,
+            rawQueryValue: command.rawQueryValue,
+            bucket: 'text_contains',
+          }),
+        )
+      }
+    }
+  }
+
+  return dedupeMatches(matches)
 }
 
-export function createSearchUseCase(deps: CreateSearchUseCaseDeps): SearchUseCase {
-  const searchLimit = SEARCH_RESULTS_LIMIT
+function matchEtaExact(command: {
+  readonly source: 'filter' | 'free_text'
+  readonly rawQueryValue: string
+  readonly eta: TemporalValueDto | null
+}): readonly GlobalSearchMatch[] {
+  const exactDate = parseCalendarDateFromDdMmYyyy(command.rawQueryValue)
+  const etaParts = toDateParts(command.eta)
+  if (etaParts === null) return []
 
-  return async function search(command: SearchCommand): Promise<readonly SearchResultItem[]> {
-    const normalizedQuery = normalizeQuery(command.query)
-    if (normalizedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+  if (exactDate !== null) {
+    const [yearPart, monthPart, dayPart] = exactDate.toIsoDate().split('-')
+    if (yearPart === undefined || monthPart === undefined || dayPart === undefined) return []
+
+    if (
+      etaParts.year === Number(yearPart) &&
+      etaParts.month === Number(monthPart) &&
+      etaParts.day === Number(dayPart)
+    ) {
+      return [
+        createMatch({
+          key: 'eta',
+          source: command.source,
+          matchedValue: exactDate.toIsoDate(),
+          rawQueryValue: command.rawQueryValue,
+          bucket: 'date_exact',
+        }),
+      ]
+    }
+  }
+
+  const dayMonth = parseDayMonth(command.rawQueryValue)
+  if (dayMonth === null) return []
+
+  if (etaParts.day === dayMonth.day && etaParts.month === dayMonth.month) {
+    return [
+      createMatch({
+        key: 'eta',
+        source: command.source,
+        matchedValue: `${String(dayMonth.day).padStart(2, '0')}/${String(dayMonth.month).padStart(
+          2,
+          '0',
+        )}`,
+        rawQueryValue: command.rawQueryValue,
+        bucket: 'date_exact',
+      }),
+    ]
+  }
+
+  return []
+}
+
+function matchEtaComparison(command: {
+  readonly key: 'eta_before' | 'eta_after'
+  readonly rawQueryValue: string
+  readonly eta: TemporalValueDto | null
+}): readonly GlobalSearchMatch[] {
+  const filterDate = parseCalendarDateFromDdMmYyyy(command.rawQueryValue)
+  if (filterDate === null || command.eta === null) return []
+
+  const filterTemporal = parseTemporalValue({
+    kind: 'date',
+    value: filterDate.toIsoDate(),
+    timezone: 'UTC',
+  })
+  const etaTemporal = parseTemporalValue(command.eta)
+  if (filterTemporal === null || etaTemporal === null) return []
+
+  const comparison = compareTemporal(etaTemporal, filterTemporal, TEMPORAL_COMPARE_OPTIONS)
+  const matched = command.key === 'eta_before' ? comparison < 0 : comparison > 0
+
+  if (!matched) return []
+
+  return [
+    createMatch({
+      key: command.key,
+      source: 'filter',
+      matchedValue: command.rawQueryValue,
+      rawQueryValue: command.rawQueryValue,
+      bucket: 'structured_exact',
+    }),
+  ]
+}
+
+function matchEtaMonth(command: {
+  readonly rawQueryValue: string
+  readonly eta: TemporalValueDto | null
+}): readonly GlobalSearchMatch[] {
+  const monthValue = parseMonth(command.rawQueryValue)
+  const etaParts = toDateParts(command.eta)
+  if (monthValue === null || etaParts === null) return []
+
+  if (etaParts.month === monthValue.month && etaParts.year === monthValue.year) {
+    return [
+      createMatch({
+        key: 'eta_month',
+        source: 'filter',
+        matchedValue: command.rawQueryValue,
+        rawQueryValue: command.rawQueryValue,
+        bucket: 'structured_exact',
+      }),
+    ]
+  }
+
+  return []
+}
+
+function getDocumentFieldCandidates(
+  document: GlobalSearchDocument,
+  key: SupportedGlobalSearchFilterKey,
+): readonly string[] {
+  switch (key) {
+    case 'process':
+      return document.processReference === null ? [] : [document.processReference]
+    case 'process_id':
+      return [document.processId]
+    case 'container':
+      return document.containerNumbers
+    case 'bl':
+      return document.billOfLading === null ? [] : [document.billOfLading]
+    case 'importer':
+      return document.importerName === null ? [] : [document.importerName]
+    case 'exporter':
+      return document.exporterName === null ? [] : [document.exporterName]
+    case 'carrier':
+      return document.carrierName === null ? [] : [document.carrierName]
+    case 'vessel':
+      return document.currentVessels
+    case 'voyage':
+      return document.currentVoyages
+    case 'status':
+      return document.statusCode === null ? [] : [document.statusCode]
+    case 'origin':
+      return document.originLabel === null ? [] : [document.originLabel]
+    case 'origin_country':
+      return document.originCountryTokens
+    case 'destination':
+      return document.destinationLabel === null ? [] : [document.destinationLabel]
+    case 'destination_country':
+      return document.destinationCountryTokens
+    case 'terminal':
+      return document.terminalLabels
+    case 'depot':
+      return document.depotLabel === null ? [] : [document.depotLabel]
+    case 'route':
+      return document.routeLabel === null
+        ? document.routeDisplays
+        : [document.routeLabel, ...document.routeDisplays]
+    case 'eta':
+      return []
+    case 'eta_before':
+      return []
+    case 'eta_after':
+      return []
+    case 'eta_month':
+      return []
+    case 'eta_state':
+      return document.etaStates
+    case 'eta_type':
+      return document.etaTypes
+    case 'current_location':
+      return document.currentLocations
+    case 'current_vessel':
+      return document.currentVessels
+    case 'current_voyage':
+      return document.currentVoyages
+    case 'validation':
+      return [document.hasValidationRequired ? 'required' : 'clean']
+    case 'alert_category':
+      return document.activeAlertCategories
+  }
+}
+
+function matchDocumentField(command: {
+  readonly document: GlobalSearchDocument
+  readonly key: SupportedGlobalSearchFilterKey
+  readonly rawQueryValue: string
+  readonly normalizedQueryValue: string
+  readonly source: 'filter' | 'free_text'
+}): readonly GlobalSearchMatch[] {
+  const definition = getSupportedGlobalSearchFieldDefinition(command.key)
+
+  if (command.key === 'eta') {
+    return matchEtaExact({
+      source: command.source,
+      rawQueryValue: command.rawQueryValue,
+      eta: command.document.eta,
+    })
+  }
+
+  if (command.key === 'eta_before' || command.key === 'eta_after') {
+    if (command.source !== 'filter') return []
+    return matchEtaComparison({
+      key: command.key,
+      rawQueryValue: command.rawQueryValue,
+      eta: command.document.eta,
+    })
+  }
+
+  if (command.key === 'eta_month') {
+    if (command.source !== 'filter') return []
+    return matchEtaMonth({
+      rawQueryValue: command.rawQueryValue,
+      eta: command.document.eta,
+    })
+  }
+
+  if (definition.kind === 'enum') {
+    return matchEnumValues({
+      key: command.key,
+      source: command.source,
+      rawQueryValue: command.rawQueryValue,
+      normalizedQueryValue: command.normalizedQueryValue,
+      candidates: getDocumentFieldCandidates(command.document, command.key),
+    })
+  }
+
+  if (
+    command.key === 'process' ||
+    command.key === 'process_id' ||
+    command.key === 'container' ||
+    command.key === 'bl'
+  ) {
+    return matchTextCandidates({
+      key: command.key,
+      source: command.source,
+      rawQueryValue: command.rawQueryValue,
+      normalizedQueryValue: command.normalizedQueryValue,
+      candidates: getDocumentFieldCandidates(command.document, command.key),
+      exactBucket:
+        command.key === 'process' ||
+        command.key === 'process_id' ||
+        command.key === 'container' ||
+        command.key === 'bl'
+          ? 'strong_identifier_exact'
+          : 'structured_exact',
+    }).map((match) =>
+      match.bucket === 'text_prefix'
+        ? {
+            ...match,
+            bucket: 'strong_identifier_prefix',
+          }
+        : match,
+    )
+  }
+
+  if (command.key === 'origin_country') {
+    const tokenMatches = matchTextCandidates({
+      key: command.key,
+      source: command.source,
+      rawQueryValue: command.rawQueryValue,
+      normalizedQueryValue: command.normalizedQueryValue,
+      candidates: command.document.originCountryTokens,
+    })
+
+    return tokenMatches.length > 0
+      ? tokenMatches
+      : matchTextCandidate({
+          key: command.key,
+          source: command.source,
+          rawQueryValue: command.rawQueryValue,
+          normalizedQueryValue: command.normalizedQueryValue,
+          candidate: command.document.originLabel,
+        })
+  }
+
+  if (command.key === 'destination_country') {
+    const tokenMatches = matchTextCandidates({
+      key: command.key,
+      source: command.source,
+      rawQueryValue: command.rawQueryValue,
+      normalizedQueryValue: command.normalizedQueryValue,
+      candidates: command.document.destinationCountryTokens,
+    })
+
+    return tokenMatches.length > 0
+      ? tokenMatches
+      : matchTextCandidate({
+          key: command.key,
+          source: command.source,
+          rawQueryValue: command.rawQueryValue,
+          normalizedQueryValue: command.normalizedQueryValue,
+          candidate: command.document.destinationLabel,
+        })
+  }
+
+  return matchTextCandidates({
+    key: command.key,
+    source: command.source,
+    rawQueryValue: command.rawQueryValue,
+    normalizedQueryValue: command.normalizedQueryValue,
+    candidates: getDocumentFieldCandidates(command.document, command.key),
+  })
+}
+
+function evaluateDocumentAgainstQuery(command: {
+  readonly document: GlobalSearchDocument
+  readonly filters: readonly ParsedGlobalSearchFilter[]
+  readonly freeTextTerms: readonly {
+    rawValue: string
+    normalizedValue: string
+  }[]
+}): readonly GlobalSearchMatch[] {
+  const matches: GlobalSearchMatch[] = []
+
+  for (const filter of command.filters) {
+    if (!filter.supported || filter.key === 'event_date') {
+      continue
+    }
+
+    const filterMatches = matchDocumentField({
+      document: command.document,
+      key: filter.key,
+      rawQueryValue: filter.rawValue,
+      normalizedQueryValue: filter.normalizedValue,
+      source: 'filter',
+    })
+    if (filterMatches.length === 0) {
       return []
     }
 
-    const [processMatches, containerMatches, vesselMatches, statusMatches] = await Promise.all([
-      deps.processUseCases.searchByText(normalizedQuery, searchLimit),
-      deps.containerUseCases.searchByNumber(normalizedQuery, searchLimit),
-      deps.trackingUseCases.searchByVesselName(normalizedQuery, searchLimit),
-      deps.trackingUseCases.searchByDerivedStatusText(normalizedQuery, searchLimit),
-    ])
-
-    const consolidated = new Map<string, MutableSearchResultItem>()
-    const trackingProjectionByProcess = new Map<string, TrackingSearchProjection>()
-
-    for (const processMatch of processMatches) {
-      const source = resolveProcessMatchSource(processMatch, normalizedQuery)
-      const result = getOrCreateResult(consolidated, processMatch.processId, source)
-      const processReferenceMatches = containsQuery(processMatch.reference, normalizedQuery)
-      const importerMatches = containsQuery(processMatch.importerName, normalizedQuery)
-      const billOfLadingMatches = containsQuery(processMatch.billOfLading, normalizedQuery)
-      const carrierMatches = containsQuery(processMatch.carrier, normalizedQuery)
-
-      result.processReference = processMatch.reference
-      result.importerName = processMatch.importerName
-      result.bl = processMatch.billOfLading
-      result.carrier = processMatch.carrier
-      result.hasExactProcessReferenceMatch =
-        result.hasExactProcessReferenceMatch ||
-        isExactMatch(processMatch.reference, normalizedQuery)
-      result.hasProcessTextMatch =
-        result.hasProcessTextMatch ||
-        processReferenceMatches ||
-        importerMatches ||
-        billOfLadingMatches ||
-        carrierMatches
+    const firstFilterMatch = filterMatches[0]
+    if (firstFilterMatch === undefined) {
+      return []
     }
 
-    for (const containerMatch of containerMatches) {
-      const result = getOrCreateResult(consolidated, containerMatch.processId, 'container')
-      if (isExactMatch(containerMatch.containerNumber, normalizedQuery)) {
-        result.hasExactContainerMatch = true
-      } else {
-        result.hasPartialContainerMatch = true
-      }
-
-      if (!result.containers.includes(containerMatch.containerNumber)) {
-        result.containers.push(containerMatch.containerNumber)
-      }
-    }
-
-    for (const vesselMatch of vesselMatches) {
-      const result = getOrCreateResult(consolidated, vesselMatch.processId, 'vessel')
-
-      const currentTrackingProjection =
-        trackingProjectionByProcess.get(vesselMatch.processId) ?? null
-      trackingProjectionByProcess.set(
-        vesselMatch.processId,
-        selectPreferredTrackingProjection(currentTrackingProjection, vesselMatch),
-      )
-      result.hasVesselMatch = true
-    }
-
-    for (const statusMatch of statusMatches) {
-      const result = getOrCreateResult(consolidated, statusMatch.processId, 'status')
-
-      const currentTrackingProjection =
-        trackingProjectionByProcess.get(statusMatch.processId) ?? null
-      trackingProjectionByProcess.set(
-        statusMatch.processId,
-        selectPreferredTrackingProjection(currentTrackingProjection, statusMatch),
-      )
-      result.hasStatusMatch = true
-    }
-
-    for (const [processId, trackingProjection] of trackingProjectionByProcess) {
-      const result = consolidated.get(processId)
-      if (!result) continue
-
-      result.vesselName = trackingProjection.vesselName
-      result.derivedStatus = trackingProjection.latestDerivedStatus
-      result.eta = trackingProjection.latestEta
-    }
-
-    const consolidatedResults = Array.from(consolidated.values()).sort(compareConsolidatedResults)
-
-    return consolidatedResults.slice(0, SEARCH_RESULTS_LIMIT).map((item) => ({
-      processId: item.processId,
-      processReference: item.processReference,
-      importerName: item.importerName,
-      containers: item.containers,
-      carrier: item.carrier,
-      vesselName: item.vesselName,
-      bl: item.bl,
-      derivedStatus: item.derivedStatus,
-      eta: item.eta,
-      matchSource: item.matchSource,
-    }))
+    matches.push(firstFilterMatch)
   }
+
+  for (const term of command.freeTextTerms) {
+    const termMatches = dedupeMatches(
+      SEARCHABLE_FREE_TEXT_FIELDS.flatMap((key) =>
+        matchDocumentField({
+          document: command.document,
+          key,
+          rawQueryValue: term.rawValue,
+          normalizedQueryValue: term.normalizedValue,
+          source: 'free_text',
+        }),
+      ),
+    )
+
+    if (termMatches.length === 0) {
+      return []
+    }
+
+    const firstTermMatch = termMatches[0]
+    if (firstTermMatch === undefined) {
+      return []
+    }
+
+    matches.push(firstTermMatch)
+  }
+
+  return dedupeMatches(matches)
+}
+
+function bucketCount(
+  matches: readonly GlobalSearchMatch[],
+  bucket: GlobalSearchMatchBucket,
+): number {
+  return matches.filter((match) => match.bucket === bucket).length
+}
+
+function compareNullableText(left: string | null, right: string | null): number {
+  const normalizedLeft = normalizeText(left) ?? '\uffff'
+  const normalizedRight = normalizeText(right) ?? '\uffff'
+  return normalizedLeft.localeCompare(normalizedRight)
+}
+
+function compareRankedResults(left: RankedSearchResult, right: RankedSearchResult): number {
+  const orderedBuckets: readonly GlobalSearchMatchBucket[] = [
+    'strong_identifier_exact',
+    'strong_identifier_prefix',
+    'date_exact',
+    'structured_exact',
+    'text_prefix',
+    'text_contains',
+  ]
+
+  for (const bucket of orderedBuckets) {
+    const difference = bucketCount(right.matches, bucket) - bucketCount(left.matches, bucket)
+    if (difference !== 0) return difference
+  }
+
+  const totalDifference = right.matches.length - left.matches.length
+  if (totalDifference !== 0) return totalDifference
+
+  const referenceCompare = compareNullableText(
+    left.result.processReference,
+    right.result.processReference,
+  )
+  if (referenceCompare !== 0) return referenceCompare
+
+  return left.result.processId.localeCompare(right.result.processId)
+}
+
+function toResult(
+  document: GlobalSearchDocument,
+  matches: readonly GlobalSearchMatch[],
+): GlobalSearchResult {
+  return {
+    processId: document.processId,
+    processReference: document.processReference,
+    billOfLading: document.billOfLading,
+    importerName: document.importerName,
+    exporterName: document.exporterName,
+    carrierName: document.carrierName,
+    statusCode: document.statusCode,
+    eta: document.eta,
+    etaState: document.etaStates[0] ?? null,
+    etaType: document.etaTypes[0] ?? null,
+    originLabel: document.originLabel,
+    destinationLabel: document.destinationLabel,
+    terminalLabel: document.terminalDisplay.value,
+    terminalMultiple: document.terminalDisplay.multiple,
+    depotLabel: document.depotLabel,
+    routeLabel: document.routeLabel,
+    containerNumbers: document.containerNumbers,
+    currentLocationLabel: document.currentLocationDisplay.value,
+    currentLocationMultiple: document.currentLocationDisplay.multiple,
+    currentVesselName: document.currentVesselDisplay.value,
+    currentVesselMultiple: document.currentVesselDisplay.multiple,
+    currentVoyageNumber: document.currentVoyageDisplay.value,
+    currentVoyageMultiple: document.currentVoyageDisplay.multiple,
+    hasValidationRequired: document.hasValidationRequired,
+    activeAlertCategories: document.activeAlertCategories,
+    matchedBy: matches.slice(0, 4),
+  }
+}
+
+async function loadDocuments(
+  deps: CreateSearchUseCaseDeps,
+): Promise<readonly GlobalSearchDocument[]> {
+  const [processesResult, tracking, activeAlertsResult] = await Promise.all([
+    deps.processUseCases.listProcessesWithOperationalSummary(),
+    deps.trackingUseCases.listGlobalSearchProjections(),
+    deps.trackingUseCases.listActiveAlertReadModel(),
+  ])
+
+  return buildGlobalSearchDocuments({
+    processes: processesResult.processes,
+    tracking,
+    alerts: activeAlertsResult.alerts,
+  })
+}
+
+function requiresDocumentBackedSuggestions(fieldKey: SupportedGlobalSearchFilterKey): boolean {
+  if (
+    fieldKey === 'eta' ||
+    fieldKey === 'eta_before' ||
+    fieldKey === 'eta_after' ||
+    fieldKey === 'eta_month'
+  ) {
+    return false
+  }
+
+  return listEnumOptionsForField(fieldKey).length === 0
+}
+
+function buildFieldSuggestions(input: string): readonly GlobalSearchSuggestion[] {
+  const normalizedInput = normalizeText(input) ?? ''
+
+  return listSupportedGlobalSearchFields()
+    .filter((field) => {
+      if (normalizedInput.length === 0) return true
+
+      const searchableValues = [field.key, field.fallbackLabel, ...field.aliases]
+      return searchableValues.some((value) => {
+        const normalizedValue = normalizeText(value)
+        return normalizedValue?.includes(normalizedInput) === true
+      })
+    })
+    .slice(0, SEARCH_SUGGESTIONS_LIMIT)
+    .map((field) => ({
+      kind: 'field' as const,
+      fieldKey: field.key === 'event_date' ? null : field.key,
+      value: null,
+      labelKey: field.labelKey,
+      fallbackLabel: field.fallbackLabel,
+      descriptionKey: null,
+      insertText: `${field.key}:`,
+    }))
+}
+
+function getSuggestionValues(
+  documents: readonly GlobalSearchDocument[],
+  key: SupportedGlobalSearchFilterKey,
+): readonly string[] {
+  if (key === 'eta') {
+    return ['06/05/2026', '06/05']
+  }
+
+  if (key === 'eta_before' || key === 'eta_after') {
+    return ['10/05/2026', '01/05/2026']
+  }
+
+  if (key === 'eta_month') {
+    return ['05/2026']
+  }
+
+  const fieldDefinition = getSupportedGlobalSearchFieldDefinition(key)
+  if (fieldDefinition.enumOptions !== undefined) {
+    return fieldDefinition.enumOptions.map((option) => option.value)
+  }
+
+  const values = documents.flatMap((document) => getDocumentFieldCandidates(document, key))
+  const unique = new Map<string, string>()
+
+  for (const value of values) {
+    const normalizedValue = normalizeText(value)
+    if (normalizedValue === null || unique.has(normalizedValue)) continue
+    unique.set(normalizedValue, value)
+  }
+
+  return Array.from(unique.values()).slice(0, SEARCH_SUGGESTIONS_LIMIT)
+}
+
+function buildValueSuggestions(command: {
+  readonly fieldKey: SupportedGlobalSearchFilterKey
+  readonly input: string
+  readonly documents: readonly GlobalSearchDocument[]
+}): readonly GlobalSearchSuggestion[] {
+  const normalizedInput = normalizeText(command.input) ?? ''
+  const enumOptions = listEnumOptionsForField(command.fieldKey)
+
+  if (enumOptions.length > 0) {
+    return enumOptions
+      .filter((option) => {
+        if (normalizedInput.length === 0) return true
+
+        const values = [option.value, option.fallbackLabel, ...option.aliases]
+        return values.some((value) => {
+          const normalizedValue = normalizeText(value)
+          return normalizedValue?.includes(normalizedInput) === true
+        })
+      })
+      .slice(0, SEARCH_SUGGESTIONS_LIMIT)
+      .map((option) => ({
+        kind: 'value' as const,
+        fieldKey: command.fieldKey,
+        value: option.value,
+        labelKey: option.labelKey,
+        fallbackLabel: option.fallbackLabel,
+        descriptionKey: null,
+        insertText: option.value,
+      }))
+  }
+
+  return getSuggestionValues(command.documents, command.fieldKey)
+    .filter((value) => {
+      if (normalizedInput.length === 0) return true
+      const normalizedValue = normalizeText(value)
+      return normalizedValue?.includes(normalizedInput) === true
+    })
+    .slice(0, SEARCH_SUGGESTIONS_LIMIT)
+    .map((value) => ({
+      kind: 'value' as const,
+      fieldKey: command.fieldKey,
+      value,
+      labelKey: null,
+      fallbackLabel: value,
+      descriptionKey: null,
+      insertText: value,
+    }))
+}
+
+function buildExampleSuggestions(): readonly GlobalSearchSuggestion[] {
+  return [
+    {
+      kind: 'example',
+      fieldKey: null,
+      value: null,
+      labelKey: 'search.examples.container',
+      fallbackLabel: 'container:MSKU1234567',
+      descriptionKey: null,
+      insertText: 'container:MSKU1234567',
+    },
+    {
+      kind: 'example',
+      fieldKey: null,
+      value: null,
+      labelKey: 'search.examples.multifilter',
+      fallbackLabel: 'carrier:MSC importer:Flush status:DELIVERED',
+      descriptionKey: null,
+      insertText: 'carrier:MSC importer:Flush status:DELIVERED',
+    },
+    {
+      kind: 'example',
+      fieldKey: null,
+      value: null,
+      labelKey: 'search.examples.eta',
+      fallbackLabel: 'eta:06/05/2026',
+      descriptionKey: null,
+      insertText: 'eta:06/05/2026',
+    },
+  ]
+}
+
+export function createSearchUseCase(deps: CreateSearchUseCaseDeps): SearchUseCase {
+  return async function search(command: SearchCommand): Promise<GlobalSearchResponse> {
+    const parsedQuery = parseGlobalSearchQuery({
+      query: command.query,
+      filters: command.filters ?? [],
+    })
+
+    if (!hasEffectiveSearchCriteria(parsedQuery)) {
+      return {
+        query: parsedQuery,
+        results: [],
+        emptyState: toEmptyState(),
+      }
+    }
+
+    const documents = await loadDocuments(deps)
+    const rankedResults = documents
+      .map((document) => {
+        const matches = evaluateDocumentAgainstQuery({
+          document,
+          filters: parsedQuery.filters,
+          freeTextTerms: parsedQuery.freeTextTerms,
+        })
+
+        return matches.length === 0
+          ? null
+          : {
+              result: toResult(document, matches),
+              matches,
+            }
+      })
+      .filter((entry): entry is RankedSearchResult => entry !== null)
+      .sort(compareRankedResults)
+      .slice(0, SEARCH_RESULTS_LIMIT)
+      .map((entry) => entry.result)
+
+    return {
+      query: parsedQuery,
+      results: rankedResults,
+      emptyState: toEmptyState(),
+    }
+  }
+}
+
+export function createSearchSuggestionsUseCase(
+  deps: CreateSearchUseCaseDeps,
+): SearchSuggestionsUseCase {
+  return async function suggest(
+    command: SearchSuggestionsCommand,
+  ): Promise<GlobalSearchSuggestionsResponse> {
+    const parsedQuery = parseGlobalSearchQuery({
+      query: command.query,
+      filters: command.filters ?? [],
+    })
+    const draft = command.query.trim()
+
+    if (draft.length === 0) {
+      return {
+        query: parsedQuery,
+        suggestions: [...buildFieldSuggestions(''), ...buildExampleSuggestions()].slice(
+          0,
+          SEARCH_SUGGESTIONS_LIMIT,
+        ),
+      }
+    }
+
+    const separatorIndex = draft.indexOf(':')
+    if (separatorIndex > 0) {
+      const rawField = draft.slice(0, separatorIndex)
+      const rawValue = draft.slice(separatorIndex + 1)
+      const resolvedField = getSupportedFieldFromDraft(rawField)
+
+      if (resolvedField !== null) {
+        const documents = requiresDocumentBackedSuggestions(resolvedField)
+          ? await loadDocuments(deps)
+          : []
+
+        return {
+          query: parsedQuery,
+          suggestions: buildValueSuggestions({
+            fieldKey: resolvedField,
+            input: rawValue,
+            documents,
+          }),
+        }
+      }
+    }
+
+    return {
+      query: parsedQuery,
+      suggestions: buildFieldSuggestions(draft),
+    }
+  }
+}
+
+function getSupportedFieldFromDraft(rawField: string): SupportedGlobalSearchFilterKey | null {
+  const normalizedField = normalizeSearchAlias(rawField)
+
+  for (const field of listSupportedGlobalSearchFields()) {
+    if (field.key !== 'event_date' && normalizeSearchAlias(field.key) === normalizedField) {
+      return field.key
+    }
+
+    if (
+      field.key !== 'event_date' &&
+      field.aliases.some((alias) => normalizeSearchAlias(alias) === normalizedField)
+    ) {
+      return field.key
+    }
+  }
+
+  return null
 }

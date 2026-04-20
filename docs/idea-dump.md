@@ -1,6 +1,6 @@
 # Container Tracker — Clean Idea Dump
 
-Versão limpa e organizada do dump antigo.  
+Versão limpa e organizada do dump antigo.
 Itens foram **deduplicados, agrupados e normalizados** em:
 
 - Bugs
@@ -15,41 +15,11 @@ Itens obsoletos ou redundantes foram removidos.
 
 # 🐞 Bugs
 
-## Process Creation / Editing
-
-- Soft-lock ao manipular containers no **Create Process**:
-  
-  Cenário:
-  
-  ```
-  1. Criar processo
-  2. Adicionar container existente
-  3. Editar para container inexistente
-  4. Adicionar outro container existente
-  5. Remover com lixeira
-  6. Re-adicionar container inexistente
-  ```
-  
-  Resultado:
-  
-  ```
-  Mensagem "container já existente"
-  Campo removido
-  Usuário não consegue resolver
-  ```
-
-- Não é possível **remover BL do processo** durante update.
-
-- Container removido do processo **não pode ser re-adicionado**  
-  (checagem atual verifica existência global em vez de existência no processo).
-
----
-
 ## Dashboard UI
 
 - Botões de **sync no dashboard apresentam bugs visuais** e só atualizam após refresh.
 
-- Área clicável do botão **copy** não cobre todo o botão.
+- Área clicável do botão **copy** não cobre todo botão.
 
 ---
 
@@ -59,13 +29,13 @@ Itens obsoletos ou redundantes foram removidos.
 
 - Alertas de **transbordo duplicam após sync**.
 
-  Comportamento esperado:
+Comportamento esperado:
 
   ```
   alerta deve ser único por container + navio + voyage
   ```
 
-  Casos a considerar:
+Casos considerar:
 
   ```
   Navio A -> Navio B -> Navio A -> Navio B
@@ -77,10 +47,8 @@ Itens obsoletos ou redundantes foram removidos.
 
 ## UX Improvements
 
-- Mostrar **"Última edição há Xs"** logo após criar processo  
-  para confirmar que o processo foi criado com sucesso.
-
-- Adicionar **barra de busca global na página de processo**.
+- Mostrar **"Última edição há Xs"** logo após criar processo
+para confirmar que processo foi criado com sucesso.
 
 - Adicionar **animações de abertura/fechamento de dialogs**.
 
@@ -88,29 +56,12 @@ Itens obsoletos ou redundantes foram removidos.
 
 ---
 
-## Process Creation
-
-- Permitir **colar múltiplos containers** para adicionar vários de uma vez.
-
-- Permitir **colar markdown / CSV / formato human-friendly** contendo:
-
-  ```
-  container
-  booking
-  carrier
-  etc
-  ```
-
-  para criar processo rapidamente.
-
----
-
 ## Dashboard Improvements
 
-- Permitir **copiar valores da tabela com um clique**.
+- Permitir **copiar valores da tabela com clique**.
 
-- Permitir **configurar colunas visíveis do dashboard**  
-  e salvar preferências do usuário.
+- Permitir **configurar colunas visíveis do dashboard**
+e salvar preferências do usuário.
 
 - Adicionar **paginação no dashboard**.
 
@@ -131,7 +82,7 @@ Itens obsoletos ou redundantes foram removidos.
 
 ## Sync Improvements
 
-- Botão para **sincronizar apenas um container**.
+- Botão para **sincronizar container**.
 
 - Botão **"Sincronizar todos"** deve ignorar processos:
 
@@ -146,21 +97,21 @@ Itens obsoletos ou redundantes foram removidos.
 
 - Mostrar **progresso do container** no status.
 
-  Exemplo:
+Exemplo:
 
   ```
   Loaded (5/10)
   Discharged (7/10)
   ```
 
-  onde:
+onde:
 
   ```
   X = último ACTUAL
   Y = último EXPECTED
   ```
 
-  Alternativa:
+Alternativa:
 
   ```
   campo separado "Progress"
@@ -177,7 +128,7 @@ Itens obsoletos ou redundantes foram removidos.
   maersk -> hapag -> etc
   ```
 
-  Caso encontrado:
+Caso encontrado:
 
   ```
   atualizar processo automaticamente
@@ -220,37 +171,18 @@ botão "Tentar identificar armador automaticamente"
 
 ## Domain
 
-- Adicionar **booking_number** ao processo.
-
 - Revisar se `operation_type` pode ser removido do banco.
 
 - Padronizar uso de:
 
 ```
-null vs unknown
+null vs undefined
 ```
 
 para campos opcionais.
 
 ---
 
-## Tracking / Domain Events
-
-Gerar **evento de transbordo** quando:
-
-```
-Navio A chega
-Navio B sai com o mesmo container
-```
-
-Evento deve gerar:
-
-```
-alerta operacional
-visibilidade para importadores
-```
-
----
 
 ## Alert Content
 
@@ -260,36 +192,7 @@ Alertas de transbordo devem incluir:
 container
 navio original
 navio novo
-redestinação do processo
-```
-
----
-
-## Tracking Engine
-
-Melhorar promoção:
-
-```
-EXPECTED -> ACTUAL
-```
-
-Atualmente:
-
-```
-EXPECTED mantido
-ACTUAL criado
-```
-
-Resultado:
-
-```
-timeline duplicada
-```
-
-Objetivo:
-
-```
-promover registro EXPECTED existente para ACTUAL
+redestinação do processo (hoje falta, como aplicar?)
 ```
 
 ---
@@ -379,7 +282,7 @@ erro de API
 
 ## Project Structure
 
-A pasta `tools/` está acumulando:
+pasta `tools/` está acumulando:
 
 ```
 scripts

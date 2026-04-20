@@ -1,4 +1,4 @@
-import type { Accessor, Resource } from 'solid-js'
+import type { Accessor } from 'solid-js'
 import { createEffect, createMemo, createSignal } from 'solid-js'
 import { findContainerIdByNumber } from '~/modules/process/ui/screens/shipment/lib/shipmentContainerSelection'
 import type {
@@ -7,7 +7,7 @@ import type {
 } from '~/modules/process/ui/viewmodels/shipment.vm'
 
 type UseShipmentSelectedContainerCommand = {
-  readonly shipment: Resource<ShipmentDetailVM | null | undefined>
+  readonly shipment: Accessor<ShipmentDetailVM | null | undefined>
   readonly preferredContainerNumber: Accessor<string | null>
 }
 
@@ -29,8 +29,9 @@ export function useShipmentSelectedContainer(
   // Ensure a default container is selected when data loads
   createEffect(() => {
     const data = command.shipment()
-    if (data && data.containers.length > 0 && !selectedContainerId()) {
-      setSelectedContainerId(String(data.containers[0].id))
+    const firstContainer = data?.containers[0]
+    if (data && firstContainer && !selectedContainerId()) {
+      setSelectedContainerId(String(firstContainer.id))
     }
   })
 
@@ -65,12 +66,14 @@ export function useShipmentSelectedContainer(
     if (!data) return null
     const containers = data.containers
     if (containers.length === 0) return null
+    const firstContainer = containers[0]
+    if (!firstContainer) return null
 
     const selected = selectedContainerId()
     if (selected) {
-      return containers.find((c) => String(c.id) === String(selected)) ?? containers[0]
+      return containers.find((c) => String(c.id) === String(selected)) ?? firstContainer
     }
-    return containers[0]
+    return firstContainer
   })
 
   const selectedContainerEtaVm = createMemo<ContainerEtaDetailVM>(() => {

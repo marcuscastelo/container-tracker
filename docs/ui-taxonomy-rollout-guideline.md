@@ -1,6 +1,6 @@
 # UI Taxonomy Rollout Guideline (ADR-0010 Operationalization)
 
-This guideline applies existing decisions from ADR-0010 and `docs/ARCHITECTURE.md` without creating a new ADR.
+This guideline applies existing decisions from ADR-0010 and `docs/ARCHITECTURE.md` without creating new ADR.
 
 References:
 - `docs/adr/0010-screen-composition-ui-workflow-separation-and-naming-vocabulary.md`
@@ -25,17 +25,17 @@ Use one of these roles for each new UI file:
 - Telemetry
 - Utility
 
-If no role fits, treat it as a review signal and split responsibilities.
+If no role fits, treat it review signal and split responsibilities.
 
 ---
 
 ## 2) Folder Baseline
 
 Use `screens/` when:
-- route/screen-level composition is the primary concern
+- route/screen-level composition is primary concern
 
 Use `components/` when:
-- the unit is presentational or local interaction UI
+- unit is presentational or local interaction UI
 
 Use `lib/` when:
 - helper is pure and screen-local
@@ -65,20 +65,20 @@ Use `usecases/` when:
 For each changed UI file, verify:
 
 - File role is explicit (Screen/View/Layout/Hook/Usecase/Mapper/VM/Validation/Telemetry/Utility).
-- File name and folder match the selected responsibility.
-- No ad-hoc `presenter` naming outside the agreed vocabulary.
-- `mapper` files live in `mappers/` unless a strong local-only reason is documented.
+- File name and folder match selected responsibility.
+- No ad-hoc `presenter` naming outside agreed vocabulary.
+- `mapper` files live in `mappers/` unless strong local-only reason is documented.
 - Page/Screen files are not absorbing excessive interaction orchestration.
 - `*.vm.ts` files keep shape/contracts only (no behavior).
 - `validation/*` files do not become API/orchestration hubs.
 - UI does not derive canonical domain truth (status/timeline/alerts).
-- If a component became a hub, extraction follows the proven pattern used in `src/shared/ui/navbar-alerts/*`.
+- If component became hub, extraction follows proven pattern used in `src/shared/ui/navbar-alerts/*`.
 
 ---
 
 ## 4) Extraction Heuristic for Component Hubs
 
-When a UI file starts concentrating multiple concerns:
+When UI file starts concentrating multiple concerns:
 
 1. Extract focused child components for semantic UI blocks.
 2. Move workflow orchestration to controller hooks or UI usecases.

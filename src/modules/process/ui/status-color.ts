@@ -4,6 +4,7 @@ import type { StatusVariant } from '~/shared/ui/StatusBadge'
 export const STATUS_COLOR = {
   UNKNOWN: 'slate-400',
   IN_PROGRESS: 'slate-500',
+  BOOKED: 'slate-400',
   LOADED: 'indigo-500',
   IN_TRANSIT: 'blue-500',
   ARRIVED_AT_POD: 'amber-500',

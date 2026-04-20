@@ -1,16 +1,16 @@
 # ADR-0016 — Provider-Paced Container Auto-Sync Scheduler
 
-Status: Accepted  
-Date: 2026-03-10  
-Owner: Tracking / Agent Runtime  
+Status: Accepted
+Date: 2026-03-10
+Owner: Tracking / Agent Runtime
 
 ---
 
 # Context
 
-O Container Tracker depende de ingestão periódica de dados de carriers (Maersk, CMA CGM, MSC etc.) para manter timelines atualizadas.
+Container Tracker depende de ingestão periódica de dados de carriers (Maersk, CMA CGM, MSC etc.) para manter timelines atualizadas.
 
-Atualmente os syncs podem ser disparados por:
+Atualmente syncs podem ser disparados por:
 
 - ações manuais
 - eventos operacionais
@@ -28,7 +28,7 @@ Sem sincronização periódica automática, containers podem permanecer desatual
 
 # Constraint Operacional
 
-A integração com carriers é feita via:
+integração com carriers é feita via:
 
 - scraping
 - requests de browser simulado
@@ -41,20 +41,20 @@ Limite definido:
 máximo de 10 containers a cada 5 minutos por carrier
 ```
 
-Isso impõe um **throughput máximo de sync**.
+Isso impõe **throughput máximo de sync**.
 
 ---
 
 # Problem
 
-Um auto-sync simples (cron diário que enfileira todos containers) causaria:
+auto-sync simples (cron diário que enfileira todos containers) causaria:
 
 - burst de requests
 - risco de bloqueio
 - saturação de agentes
 - comportamento pouco previsível
 
-Precisamos de um mecanismo que:
+Precisamos de mecanismo que:
 
 - respeite limites por carrier
 - distribua carga ao longo do tempo
@@ -64,7 +64,7 @@ Precisamos de um mecanismo que:
 
 # Decision
 
-Implementar um **Provider-Paced Auto-Sync Scheduler**.
+Implementar **Provider-Paced Auto-Sync Scheduler**.
 
 Esse scheduler:
 
@@ -97,17 +97,17 @@ tracking pipeline
 
 Importante:
 
-O scheduler **não executa sync diretamente**.
+scheduler **não executa sync diretamente**.
 
-Ele apenas **agenda trabalho na fila**.
+Ele **agenda trabalho na fila**.
 
 ---
 
 # Boundaries
 
-O scheduler é infraestrutura operacional.
+scheduler é infraestrutura operacional.
 
-Ele **não altera o domínio**.
+Ele **não altera domínio**.
 
 Responsabilidades permanecem separadas:
 
@@ -135,7 +135,7 @@ todos containers devem ser sincronizados
 ao menos uma vez a cada 24 horas
 ```
 
-O scheduler garante isso distribuindo trabalho ao longo do dia.
+scheduler garante isso distribuindo trabalho ao longo do dia.
 
 ---
 
@@ -155,10 +155,10 @@ Capacidade diária por carrier:
 2880 containers/dia/carrier
 ```
 
-Se o número de containers exceder esse limite, o scheduler deve:
+Se número de containers exceder esse limite, scheduler deve:
 
 - priorizar containers mais antigos
-- permitir refresh >24h para os restantes
+- permitir refresh >24h para restantes
 
 ---
 
@@ -180,7 +180,7 @@ Prioridade de seleção:
 
 # Queue
 
-O scheduler insere registros em:
+scheduler insere registros em:
 
 ```
 sync_requests
@@ -198,7 +198,7 @@ priority
 attempts
 ```
 
-O agent continua consumindo normalmente.
+agent continua consumindo normalmente.
 
 ---
 
@@ -287,7 +287,7 @@ Garantias:
 ## Positivas
 
 - refresh automático contínuo
-- respeito a limites de scraping
+- respeito limites de scraping
 - distribuição suave de carga
 - sistema mais resiliente
 - menor risco de bloqueio pelos carriers
@@ -338,9 +338,9 @@ Frequência baseada no estado do container.
 
 Exemplo:
 
-BOOKED → 48h  
-IN_TRANSIT → 24h  
-ARRIVING → 6h  
+BOOKED → 48h
+IN_TRANSIT → 24h
+ARRIVING → 6h
 
 ---
 
@@ -364,7 +364,7 @@ scheduled sync
 
 ## Intelligent Scheduler
 
-No futuro pode existir um:
+No futuro pode existir:
 
 ```
 tracking scheduler
@@ -380,7 +380,7 @@ que decide:
 
 ## Multi-Tenant Fairness
 
-Caso o sistema se torne multi-tenant:
+Caso sistema se torne multi-tenant:
 
 - limitar bursts por tenant
 - evitar starvation
@@ -392,6 +392,6 @@ Caso o sistema se torne multi-tenant:
 Adotar **Provider-Paced Auto-Sync Scheduler** garante:
 
 - refresh periódico
-- respeito a limites operacionais
+- respeito limites operacionais
 - preservação da arquitetura atual
 - escalabilidade futura.

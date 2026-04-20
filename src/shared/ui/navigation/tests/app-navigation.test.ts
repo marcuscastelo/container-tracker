@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildDashboardHref,
   buildProcessContainerHref,
@@ -7,12 +7,23 @@ import {
   navigateToAppHref,
   navigateToProcess,
   navigateToProcessContainer,
-  prefetchDashboardIntent,
-  prefetchProcessIntent,
+  readProcessContainerNavigationState,
+  readProcessContainerNavigationStateFromSearch,
+  scheduleDashboardPrefetch,
+  scheduleIntentPrefetch,
+  scheduleVisiblePrefetch,
   toInternalAppPathname,
 } from '~/shared/ui/navigation/app-navigation'
+import {
+  resetNavigationPrefetchSchedulerForTests,
+  waitForNavigationPrefetchesToSettleForTests,
+} from '~/shared/ui/navigation/prefetch.scheduler'
 
-describe('app-navigation helpers', () => {
+afterEach(() => {
+  resetNavigationPrefetchSchedulerForTests()
+})
+
+describe('app-navigation href helpers', () => {
   it('builds dashboard href', () => {
     expect(buildDashboardHref()).toBe('/')
   })
@@ -24,6 +35,19 @@ describe('app-navigation helpers', () => {
   it('builds process href with container deep-link query', () => {
     expect(buildProcessContainerHref('process/with space', ' mscu1234567 ')).toBe(
       '/shipments/process%2Fwith%20space?container=MSCU1234567',
+    )
+  })
+
+  it('builds process href with shipment alert navigation query params', () => {
+    expect(
+      buildProcessContainerHref('process/with space', ' mscu1234567 ', {
+        source: 'navbar-incidents',
+        focusSection: 'current-status',
+        revealLiveStatus: true,
+        requestKey: 'navbar-incident-3',
+      }),
+    ).toBe(
+      '/shipments/process%2Fwith%20space?container=MSCU1234567&focus=current-status&focusRequest=navbar-incident-3',
     )
   })
 
@@ -42,7 +66,7 @@ describe('app-navigation helpers', () => {
         href: '/shipments/p-123',
       }),
     ).toBe(true)
-    expect(navigate).toHaveBeenCalledWith('/shipments/p-123', { replace: undefined })
+    expect(navigate).toHaveBeenCalledWith('/shipments/p-123', undefined)
 
     navigate.mockClear()
 
@@ -62,7 +86,7 @@ describe('app-navigation helpers', () => {
       processId: 'p-abc',
     })
 
-    expect(navigate).toHaveBeenCalledWith('/shipments/p-abc', { replace: undefined })
+    expect(navigate).toHaveBeenCalledWith('/shipments/p-abc', undefined)
   })
 
   it('navigates to process container deep-link through canonical helper', () => {
@@ -73,71 +97,198 @@ describe('app-navigation helpers', () => {
       containerNumber: 'mscu7654321',
     })
 
-    expect(navigate).toHaveBeenCalledWith('/shipments/p-abc?container=MSCU7654321', {
-      replace: undefined,
+    expect(navigate).toHaveBeenCalledWith('/shipments/p-abc?container=MSCU7654321', undefined)
+  })
+
+  it('passes navigation state through process container deep-links when provided', () => {
+    const navigate = vi.fn()
+    navigateToProcessContainer({
+      navigate,
+      processId: 'p-abc',
+      containerNumber: 'mscu7654321',
+      navigationState: {
+        source: 'navbar-incidents',
+        focusSection: 'current-status',
+        revealLiveStatus: true,
+        requestKey: 'navbar-incident-1',
+      },
+      state: {
+        source: 'navbar-incidents',
+        focusSection: 'current-status',
+        revealLiveStatus: true,
+        requestKey: 'navbar-incident-1',
+      },
+    })
+
+    expect(navigate).toHaveBeenCalledWith(
+      '/shipments/p-abc?container=MSCU7654321&focus=current-status&focusRequest=navbar-incident-1',
+      {
+        state: {
+          source: 'navbar-incidents',
+          focusSection: 'current-status',
+          revealLiveStatus: true,
+          requestKey: 'navbar-incident-1',
+        },
+      },
+    )
+  })
+
+  it('reads valid process container navigation state from router state', () => {
+    expect(
+      readProcessContainerNavigationState({
+        source: 'navbar-incidents',
+        focusSection: 'current-status',
+        revealLiveStatus: true,
+        requestKey: 'navbar-incident-2',
+      }),
+    ).toEqual({
+      source: 'navbar-incidents',
+      focusSection: 'current-status',
+      revealLiveStatus: true,
+      requestKey: 'navbar-incident-2',
     })
   })
 
-  it('prefetches process intent with throttle', async () => {
-    const preloadRoute = vi.fn()
-    const preloadData = vi.fn(async () => undefined)
-
-    prefetchProcessIntent({
-      processId: 'intent-process-1',
-      preloadRoute,
-      preloadData,
-      nowMs: 1_000,
+  it('reads valid process container navigation state from url search params', () => {
+    expect(
+      readProcessContainerNavigationStateFromSearch(
+        '?container=MSCU1234567&focus=current-status&focusRequest=navbar-incident-4',
+      ),
+    ).toEqual({
+      source: 'navbar-incidents',
+      focusSection: 'current-status',
+      revealLiveStatus: true,
+      requestKey: 'navbar-incident-4',
     })
-    prefetchProcessIntent({
-      processId: 'intent-process-1',
-      preloadRoute,
-      preloadData,
-      nowMs: 1_050,
-    })
-    prefetchProcessIntent({
-      processId: 'intent-process-1',
-      preloadRoute,
-      preloadData,
-      nowMs: 1_200,
-    })
-
-    expect(preloadRoute).toHaveBeenCalledTimes(2)
-    expect(preloadRoute).toHaveBeenNthCalledWith(1, '/shipments/intent-process-1', {
-      preloadData: true,
-    })
-    expect(preloadRoute).toHaveBeenNthCalledWith(2, '/shipments/intent-process-1', {
-      preloadData: true,
-    })
-    expect(preloadData).toHaveBeenCalledTimes(2)
   })
 
-  it('prefetches dashboard intent with throttle', async () => {
+  it('rejects unrelated or malformed process container navigation state', () => {
+    expect(
+      readProcessContainerNavigationState({
+        source: 'search',
+        focusSection: 'current-status',
+        revealLiveStatus: true,
+        requestKey: 'navbar-incident-2',
+      }),
+    ).toBeNull()
+    expect(
+      readProcessContainerNavigationState({
+        source: 'navbar-incidents',
+        focusSection: 'current-status',
+        revealLiveStatus: false,
+        requestKey: 'navbar-incident-2',
+      }),
+    ).toBeNull()
+    expect(readProcessContainerNavigationState(null)).toBeNull()
+    expect(
+      readProcessContainerNavigationStateFromSearch('?container=MSCU1234567&focus=current-status'),
+    ).toBeNull()
+    expect(
+      readProcessContainerNavigationStateFromSearch('?container=MSCU1234567&focus=timeline'),
+    ).toBeNull()
+  })
+})
+
+describe('app-navigation prefetch helpers', () => {
+  it('preloads process intent using the canonical route helper', async () => {
     const preloadRoute = vi.fn()
-    const preloadData = vi.fn(async () => undefined)
+    const preloadData = vi.fn(async (_processId: string) => undefined)
 
-    prefetchDashboardIntent({
+    scheduleIntentPrefetch({
+      processId: 'intent-process-1',
       preloadRoute,
       preloadData,
-      nowMs: 2_000,
-    })
-    prefetchDashboardIntent({
-      preloadRoute,
-      preloadData,
-      nowMs: 2_050,
-    })
-    prefetchDashboardIntent({
-      preloadRoute,
-      preloadData,
-      nowMs: 2_200,
     })
 
-    expect(preloadRoute).toHaveBeenCalledTimes(2)
-    expect(preloadRoute).toHaveBeenNthCalledWith(1, '/', {
+    await Promise.resolve()
+    await waitForNavigationPrefetchesToSettleForTests()
+
+    expect(preloadRoute).toHaveBeenCalledTimes(1)
+    expect(preloadRoute).toHaveBeenCalledWith('/shipments/intent-process-1', {
       preloadData: true,
     })
-    expect(preloadRoute).toHaveBeenNthCalledWith(2, '/', {
+    expect(preloadData).toHaveBeenCalledTimes(1)
+    expect(preloadData).toHaveBeenCalledWith('intent-process-1')
+  })
+
+  it('preloads visible processes using canonical route helpers', async () => {
+    const preloadRoute = vi.fn()
+    const preloadData = vi.fn(async (_processId: string) => undefined)
+
+    scheduleVisiblePrefetch({
+      processIds: ['visible-process-1', 'visible-process-1', 'visible-process-2'],
+      preloadRoute,
+      preloadData,
+    })
+
+    await waitForNavigationPrefetchesToSettleForTests()
+
+    expect(preloadRoute).toHaveBeenCalledTimes(2)
+    expect(preloadRoute).toHaveBeenNthCalledWith(1, '/shipments/visible-process-1', {
+      preloadData: true,
+    })
+    expect(preloadRoute).toHaveBeenNthCalledWith(2, '/shipments/visible-process-2', {
       preloadData: true,
     })
     expect(preloadData).toHaveBeenCalledTimes(2)
+    expect(preloadData).toHaveBeenNthCalledWith(1, 'visible-process-1')
+    expect(preloadData).toHaveBeenNthCalledWith(2, 'visible-process-2')
+  })
+
+  it('caps visible prefetch bursts to the first ten unique process ids', async () => {
+    const preloadRoute = vi.fn()
+    const preloadData = vi.fn(async (_processId: string) => undefined)
+
+    scheduleVisiblePrefetch({
+      processIds: [
+        'visible-process-1',
+        'visible-process-2',
+        'visible-process-2',
+        'visible-process-3',
+        'visible-process-4',
+        'visible-process-5',
+        'visible-process-6',
+        'visible-process-7',
+        'visible-process-8',
+        'visible-process-9',
+        'visible-process-10',
+        'visible-process-11',
+      ],
+      preloadRoute,
+      preloadData,
+    })
+
+    await waitForNavigationPrefetchesToSettleForTests()
+
+    expect(preloadRoute).toHaveBeenCalledTimes(10)
+    expect(preloadRoute).toHaveBeenNthCalledWith(1, '/shipments/visible-process-1', {
+      preloadData: true,
+    })
+    expect(preloadRoute).toHaveBeenNthCalledWith(10, '/shipments/visible-process-10', {
+      preloadData: true,
+    })
+    expect(preloadData).toHaveBeenCalledTimes(10)
+    expect(preloadData).toHaveBeenNthCalledWith(1, 'visible-process-1')
+    expect(preloadData).toHaveBeenNthCalledWith(10, 'visible-process-10')
+  })
+
+  it('preloads dashboard using the canonical route helper', async () => {
+    const preloadRoute = vi.fn()
+    const preloadData = vi.fn(async () => undefined)
+
+    scheduleDashboardPrefetch({
+      preloadRoute,
+      preloadData,
+      priority: 'intent',
+    })
+
+    await Promise.resolve()
+    await waitForNavigationPrefetchesToSettleForTests()
+
+    expect(preloadRoute).toHaveBeenCalledTimes(1)
+    expect(preloadRoute).toHaveBeenCalledWith('/', {
+      preloadData: true,
+    })
+    expect(preloadData).toHaveBeenCalledTimes(1)
   })
 })

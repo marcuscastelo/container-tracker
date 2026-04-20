@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  packages: read
 
 jobs:
   promote-stable:
@@ -35,6 +36,15 @@ jobs:
             --pattern "agent-windows-x64.sha256" \
             --dir /tmp/agent-release \
             --clobber
+
+      - name: Promote GitHub release to stable
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: agent/v${{ inputs.version }}
+          name: Agent v${{ inputs.version }}
+          prerelease: false
+          draft: false
+          make_latest: true
 
       - name: Generate stable manifest from canary
         env:
@@ -70,8 +80,8 @@ jobs:
                     "checksum": $windows_checksum
                   }
                 }
-              | del(.download_url, .checksum)
-              | .published_at = $published_at' \
+              | .published_at = $published_at
+              | del(.download_url, .checksum)' \
             agent-manifests/canary.json > agent-manifests/stable.json
 
       - name: Commit stable manifest

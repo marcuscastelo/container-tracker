@@ -5,6 +5,9 @@ import type {
 } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 const SYNC_STALE_THRESHOLD_HOURS = 24
 const SYNC_STALE_THRESHOLD_MS = SYNC_STALE_THRESHOLD_HOURS * 60 * 60 * 1000
@@ -27,8 +30,8 @@ type ContainerSyncLabelMessages = {
 }
 
 function toTimestampOrNegativeInfinity(value: string): number {
-  const timestamp = Date.parse(value)
-  return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY
+  const timestamp = parseInstantFromIso(value)
+  return timestamp ? timestamp.toEpochMs() : Number.NEGATIVE_INFINITY
 }
 
 function isMoreRecent(candidate: string, base: string): boolean {
@@ -71,7 +74,7 @@ export function normalizeContainerNumber(containerNumber: string): string {
   return containerNumber.trim().toUpperCase()
 }
 
-export function toContainerSyncVM(dto: ContainerSyncRecord, now: Date): ContainerSyncVM {
+export function toContainerSyncVM(dto: ContainerSyncRecord, now: Instant): ContainerSyncVM {
   const state = toState(dto)
 
   const lastSuccessAtTimestamp =
@@ -80,7 +83,7 @@ export function toContainerSyncVM(dto: ContainerSyncRecord, now: Date): Containe
     state === 'ok' &&
     lastSuccessAtTimestamp !== null &&
     Number.isFinite(lastSuccessAtTimestamp) &&
-    now.getTime() - lastSuccessAtTimestamp > SYNC_STALE_THRESHOLD_MS
+    now.toEpochMs() - lastSuccessAtTimestamp > SYNC_STALE_THRESHOLD_MS
 
   return {
     containerNumber: normalizeContainerNumber(dto.containerNumber),
@@ -121,7 +124,7 @@ export function toContainerSyncLabel(
   sync: ContainerSyncVM,
   messages: ContainerSyncLabelMessages,
   command?: {
-    readonly now?: Date
+    readonly now?: Instant
     readonly locale?: string
   },
 ): string {
@@ -129,11 +132,16 @@ export function toContainerSyncLabel(
   if (sync.state === 'never') return messages.never
 
   const relativeTimeLabel = sync.relativeTimeAt
-    ? formatRelativeTime(
-        sync.relativeTimeAt,
-        command?.now ?? new Date(),
-        command?.locale ?? DEFAULT_LOCALE,
-      )
+    ? (() => {
+        const timestamp = parseInstantFromIso(sync.relativeTimeAt)
+        if (!timestamp) return ''
+
+        return formatRelativeTime(
+          timestamp,
+          command?.now ?? systemClock.now(),
+          command?.locale ?? DEFAULT_LOCALE,
+        )
+      })()
     : ''
   const hasRelativeTimeLabel = relativeTimeLabel.length > 0
 

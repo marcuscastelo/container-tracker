@@ -15,6 +15,7 @@
  */
 export function computeRowDistribution(n: number, maxPerRow: number): number[] {
   if (n <= 0) return []
+  if (maxPerRow <= 0) return []
 
   const normalizedMaxPerRow = Math.floor(maxPerRow)
   if (!Number.isFinite(normalizedMaxPerRow) || normalizedMaxPerRow < 1) return []

@@ -1,8 +1,8 @@
 # ADR-0010 — Screen Composition, UI Workflow Separation, and Naming Vocabulary
 
-Status: Proposed  
-Date: 2026-03-09  
-Owner: Repository maintainers  
+Status: Proposed
+Date: 2026-03-09
+Owner: Repository maintainers
 Related:
 - ADR-0003 — Separate BC from Capabilities
 - ADR-0007 — Domain Truth Ownership
@@ -37,11 +37,11 @@ This is especially risky in this repository because:
 
 - `modules/*` own canonical semantics and must not depend on capabilities
 - UI must consume truth, not derive domain truth
-- each architectural boundary must change the type explicitly
-- UI remains horizontal inside the bounded context and should not become an accidental domain/application layer
+- each architectural boundary must change type explicitly
+- UI remains horizontal inside bounded context and should not become accidental domain/application layer
 
-These constraints are already established by the project architecture and must be preserved.  
-`modules/*` are the semantic source of truth; capabilities are orchestration-only; UI may manage interaction state and presentation, but must not reinterpret tracking semantics. :contentReference[oaicite:4]{index=4} :contentReference[oaicite:5]{index=5} :contentReference[oaicite:6]{index=6}
+These constraints are already established by project architecture and must be preserved.
+`modules/*` are semantic source of truth; capabilities are orchestration-only; UI may manage interaction state and presentation, but must not reinterpret tracking semantics.
 
 ---
 
@@ -51,10 +51,10 @@ We standardize UI composition around explicit **screen architecture**.
 
 ### 1. Canonical vocabulary
 
-To eliminate ambiguity, the following terms are now standardized.
+To eliminate ambiguity, following terms are now standardized.
 
 #### Page
-A route-bound entrypoint associated with router params / URL ownership.
+route-bound entrypoint associated with router params / URL ownership.
 
 Examples:
 - `ShipmentPage`
@@ -64,10 +64,10 @@ Rules:
 - owns route params
 - may connect router/navigation/preload concerns
 - should be thin
-- should delegate to a screen
+- should delegate to screen
 
 #### Screen
-The top-level UI composition root for one business surface.
+top-level UI composition root for one business surface.
 
 Examples:
 - `ShipmentScreen`
@@ -80,11 +80,11 @@ Rules:
 - must not contain transport protocol details inline when those details can be isolated in UI usecases/services
 - must not derive domain truth
 
-A screen is the main unit of UI orchestration.
+screen is main unit of UI orchestration.
 
 ### Shipment screen canonical composition
 
-Shipment/process detail follows a timeline-first structure:
+Shipment/process detail follows timeline-first structure:
 
 - primary column: container selector + timeline
 - supporting sidebar: shipment info + current status + alerts/supporting metadata
@@ -100,7 +100,7 @@ Reference:
 - `docs/UI_PHILOSOPHY.md`
 
 #### View
-A presentational subtree or visual section of a screen.
+presentational subtree or visual section of screen.
 
 Examples:
 - `ShipmentAlertsView`
@@ -116,7 +116,7 @@ Rules:
 Use `View` for render-focused components, not for route entrypoints.
 
 #### Layout
-A structural component responsible for visual arrangement only.
+structural component responsible for visual arrangement only.
 
 Examples:
 - `ShipmentScreenLayout`
@@ -128,18 +128,18 @@ Rules:
 - should not own async flows or business workflow decisions
 
 #### DialogHost
-A composition component that mounts one or more dialogs/modals for a screen.
+composition component that mounts one or more dialogs/modals for screen.
 
 Examples:
 - `ShipmentDialogsHost`
 
 Rules:
 - receives dialog state and handlers
-- keeps dialog mounting out of the main screen tree
+- keeps dialog mounting out of main screen tree
 - does not own domain logic
 
 #### Controller Hook
-A UI hook that owns one workflow or one interaction concern.
+UI hook that owns one workflow or one interaction concern.
 
 Examples:
 - `useShipmentRefreshController`
@@ -150,10 +150,10 @@ Rules:
 - one operational responsibility only
 - may own signals/effects/resources related to that concern
 - may call UI usecases/services
-- must not aggregate unrelated workflows into a mega-hook
+- must not aggregate unrelated workflows into mega-hook
 
 #### UI Usecase
-A UI-side orchestration function/service for transport and screen workflow coordination.
+UI-side orchestration function/service for transport and screen workflow coordination.
 
 Examples:
 - `refreshShipmentTrackingUsecase`
@@ -167,7 +167,7 @@ Rules:
 - does not replace backend application usecases
 
 #### UI Helper / Lib Function
-A pure function for formatting, sorting, grouping, mapping, or screen-local utility.
+pure function for formatting, sorting, grouping, mapping, or screen-local utility.
 
 Examples:
 - `toSortedActiveAlerts`
@@ -183,7 +183,7 @@ Rules:
 
 ## 2. Separation rule for route UI
 
-A route-level page/component must not accumulate all of the following in one file:
+route-level page/component must not accumulate all of following in one file:
 
 - multiple screen signals/memos/effects
 - network protocol calls
@@ -193,7 +193,7 @@ A route-level page/component must not accumulate all of the following in one fil
 - alert action workflows
 - section rendering contracts
 
-When a screen starts owning more than one operational workflow, these workflows must be separated into controller hooks or UI usecases.
+When screen starts owning more than one operational workflow, these workflows must be separated into controller hooks or UI usecases.
 
 ---
 
@@ -212,9 +212,7 @@ Not allowed:
 - inline domain reinterpretation
 - complex screen state machines
 
-This aligns with the existing principle that routes are thin adapters. :contentReference[oaicite:7]{index=7}
-
-### `modules/<bc>/ui/screens/*`
+This aligns with existing principle that routes are thin adapters.### `modules/<bc>/ui/screens/*`
 Home of screen/page/view/layout/dialog composition.
 
 Suggested structure:
@@ -231,11 +229,9 @@ modules/process/ui/screens/shipment/
   types/
 ```
 
-This remains **horizontal UI**, which is consistent with ADR-0008: UI must remain outside feature slices and should not be vertically sliced into pseudo-domain structures. :contentReference[oaicite:8]{index=8}
+This remains **horizontal UI**, which is consistent with ADR-0008: UI must remain outside feature slices and should not be vertically sliced into pseudo-domain structures.
 
 ### `modules/<bc>/ui/usecases/*`
-Transport/workflow orchestration for UI.
-
 Examples:
 - submit create/edit
 - refresh tracking workflow
@@ -252,9 +248,9 @@ Pure functions:
 
 ## 4. Prop contract rule
 
-A single layout/view component must not become a “god contract”.
+single layout/view component must not become “god contract”.
 
-When a screen has multiple independent concerns, it should compose multiple focused views instead of sending a giant flat prop bag into one mega-layout.
+When screen has multiple independent concerns, it should compose multiple focused views instead of sending giant flat prop bag into one mega-layout.
 
 Prefer:
 
@@ -263,9 +259,9 @@ Prefer:
 - `ShipmentContainersView`
 - `ShipmentDialogsHost`
 
-instead of a single layout receiving every signal and handler from the entire screen.
+instead of single layout receiving every signal and handler from entire screen.
 
-Prop drilling is acceptable when focused and local.  
+Prop drilling is acceptable when focused and local.
 What is forbidden is **high-churn mega-contracts** that couple unrelated sections.
 
 ---
@@ -292,40 +288,35 @@ UI must not:
 - hide domain conflicts
 - flatten grouped operational timeline semantics by recomputing them in UI
 
-This remains governed by ADR-0007. :contentReference[oaicite:9]{index=9} :contentReference[oaicite:10]{index=10}
+This remains governed by ADR-0007.
 
 ---
 
-## 6. Feature slice rule
-
-This ADR does **not** introduce UI feature slices as a new architectural pattern.
-
-Reason:
-ADR-0008 explicitly keeps `ui/`, `interface/http/`, `infrastructure/`, and `application/ports/` horizontal within the BC. :contentReference[oaicite:11]{index=11}
-
+## 6. Feature slice ruleThis ADR does **not** introduce UI feature slicReason:
+ADR-0008 explicitly keeps `ui/`, `interface/http/`, `infrastructure/`, and `application/ports/` horizontal within BC.
 Therefore:
 
 - domain/application semantic concepts may use `features/<feature>/`
 - UI should remain under `modules/<bc>/ui/...`
-- screen folders are allowed as UI organization, not as domain feature slices
+- screen folders are allowed UI organization, not domain feature slices
 
 ---
 
 ## 7. Complexity trigger thresholds
 
-A screen/page file should be considered for mandatory split when it crosses any of these thresholds:
+screen/page file should be considered for mandatory split when it crosses any of these thresholds:
 
 - more than 2 operational workflows
-- realtime + retry/watchdog in the same file
+- realtime + retry/watchdog in same file
 - dialog workflow + alert workflow + resource orchestration together
 - more than 3 `createSignal`
 - more than 2 `createMemo`
 - more than 1 `createEffect`
 - direct fetch/protocol parsing plus large render composition
-- a layout prop contract that spans unrelated concerns
+- layout prop contract that spans unrelated concerns
 
-These are review triggers, not mathematical truths.  
-The intent is to catch orchestration bloat early.
+These are review triggers, not mathematical truths.
+intent is to catch orchestration bloat early.
 
 ---
 
@@ -340,14 +331,12 @@ Review checklist and PR guidance.
 Custom lint / static checks for obvious violations, for example:
 
 - route files with direct fetch calls
-- route/screen files importing realtime clients directly when a UI usecase exists
+- route/screen files importing realtime clients directly when UI usecase exists
 - very large prop contracts
 - disallowed imports from UI to domain/infrastructure
-- use of tracking derivation functions from UI/capabilities, already aligned with ADR-0007 enforcement guidance. :contentReference[oaicite:12]{index=12}
+- use of tracking derivation functions from UI/capabilities, already aligned with ADR-0007 enforcement guidance.
 
 ### Stage 3
-Repository-wide rollout by screen family.
-
 ---
 
 ## 9. Consequences
@@ -365,15 +354,11 @@ Repository-wide rollout by screen family.
 - more explicit orchestration layers in UI
 - some boilerplate for screen hooks/usecases
 
-These tradeoffs are acceptable because the repository already favors explicit boundaries and explicit type transitions over implicit freestyle structures. :contentReference[oaicite:13]{index=13} :contentReference[oaicite:14]{index=14}
+These tradeoffs are acceptable because repository already favors explicit boundaries and explicit type transitions over implicit freestyle structures.
 
 ---
 
-## 10. Summary
-
-We standardize route UI around:
-
-- **Page** = route entrypoint
+## 10. SummaryWe standardize route UI around:- **Page** = route entrypoint
 - **Screen** = top-level business surface composition
 - **View** = focused presentational section
 - **Layout** = visual arrangement only
@@ -382,7 +367,7 @@ We standardize route UI around:
 - **UI Usecase** = transport/workflow orchestration for UI
 - **UI Helper** = pure deterministic function
 
-The goal is to prevent screen files from becoming monolithic orchestrators while preserving:
+goal is to prevent screen files from becoming monolithic orchestrators while preserving:
 
 - BC boundaries
 - UI horizontality

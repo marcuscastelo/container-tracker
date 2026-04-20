@@ -17,7 +17,7 @@ References:
 
 Use this checklist in every PR that touches validation/parsing/decoding.
 
-- Is the parsing mode explicit in code? (`canonical acceptance`, `boundary contract decode`, `tolerant external parsing`, `UI permissive parsing`)
+- Is parsing mode explicit in code? (`canonical acceptance`, `boundary contract decode`, `tolerant external parsing`, `UI permissive parsing`)
 - Is canonical acceptance kept in domain/application invariants only?
 - Is HTTP decode strict at boundary (request/response schemas in boundary files)?
 - Is UI parsing limited to form/query/storage preparation (without redefining domain truth)?
@@ -55,24 +55,24 @@ Behavior-family expectation for tests:
 
 ## 3) Known Deviations (Current)
 
-This list is mandatory to update when a deviation is created, resolved, reassigned, or reaches review deadline.
+This list is mandatory to update when deviation is created, resolved, reassigned, or reaches review deadline.
 
 ### Active
 
-| Deviation | Category | Owner | Risk | Action | Status | Next review |
+|Deviation|Category|Owner|Risk|Action|Status|Next review|
 |---|---|---|---|---|---|---|
-| `src/modules/process/ui/screens/DashboardScreen.tsx` | structural-hotspot | Process UI maintainers | UI complexity drift | Continue extraction into View/Hook/Usecase/Mapper blocks | active | Next architecture sprint |
-| `src/capabilities/search/ui/SearchOverlay.panel.tsx` | structural-hotspot | Search capability UI maintainers | complexity and ownership blur | Split semantic regions into focused child components | active | Next architecture sprint |
-| `src/capabilities/dashboard/application/tests/dashboard.operational-summary.readmodel.integration.test.ts` | guideline-checklist | Dashboard capability maintainers | mixed behavior families in one suite | partition by behavior family with extracted helpers | active | Next architecture sprint |
-| `src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts` | structural-hotspot | Tracking infra maintainers | query/mapping concentration | continue decomposition while preserving boundary rules | active | Next architecture sprint |
+|`src/modules/process/ui/screens/DashboardScreen.tsx`|structural-hotspot|Process UI maintainers|UI complexity drift|Continue extraction into View/Hook/Usecase/Mapper blocks|active|Next architecture sprint|
+|`src/capabilities/search/ui/SearchOverlay.panel.tsx`|structural-hotspot|Search capability UI maintainers|complexity and ownership blur|Split semantic regions into focused child components|active|Next architecture sprint|
+|`src/capabilities/dashboard/application/tests/dashboard.operational-summary.readmodel.integration.test.ts`|guideline-checklist|Dashboard capability maintainers|mixed behavior families in one suite|partition by behavior family with extracted helpers|active|Next architecture sprint|
+|`src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts`|structural-hotspot|Tracking infra maintainers|query/mapping concentration|continue decomposition while preserving boundary rules|active|Next architecture sprint|
 
 ### Resolved in this round (2026-03-13)
 
-| Deviation | Resolution | Evidence |
+|Deviation|Resolution|Evidence|
 |---|---|---|
-| `src/modules/process/ui/validation/processApi.validation.ts` re-exported API helpers | split ownership: validation file now only maps UI form -> request input; request helpers consumed from `ui/api/process.api.ts` | `code-report`: 47 -> 22 lines |
-| `src/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel.ts` monolithic shaping/grouping/sorting | extracted pure helpers (`*.grouping.ts`, `*.sorting.ts`, `*.message-contract.ts`, `*.readmodel.shared.ts`), keeping read model as composition entrypoint | `code-report`: 566 -> 120 lines |
-| `src/capabilities/dashboard/interface/http/tests/dashboard.controllers.test.ts` monolithic mixed suite | replaced by behavior-family test files + shared harness helper | monolith removed (409 lines) and split suite introduced |
+|`src/modules/process/ui/validation/processApi.validation.ts` re-exported API helpers|split ownership: validation file now only maps UI form -> request input; request helpers consumed from `ui/api/process.api.ts`|`code-report`: 47 -> 22 lines|
+|`src/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel.ts` monolithic shaping/grouping/sorting|extracted pure helpers (`*.grouping.ts`, `*.sorting.ts`, `*.message-contract.ts`, `*.readmodel.shared.ts`), keeping read model composition entrypoint|`code-report`: 566 -> 120 lines|
+|`src/capabilities/dashboard/interface/http/tests/dashboard.controllers.test.ts` monolithic mixed suite|replaced by behavior-family test files + shared harness helper|monolith removed (409 lines) and split suite introduced|
 
 ---
 

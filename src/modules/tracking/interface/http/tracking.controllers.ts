@@ -7,16 +7,31 @@
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import {
   toAlertResponseDto,
+  toObservationResponseDto,
   toSnapshotResponseDto,
+  toTimelinePredictionHistoryResponseDto,
+  toTrackingReplayDebugResponseDto,
+  toTrackingTimeTravelResponseDto,
 } from '~/modules/tracking/interface/http/tracking.http.mappers'
 import {
   AlertActionBodySchema,
   GetLatestSnapshotRequestSchema,
+  GetObservationInspectorRequestSchema,
   GetSnapshotsForContainerRequestSchema,
+  GetTimelineItemSeriesHistoryRequestSchema,
+  GetTrackingReplayDebugRequestSchema,
+  GetTrackingTimeTravelRequestSchema,
   ListAlertsQuerySchema,
+  ObservationInspectorResponseDtoSchema,
+  TimelinePredictionHistoryResponseDtoSchema,
+  TrackingReplayDebugResponseDtoSchema,
+  TrackingTimeTravelResponseDtoSchema,
 } from '~/modules/tracking/interface/http/tracking.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 // ---------------------------------------------------------------------------
 // Dependency types
@@ -140,21 +155,202 @@ function createSnapshotsController(trackingUseCases: TrackingUseCases) {
   return { getSnapshotsForContainer, getLatestSnapshot }
 }
 
+function parseReferenceNow(rawNow: string | undefined): Instant | null {
+  if (rawNow === undefined) return systemClock.now()
+  return parseInstantFromIso(rawNow)
+}
+
+function createTimeTravelController(trackingUseCases: TrackingUseCases) {
+  async function getTimeTravel({
+    params,
+    request,
+  }: {
+    params: Record<string, string>
+    request: Request
+  }): Promise<Response> {
+    try {
+      const url = new URL(request.url)
+      const parsed = GetTrackingTimeTravelRequestSchema.safeParse({
+        containerId: params.containerId,
+        now: url.searchParams.get('now') ?? undefined,
+      })
+      if (!parsed.success) {
+        return jsonResponse({ error: parsed.error.message }, 400)
+      }
+
+      const referenceNow = parseReferenceNow(parsed.data.now)
+      if (referenceNow === null) {
+        return jsonResponse({ error: 'Invalid now query parameter' }, 400)
+      }
+
+      const replay = await trackingUseCases.getTrackingTimeTravel({
+        containerId: parsed.data.containerId,
+        now: referenceNow,
+      })
+
+      return jsonResponse(
+        toTrackingTimeTravelResponseDto(replay),
+        200,
+        TrackingTimeTravelResponseDtoSchema,
+      )
+    } catch (err) {
+      console.error('GET /api/tracking/containers/:containerId/time-travel error:', err)
+      return mapErrorToResponse(err)
+    }
+  }
+
+  async function getReplayDebug({
+    params,
+    request,
+  }: {
+    params: Record<string, string>
+    request: Request
+  }): Promise<Response> {
+    try {
+      const url = new URL(request.url)
+      const parsed = GetTrackingReplayDebugRequestSchema.safeParse({
+        containerId: params.containerId,
+        snapshotId: params.snapshotId,
+        now: url.searchParams.get('now') ?? undefined,
+      })
+      if (!parsed.success) {
+        return jsonResponse({ error: parsed.error.message }, 400)
+      }
+
+      const referenceNow = parseReferenceNow(parsed.data.now)
+      if (referenceNow === null) {
+        return jsonResponse({ error: 'Invalid now query parameter' }, 400)
+      }
+
+      const replay = await trackingUseCases.getTrackingReplayDebug({
+        containerId: parsed.data.containerId,
+        snapshotId: parsed.data.snapshotId,
+        now: referenceNow,
+      })
+
+      return jsonResponse(
+        toTrackingReplayDebugResponseDto(replay),
+        200,
+        TrackingReplayDebugResponseDtoSchema,
+      )
+    } catch (err) {
+      console.error(
+        'GET /api/tracking/containers/:containerId/time-travel/:snapshotId/debug error:',
+        err,
+      )
+      return mapErrorToResponse(err)
+    }
+  }
+
+  return { getTimeTravel, getReplayDebug }
+}
+
+function createDetailDrilldownController(trackingUseCases: TrackingUseCases) {
+  async function getTimelineItemSeriesHistory({
+    params,
+    request,
+  }: {
+    params: Record<string, string>
+    request: Request
+  }): Promise<Response> {
+    try {
+      const url = new URL(request.url)
+      const parsed = GetTimelineItemSeriesHistoryRequestSchema.safeParse({
+        containerId: params.containerId,
+        timelineItemId: params.timelineItemId,
+      })
+      if (!parsed.success) {
+        return jsonResponse({ error: parsed.error.message }, 400)
+      }
+
+      const referenceNow = parseReferenceNow(url.searchParams.get('now') ?? undefined)
+      if (referenceNow === null) {
+        return jsonResponse({ error: 'Invalid now query parameter' }, 400)
+      }
+
+      const predictionHistory = await trackingUseCases.findTimelineItemPredictionHistory({
+        containerId: parsed.data.containerId,
+        timelineItemId: parsed.data.timelineItemId,
+        now: referenceNow,
+      })
+      if (predictionHistory === null) {
+        return jsonResponse({ error: 'Timeline item history not found' }, 404)
+      }
+
+      return jsonResponse(
+        toTimelinePredictionHistoryResponseDto(predictionHistory),
+        200,
+        TimelinePredictionHistoryResponseDtoSchema,
+      )
+    } catch (err) {
+      console.error(
+        'GET /api/tracking/containers/:containerId/timeline-items/:timelineItemId/history error:',
+        err,
+      )
+      return mapErrorToResponse(err)
+    }
+  }
+
+  async function getObservationInspector({
+    params,
+  }: {
+    params: Record<string, string>
+  }): Promise<Response> {
+    try {
+      const parsed = GetObservationInspectorRequestSchema.safeParse({
+        containerId: params.containerId,
+        observationId: params.observationId,
+      })
+      if (!parsed.success) {
+        return jsonResponse({ error: parsed.error.message }, 400)
+      }
+
+      const observation = await trackingUseCases.findObservationInspectorProjection({
+        containerId: parsed.data.containerId,
+        observationId: parsed.data.observationId,
+      })
+      if (observation === null) {
+        return jsonResponse({ error: 'Observation not found' }, 404)
+      }
+
+      return jsonResponse(
+        toObservationResponseDto(observation),
+        200,
+        ObservationInspectorResponseDtoSchema,
+      )
+    } catch (err) {
+      console.error(
+        'GET /api/tracking/containers/:containerId/observations/:observationId error:',
+        err,
+      )
+      return mapErrorToResponse(err)
+    }
+  }
+
+  return { getTimelineItemSeriesHistory, getObservationInspector }
+}
+
 // ---------------------------------------------------------------------------
 // Aggregated controllers
 // ---------------------------------------------------------------------------
 
 export type AlertsController = ReturnType<typeof createAlertsController>
 export type SnapshotsController = ReturnType<typeof createSnapshotsController>
+export type TimeTravelController = ReturnType<typeof createTimeTravelController>
+export type DetailDrilldownController = ReturnType<typeof createDetailDrilldownController>
 
 export type TrackingControllers = {
   readonly alerts: AlertsController
   readonly snapshots: SnapshotsController
+  readonly timeTravel: TimeTravelController
+  readonly detail: DetailDrilldownController
 }
 
 export function createTrackingControllers(deps: TrackingControllersDeps): TrackingControllers {
   return {
     alerts: createAlertsController(deps.trackingUseCases),
     snapshots: createSnapshotsController(deps.trackingUseCases),
+    timeTravel: createTimeTravelController(deps.trackingUseCases),
+    detail: createDetailDrilldownController(deps.trackingUseCases),
   }
 }

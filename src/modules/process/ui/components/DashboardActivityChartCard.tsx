@@ -7,6 +7,7 @@ import { useTranslation } from '~/shared/localization/i18n'
 type DashboardActivityChartCardProps = {
   readonly data: readonly DashboardMonthlyBarDatumVM[]
   readonly loading: boolean
+  readonly refreshing?: boolean
   readonly hasError: boolean
   readonly windowSize: DashboardChartWindowSize
 }
@@ -187,7 +188,10 @@ export function DashboardActivityChartCard(props: DashboardActivityChartCardProp
     t(keys.dashboard.activityChart.tooltip.processes, { count })
 
   return (
-    <section class="mb-4 overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgb(0_0_0_/8%)]">
+    <section
+      class="mb-4 overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgb(0_0_0_/8%)]"
+      aria-busy={props.loading || props.refreshing === true}
+    >
       <header class="border-b border-border px-6 py-4">
         <h2 class="text-lg-ui font-semibold leading-tight tracking-[-0.01em] text-foreground">
           {t(keys.dashboard.activityChart.title)}

@@ -1,19 +1,22 @@
 import { A } from '@solidjs/router'
-import type { Accessor, JSX, Resource } from 'solid-js'
+import type { Accessor, JSX } from 'solid-js'
 import { Show } from 'solid-js'
 import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
+import { ShipmentScreenSkeleton } from '~/modules/process/ui/screens/shipment/components/ShipmentScreenSkeleton'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 
 type ShipmentScreenLayoutProps = {
-  readonly shipmentData: Resource<ShipmentDetailVM | null | undefined>
+  readonly shipmentData: Accessor<ShipmentDetailVM | null | undefined>
   readonly shipmentLoading: Accessor<boolean>
   readonly shipmentError: Accessor<unknown>
   readonly onOpenCreateProcess: () => void
   readonly onDashboardIntent: () => void
+  readonly preserveDashboardScroll: boolean
   readonly searchSlot?: JSX.Element
+  readonly actionsSlot?: JSX.Element
   readonly banners: JSX.Element
   readonly dialogs: JSX.Element
   readonly content: JSX.Element
@@ -43,7 +46,13 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
         class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.04]"
       />
       <div class="relative z-10">
-        <AppHeader onCreateProcess={props.onOpenCreateProcess} searchSlot={props.searchSlot} />
+        <AppHeader
+          onCreateProcess={props.onOpenCreateProcess}
+          onDashboardIntent={props.onDashboardIntent}
+          preserveDashboardScroll={props.preserveDashboardScroll}
+          searchSlot={props.searchSlot}
+          actionsSlot={props.actionsSlot}
+        />
 
         {props.banners}
         {props.dialogs}
@@ -51,6 +60,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
         <main class="relative mx-auto max-w-(--dashboard-container-max-width) px-[var(--dashboard-container-px)] pb-[var(--dashboard-container-py)] pt-6">
           <A
             href="/"
+            noScroll={props.preserveDashboardScroll}
             class="mb-3 inline-flex items-center gap-1.5 text-sm-ui text-text-muted transition-colors hover:text-foreground"
             onPointerEnter={triggerDashboardIntent}
             onFocusIn={triggerDashboardIntent}
@@ -60,10 +70,8 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
             {t(keys.shipmentView.backToList)}
           </A>
 
-          <Show when={props.shipmentLoading() || shouldShowPendingLoading()}>
-            <div class="rounded-lg border border-border bg-surface p-12 text-center">
-              <p class="text-text-muted">{t(keys.shipmentView.loading)}</p>
-            </div>
+          <Show when={shouldShowPendingLoading()}>
+            <ShipmentScreenSkeleton />
           </Show>
 
           <Show when={shouldShowLoadError()}>
@@ -71,6 +79,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
               <p class="text-tone-danger-fg">{t(keys.shipmentView.loadError)}</p>
               <A
                 href="/"
+                noScroll={props.preserveDashboardScroll}
                 class="mt-4 inline-block text-sm-ui text-text-muted hover:text-foreground"
                 onPointerEnter={triggerDashboardIntent}
                 onFocusIn={triggerDashboardIntent}
@@ -86,6 +95,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
               <p class="text-tone-danger-fg">{t(keys.shipmentView.notFound)}</p>
               <A
                 href="/"
+                noScroll={props.preserveDashboardScroll}
                 class="mt-4 inline-block text-sm-ui text-text-muted hover:text-foreground"
                 onPointerEnter={triggerDashboardIntent}
                 onFocusIn={triggerDashboardIntent}

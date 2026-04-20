@@ -2,6 +2,7 @@ import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
 import { useTranslation } from '~/shared/localization/i18n'
+import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
 type Props = {
   /** Shipment / process reference displayed as the identifier */
@@ -38,7 +39,7 @@ export function DeleteShipmentSummary(props: Props): JSX.Element {
           {(carrier) => (
             <>
               <dt class="font-medium text-text-muted">{t(k.summaryCarrier)}</dt>
-              <dd class="text-foreground">{carrier()}</dd>
+              <dd class="text-foreground">{toCarrierDisplayLabel(carrier()) ?? carrier()}</dd>
             </>
           )}
         </Show>

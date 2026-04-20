@@ -59,6 +59,7 @@ type AgentUpdateManifestResolved = {
   readonly version: string
   readonly downloadUrl: string
   readonly checksum: string
+  readonly selectedPlatform: AgentPlatform
   readonly channel: string
   readonly publishedAt: string | null
   readonly updateAvailable: boolean
@@ -69,7 +70,7 @@ type AgentUpdateManifestResolved = {
   readonly restartRequestedAt: string | null
 }
 
-export type ResolveAgentUpdateManifestResult =
+type ResolveAgentUpdateManifestResult =
   | {
       readonly kind: 'agent_not_found'
     }
@@ -337,6 +338,7 @@ export function createAgentUpdateManifestService(deps: {
     readonly tenantId: string
     readonly agentId: string
     readonly platform?: string
+    readonly updateChannel?: string
   }): Promise<ResolveAgentUpdateManifestResult> {
     const record = await deps.repository.getAgentDetailForTenant({
       tenantId: command.tenantId,
@@ -349,7 +351,17 @@ export function createAgentUpdateManifestService(deps: {
       }
     }
 
-    const requestedChannel = normalizeChannel(record.updateChannel)
+    const desiredVersion = resolveEffectiveDesiredVersion(record)
+    const restartRequired = isRestartRequired(record)
+    const remotePolicyChannel = normalizeOptionalNonBlank(record.updateChannel)
+    const localRequestedChannel = normalizeOptionalNonBlank(command.updateChannel)
+    const remoteChannelWins =
+      (remotePolicyChannel !== null && remotePolicyChannel !== DEFAULT_CHANNEL) ||
+      desiredVersion !== null ||
+      restartRequired
+    const requestedChannel = normalizeChannel(
+      remoteChannelWins ? remotePolicyChannel : (localRequestedChannel ?? remotePolicyChannel),
+    )
     const requestedPlatform = normalizePlatform(command.platform)
     const manifest = await loadManifestWithFallback(requestedChannel)
     if (!manifest) {
@@ -372,7 +384,6 @@ export function createAgentUpdateManifestService(deps: {
       }
     }
 
-    const desiredVersion = resolveEffectiveDesiredVersion(record)
     const currentVersion = normalizeOptionalNonBlank(record.currentVersion) ?? 'unknown'
     const updateAvailable = resolveManifestUpdateAvailability({
       manifestVersion: manifest.version,
@@ -386,13 +397,14 @@ export function createAgentUpdateManifestService(deps: {
         version: manifest.version,
         downloadUrl: manifestAsset.downloadUrl,
         checksum: manifestAsset.checksum,
+        selectedPlatform: requestedPlatform,
         channel: manifest.channel,
         publishedAt: manifest.published_at ?? null,
         updateAvailable,
         desiredVersion,
         currentVersion,
         updateReadyVersion: normalizeOptionalNonBlank(record.updateReadyVersion),
-        restartRequired: isRestartRequired(record),
+        restartRequired,
         restartRequestedAt: record.restartRequestedAt,
       },
     }

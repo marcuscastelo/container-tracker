@@ -2,11 +2,14 @@ import {
   type PipelineResult,
   processSnapshot,
 } from '~/modules/tracking/application/orchestration/pipeline'
+import { noopTrackingContainmentRepository } from '~/modules/tracking/application/ports/tracking.containment.repository'
+import { noopTrackingValidationLifecycleRepository } from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher'
+import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/fetch-result'
 import { getRestFetcher } from '~/modules/tracking/infrastructure/carriers/fetchers/rest.fetchers'
+import { systemClock } from '~/shared/time/clock'
 
 /**
  * Command to fetch tracking data from a carrier and run the full pipeline.
@@ -45,7 +48,15 @@ export async function fetchAndProcess(
   cmd: FetchAndProcessCommand,
 ): Promise<FetchAndProcessResult> {
   const { snapshotRepository, observationRepository, trackingAlertRepository } = deps
-  const pipelineDeps = { snapshotRepository, observationRepository, trackingAlertRepository }
+  const pipelineDeps = {
+    snapshotRepository,
+    observationRepository,
+    trackingAlertRepository,
+    trackingContainmentRepository:
+      deps.trackingContainmentRepository ?? noopTrackingContainmentRepository,
+    trackingValidationLifecycleRepository:
+      deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository,
+  }
 
   const fetcher = getRestFetcher(cmd.provider)
   if (!fetcher) {
@@ -62,7 +73,7 @@ export async function fetchAndProcess(
     const errorSnapshot: NewSnapshot = {
       container_id: cmd.containerId,
       provider: cmd.provider,
-      fetched_at: new Date().toISOString(),
+      fetched_at: systemClock.now().toIsoString(),
       payload: { _error: true, message: errorMessage },
       parse_error: `Fetch failed: ${errorMessage}`,
     }
@@ -82,7 +93,7 @@ export async function fetchAndProcess(
     provider: fetchResult.provider,
     fetched_at: fetchResult.fetchedAt,
     payload: fetchResult.payload,
-    parse_error: null,
+    parse_error: fetchResult.parseError ?? null,
   }
 
   const snapshot = await snapshotRepository.insert(newSnapshot)

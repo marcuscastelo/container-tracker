@@ -8,20 +8,21 @@ import {
   Index,
   onCleanup,
   Show,
+  untrack,
 } from 'solid-js'
-import {
-  fetchAgentDetail,
-  requestAgentRestart,
-  requestAgentUpdate,
-} from '~/modules/agent/ui/api/agent.api'
+import { readAgentDetailSnapshot } from '~/modules/agent/ui/agentResourceSnapshot'
+import { type AgentDetailPayload, fetchAgentDetail } from '~/modules/agent/ui/api/agent.api'
 import { AgentCapabilitiesCard } from '~/modules/agent/ui/components/AgentCapabilitiesCard'
+import { AgentControlPanel } from '~/modules/agent/ui/components/AgentControlPanel'
 import { AgentDiagnosticsCard } from '~/modules/agent/ui/components/AgentDiagnosticsCard'
 import { AgentEnrollmentCard } from '~/modules/agent/ui/components/AgentEnrollmentCard'
 import { AgentHealthCard } from '~/modules/agent/ui/components/AgentHealthCard'
 import { AgentIdentityCard } from '~/modules/agent/ui/components/AgentIdentityCard'
+import { AgentLogsPanelView } from '~/modules/agent/ui/components/AgentLogsPanelView'
 import { AgentMetricsCard } from '~/modules/agent/ui/components/AgentMetricsCard'
 import { AgentRecentActivityCard } from '~/modules/agent/ui/components/AgentRecentActivityCard'
 import { AgentStatusBadge } from '~/modules/agent/ui/components/AgentStatusBadge'
+import { useAgentLogsController } from '~/modules/agent/ui/logs/useAgentLogsController'
 import { toAgentDetailVM } from '~/modules/agent/ui/mappers/agent.ui-mapper'
 import type { AgentDetailVM } from '~/modules/agent/ui/vm/agent.vm'
 import {
@@ -32,6 +33,7 @@ import { AppHeader } from '~/shared/ui/AppHeader'
 
 type Props = {
   readonly agentId: string
+  readonly initialOpenLogs?: boolean
 }
 
 function DetailSkeleton(): JSX.Element {
@@ -99,8 +101,9 @@ type AgentDetailToolbarProps = {
   readonly vm: () => AgentDetailVM | null
   readonly onBack: () => void
   readonly onRefresh: () => void
-  readonly onRequestUpdate: () => Promise<void>
-  readonly onRequestRestart: () => Promise<void>
+  readonly refreshing: () => boolean
+  readonly showLogs: () => boolean
+  readonly onToggleLogs: () => void
   readonly lastRefreshed: () => Date
 }
 
@@ -111,7 +114,7 @@ function AgentDetailToolbar(props: AgentDetailToolbarProps): JSX.Element {
         <button
           type="button"
           onClick={() => props.onBack()}
-          class="inline-flex items-center gap-1 rounded border border-control-border bg-control-bg px-2 py-1 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
+          class="motion-focus-surface motion-interactive inline-flex items-center gap-1 rounded border border-control-border bg-control-bg px-2 py-1 text-sm-ui font-medium text-control-foreground hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
           <svg
             class="h-3.5 w-3.5"
@@ -142,19 +145,15 @@ function AgentDetailToolbar(props: AgentDetailToolbarProps): JSX.Element {
       </div>
 
       <div class="flex items-center gap-3">
+        <Show when={props.refreshing()}>
+          <span class="text-micro text-text-muted">Refreshing...</span>
+        </Show>
         <button
           type="button"
-          onClick={() => void props.onRequestUpdate()}
-          class="inline-flex items-center rounded border border-tone-info-border bg-tone-info-bg px-2.5 py-1 text-sm-ui font-medium text-tone-info-fg transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-tone-info-border/50"
+          onClick={() => props.onToggleLogs()}
+          class="motion-focus-surface motion-interactive inline-flex items-center rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
-          Request update
-        </button>
-        <button
-          type="button"
-          onClick={() => void props.onRequestRestart()}
-          class="inline-flex items-center rounded border border-tone-warning-border bg-tone-warning-bg px-2.5 py-1 text-sm-ui font-medium text-tone-warning-fg transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-tone-warning-border/50"
-        >
-          Request restart
+          {props.showLogs() ? 'Hide logs' : 'View logs'}
         </button>
         <span class="text-micro text-text-muted">
           Updated {formatRefreshTime(props.lastRefreshed())}
@@ -162,10 +161,10 @@ function AgentDetailToolbar(props: AgentDetailToolbarProps): JSX.Element {
         <button
           type="button"
           onClick={() => props.onRefresh()}
-          class="inline-flex items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
+          class="motion-focus-surface motion-interactive inline-flex items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
           <svg
-            class="h-3.5 w-3.5"
+            class={`h-3.5 w-3.5 ${props.refreshing() ? 'animate-spin' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -203,9 +202,46 @@ function extractRealtimeRowId(value: unknown): string | null {
 export function AgentDetailPage(props: Props): JSX.Element {
   const navigate = useNavigate()
   const [detail, { refetch }] = createResource(() => props.agentId, fetchAgentDetail)
+  const detailSnapshot = () => readAgentDetailSnapshot(detail)
+  const [stableDetailSnapshot, setStableDetailSnapshot] = createSignal<
+    AgentDetailPayload | null | undefined
+  >(undefined)
   const [lastRefreshed, setLastRefreshed] = createSignal(new Date())
   const [actionMessage, setActionMessage] = createSignal<string | null>(null)
   const [actionError, setActionError] = createSignal<string | null>(null)
+  const [showLogs, setShowLogs] = createSignal(props.initialOpenLogs ?? false)
+  const agentId = untrack(() => props.agentId)
+  const logsController = useAgentLogsController({
+    agentId,
+    enabled: showLogs,
+  })
+
+  let previousAgentId: string | null = null
+
+  createEffect(() => {
+    const currentAgentId = props.agentId
+    if (previousAgentId === null) {
+      previousAgentId = currentAgentId
+      return
+    }
+
+    if (previousAgentId === currentAgentId) return
+    previousAgentId = currentAgentId
+    setStableDetailSnapshot(undefined)
+  })
+
+  createEffect(() => {
+    const currentAgentId = props.agentId
+    const snapshot = detailSnapshot()
+    if (snapshot === undefined) return
+    if (snapshot !== null && snapshot.agentId !== currentAgentId) return
+    setStableDetailSnapshot(() => snapshot)
+  })
+
+  const hasSnapshot = createMemo(() => stableDetailSnapshot() !== undefined)
+  const initialLoading = createMemo(() => detail.loading && !hasSnapshot())
+  const refreshing = createMemo(() => detail.loading && hasSnapshot())
+  const hasBlockingError = createMemo(() => Boolean(detail.error) && !hasSnapshot())
 
   const fallbackPollTimer = setInterval(() => {
     setLastRefreshed(new Date())
@@ -231,7 +267,7 @@ export function AgentDetailPage(props: Props): JSX.Element {
   })
 
   createEffect(() => {
-    const tenantId = detail()?.tenantId
+    const tenantId = stableDetailSnapshot()?.tenantId
     if (!tenantId) return
 
     const subscription = subscribeToTrackingAgentsByTenant({
@@ -252,7 +288,7 @@ export function AgentDetailPage(props: Props): JSX.Element {
 
   const now = createMemo(() => lastRefreshed())
   const vm = createMemo(() => {
-    const dto = detail()
+    const dto = stableDetailSnapshot()
     if (!dto) return null
     return toAgentDetailVM(dto, now())
   })
@@ -266,45 +302,9 @@ export function AgentDetailPage(props: Props): JSX.Element {
     void navigate('/agents')
   }
 
-  async function handleRequestUpdate(): Promise<void> {
-    const versionInput =
-      typeof globalThis.prompt === 'function' ? globalThis.prompt('Desired version to apply') : null
-    if (!versionInput || versionInput.trim().length === 0) {
-      return
-    }
-
-    setActionError(null)
-    setActionMessage(null)
-
-    try {
-      const response = await requestAgentUpdate({
-        agentId: props.agentId,
-        desiredVersion: versionInput.trim(),
-      })
-      setActionMessage(`Update requested at ${response.requestedAt}`)
-      setLastRefreshed(new Date())
-      await refetch()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      setActionError(message)
-    }
-  }
-
-  async function handleRequestRestart(): Promise<void> {
-    setActionError(null)
-    setActionMessage(null)
-
-    try {
-      const response = await requestAgentRestart({
-        agentId: props.agentId,
-      })
-      setActionMessage(`Restart requested at ${response.requestedAt}`)
-      setLastRefreshed(new Date())
-      await refetch()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      setActionError(message)
-    }
+  async function handleAfterControlAction(): Promise<void> {
+    setLastRefreshed(new Date())
+    await refetch()
   }
 
   return (
@@ -317,8 +317,9 @@ export function AgentDetailPage(props: Props): JSX.Element {
             vm={vm}
             onBack={handleBack}
             onRefresh={handleRefresh}
-            onRequestUpdate={handleRequestUpdate}
-            onRequestRestart={handleRequestRestart}
+            refreshing={refreshing}
+            showLogs={showLogs}
+            onToggleLogs={() => setShowLogs((current) => !current)}
             lastRefreshed={lastRefreshed}
           />
 
@@ -338,19 +339,19 @@ export function AgentDetailPage(props: Props): JSX.Element {
             )}
           </Show>
 
-          <Show when={detail.loading}>
+          <Show when={initialLoading()}>
             <DetailSkeleton />
           </Show>
 
-          <Show when={!detail.loading && detail.error}>
+          <Show when={hasBlockingError()}>
             <DetailError onRetry={handleRefresh} />
           </Show>
 
-          <Show when={!detail.loading && !detail.error && !detail()}>
+          <Show when={!initialLoading() && !hasBlockingError() && stableDetailSnapshot() === null}>
             <AgentNotFound />
           </Show>
 
-          <Show when={!detail.loading && !detail.error && vm()}>
+          <Show when={!initialLoading() && !hasBlockingError() && vm()}>
             {(currentVM) => (
               <div class="grid gap-4 lg:grid-cols-2">
                 <AgentIdentityCard vm={currentVM()} />
@@ -360,8 +361,24 @@ export function AgentDetailPage(props: Props): JSX.Element {
                 <AgentCapabilitiesCard vm={currentVM()} />
                 <AgentDiagnosticsCard vm={currentVM()} />
                 <div class="lg:col-span-2">
+                  <AgentControlPanel
+                    agentId={props.agentId}
+                    onAfterAction={handleAfterControlAction}
+                    onActionMessage={setActionMessage}
+                    onActionError={setActionError}
+                  />
+                </div>
+                <div class="lg:col-span-2">
                   <AgentRecentActivityCard activities={currentVM().recentActivity} />
                 </div>
+                <Show when={showLogs()}>
+                  <div class="lg:col-span-2">
+                    <AgentLogsPanelView
+                      controller={logsController}
+                      agentStatus={currentVM().status}
+                    />
+                  </div>
+                </Show>
               </div>
             )}
           </Show>

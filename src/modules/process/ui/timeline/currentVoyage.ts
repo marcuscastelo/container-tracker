@@ -22,7 +22,7 @@ export type CurrentVoyageGroup =
       readonly kind: 'other'
     }
 
-export type CurrentVoyageResolution = {
+type CurrentVoyageResolution = {
   readonly index: number
   readonly hasAnyActualVoyage: boolean
   readonly endedByPostCarriage: boolean
@@ -37,12 +37,17 @@ export function toCurrentVoyageGroups(
 
   while (i < renderList.length) {
     const item = renderList[i]
+    if (item === undefined) break
 
     if (item.type === 'voyage-block') {
       groups.push({ kind: 'voyage', events: item.block.events })
       i++
-      while (i < renderList.length && renderList[i].type !== 'block-end') i++
-      if (i < renderList.length && renderList[i].type === 'block-end') i++
+      while (i < renderList.length) {
+        const nextItem = renderList[i]
+        if (nextItem === undefined || nextItem.type === 'block-end') break
+        i++
+      }
+      if (renderList[i]?.type === 'block-end') i++
       continue
     }
 
@@ -53,8 +58,12 @@ export function toCurrentVoyageGroups(
         events: item.block.events,
       })
       i++
-      while (i < renderList.length && renderList[i].type !== 'block-end') i++
-      if (i < renderList.length && renderList[i].type === 'block-end') i++
+      while (i < renderList.length) {
+        const nextItem = renderList[i]
+        if (nextItem === undefined || nextItem.type === 'block-end') break
+        i++
+      }
+      if (renderList[i]?.type === 'block-end') i++
       continue
     }
 
@@ -76,7 +85,7 @@ export function resolveCurrentVoyage(
 
   for (let i = 0; i < groups.length; i++) {
     const group = groups[i]
-    if (group.kind !== 'voyage') continue
+    if (group === undefined || group.kind !== 'voyage') continue
 
     const hasActual = group.events.some((event) => event.eventTimeType === 'ACTUAL')
     if (!hasActual) continue
@@ -107,7 +116,13 @@ export function resolveCurrentVoyage(
 
   for (let i = fallbackIdx + 1; i < groups.length; i++) {
     const group = groups[i]
-    if (group.kind !== 'terminal' || group.terminalKind !== 'post-carriage') continue
+    if (
+      group === undefined ||
+      group.kind !== 'terminal' ||
+      group.terminalKind !== 'post-carriage'
+    ) {
+      continue
+    }
     if (group.events.some((event) => event.eventTimeType === 'ACTUAL')) {
       return {
         index: -1,

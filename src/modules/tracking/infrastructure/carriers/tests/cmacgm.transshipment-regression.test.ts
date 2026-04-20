@@ -5,6 +5,7 @@ import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/d
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import { normalizeCmaCgmSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/cmacgm.normalizer'
 import transshipmentTangaMombasaMyny from '~/modules/tracking/infrastructure/carriers/tests/fixtures/cmacgm/cmacgm_transshipment_tanga_mombasa_myny.json'
+import { instantFromIsoText, temporalCanonicalText } from '~/shared/time/tests/helpers'
 
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000701'
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000702'
@@ -40,7 +41,7 @@ function toDomainObservation(
     provider: draft.provider,
     created_from_snapshot_id: draft.snapshot_id,
     carrier_label: draft.carrier_label ?? null,
-    created_at: draft.event_time ?? `2026-03-12T09:00:0${index}.000Z`,
+    created_at: temporalCanonicalText(draft.event_time) ?? `2026-03-12T09:00:0${index}.000Z`,
   }
 }
 
@@ -71,7 +72,7 @@ describe('CMA-CGM real transshipment regression fixture', () => {
       CONTAINER_ID,
       'TCLU3923661',
       observations,
-      new Date('2026-03-12T12:00:00.000Z'),
+      instantFromIsoText('2026-03-12T12:00:00.000Z'),
     )
     const actualObservations = timeline.observations.filter((observation) => {
       return observation.event_time_type === 'ACTUAL'

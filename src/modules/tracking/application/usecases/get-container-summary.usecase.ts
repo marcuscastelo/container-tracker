@@ -1,9 +1,18 @@
+import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import {
   deriveTrackingOperationalSummary,
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import {
+  collectSnapshotIdsForPilObservationEnrichment,
+  enrichPilObservationsFromSnapshots,
+  loadSnapshotsForPilObservationEnrichment,
+} from '~/modules/tracking/application/usecases/pil-observation-read-enrichment'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
+import {
+  computeFingerprint,
+  computeLegacyFingerprint,
+} from '~/modules/tracking/domain/identity/fingerprint'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
@@ -15,6 +24,14 @@ import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/d
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import {
+  createTrackingValidationContext,
+  deriveTrackingValidationProjection,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/domain/model/trackingValidationSummary'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
 
 /**
  * Command to retrieve the full tracking summary for a container.
@@ -23,7 +40,7 @@ export type GetContainerSummaryCommand = {
   readonly containerId: string
   readonly containerNumber: string
   readonly podLocationCode?: string | null
-  readonly now?: Date
+  readonly now?: Instant
   readonly includeAcknowledgedAlerts?: boolean
 }
 
@@ -42,6 +59,12 @@ export type GetContainerSummaryResult = {
   readonly transshipment: TransshipmentInfo
   readonly alerts: readonly TrackingAlert[]
   readonly operational: TrackingOperationalSummary
+  readonly trackingValidation: TrackingValidationContainerSummary
+}
+
+type ContainerAlertsResult = {
+  readonly alerts: readonly TrackingAlert[]
+  readonly dataIssue: boolean
 }
 
 function hasCarrierLabel(value: string | null | undefined): value is string {
@@ -74,22 +97,45 @@ function setCarrierLabelIfMissing(
   }
 }
 
+function registerCarrierLabelFingerprints(
+  labelsByFingerprint: Map<string, string>,
+  draft: ReturnType<typeof normalizeSnapshot>[number],
+): void {
+  if (!hasCarrierLabel(draft.carrier_label)) return
+
+  setCarrierLabelIfMissing(labelsByFingerprint, computeFingerprint(draft), draft.carrier_label)
+  setCarrierLabelIfMissing(
+    labelsByFingerprint,
+    computeLegacyFingerprint(draft),
+    draft.carrier_label,
+  )
+
+  // Historical OTHER observations may have been persisted before a provider label
+  // received a canonical mapping. Keep both new and legacy fingerprints addressable.
+  if (draft.type !== 'OTHER') {
+    const legacyOtherDraft = {
+      ...draft,
+      type: 'OTHER' as const,
+    }
+    setCarrierLabelIfMissing(
+      labelsByFingerprint,
+      computeFingerprint(legacyOtherDraft),
+      draft.carrier_label,
+    )
+    setCarrierLabelIfMissing(
+      labelsByFingerprint,
+      computeLegacyFingerprint(legacyOtherDraft),
+      draft.carrier_label,
+    )
+  }
+}
+
 function buildCarrierLabelByFingerprint(snapshot: Snapshot): ReadonlyMap<string, string> {
   const labelsByFingerprint = new Map<string, string>()
   const drafts = normalizeSnapshot(snapshot)
 
   for (const draft of drafts) {
-    if (!hasCarrierLabel(draft.carrier_label)) continue
-    setCarrierLabelIfMissing(labelsByFingerprint, computeFingerprint(draft), draft.carrier_label)
-
-    // Legacy observations may have been fingerprinted as OTHER before semantic mapping was expanded.
-    if (draft.type !== 'OTHER') {
-      const legacyOtherFingerprint = computeFingerprint({
-        ...draft,
-        type: 'OTHER',
-      })
-      setCarrierLabelIfMissing(labelsByFingerprint, legacyOtherFingerprint, draft.carrier_label)
-    }
+    registerCarrierLabelFingerprints(labelsByFingerprint, draft)
   }
 
   return labelsByFingerprint
@@ -129,22 +175,44 @@ function enrichCarrierLabelsFromSnapshots(
   return hasChanges ? enriched : observations
 }
 
-async function loadSnapshotsForCarrierLabelEnrichment(
+async function loadSnapshotsForObservationEnrichment(
   deps: TrackingUseCasesDeps,
   containerId: string,
   snapshotIds: readonly string[],
 ): Promise<readonly Snapshot[]> {
-  if (snapshotIds.length === 0) return []
+  return loadSnapshotsForPilObservationEnrichment(deps, containerId, snapshotIds)
+}
 
-  if (deps.snapshotRepository.findByIds) {
-    return deps.snapshotRepository.findByIds(containerId, snapshotIds)
+async function loadContainerAlerts(
+  deps: TrackingUseCasesDeps,
+  cmd: GetContainerSummaryCommand,
+): Promise<ContainerAlertsResult> {
+  try {
+    const alerts = cmd.includeAcknowledgedAlerts
+      ? await deps.trackingAlertRepository.findByContainerId(cmd.containerId)
+      : await deps.trackingAlertRepository.findActiveByContainerId(cmd.containerId)
+
+    return {
+      alerts,
+      dataIssue: false,
+    }
+  } catch (error) {
+    if (!(error instanceof InfrastructureError)) {
+      throw error
+    }
+
+    console.error('tracking.getContainerSummary.alerts_unavailable', {
+      containerId: cmd.containerId,
+      containerNumber: cmd.containerNumber,
+      includeAcknowledgedAlerts: cmd.includeAcknowledgedAlerts ?? false,
+      error: error.message,
+    })
+
+    return {
+      alerts: [],
+      dataIssue: true,
+    }
   }
-
-  const allSnapshots = await deps.snapshotRepository.findAllByContainerId(containerId)
-  if (allSnapshots.length === 0) return allSnapshots
-
-  const neededSnapshotIds = new Set(snapshotIds)
-  return allSnapshots.filter((snapshot) => neededSnapshotIds.has(snapshot.id))
 }
 
 /**
@@ -157,34 +225,57 @@ export async function getContainerSummary(
   deps: TrackingUseCasesDeps,
   cmd: GetContainerSummaryCommand,
 ): Promise<GetContainerSummaryResult> {
-  const referenceNow = cmd.now ?? new Date()
-  const includeAcknowledgedAlerts = cmd.includeAcknowledgedAlerts ?? false
-  const [observationsRaw, alerts] = await Promise.all([
+  const referenceNow = cmd.now ?? systemClock.now()
+  const [observationsRaw, alertsResult] = await Promise.all([
     deps.observationRepository.findAllByContainerId(cmd.containerId),
-    includeAcknowledgedAlerts
-      ? deps.trackingAlertRepository.findByContainerId(cmd.containerId)
-      : deps.trackingAlertRepository.findActiveByContainerId(cmd.containerId),
+    loadContainerAlerts(deps, cmd),
   ])
 
   const snapshotIdsToEnrich = collectSnapshotIdsForCarrierLabelEnrichment(observationsRaw)
-  const observations =
-    snapshotIdsToEnrich.length > 0
-      ? enrichCarrierLabelsFromSnapshots(
-          observationsRaw,
-          await loadSnapshotsForCarrierLabelEnrichment(deps, cmd.containerId, snapshotIdsToEnrich),
-        )
-      : observationsRaw
+  const pilSnapshotIdsToEnrich = collectSnapshotIdsForPilObservationEnrichment(observationsRaw)
+  const snapshotIds = [...new Set([...snapshotIdsToEnrich, ...pilSnapshotIdsToEnrich])]
+  const snapshots =
+    snapshotIds.length > 0
+      ? await loadSnapshotsForObservationEnrichment(deps, cmd.containerId, snapshotIds)
+      : []
 
-  const timeline = deriveTimeline(cmd.containerId, cmd.containerNumber, observations, referenceNow)
+  let observations = observationsRaw
+  if (snapshots.length > 0 && snapshotIdsToEnrich.length > 0) {
+    observations = enrichCarrierLabelsFromSnapshots(observations, snapshots)
+  }
+  if (snapshots.length > 0 && pilSnapshotIdsToEnrich.length > 0) {
+    observations = enrichPilObservationsFromSnapshots(observations, snapshots)
+  }
+
+  const projectionObservations = suppressSupersededObservationsForProjection(observations)
+
+  const timeline = deriveTimeline(
+    cmd.containerId,
+    cmd.containerNumber,
+    projectionObservations,
+    referenceNow,
+  )
   const status = deriveStatus(timeline)
   const transshipment = deriveTransshipment(timeline)
   const operational = deriveTrackingOperationalSummary({
-    observations: toTrackingObservationProjections(observations),
+    observations: toTrackingObservationProjections(projectionObservations),
     status,
     transshipment,
     podLocationCode: cmd.podLocationCode ?? null,
     now: referenceNow,
+    dataIssue: alertsResult.dataIssue,
   })
+  const trackingValidation = deriveTrackingValidationProjection(
+    createTrackingValidationContext({
+      containerId: cmd.containerId,
+      containerNumber: cmd.containerNumber,
+      observations: projectionObservations,
+      timeline,
+      status,
+      transshipment,
+      now: referenceNow,
+    }),
+  ).summary
 
   return {
     containerId: cmd.containerId,
@@ -193,7 +284,8 @@ export async function getContainerSummary(
     timeline,
     status,
     transshipment,
-    alerts,
+    alerts: alertsResult.alerts,
     operational,
+    trackingValidation,
   }
 }

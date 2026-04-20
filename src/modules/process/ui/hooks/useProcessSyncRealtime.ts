@@ -78,7 +78,30 @@ export function deriveProcessSyncStateFromContainerStates(
   return 'idle'
 }
 
-function pruneUnknownContainers(command: {
+export function shallowEqualProcessSyncContainerStateMap(
+  left: ProcessSyncContainerStateMap,
+  right: ProcessSyncContainerStateMap,
+): boolean {
+  if (left === right) return true
+  if (left.size !== right.size) return false
+
+  for (const [processId, leftContainerStates] of left.entries()) {
+    const rightContainerStates = right.get(processId)
+    if (rightContainerStates === undefined) return false
+    if (leftContainerStates === rightContainerStates) continue
+    if (leftContainerStates.size !== rightContainerStates.size) return false
+
+    for (const [containerNumber, leftState] of leftContainerStates.entries()) {
+      if (rightContainerStates.get(containerNumber) !== leftState) {
+        return false
+      }
+    }
+  }
+
+  return true
+}
+
+export function pruneUnknownContainers(command: {
   readonly stateByProcessId: ProcessSyncContainerStateMap
   readonly containerToProcessId: ReadonlyMap<string, string>
 }): ProcessSyncContainerStateMap {
@@ -182,10 +205,10 @@ export function useProcessSyncRealtime(command: {
       containerToProcessId,
     })
 
-    // Only update if prunedState differs to avoid unnecessary writes
-    // (shallow Map size and content check could be added, but keep simple)
-    setStateByProcessId(prunedState)
-    queueMicrotask(() => setProcessSyncStates(toProcessSyncStateRecord(prunedState)))
+    if (!shallowEqualProcessSyncContainerStateMap(currentState, prunedState)) {
+      setStateByProcessId(prunedState)
+      queueMicrotask(() => setProcessSyncStates(toProcessSyncStateRecord(prunedState)))
+    }
 
     if (activeRealtimeCleanup) {
       activeRealtimeCleanup()

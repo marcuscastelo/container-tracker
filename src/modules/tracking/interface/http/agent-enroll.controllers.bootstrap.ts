@@ -23,6 +23,7 @@ const TrackingAgentRowSchema = z.object({
   id: z.string().uuid(),
   tenant_id: z.string().uuid(),
   machine_fingerprint: z.string().min(1),
+  revoked_at: z.string().nullable(),
   hostname: z.string().min(1),
   os: z.string().min(1),
   agent_version: z.string().min(1),
@@ -45,8 +46,8 @@ function maskAgentToken(token: string): string {
 }
 
 function toDefaultCapabilities(maerskEnabled: boolean): readonly string[] {
-  if (maerskEnabled) return ['msc', 'cmacgm', 'maersk']
-  return ['msc', 'cmacgm']
+  if (maerskEnabled) return ['msc', 'cmacgm', 'pil', 'one', 'maersk']
+  return ['msc', 'cmacgm', 'pil', 'one']
 }
 
 type RateLimitBucket = {
@@ -112,6 +113,7 @@ function mapTrackingAgentRow(row: z.infer<typeof TrackingAgentRowSchema>) {
     id: row.id,
     tenantId: row.tenant_id,
     machineFingerprint: row.machine_fingerprint,
+    revokedAt: row.revoked_at,
     hostname: row.hostname,
     os: row.os,
     agentVersion: row.agent_version,
@@ -156,11 +158,10 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
       const result = await supabaseServer
         .from('tracking_agents')
         .select(
-          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir',
+          'id,tenant_id,machine_fingerprint,revoked_at,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir',
         )
         .eq('tenant_id', tenantId)
         .eq('machine_fingerprint', machineFingerprint)
-        .is('revoked_at', null)
         .maybeSingle()
 
       const data = unwrapSupabaseSingleOrNull(result, {
@@ -215,7 +216,7 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
           boot_status: 'starting',
         })
         .select(
-          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir,status,enrolled_at,last_seen_at,realtime_state,processing_state,lease_health,active_jobs,capabilities,enrollment_method,token_id_masked,last_error,queue_lag_seconds',
+          'id,tenant_id,machine_fingerprint,revoked_at,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir,status,enrolled_at,last_seen_at,realtime_state,processing_state,lease_health,active_jobs,capabilities,enrollment_method,token_id_masked,last_error,queue_lag_seconds',
         )
         .single()
 
@@ -277,12 +278,79 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
         .eq('tenant_id', tenantId)
         .eq('machine_fingerprint', machineFingerprint)
         .select(
-          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir,status,enrolled_at,last_seen_at,realtime_state,processing_state,lease_health,active_jobs,capabilities,enrollment_method,token_id_masked,last_error,queue_lag_seconds',
+          'id,tenant_id,machine_fingerprint,revoked_at,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir,status,enrolled_at,last_seen_at,realtime_state,processing_state,lease_health,active_jobs,capabilities,enrollment_method,token_id_masked,last_error,queue_lag_seconds',
         )
         .single()
 
       const data = unwrapSupabaseResultOrThrow(result, {
         operation: 'updateAgentEnrollmentMetadata',
+        table: 'tracking_agents',
+      })
+
+      const row = TrackingAgentRowSchema.parse(data)
+      return mapTrackingAgentRow(row)
+    },
+
+    async reactivateRevokedAgentWithRotatedToken({
+      agentId,
+      tenantId,
+      machineFingerprint,
+      hostname,
+      os,
+      agentVersion,
+      agentToken,
+    }) {
+      const nowIso = new Date().toISOString()
+      const maerskEnabled = serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_ENABLED
+      const result = await supabaseServer
+        .from('tracking_agents')
+        .update({
+          hostname,
+          os,
+          agent_version: agentVersion,
+          current_version: agentVersion,
+          desired_version: agentVersion,
+          agent_token: agentToken,
+          token_id_masked: maskAgentToken(agentToken),
+          revoked_at: null,
+          interval_sec: serverEnv.AGENT_ENROLL_DEFAULT_INTERVAL_SEC,
+          max_concurrent: serverEnv.AGENT_ENROLL_DEFAULT_LIMIT,
+          supabase_url: serverEnv.AGENT_ENROLL_SUPABASE_URL ?? null,
+          supabase_anon_key: serverEnv.AGENT_ENROLL_SUPABASE_ANON_KEY ?? null,
+          maersk_enabled: maerskEnabled,
+          maersk_headless: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS,
+          maersk_timeout_ms: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS,
+          maersk_user_data_dir: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR ?? null,
+          last_enrolled_at: nowIso,
+          enrolled_at: nowIso,
+          last_seen_at: nowIso,
+          status: 'CONNECTED',
+          realtime_state: 'CONNECTING',
+          processing_state: 'idle',
+          lease_health: 'unknown',
+          active_jobs: 0,
+          capabilities: toDefaultCapabilities(maerskEnabled),
+          enrollment_method: 'bootstrap-token',
+          last_error: null,
+          queue_lag_seconds: null,
+          update_channel: 'stable',
+          updater_state: 'idle',
+          updater_last_checked_at: null,
+          updater_last_error: null,
+          update_ready_version: null,
+          restart_requested_at: null,
+          boot_status: 'starting',
+        })
+        .eq('id', agentId)
+        .eq('tenant_id', tenantId)
+        .eq('machine_fingerprint', machineFingerprint)
+        .select(
+          'id,tenant_id,machine_fingerprint,revoked_at,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir,status,enrolled_at,last_seen_at,realtime_state,processing_state,lease_health,active_jobs,capabilities,enrollment_method,token_id_masked,last_error,queue_lag_seconds',
+        )
+        .single()
+
+      const data = unwrapSupabaseResultOrThrow(result, {
+        operation: 'reactivateRevokedAgentWithRotatedToken',
         table: 'tracking_agents',
       })
 

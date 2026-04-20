@@ -3,25 +3,39 @@ import { describe, expect, it, vi } from 'vitest'
 const agentMonitoringHandlers = vi.hoisted(() => ({
   listAgents: vi.fn(),
   getAgentById: vi.fn(),
+  getAgentLogs: vi.fn(),
+  getAgentControlState: vi.fn(),
   heartbeat: vi.fn(),
+  ingestLogs: vi.fn(),
   getUpdateManifest: vi.fn(),
+  updateAgentRemotePolicy: vi.fn(),
   requestAgentUpdate: vi.fn(),
   requestAgentRestart: vi.fn(),
+  requestAgentReset: vi.fn(),
 }))
 
 vi.mock('~/modules/agent/interface/http/agent-monitoring.controllers.bootstrap', () => ({
   bootstrapAgentMonitoringControllers: () => ({
     listAgents: agentMonitoringHandlers.listAgents,
     getAgentById: agentMonitoringHandlers.getAgentById,
+    getAgentLogs: agentMonitoringHandlers.getAgentLogs,
+    getAgentControlState: agentMonitoringHandlers.getAgentControlState,
     heartbeat: agentMonitoringHandlers.heartbeat,
+    ingestLogs: agentMonitoringHandlers.ingestLogs,
     getUpdateManifest: agentMonitoringHandlers.getUpdateManifest,
+    updateAgentRemotePolicy: agentMonitoringHandlers.updateAgentRemotePolicy,
     requestAgentUpdate: agentMonitoringHandlers.requestAgentUpdate,
     requestAgentRestart: agentMonitoringHandlers.requestAgentRestart,
+    requestAgentReset: agentMonitoringHandlers.requestAgentReset,
   }),
 }))
 
 import { GET as agentsGet } from '~/routes/api/agents'
 import { GET as agentByIdGet } from '~/routes/api/agents/[id]'
+import { GET as controlStateGet } from '~/routes/api/agents/[id]/control-state'
+import { GET as agentLogsGet } from '~/routes/api/agents/[id]/logs'
+import { PATCH as remotePolicyPatch } from '~/routes/api/agents/[id]/remote-policy'
+import { POST as requestResetPost } from '~/routes/api/agents/[id]/request-reset'
 import { POST as requestRestartPost } from '~/routes/api/agents/[id]/request-restart'
 import { POST as requestUpdatePost } from '~/routes/api/agents/[id]/request-update'
 
@@ -34,11 +48,27 @@ describe('agents monitoring routes', () => {
     expect(agentByIdGet).toBe(agentMonitoringHandlers.getAgentById)
   })
 
+  it('binds GET /api/agents/:id/logs to getAgentLogs controller', () => {
+    expect(agentLogsGet).toBe(agentMonitoringHandlers.getAgentLogs)
+  })
+
+  it('binds GET /api/agents/:id/control-state to getAgentControlState controller', () => {
+    expect(controlStateGet).toBe(agentMonitoringHandlers.getAgentControlState)
+  })
+
+  it('binds PATCH /api/agents/:id/remote-policy to updateAgentRemotePolicy controller', () => {
+    expect(remotePolicyPatch).toBe(agentMonitoringHandlers.updateAgentRemotePolicy)
+  })
+
   it('binds POST /api/agents/:id/request-update to requestAgentUpdate controller', () => {
     expect(requestUpdatePost).toBe(agentMonitoringHandlers.requestAgentUpdate)
   })
 
   it('binds POST /api/agents/:id/request-restart to requestAgentRestart controller', () => {
     expect(requestRestartPost).toBe(agentMonitoringHandlers.requestAgentRestart)
+  })
+
+  it('binds POST /api/agents/:id/request-reset to requestAgentReset controller', () => {
+    expect(requestResetPost).toBe(agentMonitoringHandlers.requestAgentReset)
   })
 })
