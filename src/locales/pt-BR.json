@@ -102,12 +102,12 @@
       "title": "Entrar na plataforma",
       "subtitle": "Autentique-se para acessar dashboard, embarques e gestão operacional.",
       "primary": "Entrar",
-      "secondary": "Criar conta"
+      "secondary": "Solicitar abertura de conta"
     },
     "signup": {
-      "title": "Criar conta",
-      "subtitle": "Cadastre-se para iniciar sua sessão no Container Tracker.",
-      "primary": "Criar conta",
+      "title": "Solicitar abertura de conta",
+      "subtitle": "As contas são gerenciadas manualmente.",
+      "primary": "Solicitar abertura de conta",
       "secondary": "Já tenho conta"
     },
     "common": {
@@ -115,6 +115,7 @@
       "errorNetwork": "Falha de autenticação. Tente novamente.",
       "errorConfig": "Configuração de autenticação ausente.",
       "errorLoginRequired": "Login necessário para continuar.",
+      "requestNotImplemented": "Solicitação de abertura ainda não implementada",
       "backToLogin": "Voltar para login",
       "backToSignup": "Voltar para cadastro"
     }

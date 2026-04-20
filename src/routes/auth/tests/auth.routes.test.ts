@@ -114,7 +114,7 @@ describe('auth routes', () => {
     }
     const props = call[0]
     expect(getPrimaryLabel(props)).toBe('Entrar')
-    expect(getSecondaryLabel(props)).toBe('Criar conta')
+    expect(getSecondaryLabel(props)).toBe('Solicitar abertura de conta')
     expect(getSecondaryHref(props)).toBe('/auth/signup?return_to=%2Fshipments%2F123')
 
     const onPrimaryAction = getPrimaryAction(props)
@@ -123,7 +123,7 @@ describe('auth routes', () => {
     expect(startWorkosSignInMock).toHaveBeenCalledWith('/shipments/123')
   })
 
-  it('signup route renders CTAs and starts sign-up', async () => {
+  it('signup route renders CTAs and does not call workos sign-up', async () => {
     locationState.pathname = '/auth/signup'
     locationState.search = '?return_to=%2Faccess'
 
@@ -135,14 +135,14 @@ describe('auth routes', () => {
       throw new Error('AuthEntryScreen not called')
     }
     const props = call[0]
-    expect(getPrimaryLabel(props)).toBe('Criar conta')
+    expect(getPrimaryLabel(props)).toBe('Solicitar abertura de conta')
     expect(getSecondaryLabel(props)).toBe('Já tenho conta')
     expect(getSecondaryHref(props)).toBe('/auth/login?return_to=%2Faccess')
 
     const onPrimaryAction = getPrimaryAction(props)
     onPrimaryAction()
 
-    expect(startWorkosSignUpMock).toHaveBeenCalledWith('/access')
+    expect(startWorkosSignUpMock).not.toHaveBeenCalled()
   })
 
   it('callback route redirects to resolved return_to', async () => {

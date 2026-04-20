@@ -2,11 +2,7 @@ import { useLocation, useNavigate } from '@solidjs/router'
 import { createSignal, onMount } from 'solid-js'
 import { AuthEntryScreen, type AuthEntryScreenState } from '~/modules/auth/ui/AuthEntryScreen'
 import { getReturnToFromQuery } from '~/shared/auth/auth-return-to'
-import {
-  getWorkosUser,
-  startWorkosSignUp,
-  WorkosAuthClientError,
-} from '~/shared/auth/workos-auth.client'
+import { getWorkosUser, WorkosAuthClientError } from '~/shared/auth/workos-auth.client'
 import { useTranslation } from '~/shared/localization/i18n'
 
 export default function AuthSignupRoute() {
@@ -21,6 +17,7 @@ export default function AuthSignupRoute() {
   const errorMessage = () => {
     const code = errorCode()
     if (code === null) return null
+    if (code === 'request_not_implemented') return t(keys.auth.common.requestNotImplemented)
     if (code === 'config_missing') return t(keys.auth.common.errorConfig)
     if (code === 'login_required') return t(keys.auth.common.errorLoginRequired)
     return t(keys.auth.common.errorNetwork)
@@ -46,16 +43,8 @@ export default function AuthSignupRoute() {
   })
 
   const handleSignUp = () => {
-    setState('loading')
-    setErrorCode(null)
-    void startWorkosSignUp(returnTo()).catch((error: unknown) => {
-      if (error instanceof WorkosAuthClientError) {
-        setErrorCode(error.code)
-      } else {
-        setErrorCode('network_unknown')
-      }
-      setState('error')
-    })
+    setErrorCode('request_not_implemented')
+    setState('error')
   }
 
   return (
