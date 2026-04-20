@@ -21,7 +21,9 @@ function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean 
 
 const serverEnvSchema = z.object({
   SUPABASE_URL: z.string().url(),
+  SUPABASE_ANON_KEY: z.string().min(1).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_JWT_SECRET: z.string().min(1).optional(),
   SYNC_DEFAULT_TENANT_ID: z.string().uuid(),
   AGENT_TOKEN: z.string().min(1).optional(),
   AGENT_LEASE_MINUTES: z.coerce.number().int().positive().default(5),
@@ -52,7 +54,9 @@ const getServerEnvVars = (): unknown => {
 
   return {
     SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_ANON_KEY: normalizeOptionalEnv(process.env.SUPABASE_ANON_KEY),
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_JWT_SECRET: normalizeOptionalEnv(process.env.SUPABASE_JWT_SECRET),
     SYNC_DEFAULT_TENANT_ID: process.env.SYNC_DEFAULT_TENANT_ID,
     AGENT_TOKEN: normalizeOptionalEnv(process.env.AGENT_TOKEN),
     AGENT_LEASE_MINUTES: process.env.AGENT_LEASE_MINUTES,
