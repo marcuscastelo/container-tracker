@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { createMemo, For, Show } from 'solid-js'
 import { computeRowDistribution } from '~/modules/process/ui/components/container-distribution'
 import {
   toTrackingValidationBadgeClasses,
@@ -9,6 +9,7 @@ import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingS
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import { useResponsiveBreakpoints } from '~/shared/ui/hooks/useResponsiveBreakpoints'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 type ContainerSelectorItemLabels = {
@@ -117,6 +118,7 @@ export function ContainerSelector(props: {
   onSelect: (id: string) => void
 }): JSX.Element {
   const { t, keys } = useTranslation()
+  const responsive = useResponsiveBreakpoints()
 
   const labels: ContainerSelectorItemLabels = {
     etaArrived: t(keys.shipmentView.operational.chips.etaArrived),
@@ -130,67 +132,20 @@ export function ContainerSelector(props: {
     etaLabel: t(keys.shipmentView.currentStatus.eta),
   }
 
-  const getInitialMaxPerRow = () => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+  const maxPerRow = createMemo(() => {
+    if (responsive.isMobile()) {
       return 1
     }
 
-    const mobile = window.matchMedia('(max-width: 639px)')
-    const tablet = window.matchMedia('(min-width: 640px) and (max-width: 1023px)')
-    const desktop = window.matchMedia('(min-width: 1024px)')
-
-    if (mobile.matches) {
-      return 1
-    }
-
-    if (tablet.matches) {
+    if (responsive.isTablet()) {
       return 2
     }
 
-    if (desktop.matches) {
+    if (responsive.isDesktop()) {
       return 4
     }
 
     return 1
-  }
-
-  const [maxPerRow, setMaxPerRow] = createSignal(getInitialMaxPerRow())
-
-  onMount(() => {
-    const mobile = window.matchMedia('(max-width: 639px)')
-    const tablet = window.matchMedia('(min-width: 640px) and (max-width: 1023px)')
-    const desktop = window.matchMedia('(min-width: 1024px)')
-
-    const updateMaxPerRow = () => {
-      if (mobile.matches) {
-        setMaxPerRow(1)
-        return
-      }
-
-      if (tablet.matches) {
-        setMaxPerRow(2)
-        return
-      }
-
-      if (desktop.matches) {
-        setMaxPerRow(4)
-        return
-      }
-
-      setMaxPerRow(1)
-    }
-
-    updateMaxPerRow()
-
-    mobile.addEventListener('change', updateMaxPerRow)
-    tablet.addEventListener('change', updateMaxPerRow)
-    desktop.addEventListener('change', updateMaxPerRow)
-
-    onCleanup(() => {
-      mobile.removeEventListener('change', updateMaxPerRow)
-      tablet.removeEventListener('change', updateMaxPerRow)
-      desktop.removeEventListener('change', updateMaxPerRow)
-    })
   })
 
   const rows = createMemo<ContainerDetailVM[][]>(() => {
