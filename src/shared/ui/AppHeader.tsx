@@ -1,6 +1,6 @@
 import { A, useLocation } from '@solidjs/router'
 import clsx from 'clsx'
-import { Moon, Sun } from 'lucide-solid'
+import { LogOut, Moon, Sun } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createSignal, Show, Suspense } from 'solid-js'
 import { getTheme, toggleTheme, type UiTheme } from '~/lib/theme'
@@ -214,6 +214,7 @@ function HeaderActions(props: {
   readonly syncSlot?: JSX.Element
   readonly actionsSlot?: JSX.Element
   readonly createProcessLabel: string
+  readonly logoutLabel: string
   readonly onCreateProcess?: () => void
 }): JSX.Element {
   return (
@@ -227,6 +228,15 @@ function HeaderActions(props: {
       />
       <NavbarAlertsButton />
       <ThemeToggleButton />
+      <A
+        href="/auth/logout"
+        class={OUTLINE_BUTTON_CLASS}
+        aria-label={props.logoutLabel}
+        title={props.logoutLabel}
+      >
+        <LogOut class="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span class="hidden min-[1400px]:inline">{props.logoutLabel}</span>
+      </A>
       <Show when={props.actionsSlot}>
         {(actionsSlot) => <div class="flex items-center gap-2">{actionsSlot()}</div>}
       </Show>
@@ -260,6 +270,7 @@ export function AppHeader(props: Props): JSX.Element {
         <div class="max-[1023px]:justify-self-end">
           <HeaderActions
             createProcessLabel={t(keys.header.createProcess)}
+            logoutLabel={t(keys.header.logout)}
             {...(props.syncSlot ? { syncSlot: props.syncSlot } : {})}
             {...(props.actionsSlot ? { actionsSlot: props.actionsSlot } : {})}
             {...(props.onCreateProcess ? { onCreateProcess: props.onCreateProcess } : {})}

@@ -26,6 +26,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.94.0
         version: 2.95.3
+      '@workos-inc/authkit-js':
+        specifier: ^0.20.0
+        version: 0.20.0
       archiver:
         specifier: ^7.0.1
         version: 7.0.1
@@ -1879,6 +1882,9 @@ packages:
 
   '@vitest/utils@3.2.4':
     resolution: {integrity: sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA==}
+
+  '@workos-inc/authkit-js@0.20.0':
+    resolution: {integrity: sha512-8+sw8eH1+XCt3NDoIB2bKKbHvq1N7CVFJeyq1uVrUWG83GCIbNNrFwWrocVNfeQJyhKsVVuDpRcp03iSVsK5Gg==}
 
   abbrev@3.0.1:
     resolution: {integrity: sha512-AO2ac6pjRB3SJmGJo+v5/aK6Omggp6fsLrs6wN9bd35ulu4cCwaAU9+7ZhXjeqHVkaHThLuzH0nZr0YpCDhygg==}
@@ -6765,6 +6771,8 @@ snapshots:
       '@vitest/pretty-format': 3.2.4
       loupe: 3.2.1
       tinyrainbow: 2.0.0
+
+  '@workos-inc/authkit-js@0.20.0': {}
 
   abbrev@3.0.1: {}
 

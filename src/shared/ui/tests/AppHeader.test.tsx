@@ -25,6 +25,7 @@ const translationKeys = vi.hoisted(() => ({
       agents: 'header.nav.agents',
     },
     createProcess: 'header.createProcess',
+    logout: 'header.logout',
     theme: {
       switchToLight: 'header.theme.switchToLight',
       switchToDark: 'header.theme.switchToDark',
@@ -40,6 +41,8 @@ function translate(value: string): string {
       return 'Agents'
     case 'header.createProcess':
       return 'Create process'
+    case 'header.logout':
+      return 'Logout'
     case 'header.theme.switchToLight':
       return 'Switch to light theme'
     case 'header.theme.switchToDark':
@@ -76,6 +79,10 @@ vi.mock('@solidjs/router', () => ({
 }))
 
 vi.mock('lucide-solid', () => ({
+  LogOut: (props: {
+    readonly class?: string
+    readonly 'aria-hidden'?: boolean | 'true' | 'false'
+  }) => <svg data-icon="logout" class={props.class} aria-hidden={props['aria-hidden']} />,
   Moon: (props: {
     readonly class?: string
     readonly 'aria-hidden'?: boolean | 'true' | 'false'
@@ -141,6 +148,8 @@ describe('AppHeader', () => {
     expect(html).toContain('Sync status')
     expect(html).toContain('Open menu')
     expect(html).toContain('Create process')
+    expect(html).toContain('Logout')
+    expect(html).toContain('href="/auth/logout"')
     expect(html).toContain('mock-navbar-alerts')
     expect(html).toContain('aria-label="Switch to dark theme"')
     expect(html).toContain('data-icon="moon"')
@@ -170,6 +179,8 @@ describe('AppHeader', () => {
     expect(html).not.toContain('Sync status')
     expect(html).not.toContain('Open menu')
     expect(html).not.toContain('Create process')
+    expect(html).toContain('Logout')
+    expect(html).toContain('href="/auth/logout"')
     expect(html).not.toContain('data-no-scroll="true"')
   })
 })
