@@ -1,8 +1,12 @@
+export type AccessTenantStatus = 'ACTIVE' | 'INACTIVE'
+export type AccessMembershipStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+export type AccessImporterStatus = 'ACTIVE' | 'INACTIVE'
+
 export type AccessTenant = {
   readonly id: string
   readonly slug: string
   readonly name: string
-  readonly status: string
+  readonly status: AccessTenantStatus
   readonly createdAt: string
 }
 
@@ -25,7 +29,7 @@ export type AccessMembership = {
   readonly userId: string
   readonly platformTenantId: string
   readonly roleCode: string
-  readonly status: string
+  readonly status: AccessMembershipStatus
 }
 
 export type AccessImporter = {
@@ -33,7 +37,7 @@ export type AccessImporter = {
   readonly platformTenantId: string
   readonly name: string
   readonly taxId: string | null
-  readonly status: string
+  readonly status: AccessImporterStatus
 }
 
 export type AccessMembershipImporterAccess = {
@@ -58,19 +62,19 @@ export type EnsureAccessUserCommand = {
 export type CreateTenantCommand = {
   readonly slug: string
   readonly name: string
-  readonly status: 'ACTIVE' | 'INACTIVE'
+  readonly status: AccessTenantStatus
 }
 
 export type CreateImporterCommand = {
   readonly platformTenantId: string
   readonly name: string
   readonly taxId: string | null
-  readonly status: 'ACTIVE' | 'INACTIVE'
+  readonly status: AccessImporterStatus
 }
 
 export type UpsertMembershipCommand = {
   readonly userId: string
   readonly platformTenantId: string
   readonly roleCode: string
-  readonly status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+  readonly status: AccessMembershipStatus
 }

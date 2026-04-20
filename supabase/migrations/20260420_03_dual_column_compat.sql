@@ -6,19 +6,12 @@ returns uuid
 language sql
 stable
 as $$
-  select coalesce(
-    (
-      select id
-      from public.platform_tenants
-      where slug = 'castro'
-      limit 1
-    ),
-    (
-      select id
-      from public.platform_tenants
-      order by created_at asc, id asc
-      limit 1
-    )
+  -- Migration-time fallback only; avoid environment-specific tenant slug coupling.
+  select (
+    select id
+    from public.platform_tenants
+    order by created_at asc, id asc
+    limit 1
   );
 $$;
 

@@ -32,7 +32,7 @@ export type AccessUseCases = {
     readonly workosUserId: string
     readonly email: string
     readonly platformTenantId: string | null
-    readonly expiresInSec: number | null
+    readonly expiresInSec: number | undefined
   }) => Promise<{
     readonly user: AccessUser
     readonly token: IssuedSupabaseJwt
@@ -41,7 +41,7 @@ export type AccessUseCases = {
 
 export function createAccessUseCases(deps: {
   readonly repository: AccessRepository
-  readonly supabaseJwtSecret: string | null
+  readonly supabaseJwtSecret: string
 }): AccessUseCases {
   return {
     async listOverview(platformTenantId, accessToken) {
@@ -77,10 +77,6 @@ export function createAccessUseCases(deps: {
     },
 
     async bridgeSession(command) {
-      if (!deps.supabaseJwtSecret) {
-        throw new HttpError('SUPABASE_JWT_SECRET is not configured', 500)
-      }
-
       const user = await deps.repository.ensureUser({
         workosUserId: command.workosUserId,
         email: command.email,
@@ -96,7 +92,7 @@ export function createAccessUseCases(deps: {
         }
       }
 
-      const expiresInSec = SessionExpiresInSecSchema.parse(command.expiresInSec ?? 3600)
+      const expiresInSec = SessionExpiresInSecSchema.parse(command.expiresInSec)
       const token = issueSupabaseJwt({
         userId: user.id,
         email: user.email,

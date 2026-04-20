@@ -23,7 +23,7 @@ const serverEnvSchema = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  SUPABASE_JWT_SECRET: z.string().min(1).optional(),
+  SUPABASE_JWT_SECRET: z.string().min(32).optional(),
   SYNC_DEFAULT_TENANT_ID: z.string().uuid(),
   AGENT_TOKEN: z.string().min(1).optional(),
   AGENT_LEASE_MINUTES: z.coerce.number().int().positive().default(5),

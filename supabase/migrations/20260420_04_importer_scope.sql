@@ -218,8 +218,17 @@ begin
     new.platform_tenant_id = v_platform_tenant_id;
   end if;
 
+  if v_platform_tenant_id is not null
+     and new.platform_tenant_id is distinct from v_platform_tenant_id then
+    raise exception 'container/process tenant mismatch';
+  end if;
+
   if new.importer_id is null then
     new.importer_id = v_importer_id;
+  end if;
+
+  if new.importer_id is distinct from v_importer_id then
+    raise exception 'container/process importer mismatch';
   end if;
 
   return new;
@@ -253,8 +262,17 @@ begin
     new.platform_tenant_id = v_platform_tenant_id;
   end if;
 
+  if v_platform_tenant_id is not null
+     and new.platform_tenant_id is distinct from v_platform_tenant_id then
+    raise exception 'snapshot/container tenant mismatch';
+  end if;
+
   if new.importer_id is null then
     new.importer_id = v_importer_id;
+  end if;
+
+  if new.importer_id is distinct from v_importer_id then
+    raise exception 'snapshot/container importer mismatch';
   end if;
 
   return new;

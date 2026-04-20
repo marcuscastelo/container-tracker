@@ -18,11 +18,17 @@ vi.mock('~/modules/access/interface/http/access.controllers.bootstrap', () => ({
   },
 }))
 
-import { POST as bridgeSessionPost } from '~/routes/api/access/bridge-session'
-import { POST as importersPost } from '~/routes/api/access/importers'
-import { POST as membershipsPost } from '~/routes/api/access/memberships'
-import { GET as overviewGet } from '~/routes/api/access/overview'
-import { POST as tenantsPost } from '~/routes/api/access/tenants'
+import {
+  POST as bridgeSessionPost,
+  runtime as bridgeSessionRuntime,
+} from '~/routes/api/access/bridge-session'
+import { POST as importersPost, runtime as importersRuntime } from '~/routes/api/access/importers'
+import {
+  POST as membershipsPost,
+  runtime as membershipsRuntime,
+} from '~/routes/api/access/memberships'
+import { GET as overviewGet, runtime as overviewRuntime } from '~/routes/api/access/overview'
+import { POST as tenantsPost, runtime as tenantsRuntime } from '~/routes/api/access/tenants'
 
 describe('access routes', () => {
   it('binds GET /api/access/overview to listOverview controller', () => {
@@ -43,5 +49,13 @@ describe('access routes', () => {
 
   it('binds POST /api/access/bridge-session to bridgeSession controller', () => {
     expect(bridgeSessionPost).toBe(accessHandlers.bridgeSession)
+  })
+
+  it('forces nodejs runtime for all /api/access routes', () => {
+    expect(overviewRuntime).toBe('nodejs')
+    expect(tenantsRuntime).toBe('nodejs')
+    expect(importersRuntime).toBe('nodejs')
+    expect(membershipsRuntime).toBe('nodejs')
+    expect(bridgeSessionRuntime).toBe('nodejs')
   })
 })

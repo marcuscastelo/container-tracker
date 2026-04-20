@@ -1,5 +1,12 @@
 -- 20260420_02_operational_tenant_columns
 -- Add platform_tenant_id to operational tables.
+-- Intentional backfill scope in this migration:
+-- only direct tenant_id tables are backfilled here (sync_requests, tracking_agents,
+-- tracking_agent_activity_events, agent_install_tokens, agent_enrollment_audit_events,
+-- agent_control_commands, agent_log_events).
+-- Hierarchical operational tables (processes, containers, container_snapshots,
+-- container_observations, tracking_alerts) are backfilled via
+-- scripts/access/backfill-castro-tenant.sql.
 
 alter table if exists public.processes
 add column if not exists platform_tenant_id uuid;

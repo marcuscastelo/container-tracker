@@ -8,12 +8,21 @@ import {
 } from '~/modules/access/interface/http/access.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
+import { HttpError } from '~/shared/errors/httpErrors'
 
 function getBearerToken(authorization: string | null): string | null {
   if (!authorization) return null
   const [scheme, token] = authorization.trim().split(/\s+/u)
   if (scheme !== 'Bearer' || !token) return null
   return token
+}
+
+async function parseJsonBody(request: Request): Promise<unknown> {
+  try {
+    return await request.json()
+  } catch {
+    throw new HttpError('Invalid JSON payload', 400)
+  }
 }
 
 export function createAccessControllers(deps: { readonly accessUseCases: AccessUseCases }) {
@@ -40,7 +49,7 @@ export function createAccessControllers(deps: { readonly accessUseCases: AccessU
 
   async function createTenant({ request }: { readonly request: Request }): Promise<Response> {
     try {
-      const raw: unknown = await request.json().catch(() => ({}))
+      const raw = await parseJsonBody(request)
       const parsed = CreateTenantBodySchema.safeParse(raw)
       if (!parsed.success) {
         return jsonResponse({ error: parsed.error.message }, 400)
@@ -59,7 +68,7 @@ export function createAccessControllers(deps: { readonly accessUseCases: AccessU
 
   async function createImporter({ request }: { readonly request: Request }): Promise<Response> {
     try {
-      const raw: unknown = await request.json().catch(() => ({}))
+      const raw = await parseJsonBody(request)
       const parsed = CreateImporterBodySchema.safeParse(raw)
       if (!parsed.success) {
         return jsonResponse({ error: parsed.error.message }, 400)
@@ -79,7 +88,7 @@ export function createAccessControllers(deps: { readonly accessUseCases: AccessU
 
   async function upsertMembership({ request }: { readonly request: Request }): Promise<Response> {
     try {
-      const raw: unknown = await request.json().catch(() => ({}))
+      const raw = await parseJsonBody(request)
       const parsed = UpsertMembershipBodySchema.safeParse(raw)
       if (!parsed.success) {
         return jsonResponse({ error: parsed.error.message }, 400)
@@ -102,7 +111,7 @@ export function createAccessControllers(deps: { readonly accessUseCases: AccessU
 
   async function bridgeSession({ request }: { readonly request: Request }): Promise<Response> {
     try {
-      const raw: unknown = await request.json().catch(() => ({}))
+      const raw = await parseJsonBody(request)
       const parsed = BridgeSessionBodySchema.safeParse(raw)
       if (!parsed.success) {
         return jsonResponse({ error: parsed.error.message }, 400)
@@ -112,7 +121,7 @@ export function createAccessControllers(deps: { readonly accessUseCases: AccessU
         workosUserId: parsed.data.workos_user_id,
         email: parsed.data.email,
         platformTenantId: parsed.data.platform_tenant_id ?? null,
-        expiresInSec: parsed.data.expires_in_sec ?? null,
+        expiresInSec: parsed.data.expires_in_sec,
       })
 
       return jsonResponse(

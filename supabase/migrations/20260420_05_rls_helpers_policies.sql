@@ -7,6 +7,8 @@ create or replace function private.has_active_membership(p_platform_tenant_id uu
 returns boolean
 language sql
 stable
+security definer
+set search_path = public, private
 as $$
   select exists (
     select 1
@@ -21,6 +23,8 @@ create or replace function private.is_tenant_admin(p_platform_tenant_id uuid)
 returns boolean
 language sql
 stable
+security definer
+set search_path = public, private
 as $$
   select exists (
     select 1
@@ -39,6 +43,8 @@ create or replace function private.has_importer_access(
 returns boolean
 language sql
 stable
+security definer
+set search_path = public, private
 as $$
   select exists (
     select 1
@@ -63,6 +69,8 @@ create or replace function private.can_access_row(
 returns boolean
 language sql
 stable
+security definer
+set search_path = public, private
 as $$
   select (
     private.is_tenant_admin(p_platform_tenant_id)

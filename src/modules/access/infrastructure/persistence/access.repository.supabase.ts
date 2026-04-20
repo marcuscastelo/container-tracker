@@ -24,7 +24,7 @@ const TenantRowSchema = z.object({
   id: z.string().uuid(),
   slug: z.string(),
   name: z.string(),
-  status: z.string(),
+  status: z.enum(['ACTIVE', 'INACTIVE']),
   created_at: z.string(),
 })
 
@@ -47,7 +47,7 @@ const MembershipRowSchema = z.object({
   user_id: z.string().uuid(),
   platform_tenant_id: z.string().uuid(),
   role_code: z.string(),
-  status: z.string(),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']),
 })
 
 const ImporterRowSchema = z.object({
@@ -55,7 +55,7 @@ const ImporterRowSchema = z.object({
   platform_tenant_id: z.string().uuid(),
   name: z.string(),
   tax_id: z.string().nullable(),
-  status: z.string(),
+  status: z.enum(['ACTIVE', 'INACTIVE']),
 })
 
 const MembershipImporterAccessRowSchema = z.object({
@@ -181,7 +181,6 @@ async function listUsers(): Promise<readonly AccessUser[]> {
     .from('users')
     .select('id,workos_user_id,email')
     .order('created_at', { ascending: true })
-    .limit(500)
   const data = unwrapSupabaseResultOrThrow(result, {
     operation: 'listUsers',
     table: 'users',
@@ -329,48 +328,22 @@ export const supabaseAccessRepository: AccessRepository = {
   },
 
   async ensureUser(command: EnsureAccessUserCommand): Promise<AccessUser> {
-    const foundResult = await accessSupabase
+    const result = await accessSupabase
       .from('users')
-      .select('id,workos_user_id,email')
-      .eq('workos_user_id', command.workosUserId)
-      .limit(1)
-      .maybeSingle()
-
-    const found = unwrapSupabaseSingleOrNull(foundResult, {
-      operation: 'ensureUser.select',
-      table: 'users',
-    })
-
-    if (found) {
-      if (found.email !== command.email) {
-        const updateResult = await accessSupabase
-          .from('users')
-          .update({ email: command.email })
-          .eq('id', found.id)
-          .select('id,workos_user_id,email')
-          .single()
-        const updated = unwrapSupabaseResultOrThrow(updateResult, {
-          operation: 'ensureUser.update',
-          table: 'users',
-        })
-        return toUser(UserRowSchema.parse(updated))
-      }
-      return toUser(UserRowSchema.parse(found))
-    }
-
-    const insertResult = await accessSupabase
-      .from('users')
-      .insert({
-        workos_user_id: command.workosUserId,
-        email: command.email,
-      })
+      .upsert(
+        {
+          workos_user_id: command.workosUserId,
+          email: command.email,
+        },
+        { onConflict: 'workos_user_id' },
+      )
       .select('id,workos_user_id,email')
       .single()
-    const inserted = unwrapSupabaseResultOrThrow(insertResult, {
-      operation: 'ensureUser.insert',
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'ensureUser.upsert',
       table: 'users',
     })
-    return toUser(UserRowSchema.parse(inserted))
+    return toUser(UserRowSchema.parse(data))
   },
 
   async upsertMembership(command: UpsertMembershipCommand): Promise<AccessMembership> {

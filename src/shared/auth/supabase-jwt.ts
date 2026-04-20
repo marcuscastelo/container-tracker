@@ -4,8 +4,29 @@ function base64UrlEncode(input: string): string {
   return Buffer.from(input, 'utf8').toString('base64url')
 }
 
+function maybeDecodeBase64Secret(secret: string): Buffer | null {
+  const normalized = secret.replace(/\s+/gu, '')
+  if (normalized.length === 0 || normalized.length % 4 === 1) {
+    return null
+  }
+
+  const decoded = Buffer.from(normalized, 'base64')
+  if (decoded.length === 0) {
+    return null
+  }
+
+  const normalizedInput = normalized.replace(/=+$/u, '')
+  const normalizedDecoded = decoded.toString('base64').replace(/=+$/u, '')
+  if (normalizedInput !== normalizedDecoded) {
+    return null
+  }
+
+  return decoded
+}
+
 function signHs256(value: string, secret: string): string {
-  return createHmac('sha256', secret).update(value).digest('base64url')
+  const key = maybeDecodeBase64Secret(secret) ?? secret
+  return createHmac('sha256', key).update(value).digest('base64url')
 }
 
 type SupabaseJwtPayload = {
