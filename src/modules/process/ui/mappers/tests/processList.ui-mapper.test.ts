@@ -422,9 +422,9 @@ describe('toProcessSummaryVMs presentation details', () => {
     expect(first.importerName).toBeNull()
   })
 
-  it('preserves leading/trailing whitespace in non-blank importer_name', () => {
+  it('trims leading/trailing whitespace in non-blank importer_name', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p6', importer_name: '  Empresa ABC  ' })])
-    expect(requireAt(result, 0).importerName).toBe('  Empresa ABC  ')
+    expect(requireAt(result, 0).importerName).toBe('Empresa ABC')
   })
 
   it('maps redestination_number to redestinationNumber', () => {

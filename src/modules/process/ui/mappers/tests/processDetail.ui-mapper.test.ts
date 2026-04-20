@@ -327,7 +327,9 @@ describe('toShipmentDetailVM base mapping', () => {
     expect(firstAlert.messageKey).toBe('incidents.fact.transshipmentDetected')
     expect(result.processEtaDisplayVm.kind).toBe('unavailable')
   })
+})
 
+describe('toShipmentDetailVM redestination mapping', () => {
   it('keeps non-blank redestination_number values', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-redest',
@@ -342,16 +344,18 @@ describe('toShipmentDetailVM base mapping', () => {
       source: 'api',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      tracking_validation: makeProcessTrackingValidationResponse(),
       containers: [
         {
           id: 'c-redest',
           container_number: 'MSCU7654321',
           status: 'IN_TRANSIT',
+          tracking_validation: makeContainerTrackingValidationResponse(),
+          tracking_containment: null,
           timeline: [],
         },
       ],
       containersSync: [],
-      alerts: [],
     }
 
     const result = toShipmentDetailVM(example)
@@ -359,7 +363,9 @@ describe('toShipmentDetailVM base mapping', () => {
   })
 
   it('normalizes blank redestination_number values to null', () => {
-    const makeExample = (redestination_number: string | null | undefined): ProcessDetailResponse => ({
+    const makeExample = (
+      redestination_number: string | null | undefined,
+    ): ProcessDetailResponse => ({
       id: 'proc-redest-blank',
       tracking_freshness_token: 'token-proc-redest-blank',
       reference: 'REF-RED-BLANK',
@@ -372,16 +378,18 @@ describe('toShipmentDetailVM base mapping', () => {
       source: 'api',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      tracking_validation: makeProcessTrackingValidationResponse(),
       containers: [
         {
           id: 'c-redest-blank',
           container_number: 'MSCU7654321',
           status: 'IN_TRANSIT',
+          tracking_validation: makeContainerTrackingValidationResponse(),
+          tracking_containment: null,
           timeline: [],
         },
       ],
       containersSync: [],
-      alerts: [],
     })
 
     const blankResult = toShipmentDetailVM(makeExample(''))
