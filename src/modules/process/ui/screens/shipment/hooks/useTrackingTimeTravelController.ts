@@ -2,12 +2,15 @@ import { type Accessor, createEffect, createMemo, createResource, createSignal }
 import {
   fetchTrackingReplayDebug,
   fetchTrackingTimeTravel,
+  type TrackingReplayDebugResponseDto,
+  type TrackingTimeTravelResponseDto,
 } from '~/modules/process/ui/api/tracking-time-travel.api'
 import {
   toTrackingReplayDebugVm,
   toTrackingTimeTravelVm,
 } from '~/modules/process/ui/mappers/tracking-time-travel.ui-mapper'
 import { toReadableErrorMessage } from '~/modules/process/ui/screens/shipment/lib/shipmentError.presenter'
+import { toTrackingTimeTravelResourceKey } from '~/modules/process/ui/screens/shipment/lib/tracking-time-travel.resource-key'
 import {
   findTrackingTimeTravelSync,
   selectAdjacentTrackingTimeTravelSnapshotId,
@@ -19,9 +22,11 @@ import type {
 } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import { type ResourceSnapshotLike, readResourceSnapshot } from '~/shared/solid/resourceSnapshot'
 
 type UseTrackingTimeTravelControllerCommand = {
   readonly selectedContainer: Accessor<ContainerDetailVM | null>
+  readonly trackingFreshnessToken: Accessor<string | null>
 }
 
 export type TrackingTimeTravelControllerResult = {
@@ -43,6 +48,24 @@ export type TrackingTimeTravelControllerResult = {
   readonly selectNext: () => void
 }
 
+export function toTrackingTimeTravelValue(
+  resource: ResourceSnapshotLike<TrackingTimeTravelResponseDto | undefined>,
+  currentLocale: string,
+): TrackingTimeTravelVM | null {
+  const response = readResourceSnapshot(resource)
+  if (!response) return null
+  return toTrackingTimeTravelVm(response, currentLocale)
+}
+
+export function toTrackingReplayDebugValue(
+  resource: ResourceSnapshotLike<TrackingReplayDebugResponseDto | undefined>,
+  currentLocale: string,
+): TrackingReplayDebugVM | null {
+  const response = readResourceSnapshot(resource)
+  if (!response) return null
+  return toTrackingReplayDebugVm(response, currentLocale)
+}
+
 export function useTrackingTimeTravelController(
   command: UseTrackingTimeTravelControllerCommand,
 ): TrackingTimeTravelControllerResult {
@@ -53,19 +76,18 @@ export function useTrackingTimeTravelController(
   const [activeContainerId, setActiveContainerId] = createSignal<string | null>(null)
 
   const [timeTravelResponse] = createResource(
-    () => {
-      const container = command.selectedContainer()
-      if (!isActive() || !container) return null
-      return container.id
-    },
-    async (containerId) => fetchTrackingTimeTravel(containerId),
+    () =>
+      toTrackingTimeTravelResourceKey({
+        isActive: isActive(),
+        containerId: command.selectedContainer()?.id ?? null,
+        trackingFreshnessToken: command.trackingFreshnessToken(),
+      }),
+    async ([containerId]) => fetchTrackingTimeTravel(containerId),
   )
 
-  const value = createMemo<TrackingTimeTravelVM | null>(() => {
-    const response = timeTravelResponse()
-    if (!response) return null
-    return toTrackingTimeTravelVm(response, locale())
-  })
+  const value = createMemo<TrackingTimeTravelVM | null>(() =>
+    toTrackingTimeTravelValue(timeTravelResponse, locale()),
+  )
 
   createEffect(() => {
     const containerId = command.selectedContainer()?.id ?? null
@@ -117,11 +139,9 @@ export function useTrackingTimeTravelController(
     async (request) => fetchTrackingReplayDebug(request.containerId, request.snapshotId),
   )
 
-  const debugValue = createMemo<TrackingReplayDebugVM | null>(() => {
-    const response = debugResponse()
-    if (!response) return null
-    return toTrackingReplayDebugVm(response, locale())
-  })
+  const debugValue = createMemo<TrackingReplayDebugVM | null>(() =>
+    toTrackingReplayDebugValue(debugResponse, locale()),
+  )
 
   const open = () => {
     if (!command.selectedContainer()) return
@@ -185,7 +205,7 @@ export function useTrackingTimeTravelController(
       return error ? toReadableErrorMessage(error) : null
     },
     debugValue,
-    debugPayload: () => debugResponse() ?? null,
+    debugPayload: () => readResourceSnapshot(debugResponse) ?? null,
     open,
     close,
     toggleDebug,

@@ -7,7 +7,7 @@ Proposed
 
 ## Context
 
-O sistema atual apresenta inconsistências críticas relacionadas a tempo, afetando diretamente a confiabilidade operacional.
+sistema atual apresenta inconsistências críticas relacionadas tempo, afetando diretamente confiabilidade operacional.
 
 ### Sintomas observados
 
@@ -50,13 +50,13 @@ Combinado com:
 
 ## Decision
 
-Adotar um modelo explícito de tempo baseado em dois tipos fundamentais:
+Adotar modelo explícito de tempo baseado em dois tipos fundamentais:
 
 ### 1. `Instant`
-Representa um ponto absoluto no tempo (timestamp real).
+Representa ponto absoluto no tempo (timestamp real).
 
 ### 2. `CalendarDate`
-Representa uma data civil (sem timezone, sem horário).
+Representa data civil (sem timezone, sem horário).
 
 ---
 
@@ -140,7 +140,7 @@ function compareTemporal(
 new Date(...) ❌
 ```
 
-Permitido apenas em:
+Permitido em:
 
 ```
 shared/time/**
@@ -182,7 +182,7 @@ Sempre exigir:
 
 UI:
 
-- apenas renderiza
+- renderiza
 - não converte semântica
 - não decide timezone implícito
 
@@ -249,7 +249,7 @@ Afeta:
 - Implementar `Instant` e `CalendarDate`
 
 ### Fase 2 — Novos fluxos
-- Novas features usam apenas os novos tipos
+- Novas features usam novos tipos
 
 ### Fase 3 — Hotspots
 Refatorar:

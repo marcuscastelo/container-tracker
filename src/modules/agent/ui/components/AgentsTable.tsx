@@ -15,6 +15,7 @@ export type AgentSortField =
 type Props = {
   readonly agents: readonly AgentListItemVM[]
   readonly loading: boolean
+  readonly refreshing?: boolean
   readonly hasError: boolean
   readonly sortField: AgentSortField
   readonly sortAsc: boolean
@@ -40,7 +41,7 @@ function SortHeader(props: {
 
   return (
     <th
-      class={`cursor-pointer select-none px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-text-muted transition-colors hover:text-foreground ${props.class ?? ''}`}
+      class={`motion-interactive cursor-pointer select-none px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-text-muted hover:text-foreground ${props.class ?? ''}`}
       onClick={() => props.onSort(props.field)}
     >
       <span class="inline-flex items-center gap-1">
@@ -125,7 +126,7 @@ function AgentDataRow(props: {
 
   return (
     <tr
-      class={`cursor-pointer transition-colors hover:bg-surface-muted ${rowBg()}`}
+      class={`motion-overlay-surface cursor-pointer hover:bg-surface-muted ${rowBg()}`}
       onClick={() => props.onAgentClick(props.agent.agentId)}
       tabIndex={0}
       onKeyDown={(e) => {
@@ -201,7 +202,7 @@ function AgentDataRow(props: {
             event.stopPropagation()
             props.onLogsClick(props.agent.agentId)
           }}
-          class="rounded border border-control-border bg-control-bg px-2 py-0.5 text-micro text-control-foreground hover:bg-control-bg-hover"
+          class="motion-focus-surface motion-interactive rounded border border-control-border bg-control-bg px-2 py-0.5 text-micro text-control-foreground hover:bg-control-bg-hover"
         >
           Logs
         </button>
@@ -246,6 +247,11 @@ export function AgentsTable(props: Props): JSX.Element {
 
   return (
     <div class="hidden overflow-x-auto rounded-lg border border-border bg-surface md:block">
+      <Show when={props.refreshing === true}>
+        <div class="border-b border-border/60 bg-surface px-3 py-1.5 text-micro text-text-muted">
+          Updating agents...
+        </div>
+      </Show>
       <table class="min-w-full divide-y divide-border">
         <thead class="bg-surface-muted">
           <tr>

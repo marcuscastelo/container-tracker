@@ -1,3 +1,4 @@
+import { fetchWithHttpDegradationReporting } from '~/shared/api/httpDegradationReporter'
 import { typedFetch } from '~/shared/api/typedFetch'
 import {
   ExecuteSymmetricImportResponseSchema,
@@ -71,7 +72,7 @@ async function requestDownload(command: {
   readonly payload: Record<string, unknown>
   readonly fallbackFilename: string
 }): Promise<void> {
-  const response = await fetch(command.endpoint, {
+  const response = await fetchWithHttpDegradationReporting(command.endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(command.payload),
@@ -95,7 +96,7 @@ async function requestTextExport(command: {
   readonly endpoint: string
   readonly payload: Record<string, unknown>
 }): Promise<string> {
-  const response = await fetch(command.endpoint, {
+  const response = await fetchWithHttpDegradationReporting(command.endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(command.payload),

@@ -4,6 +4,10 @@ import type {
   SyncTargetContainerRecord,
   SyncTargetReadPort,
 } from '~/capabilities/sync/application/ports/sync-target-read.port'
+import {
+  normalizeContainerNumber,
+  toSupportedProvider,
+} from '~/capabilities/sync/application/services/sync-provider-resolution.utils'
 import { HttpError } from '~/shared/errors/httpErrors'
 
 export type ResolvedSyncTarget = {
@@ -14,30 +18,6 @@ export type ResolvedSyncTarget = {
 
 type SyncTargetResolverService = {
   readonly resolveTargets: (scope: SyncScope) => Promise<readonly ResolvedSyncTarget[]>
-}
-
-const PROVIDER_BY_CARRIER: Readonly<Record<string, SupportedSyncProvider>> = {
-  msc: 'msc',
-  maersk: 'maersk',
-  cmacgm: 'cmacgm',
-  pil: 'pil',
-  one: 'one',
-}
-
-function normalizeCarrierCode(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replaceAll(/[^a-z0-9]/g, '')
-}
-
-function normalizeContainerNumber(value: string): string {
-  return value.trim().toUpperCase()
-}
-
-function toSupportedProvider(carrierCode: string | null): SupportedSyncProvider | null {
-  if (!carrierCode) return null
-  return PROVIDER_BY_CARRIER[normalizeCarrierCode(carrierCode)] ?? null
 }
 
 function toResolvedTarget(command: {

@@ -31,18 +31,18 @@ function toDashboardGlobalAlertsResponse(
   summary: Awaited<ReturnType<DashboardUseCases['getOperationalSummaryReadModel']>>['globalAlerts'],
 ) {
   return {
-    total_active_alerts: summary.totalActiveAlerts,
+    total_active_incidents: summary.totalActiveIncidents,
+    affected_containers_count: summary.affectedContainersCount,
+    recognized_incidents_count: summary.recognizedIncidentsCount,
     by_severity: {
       danger: summary.bySeverity.danger,
       warning: summary.bySeverity.warning,
       info: summary.bySeverity.info,
-      success: summary.bySeverity.success,
     },
     by_category: {
       eta: summary.byCategory.eta,
       movement: summary.byCategory.movement,
       customs: summary.byCategory.customs,
-      status: summary.byCategory.status,
       data: summary.byCategory.data,
     },
   }
@@ -59,8 +59,20 @@ function toDashboardProcessExceptionsResponse(
     derived_status: process.status,
     eta_current: process.eta,
     dominant_severity: process.dominantSeverity,
-    dominant_alert_created_at: process.dominantAlertCreatedAt,
-    active_alert_count: process.activeAlertsCount,
+    active_incident_count: process.activeIncidentCount,
+    affected_container_count: process.affectedContainerCount,
+    dominant_incident:
+      process.dominantIncident === null
+        ? null
+        : {
+            type: process.dominantIncident.type,
+            severity: process.dominantIncident.severity,
+            fact: {
+              message_key: process.dominantIncident.fact.messageKey,
+              message_params: process.dominantIncident.fact.messageParams,
+            },
+            triggered_at: process.dominantIncident.triggeredAt,
+          },
   }))
 }
 
@@ -73,77 +85,38 @@ function toDashboardMonthWindowSize(
   return undefined
 }
 
-type NavbarAlertResponse =
-  NavbarAlertsSummaryResponse['processes'][number]['containers'][number]['alerts'][number]
-type NavbarContainerResponse =
-  NavbarAlertsSummaryResponse['processes'][number]['containers'][number]
+type NavbarIncidentResponse = NavbarAlertsSummaryResponse['processes'][number]['incidents'][number]
 type NavbarProcessResponse = NavbarAlertsSummaryResponse['processes'][number]
 
-type NavbarAlertReadModel = Awaited<
+type NavbarIncidentReadModel = Awaited<
   ReturnType<DashboardUseCases['getNavbarAlertsSummaryReadModel']>
->['processes'][number]['containers'][number]['alerts'][number]
+>['processes'][number]['incidents'][number]
 
-function toNavbarAlertResponse(alert: NavbarAlertReadModel): NavbarAlertResponse {
-  const baseAlert = {
-    alert_id: alert.alertId,
-    severity: alert.severity,
-    category: alert.category,
-    occurred_at: alert.occurredAt,
-    retroactive: alert.retroactive,
-  }
-
-  if (alert.messageKey === 'alerts.transshipmentDetected') {
-    return {
-      ...baseAlert,
-      message_key: 'alerts.transshipmentDetected',
-      message_params: alert.messageParams,
-    }
-  }
-
-  if (alert.messageKey === 'alerts.customsHoldDetected') {
-    return {
-      ...baseAlert,
-      message_key: 'alerts.customsHoldDetected',
-      message_params: alert.messageParams,
-    }
-  }
-
-  if (alert.messageKey === 'alerts.noMovementDetected') {
-    return {
-      ...baseAlert,
-      message_key: 'alerts.noMovementDetected',
-      message_params: alert.messageParams,
-    }
-  }
-
-  if (alert.messageKey === 'alerts.etaMissing') {
-    return {
-      ...baseAlert,
-      message_key: 'alerts.etaMissing',
-      message_params: {},
-    }
-  }
-
-  if (alert.messageKey === 'alerts.etaPassed') {
-    return {
-      ...baseAlert,
-      message_key: 'alerts.etaPassed',
-      message_params: {},
-    }
-  }
-
-  if (alert.messageKey === 'alerts.portChange') {
-    return {
-      ...baseAlert,
-      message_key: 'alerts.portChange',
-      message_params: {},
-    }
-  }
-
+function toNavbarIncidentResponse(incident: NavbarIncidentReadModel): NavbarIncidentResponse {
   return {
-    ...baseAlert,
-    message_key: 'alerts.dataInconsistent',
-    message_params: {},
+    incident_key: incident.incidentKey,
+    type: incident.type,
+    category: incident.category,
+    severity: incident.severity,
+    fact: {
+      message_key: incident.fact.messageKey,
+      message_params: incident.fact.messageParams,
+    },
+    action:
+      incident.action === null
+        ? null
+        : {
+            action_key: incident.action.actionKey,
+            action_params: incident.action.actionParams,
+            action_kind: incident.action.actionKind,
+          },
+    affected_container_count: incident.affectedContainerCount,
+    triggered_at: incident.triggeredAt,
+    containers: incident.containers.map((container) => ({
+      container_id: container.containerId,
+      container_number: container.containerNumber,
+      lifecycle_state: container.lifecycleState,
+    })),
   }
 }
 
@@ -152,29 +125,19 @@ function toNavbarAlertsSummaryResponse(
 ): NavbarAlertsSummaryResponse {
   return {
     generated_at: systemClock.now().toIsoString(),
-    total_active_alerts: summary.totalActiveAlerts,
+    total_active_incidents: summary.totalActiveIncidents,
     processes: summary.processes.map(
       (process): NavbarProcessResponse => ({
         process_id: process.processId,
         process_reference: process.processReference,
         carrier: process.carrier,
         route_summary: process.routeSummary,
-        active_alerts_count: process.activeAlertsCount,
+        active_incident_count: process.activeIncidentCount,
+        affected_container_count: process.affectedContainerCount,
         dominant_severity: process.dominantSeverity,
-        latest_alert_at: process.latestAlertAt,
-        containers: process.containers.map(
-          (container): NavbarContainerResponse => ({
-            container_id: container.containerId,
-            container_number: container.containerNumber,
-            status: container.status,
-            eta: container.eta,
-            active_alerts_count: container.activeAlertsCount,
-            dominant_severity: container.dominantSeverity,
-            latest_alert_at: container.latestAlertAt,
-            alerts: container.alerts.map(
-              (alert): NavbarAlertResponse => toNavbarAlertResponse(alert),
-            ),
-          }),
+        latest_incident_at: process.latestIncidentAt,
+        incidents: process.incidents.map(
+          (incident): NavbarIncidentResponse => toNavbarIncidentResponse(incident),
         ),
       }),
     ),
@@ -214,16 +177,16 @@ export function createDashboardControllers(deps: DashboardControllersDeps) {
     )
   }
 
-  async function getNavbarAlertsSummary({
+  async function getNavbarOperationalIncidentsSummary({
     request,
   }: {
     readonly request: Request
   }): Promise<Response> {
     return runWithReadRequestAudit(
       {
-        endpoint: '/api/alerts/navbar-summary',
+        endpoint: '/api/operational-incidents/navbar-summary',
         projection: 'NavbarAlertsSummaryResponse',
-        readStrategy: 'tracking.operational_summary_projection.navbar_alerts',
+        readStrategy: 'tracking.operational_summary_projection.navbar_operational_incidents',
         triggeredBy: readAuditedTriggerSource(request),
       },
       async () => {
@@ -232,7 +195,7 @@ export function createDashboardControllers(deps: DashboardControllersDeps) {
           const response = toNavbarAlertsSummaryResponse(result)
           return jsonResponse(response, 200, NavbarAlertsSummaryResponseSchema)
         } catch (err) {
-          console.error('GET /api/alerts/navbar-summary error:', err)
+          console.error('GET /api/operational-incidents/navbar-summary error:', err)
           return mapErrorToResponse(err)
         }
       },
@@ -245,7 +208,8 @@ export function createDashboardControllers(deps: DashboardControllersDeps) {
       const response = {
         activeProcesses: result.activeProcesses,
         trackedContainers: result.trackedContainers,
-        processesWithAlerts: result.processesWithAlerts,
+        activeIncidents: result.activeIncidents,
+        affectedContainers: result.affectedContainers,
         lastSyncAt: result.lastSyncAt,
       }
       return jsonResponse(response, 200, DashboardKpisResponseSchema)
@@ -289,7 +253,7 @@ export function createDashboardControllers(deps: DashboardControllersDeps) {
 
   return {
     getOperationalSummary,
-    getNavbarAlertsSummary,
+    getNavbarOperationalIncidentsSummary,
     getKpis,
     getProcessesCreatedByMonth,
   }

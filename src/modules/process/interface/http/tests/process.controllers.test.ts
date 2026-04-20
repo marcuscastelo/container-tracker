@@ -16,10 +16,11 @@ import type {
   FindContainersHotReadProjectionResult,
 } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
 import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import {
   ProcessDetailResponseSchema,
   ProcessesV2ResponseSchema,
-  ProcessRecognizedAlertIncidentsResponseSchema,
+  ProcessRecognizedOperationalIncidentsResponseSchema,
   ProcessSyncSnapshotResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 import { Instant } from '~/shared/time/instant'
@@ -43,6 +44,7 @@ type ContainerSummaryStatus = ContainerHotReadProjection['status']
 const CONTAINER_SUMMARY_STATUSES: readonly ContainerSummaryStatus[] = [
   'UNKNOWN',
   'IN_PROGRESS',
+  'BOOKED',
   'LOADED',
   'IN_TRANSIT',
   'ARRIVED_AT_POD',
@@ -51,6 +53,14 @@ const CONTAINER_SUMMARY_STATUSES: readonly ContainerSummaryStatus[] = [
   'DELIVERED',
   'EMPTY_RETURNED',
 ]
+
+const EMPTY_TRACKING_VALIDATION: TrackingValidationContainerSummary = {
+  hasIssues: false,
+  findingCount: 0,
+  highestSeverity: null,
+  activeIssues: [],
+  topIssue: null,
+}
 
 function isContainerStatus(value: string): value is ContainerSummaryStatus {
   return CONTAINER_SUMMARY_STATUSES.some((item) => item === value)
@@ -65,7 +75,7 @@ function createProcessSyncSnapshotRequest(): Request {
 }
 
 function createRecognizedAlertsRequest(): Request {
-  return new Request('http://localhost/api/processes/process-1/alerts/recognized')
+  return new Request('http://localhost/api/processes/process-1/operational-incidents/recognized')
 }
 
 function createProcessWithContainers(destination: string) {
@@ -138,6 +148,8 @@ function createHotReadContainer(
     timeline: [],
     status,
     operational,
+    trackingValidation: EMPTY_TRACKING_VALIDATION,
+    trackingContainment: null,
     activeAlerts: alerts,
     hasObservations: operational.dataIssue !== true,
     lastEventAt: temporalValueFromDto(operational.eta?.eventTime ?? null),
@@ -161,7 +173,7 @@ function createHotReadProjection(
     ),
   )
   const activeAlerts = hotReadContainers.flatMap((container) => container.activeAlerts)
-  const activeAlertIncidents = buildShipmentAlertIncidentsReadModel({
+  const activeOperationalIncidents = buildShipmentAlertIncidentsReadModel({
     containers: hotReadContainers.map((container) => ({
       containerId: container.containerId,
       containerNumber: container.containerNumber,
@@ -172,7 +184,7 @@ function createHotReadProjection(
   return {
     containers: hotReadContainers,
     activeAlerts,
-    activeAlertIncidents,
+    activeOperationalIncidents,
   }
 }
 
@@ -192,7 +204,7 @@ function createControllers(
       })),
   ),
   trackingOverrides?: Partial<
-    Pick<TrackingUseCases, 'findContainersRecognizedAlertIncidentsProjection'>
+    Pick<TrackingUseCases, 'findContainersRecognizedOperationalIncidentsProjection'>
   >,
 ) {
   const { process, processWithContainers } = createProcessWithContainers(destination)
@@ -215,11 +227,11 @@ function createControllers(
     trackingUseCases: {
       findContainersHotReadProjection,
       getContainersSyncMetadata,
-      ...(trackingOverrides?.findContainersRecognizedAlertIncidentsProjection === undefined
+      ...(trackingOverrides?.findContainersRecognizedOperationalIncidentsProjection === undefined
         ? {}
         : {
-            findContainersRecognizedAlertIncidentsProjection:
-              trackingOverrides.findContainersRecognizedAlertIncidentsProjection,
+            findContainersRecognizedOperationalIncidentsProjection:
+              trackingOverrides.findContainersRecognizedOperationalIncidentsProjection,
           }),
     },
   })
@@ -288,37 +300,21 @@ describe('process controllers', () => {
     const body = ProcessDetailResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)
-    expect(body.alerts).toEqual([
-      {
-        id: 'alert-1',
-        container_number: 'MSCU1234567',
-        category: 'fact',
-        type: 'TRANSSHIPMENT',
-        severity: 'warning',
-        message_key: 'alerts.transshipmentDetected',
-        message_params: {
-          port: 'MAPTM02',
-          fromVessel: 'MAERSK NARMADA',
-          toVessel: 'CMA CGM LISA MARIE',
-        },
-        detected_at: '2026-03-01T10:00:00.000Z',
-        triggered_at: '2026-03-01T10:00:00.000Z',
-        retroactive: false,
-        provider: 'maersk',
-        lifecycle_state: 'ACTIVE',
-        acked_at: null,
-        resolved_at: null,
-        resolved_reason: null,
-      },
-    ])
-    expect(body.alert_incidents?.summary).toEqual({
+    expect(Object.hasOwn(body, 'alerts')).toBe(false)
+    expect(body.operational_incidents?.summary).toEqual({
       active_incidents: 1,
       affected_containers: 1,
       recognized_incidents: 0,
     })
-    expect(body.alert_incidents?.active[0]?.detected_at).toBe('2026-03-01T10:00:00.000Z')
-    expect(body.alert_incidents?.active[0]?.members[0]?.container_number).toBe('MSCU1234567')
-    expect(body.alert_incidents?.active[0]?.members[0]?.detected_at).toBe(
+    expect(body.operational_incidents?.active[0]?.fact.message_key).toBe(
+      'incidents.fact.transshipmentDetected',
+    )
+    expect(body.operational_incidents?.active[0]?.action?.action_key).toBe(
+      'incidents.action.updateRedestination',
+    )
+    expect(body.operational_incidents?.active[0]?.detected_at).toBe('2026-03-01T10:00:00.000Z')
+    expect(body.operational_incidents?.active[0]?.members[0]?.container_number).toBe('MSCU1234567')
+    expect(body.operational_incidents?.active[0]?.members[0]?.detected_at).toBe(
       '2026-03-01T10:00:00.000Z',
     )
   })
@@ -695,17 +691,17 @@ describe('process controllers', () => {
       ),
       undefined,
       {
-        findContainersRecognizedAlertIncidentsProjection: vi.fn(
+        findContainersRecognizedOperationalIncidentsProjection: vi.fn(
           async () => recognizedAlertIncidents,
         ),
       },
     )
 
-    const response = await controllers.getProcessRecognizedAlertIncidents({
+    const response = await controllers.getProcessRecognizedOperationalIncidents({
       params: { id: 'process-1' },
       request: createRecognizedAlertsRequest(),
     })
-    const body = ProcessRecognizedAlertIncidentsResponseSchema.parse(await response.json())
+    const body = ProcessRecognizedOperationalIncidentsResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)
     expect(body.summary).toEqual({

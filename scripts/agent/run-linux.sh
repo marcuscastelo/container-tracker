@@ -13,7 +13,9 @@ project_env_path="$repo_root/.env"
 agent_data_dir="${AGENT_DATA_DIR:-$repo_root/.agent-runtime}"
 dotenv_path="${DOTENV_PATH:-$agent_data_dir/config.env}"
 bootstrap_path="${BOOTSTRAP_DOTENV_PATH:-$agent_data_dir/bootstrap.env}"
-update_manifest_channel="${AGENT_UPDATE_MANIFEST_CHANNEL:-disabled}"
+disable_automatic_update_checks="${AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS:-}"
+register_path="$repo_root/dist/apps/agent/src/runtime/register-alias-loader.js"
+node_args=("$repo_root/dist/apps/agent/src/supervisor.js")
 
 mkdir -p "$agent_data_dir"
 
@@ -87,6 +89,12 @@ if [ ! -f "$dotenv_path" ] && [ ! -f "$bootstrap_path" ]; then
     "$(read_env_value "$dotenv_path" INSTALLER_TOKEN AGENT_INSTALLER_TOKEN || true)" \
     "${AGENT_INSTALLER_TOKEN:-}" \
     "${INSTALLER_TOKEN:-}")"
+  update_manifest_channel="$(first_non_empty \
+    "${AGENT_UPDATE_MANIFEST_CHANNEL:-}" \
+    "$(read_env_value "$project_env_path" AGENT_UPDATE_MANIFEST_CHANNEL || true)" \
+    "$(read_env_value "$bootstrap_path" AGENT_UPDATE_MANIFEST_CHANNEL || true)" \
+    "$(read_env_value "$dotenv_path" AGENT_UPDATE_MANIFEST_CHANNEL || true)" \
+    "stable")"
 
   if [ -n "$backend_url" ] && [ -n "$installer_token" ]; then
     agent_id="$(first_non_empty \
@@ -148,10 +156,22 @@ if [ ! -f "$dotenv_path" ] && [ ! -f "$bootstrap_path" ]; then
     done
     echo "[agent:run] config detected, starting agent"
   fi
+else
+  update_manifest_channel="$(first_non_empty \
+    "${AGENT_UPDATE_MANIFEST_CHANNEL:-}" \
+    "$(read_env_value "$dotenv_path" AGENT_UPDATE_MANIFEST_CHANNEL || true)" \
+    "$(read_env_value "$bootstrap_path" AGENT_UPDATE_MANIFEST_CHANNEL || true)" \
+    "$(read_env_value "$project_env_path" AGENT_UPDATE_MANIFEST_CHANNEL || true)" \
+    "stable")"
+fi
+
+if [ -f "$register_path" ]; then
+  node_args=("--import=$register_path" "${node_args[@]}")
 fi
 
 DOTENV_PATH="$dotenv_path" \
 BOOTSTRAP_DOTENV_PATH="$bootstrap_path" \
 AGENT_DATA_DIR="$agent_data_dir" \
 AGENT_UPDATE_MANIFEST_CHANNEL="$update_manifest_channel" \
-node tools/agent/dist/tools/agent/supervisor.js
+AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS="$disable_automatic_update_checks" \
+node "${node_args[@]}"

@@ -19,12 +19,23 @@ import {
   readColumnOrderFromLocalStorage,
   writeColumnOrderToLocalStorage,
 } from '~/modules/process/ui/components/dashboard-columns'
-import { toDashboardEtaCellLabel } from '~/modules/process/ui/components/dashboard-process-table.presenter'
+import {
+  toDashboardAdditionalIncidentsTooltipLine,
+  toDashboardEtaCellLabel,
+} from '~/modules/process/ui/components/dashboard-process-table.presenter'
 import { createDashboardStatusCellDisplayMemo } from '~/modules/process/ui/components/dashboard-status-cell.display'
 import {
   SyncCell as SyncCellComponent,
   type SyncCellState,
 } from '~/modules/process/ui/components/SyncCell'
+import {
+  type TrackingValidationCopyLabels,
+  toTrackingValidationTooltipText,
+} from '~/modules/process/ui/components/tracking-review-copy.presenter'
+import {
+  toTrackingValidationBadgeClasses,
+  toTrackingValidationDisplayState,
+} from '~/modules/process/ui/components/tracking-review-display.presenter'
 import { toDashboardProcessRowClass } from '~/modules/process/ui/utils/dashboard-process-row-style'
 import {
   hasDashboardRowSelectedText,
@@ -38,6 +49,7 @@ import type {
   DashboardSortField,
   DashboardSortSelection,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
+import type { DashboardProcessRowVM } from '~/modules/process/ui/viewmodels/dashboard-sync-batch-result.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { EmptyState } from '~/shared/ui/EmptyState'
@@ -52,7 +64,7 @@ import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 type DashboardProcessSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 
 type Props = {
-  readonly processes: readonly ProcessSummaryVM[]
+  readonly processes: readonly DashboardProcessRowVM[]
   readonly highlightedProcessId: string | null
   readonly initialLoading: boolean
   readonly refreshing: boolean
@@ -68,7 +80,7 @@ type Props = {
 }
 
 type RowProps = {
-  readonly process: ProcessSummaryVM
+  readonly process: DashboardProcessRowVM
   readonly isHighlighted: boolean
   readonly columnOrder: readonly DashboardColumnId[]
   readonly gridStyle: string
@@ -78,7 +90,7 @@ type RowProps = {
 }
 
 type TableRowsProps = {
-  readonly processes: readonly ProcessSummaryVM[]
+  readonly processes: readonly DashboardProcessRowVM[]
   readonly highlightedProcessId: string | null
   readonly sortSelection: DashboardSortSelection
   readonly onSortToggle: (field: DashboardSortField) => void
@@ -119,11 +131,19 @@ const SEVERITY_ORDER: Record<DashboardProcessSeverity, number> = {
 }
 
 function toDominantSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
-  const highestSeverity = process.highestAlertSeverity
+  const attentionSeverity = process.attentionSeverity
+  if (attentionSeverity === 'danger') return 'danger'
+  if (attentionSeverity === 'warning') return 'warning'
+  if (attentionSeverity === 'info') return 'info'
+  return 'none'
+}
+
+function toAlertBadgeSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
+  const highestSeverity = process.dominantIncident?.severity ?? null
   if (highestSeverity === 'danger') return 'danger'
   if (highestSeverity === 'warning') return 'warning'
   if (highestSeverity === 'info') return 'info'
-  if (process.alertsCount > 0) return 'info'
+  if (process.activeIncidentCount > 0) return 'info'
   return 'none'
 }
 
@@ -132,9 +152,12 @@ function toDominantAlertLabel(
   t: (key: string, opts?: Record<string, unknown>) => string,
   keys: ReturnType<typeof useTranslation>['keys'],
 ): string {
-  if (process.alertsCount === 0) return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
-  if (process.hasTransshipment) return t(keys.dashboard.table.dominantAlertLabel.transshipment)
-  return t(keys.dashboard.table.dominantAlertLabel.alertsPresent, { count: process.alertsCount })
+  const dominantIncident = process.dominantIncident
+  if (dominantIncident === null) {
+    return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
+  }
+
+  return t(dominantIncident.factMessageKey, dominantIncident.factMessageParams)
 }
 
 function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
@@ -283,7 +306,7 @@ function formatDashboardAlertAge(params: {
 // ---------------------------------------------------------------------------
 
 type CellContext = {
-  readonly process: ProcessSummaryVM
+  readonly process: DashboardProcessRowVM
   readonly processHref: string
   readonly handleProcessLinkClick: (event: MouseEvent) => void
   readonly t: (key: string, opts?: Record<string, unknown>) => string
@@ -443,6 +466,7 @@ function SyncCell(ctx: CellContext): JSX.Element {
   return (
     <SyncCellComponent
       state={cellState()}
+      issue={ctx.process.syncIssue}
       onSync={() => {
         void ctx.onProcessSync(ctx.process.id)
       }}
@@ -450,9 +474,103 @@ function SyncCell(ctx: CellContext): JSX.Element {
   )
 }
 
+function AlertsSummaryBadge(props: {
+  readonly dominantSeverity: DashboardProcessSeverity
+  readonly dominantAlertLabel: string
+  readonly severityLabel: string
+  readonly alertTooltip: string | undefined
+  readonly incidentCount: number
+}): JSX.Element {
+  return (
+    <Show
+      when={props.dominantSeverity !== 'none'}
+      fallback={
+        <span
+          class="text-xs-ui text-tone-success-strong"
+          role="img"
+          aria-label={props.dominantAlertLabel}
+        >
+          <Check class="w-3.5 h-3.5" aria-hidden="true" />
+        </span>
+      }
+    >
+      <span
+        class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(
+          props.dominantSeverity,
+        )}`}
+        title={props.alertTooltip}
+      >
+        <span aria-hidden="true">{toUnifiedAlertIcon(props.dominantSeverity)}</span>
+        {props.incidentCount}
+        <span class="sr-only">{`${props.severityLabel}: ${props.dominantAlertLabel}`}</span>
+      </span>
+    </Show>
+  )
+}
+
+function TrackingValidationChip(props: {
+  readonly visible: boolean
+  readonly label: string
+  readonly chipLabel: string
+  readonly severity: ProcessSummaryVM['trackingValidation']['highestSeverity']
+}): JSX.Element {
+  const displayState = () =>
+    toTrackingValidationDisplayState({
+      hasIssues: props.visible,
+      highestSeverity: props.severity,
+    })
+
+  return (
+    <Show when={props.visible}>
+      <span
+        class={`inline-flex items-center rounded border px-1.5 py-0.5 text-micro font-semibold leading-none whitespace-nowrap ${toTrackingValidationBadgeClasses(
+          displayState(),
+        )}`}
+        title={props.label}
+      >
+        {props.chipLabel}
+      </span>
+    </Show>
+  )
+}
+
 function AlertsCell(ctx: CellContext): JSX.Element {
-  const dominantSeverity = () => toDominantSeverity(ctx.process)
+  const dominantSeverity = () => toAlertBadgeSeverity(ctx.process)
   const dominantAlertLabel = () => toDominantAlertLabel(ctx.process, ctx.t, ctx.keys)
+  const hasTrackingValidation = () => ctx.process.trackingValidation.hasIssues
+  const trackingValidationLabel = () => {
+    const affectedCount = ctx.process.trackingValidation.affectedContainerCount
+    if (affectedCount > 1) {
+      return ctx.t(ctx.keys.dashboard.table.trackingValidation.affectedMultiple, {
+        count: affectedCount,
+      })
+    }
+
+    return ctx.t(ctx.keys.dashboard.table.trackingValidation.affectedSingle)
+  }
+  const trackingValidationTooltip = () => {
+    const trackingValidationCopyLabels: TrackingValidationCopyLabels = {
+      areaLabel: ctx.t(ctx.keys.shipmentView.validation.labels.area),
+      blockLabel: ctx.t(ctx.keys.shipmentView.validation.labels.block),
+      locationLabel: ctx.t(ctx.keys.shipmentView.validation.labels.location),
+      affectedAreaLabels: {
+        container: ctx.t(ctx.keys.shipmentView.validation.areas.container),
+        operational: ctx.t(ctx.keys.shipmentView.validation.areas.operational),
+        process: ctx.t(ctx.keys.shipmentView.validation.areas.process),
+        series: ctx.t(ctx.keys.shipmentView.validation.areas.series),
+        status: ctx.t(ctx.keys.shipmentView.validation.areas.status),
+        timeline: ctx.t(ctx.keys.shipmentView.validation.areas.timeline),
+      },
+    }
+
+    return toTrackingValidationTooltipText({
+      aggregateLabel: trackingValidationLabel(),
+      issue: ctx.process.trackingValidation.topIssue,
+      labels: trackingValidationCopyLabels,
+      resolveBlockLabel: (key) => ctx.t(key),
+      resolveReason: (key) => ctx.t(key),
+    })
+  }
 
   const severityLabel = () => {
     if (dominantSeverity() === 'danger')
@@ -468,7 +586,7 @@ function AlertsCell(ctx: CellContext): JSX.Element {
 
   const alertAge = () =>
     formatDashboardAlertAge({
-      triggeredAtIso: ctx.process.dominantAlertCreatedAt,
+      triggeredAtIso: ctx.process.dominantIncident?.triggeredAt ?? null,
       t: ctx.t,
       keys: ctx.keys,
     })
@@ -478,9 +596,13 @@ function AlertsCell(ctx: CellContext): JSX.Element {
     const parts: string[] = [dominantAlertLabel()]
     const age = alertAge()
     if (age) parts.push(`· ${age.label}`)
-    const extra = ctx.process.alertsCount - 1
-    if (extra > 0) {
-      parts.push(ctx.t(ctx.keys.dashboard.table.alertTooltip.additionalAlerts, { count: extra }))
+    const additionalIncidentsLine = toDashboardAdditionalIncidentsTooltipLine(
+      ctx.process.activeIncidentCount,
+      ctx.t,
+      ctx.keys,
+    )
+    if (additionalIncidentsLine !== null) {
+      parts.push(additionalIncidentsLine)
     }
     return parts.join('\n')
   }
@@ -492,27 +614,21 @@ function AlertsCell(ctx: CellContext): JSX.Element {
         class="row-link flex justify-center"
         onClick={ctx.handleProcessLinkClick}
       >
-        <Show
-          when={dominantSeverity() !== 'none'}
-          fallback={
-            <span
-              class="text-xs-ui text-tone-success-strong"
-              role="img"
-              aria-label={dominantAlertLabel()}
-            >
-              <Check class="w-3.5 h-3.5" aria-hidden="true" />
-            </span>
-          }
-        >
-          <span
-            class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(dominantSeverity())}`}
-            title={alertTooltip()}
-          >
-            <span aria-hidden="true">{toUnifiedAlertIcon(dominantSeverity())}</span>
-            {ctx.process.alertsCount}
-            <span class="sr-only">{`${severityLabel()}: ${dominantAlertLabel()}`}</span>
-          </span>
-        </Show>
+        <div class="flex items-center justify-center gap-1">
+          <AlertsSummaryBadge
+            dominantSeverity={dominantSeverity()}
+            dominantAlertLabel={dominantAlertLabel()}
+            severityLabel={severityLabel()}
+            alertTooltip={alertTooltip()}
+            incidentCount={ctx.process.activeIncidentCount}
+          />
+          <TrackingValidationChip
+            visible={hasTrackingValidation()}
+            label={trackingValidationTooltip()}
+            chipLabel={ctx.t(ctx.keys.dashboard.table.trackingValidation.chip)}
+            severity={ctx.process.trackingValidation.highestSeverity}
+          />
+        </div>
       </A>
     </div>
   )
@@ -751,13 +867,15 @@ function DashboardTableHeader(props: {
 function DashboardProcessRows(props: TableRowsProps): JSX.Element {
   const gridStyle = createMemo(() => buildGridTemplate(props.columnOrder))
 
-  /** Default priority ordering: severity desc → alert count desc → preserve API order. */
-  const prioritySorted = (): readonly ProcessSummaryVM[] => {
+  /** Default priority ordering: severity desc → incident count desc → affected containers desc. */
+  const prioritySorted = (): readonly DashboardProcessRowVM[] => {
     if (props.sortSelection !== null) return props.processes
     return [...props.processes].sort((a, b) => {
       const sevDiff = SEVERITY_ORDER[toDominantSeverity(a)] - SEVERITY_ORDER[toDominantSeverity(b)]
       if (sevDiff !== 0) return sevDiff
-      return b.alertsCount - a.alertsCount
+      const incidentDiff = b.activeIncidentCount - a.activeIncidentCount
+      if (incidentDiff !== 0) return incidentDiff
+      return b.affectedContainerCount - a.affectedContainerCount
     })
   }
 

@@ -1,15 +1,42 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const subscribeToSyncRequestsRealtimeByContainerRefsMock = vi.hoisted(() => vi.fn())
+
+vi.mock('solid-js', async () => vi.importActual('solid-js/dist/solid.js'))
+
+vi.mock('~/shared/api/sync-requests.realtime.client', () => ({
+  subscribeToSyncRequestsRealtimeByContainerRefs:
+    subscribeToSyncRequestsRealtimeByContainerRefsMock,
+}))
+
+import { createRoot, createSignal } from 'solid-js'
 import {
   deriveProcessSyncStateFromContainerStates,
   pruneUnknownContainers,
   shallowEqualProcessSyncContainerStateMap,
   toProcessSyncStateFromRealtimeStatus,
+  useProcessSyncRealtime,
 } from '~/modules/process/ui/hooks/useProcessSyncRealtime'
 import {
   type ProcessListItemSource,
   toProcessSummaryVMs,
 } from '~/modules/process/ui/mappers/processList.ui-mapper'
-import type { ProcessSyncStatus } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import type {
+  ProcessSummaryVM,
+  ProcessSyncStatus,
+} from '~/modules/process/ui/viewmodels/process-summary.vm'
+import type { SyncRequestRealtimeEvent } from '~/shared/api/sync-requests.realtime.client'
+
+type SubscribeByContainerRefsCommand = {
+  readonly containerNumbers: readonly string[]
+  readonly onEvent: (event: SyncRequestRealtimeEvent) => void
+}
+
+type RecordedRealtimeSubscription = {
+  readonly containerNumbers: readonly string[]
+  readonly onEvent: (event: SyncRequestRealtimeEvent) => void
+  readonly unsubscribe: ReturnType<typeof vi.fn>
+}
 
 function createProcessSyncContainerStateMap(
   input: Readonly<Record<string, Readonly<Record<string, ProcessSyncStatus>>>>,
@@ -28,6 +55,98 @@ function requireAt<T>(items: readonly T[], index: number): T {
     throw new Error(`Expected item at index ${index}`)
   }
   return item
+}
+
+function buildProcess(command: {
+  readonly id: string
+  readonly containerNumbers: readonly string[]
+}): ProcessSummaryVM {
+  return {
+    id: command.id,
+    reference: `REF-${command.id}`,
+    origin: {
+      display_name: 'Shanghai',
+    },
+    destination: {
+      display_name: 'Santos',
+    },
+    importerId: null,
+    importerName: null,
+    exporterName: null,
+    containerCount: command.containerNumbers.length,
+    containerNumbers: command.containerNumbers,
+    status: 'in-transit',
+    statusCode: 'IN_TRANSIT',
+    statusMicrobadge: null,
+    statusRank: 1,
+    eta: null,
+    etaDisplay: {
+      kind: 'unavailable',
+    },
+    etaMsOrNull: null,
+    carrier: 'MSC',
+    activeIncidentCount: 0,
+    affectedContainerCount: 0,
+    recognizedIncidentCount: 0,
+    dominantIncident: null,
+    attentionSeverity: null,
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      affectedContainerCount: 0,
+      topIssue: null,
+    },
+    redestinationNumber: null,
+    lastEventAt: null,
+    syncStatus: 'idle',
+    lastSyncAt: null,
+  }
+}
+
+function buildRealtimeEvent(command: {
+  readonly status: 'PENDING' | 'DONE' | 'FAILED'
+  readonly refValue: string
+}): SyncRequestRealtimeEvent {
+  return {
+    eventType: 'UPDATE',
+    row: {
+      id: '11111111-1111-1111-1111-111111111111',
+      tenant_id: '22222222-2222-2222-2222-222222222222',
+      status: command.status,
+      last_error: null,
+      updated_at: '2026-04-11T12:00:00.000Z',
+      ref_value: command.refValue,
+      leased_by: null,
+      leased_until: null,
+    },
+    oldRow: null,
+  }
+}
+
+async function flushAsyncWork(): Promise<void> {
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
+function createHookHarness(command: {
+  readonly initialProcesses: readonly ProcessSummaryVM[]
+  readonly onRealtimeStateChanged?: () => void
+}) {
+  return createRoot((dispose) => {
+    const [processes, setProcesses] = createSignal(command.initialProcesses)
+    const onRealtimeStateChanged = command.onRealtimeStateChanged ?? vi.fn()
+    const processSyncStates = useProcessSyncRealtime({
+      processes,
+      onRealtimeStateChanged,
+    })
+
+    return {
+      processSyncStates,
+      setProcesses,
+      onRealtimeStateChanged,
+      dispose,
+    }
+  })
 }
 
 describe('useProcessSyncRealtime helpers', () => {
@@ -128,5 +247,111 @@ describe('useProcessSyncRealtime helpers', () => {
     })
 
     expect(shallowEqualProcessSyncContainerStateMap(currentState, nextState)).toBe(false)
+  })
+})
+
+describe('useProcessSyncRealtime behavior', () => {
+  let subscriptions: RecordedRealtimeSubscription[]
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    subscriptions = []
+    subscribeToSyncRequestsRealtimeByContainerRefsMock.mockReset()
+    subscribeToSyncRequestsRealtimeByContainerRefsMock.mockImplementation(
+      (command: SubscribeByContainerRefsCommand) => {
+        const unsubscribe = vi.fn()
+        subscriptions.push({
+          containerNumbers: command.containerNumbers,
+          onEvent: command.onEvent,
+          unsubscribe,
+        })
+
+        return { unsubscribe }
+      },
+    )
+  })
+
+  afterEach(() => {
+    vi.clearAllTimers()
+    vi.useRealTimers()
+  })
+
+  it('marks a process as syncing from realtime and reconciles after terminal events', async () => {
+    const onRealtimeStateChanged = vi.fn()
+    const harness = createHookHarness({
+      initialProcesses: [buildProcess({ id: 'process-1', containerNumbers: [' mscu1234567 '] })],
+      onRealtimeStateChanged,
+    })
+
+    await flushAsyncWork()
+
+    expect(subscriptions).toHaveLength(1)
+    expect(subscriptions[0]?.containerNumbers).toEqual(['MSCU1234567'])
+
+    subscriptions[0]?.onEvent(buildRealtimeEvent({ status: 'PENDING', refValue: 'mscu1234567' }))
+    await flushAsyncWork()
+
+    expect(harness.processSyncStates()).toEqual({
+      'process-1': 'syncing',
+    })
+
+    subscriptions[0]?.onEvent(buildRealtimeEvent({ status: 'DONE', refValue: 'MSCU1234567' }))
+    await flushAsyncWork()
+
+    expect(harness.processSyncStates()).toEqual({})
+    expect(onRealtimeStateChanged).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(250)
+
+    expect(onRealtimeStateChanged).toHaveBeenCalledTimes(1)
+
+    harness.dispose()
+    expect(subscriptions[0]?.unsubscribe).toHaveBeenCalledTimes(1)
+  })
+
+  it('still reconciles terminal events even when no local realtime state changed', async () => {
+    const onRealtimeStateChanged = vi.fn()
+    const harness = createHookHarness({
+      initialProcesses: [buildProcess({ id: 'process-1', containerNumbers: ['MSCU1234567'] })],
+      onRealtimeStateChanged,
+    })
+
+    await flushAsyncWork()
+
+    subscriptions[0]?.onEvent(buildRealtimeEvent({ status: 'FAILED', refValue: 'MSCU1234567' }))
+    await flushAsyncWork()
+
+    expect(harness.processSyncStates()).toEqual({})
+
+    await vi.advanceTimersByTimeAsync(250)
+
+    expect(onRealtimeStateChanged).toHaveBeenCalledTimes(1)
+    harness.dispose()
+  })
+
+  it('prunes stale container state and resubscribes when tracked containers change', async () => {
+    const harness = createHookHarness({
+      initialProcesses: [buildProcess({ id: 'process-1', containerNumbers: ['MSCU1234567'] })],
+    })
+
+    await flushAsyncWork()
+
+    subscriptions[0]?.onEvent(buildRealtimeEvent({ status: 'PENDING', refValue: 'MSCU1234567' }))
+    await flushAsyncWork()
+
+    expect(harness.processSyncStates()).toEqual({
+      'process-1': 'syncing',
+    })
+
+    harness.setProcesses([buildProcess({ id: 'process-1', containerNumbers: ['MRKU7654321'] })])
+    await flushAsyncWork()
+
+    expect(subscriptions).toHaveLength(2)
+    expect(subscriptions[0]?.unsubscribe).toHaveBeenCalledTimes(1)
+    expect(subscriptions[1]?.containerNumbers).toEqual(['MRKU7654321'])
+    expect(harness.processSyncStates()).toEqual({})
+
+    harness.dispose()
+    expect(subscriptions[1]?.unsubscribe).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,7 +1,7 @@
 # ADR-0008 — Feature Slices Inside Bounded Contexts
 
-Status: Accepted  
-Date: 2026-03-09  
+Status: Accepted
+Date: 2026-03-09
 Decision owner: Repository maintainers
 
 ---
@@ -19,7 +19,7 @@ src/modules/<bc>/
   ui/
 ```
 
-As the repository evolved, some bounded contexts (especially `tracking`) accumulated many domain concepts inside the same folders:
+repository evolved, some bounded contexts (especially `tracking`) accumulated many domain concepts inside same folders:
 
 ```
 tracking/domain
@@ -31,18 +31,18 @@ tracking/domain/reconcile
 
 This created several problems:
 
-• files related to the same semantic concept were scattered across folders  
-• reviewing refactors touching one concept required navigating many directories  
-• semantic ownership of logic became harder to identify  
-• architectural discussions were harder because the code did not reflect domain concepts clearly
+• files related to same semantic concept were scattered across folders
+• reviewing refactors touching one concept required navigating many directories
+• semantic ownership of logic became harder to identify
+• architectural discussions were harder because code did not reflect domain concepts clearly
 
-However, a full vertical-slice architecture was **not desired**, because:
+, full vertical-slice architecture was **not desired**, because:
 
-• infrastructure and HTTP layers are cross-cutting  
-• UI and domain boundaries must remain explicit  
+• infrastructure and HTTP layers are cross-cutting
+• UI and domain boundaries must remain explicit
 • premature feature slicing can introduce artificial boundaries
 
-Therefore a **conservative middle-ground approach** was adopted.
+Therefore **conservative middle-ground approach** was adopted.
 
 ---
 
@@ -54,7 +54,7 @@ Bounded contexts may introduce **feature slices** under:
 src/modules/<bc>/features/<feature>/
 ```
 
-Feature slices group **semantically cohesive domain concepts** while preserving the existing architectural layers.
+Feature slices group **semantically cohesive domain concepts** while preserving existing architectural layers.
 
 Example:
 
@@ -70,7 +70,7 @@ This allows related domain logic, projections, and use cases to live close toget
 
 # Current Adoption
 
-The following feature slices were introduced.
+following feature slices were introduced.
 
 ## Tracking
 
@@ -83,7 +83,7 @@ tracking/features/
   alerts
 ```
 
-These represent the canonical pipeline of the tracking domain.
+These represent canonical pipeline of tracking domain.
 
 Example:
 
@@ -99,15 +99,15 @@ process/features/
   process-sync
 ```
 
-These represent the main behavioral capabilities of the process BC.
+These represent main behavioral capabilities of process BC.
 
 ---
 
 # Structure of a Feature Slice
 
-A feature slice **does not replace the layered architecture**.
+feature slice **does not replace layered architecture**.
 
-Inside a feature we still keep:
+Inside feature we still keep:
 
 ```
 features/<feature>/
@@ -128,10 +128,10 @@ features/timeline/
 
 Typical responsibilities:
 
-| Layer       | Responsibility                        |
+|Layer|Responsibility|
 | ----------- | ------------------------------------- |
-| domain      | core semantic logic                   |
-| application | orchestration, projections, use cases |
+|domain|core semantic logic|
+|application|orchestration, projections, use cases|
 
 Infrastructure and HTTP remain outside feature slices.
 
@@ -139,7 +139,7 @@ Infrastructure and HTTP remain outside feature slices.
 
 # What Must NOT Move Into Feature Slices
 
-The following remain **horizontal within the BC**:
+following remain **horizontal within BC**:
 
 ```
 infrastructure/
@@ -164,17 +164,17 @@ Keeping these outside slices prevents duplication and keeps BC boundaries clear.
 
 # When to Create a Feature Slice
 
-A new feature slice may be created when **all conditions are met**:
+new feature slice may be created when **all conditions are met**:
 
-1. The concept represents a **clear semantic unit of the domain**.
+1. concept represents **clear semantic unit of domain**.
 2. It contains **multiple related files across layers**.
-3. The concept has **stable meaning in the domain language**.
-4. The slice improves **discoverability or refactor safety**.
+3. concept has **stable meaning in domain language**.
+4. slice improves **discoverability or refactor safety**.
 
 Examples that qualify:
 
-• timeline derivation  
-• alert lifecycle  
+• timeline derivation
+• alert lifecycle
 • operational projections
 
 ---
@@ -195,8 +195,8 @@ container-association
 
 These are either:
 
-• small orchestration helpers  
-• infrastructure triggers  
+• small orchestration helpers
+• infrastructure triggers
 • supporting utilities
 
 ### Cross-cutting infrastructure
@@ -236,7 +236,7 @@ manager
 helpers
 ```
 
-The slice name should answer:
+slice name should answer:
 
 > “What domain concept does this represent?”
 
@@ -293,7 +293,7 @@ Reference:
 
 # Cross-Feature Interaction
 
-Feature slices inside the same BC may interact through:
+Feature slices inside same BC may interact through:
 
 ```
 domain models
@@ -301,7 +301,7 @@ read models
 application projections
 ```
 
-However they should **not introduce circular dependencies**.
+they should **not introduce circular dependencies**.
 
 Example (tracking pipeline):
 
@@ -309,7 +309,7 @@ Example (tracking pipeline):
 observation → series → timeline → status → alerts
 ```
 
-The flow should remain directional.
+flow should remain directional.
 
 ---
 
@@ -340,17 +340,17 @@ Large structural refactors should be executed in **phases**.
 
 ## Positive
 
-• clearer semantic structure  
-• easier refactoring of domain logic  
-• smaller conceptual scope per folder  
-• improved architectural discoverability  
+• clearer semantic structure
+• easier refactoring of domain logic
+• smaller conceptual scope per folder
+• improved architectural discoverability
 
 ## Tradeoffs
 
-• slightly deeper folder hierarchy  
-• some concepts remain horizontal intentionally  
+• slightly deeper folder hierarchy
+• some concepts remain horizontal intentionally
 
-This is acceptable in order to maintain conservative architecture boundaries.
+This is acceptable to maintain conservative architecture boundaries.
 
 ---
 
@@ -358,17 +358,17 @@ This is acceptable in order to maintain conservative architecture boundaries.
 
 Feature slices should remain **limited and intentional**.
 
-Not every concept should become a slice.
+Not every concept should become slice.
 
-Future candidates should be evaluated case-by-case using the criteria in this ADR.
+Future candidates should be evaluated case-by-case using criteria in this ADR.
 
-The goal is **clarity**, not maximal slicing.
+goal is **clarity**, not maximal slicing.
 
 ---
 
 # Summary
 
-The repository now supports **feature slices inside bounded contexts**:
+repository now supports **feature slices inside bounded contexts**:
 
 ```
 modules/<bc>/features/<feature>
@@ -376,8 +376,8 @@ modules/<bc>/features/<feature>
 
 This structure:
 
-• groups cohesive domain logic  
-• preserves layered architecture  
-• avoids premature vertical slicing  
+• groups cohesive domain logic
+• preserves layered architecture
+• avoids premature vertical slicing
 
-The approach is intentionally **conservative** and should remain so as the system evolves.
+approach is intentionally **conservative** and should remain so system evolves.

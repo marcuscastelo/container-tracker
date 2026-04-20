@@ -1,6 +1,7 @@
 import {
   buildTimelineRenderList as buildTimelineRenderListFromTracking,
   type GapMarker as TrackingGapMarker,
+  type PlannedTransshipmentBlock as TrackingPlannedTransshipmentBlock,
   type PortRiskMarker as TrackingPortRiskMarker,
   type TerminalBlock as TrackingTerminalBlock,
   type TerminalSegmentKind as TrackingTerminalSegmentKind,
@@ -13,6 +14,7 @@ import { systemClock } from '~/shared/time/clock'
 import type { Instant } from '~/shared/time/instant'
 
 export type GapMarker = TrackingGapMarker
+export type PlannedTransshipmentBlock = TrackingPlannedTransshipmentBlock
 export type PortRiskMarker = TrackingPortRiskMarker
 export type TerminalBlock = TrackingTerminalBlock
 export type TerminalSegmentKind = TrackingTerminalSegmentKind

@@ -2,9 +2,9 @@
 
 ## Status
 
-- Follow-up complete: the legacy per-container summary fallback has been removed from the audited hot paths.
-- This document now reflects the canonical post-refactor read paths plus the shared request/DB observability emitted by this branch.
-- Runtime samples should be captured from the audited logs for at least 10 representative requests per endpoint after this branch is deployed to a dev environment with live data.
+- Follow-up complete: legacy per-container summary fallback has been removed from audited hot paths.
+- This document now reflects canonical post-refactor read paths plus shared request/DB observability emitted by this branch.
+- Runtime samples should be captured from audited logs for at least 10 representative requests per endpoint after this branch is deployed to dev environment with live data.
 
 ## Scope
 
@@ -22,31 +22,31 @@ Audited hot endpoints:
 ### Structural findings
 
 - `GET /api/processes/:id`
-  - `process.controllers.ts` loads the process + containers, then delegates to `resolveProcessDetailTracking`.
-  - `resolveProcessDetailTracking` now calls `trackingUseCases.findContainersHotReadProjection(...)` once for the full container set.
-  - The canonical hot-read projection batches observation and active-alert reads, then derives lean operational state from those projections only.
+  - `process.controllers.ts` loads process + containers, then delegates to `resolveProcessDetailTracking`.
+  - `resolveProcessDetailTracking` now calls `trackingUseCases.findContainersHotReadProjection(...)` once for full container set.
+  - canonical hot-read projection batches observation and active-alert reads, then derives lean operational state from those projections only.
   - Response stays first-paint sized: no inline raw observations, no recognized alert archive, and no full `series_history` payload by default.
 - `GET /api/processes/:id/sync-state`
-  - Uses the same lean process/container fetch with sync metadata only.
-  - Read audit identifies this path separately as `tracking.hot_read_projection.process_sync_snapshot`.
+  - Uses same lean process/container fetch with sync metadata only.
+  - Read audit identifies this path separately `tracking.hot_read_projection.process_sync_snapshot`.
 - `GET /api/processes`
   - `list-processes-with-operational-summary.usecase.ts` loads all processes + containers.
   - It then calls `trackingUseCases.findContainersHotReadProjection(...)` once for all containers in scope.
-  - Process summaries are aggregated from the lean batch projection only; there is no per-container fallback branch left in the hot path.
+  - Process summaries are aggregated from lean batch projection only; there is no per-container fallback branch left in hot path.
 - `GET /api/processes/sync-status`
-  - Already relatively lean at the HTTP layer.
-  - This endpoint is the preferred reconciliation path for dashboard/process sync visibility.
+  - Already relatively lean at HTTP layer.
+  - This endpoint is preferred reconciliation path for dashboard/process sync visibility.
 - `GET /api/dashboard/operational-summary`
   - Depends on aggregated process/tracking operational read models.
-  - This hot dashboard read now emits the same `read_strategy` and `query_operations` audit fields as the other audited routes.
+  - This hot dashboard read now emits same `read_strategy` and `query_operations` audit fields other audited routes.
 - `GET /api/alerts/navbar-summary`
   - Uses `trackingUseCases.findContainersOperationalSummaryProjection(...)` to read active-alert summary state in batch.
-  - This endpoint no longer depends on the legacy `getContainersSummary(...)` loop for its hot navbar payload.
+  - This endpoint no longer depends on legacy `getContainersSummary(...)` loop for its hot navbar payload.
 
 ### Canonical hot-read guardrails
 
 - No per-container `getContainerSummary(...)` fan-out in process detail, process list, dashboard operational summary, or navbar active-alert summary.
-- No `if batch missing -> per-container` rescue branch inside the canonical tracking hot-read projection.
+- No `if batch missing -> per-container` rescue branch inside canonical tracking hot-read projection.
 - Hot observation and alert repositories use explicit column projections instead of `select('*')`.
 - Hot paths keep recognized/archive incidents, observation inspection, and timeline history on lazy/on-demand endpoints.
 - Runtime proof comes from `[read_audit]` `read_strategy` plus aggregated `query_operations`, making fallback reintroduction visible.
@@ -60,9 +60,9 @@ Audited hot endpoints:
   - 1 process read
   - 1 container list read
   - 1 sync metadata read
-  - 1 batch observation read for the requested container set
-  - 1 batch active-alert read for the requested container set
-  - timeline/status/operational derivation once from the batch projection
+  - 1 batch observation read for requested container set
+  - 1 batch active-alert read for requested container set
+  - timeline/status/operational derivation once from batch projection
 - Trigger sources:
   - initial shipment load
   - shipment refetch after sync / refresh
@@ -73,7 +73,7 @@ Audited hot endpoints:
 
 - Estimated DB cost rank: `high`
 - Why:
-  - process list response is lean and now uses a single batch hot-read projection for all containers in scope
+  - process list response is lean and now uses single batch hot-read projection for all containers in scope
   - cost still scales with result-set size, but no longer with per-container historical fan-out
 - Trigger sources:
   - dashboard first load
@@ -94,34 +94,34 @@ Audited hot endpoints:
 - Estimated DB cost rank: `medium-low`
 - Why:
   - summary-shaped navbar payload
-  - reads operational state from a batch projection instead of per-container summary fan-out
-  - participates in the same dashboard visitation cadence as other hot summary reads
+  - reads operational state from batch projection instead of per-container summary fan-out
+  - participates in same dashboard visitation cadence other hot summary reads
 
 ### 5. `GET /api/processes/:id/sync-state`
 
 - Estimated DB cost rank: `low`
 - Why:
-  - uses the same lean process/container fetch with sync metadata only
+  - uses same lean process/container fetch with sync metadata only
   - designed specifically to replace heavyweight reconciliation reloads
 
 ### 6. `GET /api/processes/sync-status`
 
 - Estimated DB cost rank: `low`
 - Why:
-  - operational sync-state read already has a compact contract
-  - should remain the preferred reconciliation path for dashboard/process sync visibility
+  - operational sync-state read already has compact contract
+  - should remain preferred reconciliation path for dashboard/process sync visibility
 
 ## Section B — Payload Sections Ranked By Response Bytes
 
 ### 1. `containers[].observations`
 
-- Removed from the hot shipment detail contract.
-- Observation inspector remains the owner of full observation-row drill-down.
+- Removed from hot shipment detail contract.
+- Observation inspector remains owner of full observation-row drill-down.
 
 ### 2. `containers[].timeline[].series_history`
 
 - Removed from first paint.
-- Timeline history now belongs to the lazy history endpoint.
+- Timeline history now belongs to lazy history endpoint.
 
 ### 3. `alert_incidents.recognized`
 
@@ -130,24 +130,24 @@ Audited hot endpoints:
 
 ### 4. `alerts`
 
-- Hot detail keeps only the active/visible alert state needed for rendering and highlighting.
-- Archive/recognized history no longer inflates the default payload.
+- Hot detail keeps only active/visible alert state needed for rendering and highlighting.
+- Archive/recognized history no longer inflates default payload.
 
 ### 5. Snapshot-enriched observation fields
 
-- Kept out of the hot path unless explicitly requested by a drill-down flow.
+- Kept out of hot path unless explicitly requested by drill-down flow.
 - This avoids extra reads that do not change first-paint understanding.
 
 ## Section C — Eliminated Waste Candidates
 
 ### Candidate 1 — Shipment detail no longer loads raw observations for every container on first paint
 
-- Raw observations were removed from the first-paint response contract.
-- Observation inspection remains available through the lazy detail endpoint.
+- Raw observations were removed from first-paint response contract.
+- Observation inspection remains available through lazy detail endpoint.
 
 ### Candidate 2 — Shipment detail no longer ships `series_history` inline by default
 
-- Heavy timeline history moved to the lazy history endpoint.
+- Heavy timeline history moved to lazy history endpoint.
 - Hot detail only carries lean timeline primaries plus `has_series_history`.
 
 ### Candidate 3 — Shipment detail no longer loads recognized / archive incidents by default
@@ -157,22 +157,22 @@ Audited hot endpoints:
 
 ### Candidate 4 — Dashboard process list no longer derives summary by loading full tracking history per container
 
-- The process list now uses a single batch canonical projection.
-- There is no remaining per-container fallback branch in the hot summary path.
+- process list now uses single batch canonical projection.
+- There is no remaining per-container fallback branch in hot summary path.
 
 ### Candidate 5 — Navbar active-alert summary no longer loops over legacy per-container summaries
 
-- The navbar summary now reads `findContainersOperationalSummaryProjection(...)` in batch.
-- Active alerts stay summary-shaped at the backend and at the HTTP boundary.
+- navbar summary now reads `findContainersOperationalSummaryProjection(...)` in batch.
+- Active alerts stay summary-shaped at backend and at HTTP boundary.
 
 ### Candidate 6 — Viewport-driven shipment-detail prefetch
 
 - Removed from dashboard scrolling behavior.
-- Intent-based prefetch remains the only supported prefetch strategy.
+- Intent-based prefetch remains only supported prefetch strategy.
 
 ## Representative Request Matrix
 
-These are the request classes that must be sampled from the new logs:
+These are request classes that must be sampled from new logs:
 
 1. Shipment detail first load
 2. Shipment detail after manual refresh enqueue
@@ -202,7 +202,7 @@ These are the request classes that must be sampled from the new logs:
 
 ## Current Canonical Decision
 
-The hot path is now intentionally split into one canonical batch strategy per surface:
+hot path is now intentionally split into one canonical batch strategy per surface:
 
 1. `findContainersHotReadProjection(...)` for process detail, process list aggregation, and process sync snapshot support.
 2. `findContainersOperationalSummaryProjection(...)` for navbar active-alert summary.

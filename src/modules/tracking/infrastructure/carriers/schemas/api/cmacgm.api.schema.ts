@@ -26,6 +26,10 @@ const CmaCgmMoveSchema = z.object({
   raw: z.any().optional(),
 })
 
+function hasNonEmptyText(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
 export const CmaCgmApiSchema = z.object({
   ContainerReference: z.string().nullable().optional(),
   EstimatedTimeOfArrival: z.string().nullable().optional(), // "/Date(...)\/"
@@ -47,4 +51,28 @@ export const CmaCgmApiSchema = z.object({
   ModeOfTransport: z.string().nullable().optional(),
   EstimatedTimeOfArrivalString: z.string().nullable().optional(),
   raw: z.any().optional(),
+})
+
+export const CmaCgmApiStrictSchema = CmaCgmApiSchema.superRefine((payload, context) => {
+  if (!hasNonEmptyText(payload.ContainerReference)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['ContainerReference'],
+      message: 'CMA-CGM snapshot missing ContainerReference',
+    })
+  }
+
+  const allMoves = [
+    ...(payload.PastMoves ?? []),
+    ...(payload.CurrentMoves ?? []),
+    ...(payload.ProvisionalMoves ?? []),
+  ]
+
+  if (allMoves.length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['PastMoves'],
+      message: 'CMA-CGM snapshot missing movement arrays',
+    })
+  }
 })

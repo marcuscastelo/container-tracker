@@ -9,8 +9,8 @@ import {
   toAlertResponseDto,
   toObservationResponseDto,
   toSnapshotResponseDto,
+  toTimelinePredictionHistoryResponseDto,
   toTrackingReplayDebugResponseDto,
-  toTrackingSeriesHistoryResponseDto,
   toTrackingTimeTravelResponseDto,
 } from '~/modules/tracking/interface/http/tracking.http.mappers'
 import {
@@ -23,7 +23,7 @@ import {
   GetTrackingTimeTravelRequestSchema,
   ListAlertsQuerySchema,
   ObservationInspectorResponseDtoSchema,
-  TimelineSeriesHistoryResponseDtoSchema,
+  TimelinePredictionHistoryResponseDtoSchema,
   TrackingReplayDebugResponseDtoSchema,
   TrackingTimeTravelResponseDtoSchema,
 } from '~/modules/tracking/interface/http/tracking.schemas'
@@ -268,19 +268,19 @@ function createDetailDrilldownController(trackingUseCases: TrackingUseCases) {
         return jsonResponse({ error: 'Invalid now query parameter' }, 400)
       }
 
-      const seriesHistory = await trackingUseCases.findTimelineItemSeriesHistory({
+      const predictionHistory = await trackingUseCases.findTimelineItemPredictionHistory({
         containerId: parsed.data.containerId,
         timelineItemId: parsed.data.timelineItemId,
         now: referenceNow,
       })
-      if (seriesHistory === null) {
+      if (predictionHistory === null) {
         return jsonResponse({ error: 'Timeline item history not found' }, 404)
       }
 
       return jsonResponse(
-        toTrackingSeriesHistoryResponseDto(seriesHistory),
+        toTimelinePredictionHistoryResponseDto(predictionHistory),
         200,
-        TimelineSeriesHistoryResponseDtoSchema,
+        TimelinePredictionHistoryResponseDtoSchema,
       )
     } catch (err) {
       console.error(

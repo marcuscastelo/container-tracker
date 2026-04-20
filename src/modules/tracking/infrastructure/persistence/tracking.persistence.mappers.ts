@@ -345,6 +345,7 @@ export function alertRowToDerivationState(
     | 'type'
     | 'message_key'
     | 'message_params'
+    | 'detected_at'
     | 'source_observation_fingerprints'
     | 'alert_fingerprint'
     | 'acked_at'

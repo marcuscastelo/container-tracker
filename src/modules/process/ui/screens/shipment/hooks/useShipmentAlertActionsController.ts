@@ -1,8 +1,9 @@
 import type { Accessor } from 'solid-js'
-import { createEffect, createSignal } from 'solid-js'
+import { createEffect, createSignal, onCleanup } from 'solid-js'
 import { acknowledgeShipmentAlert } from '~/modules/process/ui/screens/shipment/usecases/acknowledgeShipmentAlert.usecase'
 import { unacknowledgeShipmentAlert } from '~/modules/process/ui/screens/shipment/usecases/unacknowledgeShipmentAlert.usecase'
 import { useTranslation } from '~/shared/localization/i18n'
+import { clearMotionTimeout, scheduleMotionTimeout } from '~/shared/ui/motion/motion.utils'
 
 function withSetEntry(set: ReadonlySet<string>, value: string): ReadonlySet<string> {
   const next = new Set(set)
@@ -23,6 +24,7 @@ type UseShipmentAlertActionsControllerCommand = {
 
 type ShipmentAlertActionsControllerResult = {
   readonly busyAlertIds: Accessor<ReadonlySet<string>>
+  readonly recentlyChangedAlertIds: Accessor<ReadonlySet<string>>
   readonly alertActionError: Accessor<string | null>
   readonly clearAlertActionError: () => void
   readonly acknowledgeAlert: (alertId: string) => Promise<void> // i18n-enforce-ignore
@@ -72,12 +74,47 @@ export function useShipmentAlertActionsController(
 ): ShipmentAlertActionsControllerResult {
   const { t, keys } = useTranslation()
   const [busyAlertIds, setBusyAlertIds] = createSignal<ReadonlySet<string>>(new Set())
+  const [recentlyChangedAlertIds, setRecentlyChangedAlertIds] = createSignal<ReadonlySet<string>>(
+    new Set(),
+  )
   const [alertActionError, setAlertActionError] = createSignal<string | null>(null)
+  const recentTimeoutIds = new Map<string, number | null>()
+
+  const clearRecentAlertId = (alertId: string): void => {
+    const timeoutId = recentTimeoutIds.get(alertId) ?? null
+    clearMotionTimeout(timeoutId)
+    recentTimeoutIds.delete(alertId)
+    setRecentlyChangedAlertIds((previous) => withoutSetEntry(previous, alertId))
+  }
+
+  const markRecentlyChanged = (alertIds: readonly string[]): void => {
+    for (const alertId of alertIds) {
+      clearRecentAlertId(alertId)
+      setRecentlyChangedAlertIds((previous) => withSetEntry(previous, alertId))
+      const timeoutId = scheduleMotionTimeout(() => {
+        recentTimeoutIds.delete(alertId)
+        setRecentlyChangedAlertIds((previous) => withoutSetEntry(previous, alertId))
+      }, 'highlight')
+      recentTimeoutIds.set(alertId, timeoutId)
+    }
+  }
 
   createEffect(() => {
     command.processId()
     setBusyAlertIds(new Set<string>())
+    for (const timeoutId of recentTimeoutIds.values()) {
+      clearMotionTimeout(timeoutId)
+    }
+    recentTimeoutIds.clear()
+    setRecentlyChangedAlertIds(new Set<string>())
     setAlertActionError(null)
+  })
+
+  onCleanup(() => {
+    for (const timeoutId of recentTimeoutIds.values()) {
+      clearMotionTimeout(timeoutId)
+    }
+    recentTimeoutIds.clear()
   })
 
   const handleAcknowledgeAlerts = async (alertIds: readonly string[]) => {
@@ -102,6 +139,7 @@ export function useShipmentAlertActionsController(
 
       if (result.completedAlertIds.length > 0) {
         await command.reconcileTrackingView()
+        markRecentlyChanged(result.completedAlertIds)
       }
 
       if (result.error !== null) {
@@ -144,6 +182,7 @@ export function useShipmentAlertActionsController(
 
       if (result.completedAlertIds.length > 0) {
         await command.reconcileTrackingView()
+        markRecentlyChanged(result.completedAlertIds)
       }
 
       if (result.error !== null) {
@@ -166,6 +205,7 @@ export function useShipmentAlertActionsController(
 
   return {
     busyAlertIds,
+    recentlyChangedAlertIds,
     alertActionError,
     clearAlertActionError: () => setAlertActionError(null),
     acknowledgeAlert: (alertId: string) => handleAcknowledgeAlerts([alertId]),

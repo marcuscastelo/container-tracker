@@ -401,71 +401,17 @@ describe('alertRowToDomain', () => {
     expect(result.source_observation_fingerprints).toEqual([])
   })
 
-  it('should map NO_MOVEMENT message metadata fields', () => {
+  it('should map ETA_PASSED message metadata fields', () => {
     const result = alertRowToDomain({
       ...validRow,
       category: 'monitoring',
-      type: 'NO_MOVEMENT',
-      message_key: 'alerts.noMovementDetected',
-      message_params: {
-        threshold_days: 10,
-        days_without_movement: 12,
-        days: 12,
-        lastEventDate: '2026-01-03',
-      },
+      type: 'ETA_PASSED',
+      message_key: 'alerts.etaPassed',
+      message_params: {},
     })
 
-    expect(result.message_key).toBe('alerts.noMovementDetected')
-    expect(result.message_params).toEqual({
-      threshold_days: 10,
-      days_without_movement: 12,
-      days: 12,
-      lastEventDate: '2026-01-03',
-    })
-  })
-
-  it('should fallback NO_MOVEMENT metadata when reading legacy message params', () => {
-    const result = alertRowToDomain({
-      ...validRow,
-      category: 'monitoring',
-      type: 'NO_MOVEMENT',
-      message_key: 'alerts.noMovementDetected',
-      message_params: {
-        days: 9,
-        lastEventDate: '2026-01-04',
-      },
-    })
-
-    expect(result.message_key).toBe('alerts.noMovementDetected')
-    expect(result.message_params).toEqual({
-      threshold_days: 5,
-      days_without_movement: 9,
-      days: 9,
-      lastEventDate: '2026-01-04',
-    })
-  })
-
-  it('should normalize NO_MOVEMENT threshold_days to the canonical breakpoint policy', () => {
-    const result = alertRowToDomain({
-      ...validRow,
-      category: 'monitoring',
-      type: 'NO_MOVEMENT',
-      message_key: 'alerts.noMovementDetected',
-      message_params: {
-        threshold_days: 7,
-        days_without_movement: 7,
-        days: 7,
-        lastEventDate: '2026-01-04',
-      },
-    })
-
-    expect(result.message_key).toBe('alerts.noMovementDetected')
-    expect(result.message_params).toEqual({
-      threshold_days: 5,
-      days_without_movement: 7,
-      days: 7,
-      lastEventDate: '2026-01-04',
-    })
+    expect(result.message_key).toBe('alerts.etaPassed')
+    expect(result.message_params).toEqual({})
   })
 })
 

@@ -12,6 +12,7 @@ Fonte canônica de instruções do projeto:
 Instruções adicionais por contexto:
 
 - `src/modules/tracking/AGENTS.md` para qualquer mudança em `src/modules/tracking/*`
+- Gate operacional obrigatório de fechamento (`pnpm sanity`): `AGENTS.md` seção `11.1`
 
 Se houver conflito entre documentos, priorize esta ordem:
 
