@@ -96,6 +96,28 @@
     "serverProblemBanner": "Servidor com problemas, informações podem estar incompletas.",
     "dismissServerProblemBanner": "Dispensar"
   },
+  "auth": {
+    "login": {
+      "title": "Entrar na plataforma",
+      "subtitle": "Autentique-se para acessar dashboard, embarques e gestão operacional.",
+      "primary": "Entrar",
+      "secondary": "Criar conta"
+    },
+    "signup": {
+      "title": "Criar conta",
+      "subtitle": "Cadastre-se para iniciar sua sessão no Container Tracker.",
+      "primary": "Criar conta",
+      "secondary": "Já tenho conta"
+    },
+    "common": {
+      "loading": "Carregando...",
+      "errorNetwork": "Falha de autenticação. Tente novamente.",
+      "errorConfig": "Configuração de autenticação ausente.",
+      "errorLoginRequired": "Login necessário para continuar.",
+      "backToLogin": "Voltar para login",
+      "backToSignup": "Voltar para cadastro"
+    }
+  },
   "process": {
     "containerSelector": {
       "copyContainerNumber": "Copiar número do contentor"

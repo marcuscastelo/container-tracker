@@ -5,6 +5,9 @@ import { parseWithStack } from '~/shared/utils/parseWithStack'
 const envSchema = z.object({
   VITE_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   VITE_PUBLIC_SUPABASE_URL: z.string().min(1),
+  VITE_PUBLIC_WORKOS_CLIENT_ID: z.string().min(1).optional(),
+  VITE_PUBLIC_WORKOS_API_HOSTNAME: z.string().min(1).optional(),
+  VITE_PUBLIC_WORKOS_REDIRECT_URI: z.string().min(1).optional(),
 })
 
 const getEnvVars = (): z.input<typeof envSchema> => {

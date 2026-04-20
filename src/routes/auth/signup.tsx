@@ -1,18 +1,15 @@
 import { useLocation, useNavigate } from '@solidjs/router'
 import { createSignal, onMount } from 'solid-js'
 import { AuthEntryScreen, type AuthEntryScreenState } from '~/modules/auth/ui/AuthEntryScreen'
-import {
-  extractAuthCallbackSearchFromReturnTo,
-  getReturnToFromQuery,
-} from '~/shared/auth/auth-return-to'
+import { getReturnToFromQuery } from '~/shared/auth/auth-return-to'
 import {
   getWorkosUser,
-  startWorkosSignIn,
+  startWorkosSignUp,
   WorkosAuthClientError,
 } from '~/shared/auth/workos-auth.client'
 import { useTranslation } from '~/shared/localization/i18n'
 
-export default function AuthLoginRoute() {
+export default function AuthSignupRoute() {
   const location = useLocation()
   const navigate = useNavigate()
   const { t, keys } = useTranslation()
@@ -20,7 +17,7 @@ export default function AuthLoginRoute() {
   const [errorCode, setErrorCode] = createSignal<string | null>(null)
 
   const returnTo = () => getReturnToFromQuery(location.search)
-  const signupHref = () => `/auth/signup?return_to=${encodeURIComponent(returnTo())}`
+  const loginHref = () => `/auth/login?return_to=${encodeURIComponent(returnTo())}`
   const errorMessage = () => {
     const code = errorCode()
     if (code === null) return null
@@ -30,12 +27,6 @@ export default function AuthLoginRoute() {
   }
 
   onMount(() => {
-    const callbackSearch = extractAuthCallbackSearchFromReturnTo(returnTo())
-    if (callbackSearch !== null) {
-      void navigate(`/auth/callback${callbackSearch}`, { replace: true })
-      return
-    }
-
     void getWorkosUser()
       .then((user) => {
         if (user) {
@@ -54,10 +45,10 @@ export default function AuthLoginRoute() {
       })
   })
 
-  const handleSignIn = () => {
+  const handleSignUp = () => {
     setState('loading')
     setErrorCode(null)
-    void startWorkosSignIn(returnTo()).catch((error: unknown) => {
+    void startWorkosSignUp(returnTo()).catch((error: unknown) => {
       if (error instanceof WorkosAuthClientError) {
         setErrorCode(error.code)
       } else {
@@ -69,14 +60,14 @@ export default function AuthLoginRoute() {
 
   return (
     <AuthEntryScreen
-      title={t(keys.auth.login.title)}
-      subtitle={t(keys.auth.login.subtitle)}
-      primaryLabel={t(keys.auth.login.primary)}
-      secondaryLabel={t(keys.auth.login.secondary)}
+      title={t(keys.auth.signup.title)}
+      subtitle={t(keys.auth.signup.subtitle)}
+      primaryLabel={t(keys.auth.signup.primary)}
+      secondaryLabel={t(keys.auth.signup.secondary)}
       loadingLabel={t(keys.auth.common.loading)}
-      secondaryHref={signupHref()}
+      secondaryHref={loginHref()}
       state={state()}
-      onPrimaryAction={handleSignIn}
+      onPrimaryAction={handleSignUp}
       errorMessage={errorMessage()}
     />
   )
