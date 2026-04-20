@@ -422,9 +422,9 @@ describe('toProcessSummaryVMs presentation details', () => {
     expect(first.importerName).toBeNull()
   })
 
-  it('preserves leading/trailing whitespace in non-blank importer_name', () => {
+  it('trims leading/trailing whitespace in non-blank importer_name', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p6', importer_name: '  Empresa ABC  ' })])
-    expect(requireAt(result, 0).importerName).toBe('  Empresa ABC  ')
+    expect(requireAt(result, 0).importerName).toBe('Empresa ABC')
   })
 
   it('maps redestination_number to redestinationNumber', () => {
@@ -442,6 +442,20 @@ describe('toProcessSummaryVMs presentation details', () => {
   it('normalizes null redestination_number to null', () => {
     const result = toProcessSummaryVMs([
       makeSource({ id: 'p-null-redest', redestination_number: null }),
+    ])
+    expect(requireAt(result, 0).redestinationNumber).toBeNull()
+  })
+
+  it('normalizes empty redestination_number to null', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({ id: 'p-empty-redest', redestination_number: '' }),
+    ])
+    expect(requireAt(result, 0).redestinationNumber).toBeNull()
+  })
+
+  it('normalizes whitespace-only redestination_number to null', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({ id: 'p-blank-redest', redestination_number: '   ' }),
     ])
     expect(requireAt(result, 0).redestinationNumber).toBeNull()
   })

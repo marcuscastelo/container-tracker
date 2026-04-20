@@ -329,6 +329,77 @@ describe('toShipmentDetailVM base mapping', () => {
   })
 })
 
+describe('toShipmentDetailVM redestination mapping', () => {
+  it('keeps non-blank redestination_number values', () => {
+    const example: ProcessDetailResponse = {
+      id: 'proc-redest',
+      tracking_freshness_token: 'token-proc-redest',
+      reference: 'REF-RED',
+      origin: { display_name: 'Origin' },
+      destination: { display_name: 'Destination' },
+      carrier: null,
+      bill_of_lading: null,
+      booking_number: null,
+      redestination_number: 'RD-12345',
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      tracking_validation: makeProcessTrackingValidationResponse(),
+      containers: [
+        {
+          id: 'c-redest',
+          container_number: 'MSCU7654321',
+          status: 'IN_TRANSIT',
+          tracking_validation: makeContainerTrackingValidationResponse(),
+          tracking_containment: null,
+          timeline: [],
+        },
+      ],
+      containersSync: [],
+    }
+
+    const result = toShipmentDetailVM(example)
+    expect(result.redestination_number).toBe('RD-12345')
+  })
+
+  it('normalizes blank redestination_number values to null', () => {
+    const makeExample = (
+      redestination_number: string | null | undefined,
+    ): ProcessDetailResponse => ({
+      id: 'proc-redest-blank',
+      tracking_freshness_token: 'token-proc-redest-blank',
+      reference: 'REF-RED-BLANK',
+      origin: { display_name: 'Origin' },
+      destination: { display_name: 'Destination' },
+      carrier: null,
+      bill_of_lading: null,
+      booking_number: null,
+      redestination_number,
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      tracking_validation: makeProcessTrackingValidationResponse(),
+      containers: [
+        {
+          id: 'c-redest-blank',
+          container_number: 'MSCU7654321',
+          status: 'IN_TRANSIT',
+          tracking_validation: makeContainerTrackingValidationResponse(),
+          tracking_containment: null,
+          timeline: [],
+        },
+      ],
+      containersSync: [],
+    })
+
+    const blankResult = toShipmentDetailVM(makeExample(''))
+    const whitespaceResult = toShipmentDetailVM(makeExample('   '))
+
+    expect(blankResult.redestination_number).toBeNull()
+    expect(whitespaceResult.redestination_number).toBeNull()
+  })
+})
+
 describe('toShipmentDetailVM advisory tracking mapping', () => {
   it('maps advisory validation summaries for shipment and container support UI', () => {
     const example = makeProcessDetailResponse({

@@ -10,6 +10,8 @@ import {
   toProcessStatusCode,
 } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import { toProcessStatusMicrobadgeVM } from '~/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper'
+import { toOptionalNonBlankString } from '~/modules/process/ui/mappers/toOptionalNonBlankString'
+import { toAlertDisplayVMs } from '~/modules/process/ui/mappers/trackingAlert.ui-mapper'
 import {
   toTrackingStatusCode,
   trackingStatusToVariant,
@@ -486,7 +488,7 @@ export function toShipmentDetailVM(
     reference_importer: data.reference_importer ?? null,
     depositary: data.depositary ?? null,
     product: data.product ?? null,
-    redestination_number: data.redestination_number ?? null,
+    redestination_number: toOptionalNonBlankString(data.redestination_number),
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
     status: processAggregatedStatusToVariant(processAggregatedStatus),

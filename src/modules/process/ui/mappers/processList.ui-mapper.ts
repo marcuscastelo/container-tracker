@@ -4,6 +4,7 @@ import {
   toProcessStatusCode,
 } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import { toProcessStatusMicrobadgeVM } from '~/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper'
+import { toOptionalNonBlankString } from '~/modules/process/ui/mappers/toOptionalNonBlankString'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import type {
   ProcessTrackingValidationVM,
@@ -114,12 +115,6 @@ export type ProcessListItemSource = {
   redestination_number?: string | null | undefined
   last_sync_status?: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN' | undefined
   last_sync_at?: string | null | undefined
-}
-
-function toOptionalNonBlankString(value: string | null | undefined): string | null {
-  if (value == null) return null
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? value : null
 }
 
 function normalizeContainerNumber(containerNumber: string): string {
@@ -264,7 +259,7 @@ export function toProcessSummaryVMs(
       attentionSeverity:
         process.attention_severity ?? process.operational_incidents?.dominant?.severity ?? null,
       trackingValidation: toProcessTrackingValidationVm(process.tracking_validation),
-      redestinationNumber: process.redestination_number ?? null,
+      redestinationNumber: toOptionalNonBlankString(process.redestination_number),
       lastEventAt: process.last_event_at ?? null,
       syncStatus: toProcessSyncStatus(process.last_sync_status),
       lastSyncAt: process.last_sync_at ?? null,
