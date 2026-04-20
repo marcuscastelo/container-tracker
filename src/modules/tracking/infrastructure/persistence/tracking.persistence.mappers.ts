@@ -88,6 +88,10 @@ type ObservationTemporalColumns = {
   readonly event_time_zone: string | null
 }
 
+type ObservationDomainRow = Omit<TrackingObservationRow, 'event_time'> & {
+  readonly event_time?: string | null
+}
+
 function encodeTemporalValueForPersistence(
   value: TemporalValue | null,
 ): ObservationTemporalColumns {
@@ -139,7 +143,7 @@ function requireTemporalKind(value: unknown, field: string): 'instant' | 'date' 
   throw new Error(`tracking persistence mapper: ${field} is not a valid temporal kind: ${kind}`)
 }
 
-function observationTemporalColumnsToDomain(row: TrackingObservationRow): TemporalValue | null {
+function observationTemporalColumnsToDomain(row: ObservationDomainRow): TemporalValue | null {
   const { temporal_kind, event_time_instant, event_date, event_time_local, event_time_zone } = row
 
   if (temporal_kind === null) {
@@ -248,7 +252,7 @@ function requireEventTimeSource(value: unknown, field: string): EventTimeSource 
 // Observation mappers
 // ---------------------------------------------------------------------------
 
-export function observationRowToDomain(row: TrackingObservationRow): Observation {
+export function observationRowToDomain(row: ObservationDomainRow): Observation {
   return {
     id: requireString(row.id, 'observation.id'),
     fingerprint: requireString(row.fingerprint, 'observation.fingerprint'),

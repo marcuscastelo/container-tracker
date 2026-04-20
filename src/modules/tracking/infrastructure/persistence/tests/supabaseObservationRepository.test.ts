@@ -16,7 +16,7 @@ import { supabaseObservationRepository } from '~/modules/tracking/infrastructure
 function createQuery<T>(data: T) {
   const query = {
     data,
-    select: vi.fn(() => query),
+    select: vi.fn((_columns: string) => query),
     eq: vi.fn(() => query),
     order: vi.fn(() => query),
     in: vi.fn(() => query),
@@ -72,8 +72,10 @@ describe('supabaseObservationRepository', () => {
 
     expect(mocks.from).toHaveBeenCalledWith('container_observations')
     expect(query.select).toHaveBeenCalled()
-    const [selectArg] = query.select.mock.calls[0]
-    expect(selectArg).not.toContain('event_time,')
+    const firstSelectCall = query.select.mock.calls[0]
+    expect(firstSelectCall).toBeDefined()
+    const selectArg = firstSelectCall?.[0] ?? ''
+    expect(String(selectArg)).not.toMatch(/(^|,)\s*event_time\s*(,|$)/)
     expect(observations.map((observation) => observation.id)).toEqual([
       'obs-actual',
       'obs-expected',
