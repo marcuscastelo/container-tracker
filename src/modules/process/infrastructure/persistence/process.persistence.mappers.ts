@@ -14,6 +14,11 @@ import type {
   ProcessUpdateRow,
 } from '~/modules/process/infrastructure/persistence/process.row'
 import { Instant } from '~/shared/time/instant'
+import { requireTimestamptz } from '~/shared/utils/requireTimestamptz'
+
+function requireTimestamp(value: unknown, field: string): string {
+  return requireTimestamptz(value, field, 'process persistence mapper')
+}
 
 // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/13
 export const processMappers = {
@@ -34,8 +39,8 @@ export const processMappers = {
       redestinationNumber:
         row.redestination_number == null ? null : String(row.redestination_number),
       source: toProcessSource(row.source),
-      createdAt: Instant.fromIso(String(row.created_at)),
-      updatedAt: Instant.fromIso(String(row.updated_at)),
+      createdAt: Instant.fromIso(requireTimestamp(row.created_at, 'process.created_at')),
+      updatedAt: Instant.fromIso(requireTimestamp(row.updated_at, 'process.updated_at')),
     })
   },
 

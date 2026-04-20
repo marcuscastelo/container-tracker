@@ -3,7 +3,7 @@ import {
   type PersistedProvider,
   type Provider,
 } from '~/modules/tracking/domain/model/provider'
-import { normalizeTimestamptz } from '~/shared/utils/normalizeTimestamptz'
+import { requireTimestamptz } from '~/shared/utils/requireTimestamptz'
 
 export function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.length === 0) {
@@ -48,13 +48,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function requireTimestamp(value: unknown, field: string): string {
-  const normalized = normalizeTimestamptz(value)
-  if (normalized === null) {
-    throw new Error(
-      `tracking persistence mapper: ${field} is not a valid timestamp: ${String(value)}`,
-    )
-  }
-  return normalized
+  return requireTimestamptz(value, field, 'tracking persistence mapper')
 }
 
 /**
