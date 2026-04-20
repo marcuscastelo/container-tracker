@@ -27,6 +27,8 @@ const BASE_RECORD: AgentMonitoringRecord = {
   updaterLastError: null,
   updateReadyVersion: null,
   restartRequestedAt: null,
+  remoteUpdatesPaused: false,
+  remoteBlockedVersions: [],
   bootStatus: 'healthy',
   status: 'CONNECTED',
   enrolledAt: '2026-03-09T10:00:00.000Z',

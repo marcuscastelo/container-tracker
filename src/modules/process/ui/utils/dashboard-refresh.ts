@@ -1,5 +1,5 @@
-type DashboardRefreshCommand = {
-  readonly syncAllProcesses: () => unknown
+type DashboardRefreshCommand<TSyncResult> = {
+  readonly syncAllProcesses: () => TSyncResult | Promise<TSyncResult>
   readonly refetchProcesses: () => unknown
   readonly refetchGlobalAlerts: () => unknown
   readonly refetchDashboardKpis?: () => unknown
@@ -15,8 +15,10 @@ function toFirstRejectedReason(results: readonly PromiseSettledResult<unknown>[]
   return null
 }
 
-export async function refreshDashboardData(command: DashboardRefreshCommand): Promise<void> {
-  await Promise.resolve(command.syncAllProcesses())
+export async function refreshDashboardData<TSyncResult>(
+  command: DashboardRefreshCommand<TSyncResult>,
+): Promise<TSyncResult> {
+  const syncResult = await Promise.resolve(command.syncAllProcesses())
 
   const refetchTasks: Promise<unknown>[] = [
     Promise.resolve(command.refetchProcesses()),
@@ -35,7 +37,7 @@ export async function refreshDashboardData(command: DashboardRefreshCommand): Pr
 
   const hasFailure = results.some((result) => result.status === 'rejected')
   if (!hasFailure) {
-    return
+    return syncResult
   }
 
   const firstRejectedReason = toFirstRejectedReason(results)

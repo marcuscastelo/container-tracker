@@ -48,6 +48,9 @@ jobs:
       - name: Run architecture boundary scan
         run: pnpm run architecture:boundary-scan
 
+      - name: Run agent boundary scan
+        run: pnpm run agent:boundary-scan
+
       - name: Run knip files scan
         run: pnpm run knip:files
 
@@ -114,5 +117,21 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN }}
 
-      - name: Run tests
-        run: pnpm run test
+      - name: Run tests with coverage
+        run: pnpm run test:coverage
+
+      - name: Run agent smoke suites
+        run: pnpm run agent:smoke
+
+      - name: Build coverage policy report
+        run: pnpm run coverage:report -- --write --github-summary
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-policy-artifacts
+          path: |
+            coverage/vitest/**
+            coverage/coverage-policy-report.json
+            coverage/coverage-policy-report.md
+          if-no-files-found: error

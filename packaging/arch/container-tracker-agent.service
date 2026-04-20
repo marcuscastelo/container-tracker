@@ -9,11 +9,14 @@ User=container-tracker-agent
 Group=container-tracker-agent
 WorkingDirectory=/usr/lib/container-tracker-agent
 Environment=AGENT_DATA_DIR=/var/lib/container-tracker-agent
+Environment=AGENT_PUBLIC_STATE_DIR=/run/container-tracker-agent
 ExecStart=/usr/lib/container-tracker-agent/launcher.sh
 Restart=on-failure
 RestartSec=2
 RestartPreventExitStatus=50
 NoNewPrivileges=true
+RuntimeDirectory=container-tracker-agent
+RuntimeDirectoryMode=0755
 StateDirectory=container-tracker-agent
 StateDirectoryMode=0750
 StandardOutput=journal

@@ -5,7 +5,7 @@ import { ProcessAlertGroup } from '~/shared/ui/navbar-alerts/ProcessAlertGroup'
 
 type NavbarAlertsPanelProps = {
   readonly panelId: string
-  readonly totalAlerts: number
+  readonly totalActiveIncidents: number
   readonly processes: readonly NavbarProcessAlertGroupVM[]
   readonly loading: boolean
   readonly error: string | null
@@ -18,7 +18,7 @@ type NavbarAlertsPanelProps = {
 
 type PanelHeaderProps = {
   readonly titleId: string
-  readonly totalAlerts: number
+  readonly totalActiveIncidents: number
   readonly onClose: () => void
   readonly onOpenDashboard: () => void
 }
@@ -66,7 +66,7 @@ function PanelErrorState(props: { readonly onRetry: () => void }): JSX.Element {
       <button
         type="button"
         onClick={() => props.onRetry()}
-        class="inline-flex h-7 items-center justify-center rounded border border-tone-danger-border bg-surface px-2 text-xs-ui font-medium text-tone-danger-fg transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        class="motion-focus-surface motion-interactive inline-flex h-7 items-center justify-center rounded border border-tone-danger-border bg-surface px-2 text-xs-ui font-medium text-tone-danger-fg hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         {t(keys.header.alertsPanel.retry)}
       </button>
@@ -118,19 +118,19 @@ function PanelHeader(props: PanelHeaderProps): JSX.Element {
 
       <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
         <span class="rounded border border-tone-danger-border bg-tone-danger-bg px-1.5 py-0.5 text-micro font-semibold text-tone-danger-fg">
-          {t(keys.header.alertsPanel.alertsCount, { count: props.totalAlerts })}
+          {t(keys.header.alertsPanel.alertsCount, { count: props.totalActiveIncidents })}
         </span>
         <button
           type="button"
           onClick={() => props.onOpenDashboard()}
-          class="inline-flex h-7 items-center justify-center rounded border border-border bg-surface px-2 text-xs-ui font-medium text-foreground transition-colors hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          class="motion-focus-surface motion-interactive inline-flex h-7 items-center justify-center rounded border border-border bg-surface px-2 text-xs-ui font-medium text-foreground hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         >
           {t(keys.header.alertsPanel.openDashboard)}
         </button>
         <button
           type="button"
           onClick={() => props.onClose()}
-          class="inline-flex h-7 w-7 items-center justify-center rounded border border-border bg-surface text-text-muted transition-colors hover:border-border-strong hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          class="motion-focus-surface motion-interactive inline-flex h-7 w-7 items-center justify-center rounded border border-border bg-surface text-text-muted hover:border-border-strong hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           aria-label={t(keys.header.alertsPanel.close)}
         >
           <svg
@@ -193,11 +193,11 @@ export function NavbarAlertsPanel(props: NavbarAlertsPanelProps): JSX.Element {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId()}
-        class="fixed inset-0 z-50 flex flex-col bg-surface min-[1024px]:absolute min-[1024px]:inset-auto min-[1024px]:right-0 min-[1024px]:top-full min-[1024px]:z-20 min-[1024px]:mt-2 min-[1024px]:max-h-[72vh] min-[1024px]:w-[min(92vw,640px)] min-[1024px]:rounded-xl min-[1024px]:border min-[1024px]:border-border min-[1024px]:bg-surface-elevated min-[1024px]:shadow-2xl"
+        class="motion-overlay-surface fixed inset-0 z-50 flex flex-col bg-surface min-[1024px]:absolute min-[1024px]:inset-auto min-[1024px]:right-0 min-[1024px]:top-full min-[1024px]:z-20 min-[1024px]:mt-2 min-[1024px]:max-h-[72vh] min-[1024px]:w-[min(92vw,640px)] min-[1024px]:rounded-xl min-[1024px]:border min-[1024px]:border-border min-[1024px]:bg-surface-elevated min-[1024px]:shadow-2xl"
       >
         <PanelHeader
           titleId={titleId()}
-          totalAlerts={props.totalAlerts}
+          totalActiveIncidents={props.totalActiveIncidents}
           onClose={props.onClose}
           onOpenDashboard={props.onOpenDashboard}
         />

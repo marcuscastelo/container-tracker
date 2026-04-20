@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document maps the current end-to-end sync scenarios with code evidence. It intentionally separates confirmed current behavior from `UNKNOWN` behavior.
+This document maps current end-to-end sync scenarios with code evidence. It intentionally separates confirmed current behavior from `UNKNOWN` behavior.
 
 ## Scenario 1: User opens Process Detail
 
@@ -24,11 +24,11 @@ UI ShipmentView
 
 ### What actually happens
 
-1. The route `GET /api/processes/:id` is a thin adapter to `processControllers.getProcessById` (`src/routes/api/processes/[id]/index.ts:1-5`).
-2. `getProcessById()` loads process + containers, then loads container sync metadata from `trackingUseCases.getContainersSyncMetadata()`, then loads per-container tracking summary, derives timeline read model, and maps the final HTTP DTO (`src/modules/process/interface/http/process.controllers.ts:225-315`).
-3. The HTTP mapper adds container operational projection, `containersSync`, alerts, and process-level operational fields into `ProcessDetailResponse` (`src/modules/process/interface/http/process.http.mappers.ts:286-441`, `src/shared/api-schemas/processes.schemas.ts:154-186`).
-4. The UI converts the HTTP DTO to `ShipmentDetailVM`; it does formatting, VM assembly, and sync badge mapping, but it does not derive tracking truth (`src/modules/process/ui/mappers/processDetail.ui-mapper.ts:172-255`, `docs/BOUNDARIES.md:67-80`, `docs/TYPE_ARCHITECTURE.md:24-43`).
-5. While the detail page is open, `useSyncRealtimeCoordinator()` subscribes to realtime by container refs and triggers a tracking-only refetch; if realtime is degraded or the page already shows syncing containers, it falls back to a 10-second poll while the page is visible (`src/modules/process/ui/utils/sync-realtime-coordinator.ts:21-199`).
+1. route `GET /api/processes/:id` is thin adapter to `processControllers.getProcessById` (`src/routes/api/processes/[id]/index.ts:1-5`).
+2. `getProcessById()` loads process + containers, then loads container sync metadata from `trackingUseCases.getContainersSyncMetadata()`, then loads per-container tracking summary, derives timeline read model, and maps final HTTP DTO (`src/modules/process/interface/http/process.controllers.ts:225-315`).
+3. HTTP mapper adds container operational projection, `containersSync`, alerts, and process-level operational fields into `ProcessDetailResponse` (`src/modules/process/interface/http/process.http.mappers.ts:286-441`, `src/shared/api-schemas/processes.schemas.ts:154-186`).
+4. UI converts HTTP DTO to `ShipmentDetailVM`; it does formatting, VM assembly, and sync badge mapping, but it does not derive tracking truth (`src/modules/process/ui/mappers/processDetail.ui-mapper.ts:172-255`, `docs/BOUNDARIES.md:67-80`, `docs/TYPE_ARCHITECTURE.md:24-43`).
+5. While detail page is open, `useSyncRealtimeCoordinator()` subscribes to realtime by container refs and triggers tracking-only refetch; if realtime is degraded or page already shows syncing containers, it falls back to 10-second poll while page is visible (`src/modules/process/ui/utils/sync-realtime-coordinator.ts:21-199`).
 
 ## Scenario 2: User clicks refresh on Process Detail
 
@@ -55,14 +55,14 @@ ShipmentView refresh button
 
 1. `ShipmentView` still calls `/api/refresh` per container, not `/api/processes/:id/refresh` (`src/modules/process/ui/ShipmentView.tsx:333-356`).
 2. `POST /api/refresh` only validates and enqueues through `refreshRestUseCase` and `enqueue_sync_request`; it does not scrape any provider (`src/modules/tracking/interface/http/refresh.controllers.ts:58-69`, `src/modules/tracking/application/usecases/refresh-rest-container.usecase.ts:49-80`, `src/modules/tracking/interface/http/refresh.controllers.bootstrap.ts:43-69`).
-3. The detail view then:
+3. detail view then:
    - subscribes to realtime by `syncRequestId`
    - bootstraps current queue state with `GET /api/refresh/status`
-   - runs `pollRefreshSyncStatus()` as a watchdog with `maxRetries=5` and `initialDelayMs=5000`
-   (`src/modules/process/ui/ShipmentView.tsx:39-40`, `src/modules/process/ui/ShipmentView.tsx:406-515`, `src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`).
-4. The agent is woken either by its interval scheduler or by tenant-level realtime on `sync_requests` rows that become `PENDING` (`tools/agent/agent.scheduler.ts:18-89`, `tools/agent/agent.ts:776-831`).
-5. The agent leases targets via `GET /api/agent/targets`, scrapes the provider, and posts the raw payload to `POST /api/tracking/snapshots/ingest` (`tools/agent/agent.ts:630-733`).
-6. The server validates the lease, resolves the container, calls `trackingUseCases.saveAndProcess()`, then marks the request `DONE`; container resolution failures are marked `FAILED` (`src/modules/tracking/interface/http/agent-sync.controllers.ts:185-263`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:53-144`).
+   - runs `pollRefreshSyncStatus()` watchdog with `maxRetries=5` and `initialDelayMs=5000`
+(`src/modules/process/ui/ShipmentView.tsx:39-40`, `src/modules/process/ui/ShipmentView.tsx:406-515`, `src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`).
+4. agent is woken either by its interval scheduler or by tenant-level realtime on `sync_requests` rows that become `PENDING` (`apps/agent/src/agent.scheduler.ts:18-89`, `apps/agent/src/agent.ts:776-831`).
+5. agent leases targets via `GET /api/agent/targets`, scrapes provider, and posts raw payload to `POST /api/tracking/snapshots/ingest` (`apps/agent/src/agent.ts:630-733`).
+6. server validates lease, resolves container, calls `trackingUseCases.saveAndProcess()`, then marks request `DONE`; container resolution failures are marked `FAILED` (`src/modules/tracking/interface/http/agent-sync.controllers.ts:185-263`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:53-144`).
 
 ## Scenario 2B: User clicks refresh on Dashboard / process row
 
@@ -106,10 +106,10 @@ agent start
 
 ### What actually happens
 
-1. The agent can self-enroll using `POST /api/agent/enroll` and persists/updates its runtime config locally after successful enrollment (`tools/agent/agent.ts:535-596`, `src/routes/api/agent/enroll.ts:1-13`, `src/modules/tracking/interface/http/agent-enroll.controllers.ts:207-321`).
-2. The scheduler fires on startup and every configured interval (`tools/agent/agent.scheduler.ts:69-88`).
-3. Realtime wake is optional. If `SUPABASE_URL` or `SUPABASE_ANON_KEY` is missing, the agent keeps only the interval sweep (`tools/agent/agent.ts:787-837`).
-4. A cycle currently processes one leased target at a time until `LIMIT` is reached (`tools/agent/agent.ts:751-774`).
+1. agent can self-enroll using `POST /api/agent/enroll` and persists/updates its runtime config locally after successful enrollment (`apps/agent/src/agent.ts:535-596`, `src/routes/api/agent/enroll.ts:1-13`, `src/modules/tracking/interface/http/agent-enroll.controllers.ts:207-321`).
+2. scheduler fires on startup and every configured interval (`apps/agent/src/agent.scheduler.ts:69-88`).
+3. Realtime wake is optional. If `SUPABASE_URL` or `SUPABASE_ANON_KEY` is missing, agent keeps only interval sweep (`apps/agent/src/agent.ts:787-837`).
+4. cycle currently processes one leased target at time until `LIMIT` is reached (`apps/agent/src/agent.ts:751-774`).
 
 ### What was not found
 
@@ -117,7 +117,7 @@ agent start
 - No webhook-initiated sync flow.
 - No separate worker queue besides `sync_requests`.
 
-These absences are audit results; no matching runtime entrypoints were found in the repository during this audit.
+These absences are audit results; no matching runtime entrypoints were found in repository during this audit.
 
 ## Scenario 4: Failure and retry
 
@@ -134,29 +134,29 @@ agent leases request
 ### Confirmed behavior
 
 1. `lease_sync_requests()` can lease both `PENDING` rows and expired `LEASED` rows, and increments `attempts` when it does so (`supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`).
-2. The agent currently logs most target failures and explicitly says the target will be available again after lease expiration; it does not call a dedicated "fail this target now" endpoint (`tools/agent/agent.ts:735-748`).
-3. Immediate `FAILED` state is only confirmed on the server ingest path for container-resolution problems and similar validated failures (`src/modules/tracking/interface/http/agent-sync.controllers.ts:211-229`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:97-118`).
-4. The synchronous process sync endpoints time out after 180 seconds with fixed 5-second polling (`src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:3-5`, `src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:113-150`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:4-5`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:110-147`).
-5. The detail refresh watchdog uses exponential backoff in the UI: 5s, 10s, 20s, 40s, 80s for the default five retries (`src/modules/process/ui/ShipmentView.tsx:39-40`, `src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`).
+2. agent currently logs most target failures and explicitly says target will be available again after lease expiration; it does not call dedicated "fail this target now" endpoint (`apps/agent/src/agent.ts:735-748`).
+3. Immediate `FAILED` state is only confirmed on server ingest path for container-resolution problems and similar validated failures (`src/modules/tracking/interface/http/agent-sync.controllers.ts:211-229`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:97-118`).
+4. synchronous process sync endpoints time out after 180 seconds with fixed 5-second polling (`src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:3-5`, `src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:113-150`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:4-5`, `src/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase.ts:110-147`).
+5. detail refresh watchdog uses exponential backoff in UI: 5s, 10s, 20s, 40s, 80s for default five retries (`src/modules/process/ui/ShipmentView.tsx:39-40`, `src/modules/process/ui/utils/refresh-sync-polling.ts:62-115`).
 
 ### Operational meaning
 
-- Retry today is lease-expiry retry, not an explicit retry policy with per-provider backoff persisted in the job model.
-- There is no dead-letter queue or explicit triage bucket for exhausted jobs in the audited code.
+- Retry today is lease-expiry retry, not explicit retry policy with per-provider backoff persisted in job model.
+- There is no dead-letter queue or explicit triage bucket for exhausted jobs in audited code.
 
 ## Scenario 5: Backfill
 
 ### Current answer
 
-**UNKNOWN as an executable flow.**
+**UNKNOWN executable flow.**
 
-The tracking pipeline and alert derivation support an `isBackfill` flag, and fact alerts become retroactive while monitoring alerts are suppressed during backfill. But no active endpoint, CLI command, scheduler, or job type that sets `isBackfill=true` was found in the sync runtime path audited here (`src/modules/tracking/application/orchestration/pipeline.ts:67-75`, `src/modules/tracking/features/alerts/domain/derive/deriveAlerts.ts:127-275`).
+tracking pipeline and alert derivation support `isBackfill` flag, and fact alerts become retroactive while monitoring alerts are suppressed during backfill. But no active endpoint, CLI command, scheduler, or job type that sets `isBackfill=true` was found in sync runtime path audited here (`src/modules/tracking/application/orchestration/pipeline.ts:67-75`, `src/modules/tracking/features/alerts/domain/derive/deriveAlerts.ts:127-275`).
 
 ### Where to look next
 
-- future backfill command in `tools/agent/*`
+- future backfill command in `apps/agent/src/*`
 - future HTTP/admin endpoint under `src/routes/api/*`
-- migrations adding a dedicated backfill job type to `sync_requests`
+- migrations adding dedicated backfill job type to `sync_requests`
 
 ## End-to-End Tracking Pipeline
 

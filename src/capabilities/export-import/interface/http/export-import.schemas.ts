@@ -40,6 +40,7 @@ const SymmetricProcessEntrySchema = z.object({
   reference: z.string().nullable(),
   origin: z.string().nullable(),
   destination: z.string().nullable(),
+  depositary: z.string().nullable(),
   carrier: z.string().nullable(),
   billOfLading: z.string().nullable(),
   bookingNumber: z.string().nullable(),

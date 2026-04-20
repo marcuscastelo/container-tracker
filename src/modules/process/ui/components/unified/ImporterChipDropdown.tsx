@@ -6,6 +6,7 @@ import type {
   DashboardImporterFilterOption,
   DashboardImporterFilterValue,
 } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
+import { useMotionOpenState } from '~/shared/ui/motion/useMotionOpenState'
 
 export function ImporterChipDropdown(props: {
   readonly label: string
@@ -71,71 +72,79 @@ export function ImporterChipDropdown(props: {
       importerName: option.importerName,
     })
     setSearchValue('')
-    if (detailsRef) detailsRef.open = false
+    dropdown.close()
   }
 
-  let detailsRef: HTMLDetailsElement | undefined
+  const dropdown = useMotionOpenState()
+  let rootRef: HTMLDivElement | undefined
 
   onMount(() => {
     const onDocClick: EventListener = (ev) => {
-      if (!detailsRef) return
-      if (!detailsRef.open) return
+      if (!dropdown.isOpen()) return
       const target = ev.target
-      if (target instanceof Node && detailsRef.contains(target)) return
-      detailsRef.open = false
+      if (target instanceof Node && rootRef?.contains(target)) return
+      dropdown.close()
     }
 
     const onOtherOpened: EventListener = (ev) => {
-      if (!detailsRef) return
+      if (!rootRef) return
       if (!(ev instanceof CustomEvent)) return
-      if (ev.detail !== detailsRef) {
-        detailsRef.open = false
-      }
-    }
-
-    const onToggle: EventListener = () => {
-      if (!detailsRef) return
-      if (detailsRef.open) {
-        window.dispatchEvent(new CustomEvent('unified-dropdown-opened', { detail: detailsRef }))
+      if (ev.detail !== rootRef) {
+        dropdown.close()
       }
     }
 
     document.addEventListener('click', onDocClick)
     window.addEventListener('unified-dropdown-opened', onOtherOpened)
-    detailsRef?.addEventListener('toggle', onToggle)
 
     onCleanup(() => {
       document.removeEventListener('click', onDocClick)
       window.removeEventListener('unified-dropdown-opened', onOtherOpened)
-      detailsRef?.removeEventListener('toggle', onToggle)
     })
   })
 
   return (
-    <details
+    <div
       ref={(el) => {
-        if (el instanceof HTMLDetailsElement) detailsRef = el
-        else detailsRef = undefined
+        if (el instanceof HTMLDivElement) rootRef = el
+        else rootRef = undefined
       }}
       class="group relative"
       data-testid={props.testId}
+      data-state={dropdown.panelState()}
     >
-      <summary
-        class={`inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-md border px-2.5 text-md-ui transition-colors select-none ${
+      <button
+        type="button"
+        aria-expanded={dropdown.isOpen()}
+        class={`motion-focus-surface motion-interactive inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border px-2.5 text-md-ui select-none ${
           hasSelection()
             ? 'border-control-selected-border bg-control-selected-bg text-control-selected-foreground'
             : 'border-control-border bg-control-bg text-control-foreground hover:border-control-border-hover hover:bg-control-bg-hover hover:text-control-foreground-strong'
         }`}
+        onClick={() => {
+          if (dropdown.isOpen()) {
+            dropdown.close()
+            return
+          }
+
+          dropdown.open()
+          if (rootRef) {
+            window.dispatchEvent(new CustomEvent('unified-dropdown-opened', { detail: rootRef }))
+          }
+        }}
       >
         <span class="truncate">{chipLabel()}</span>
         <ChevronDownIcon />
-      </summary>
+      </button>
 
-      <div class="absolute left-0 top-full z-20 mt-1 min-w-60 overflow-hidden rounded-md border border-control-border bg-control-popover shadow-lg">
+      <div
+        data-state={dropdown.panelState()}
+        class="motion-dropdown-panel absolute left-0 top-full z-20 mt-1 min-w-60 overflow-hidden rounded-md border border-control-border bg-control-popover shadow-lg"
+      >
         <div class="border-b border-control-border px-2 py-2">
           <input
             type="search"
-            class="w-full rounded border border-control-border bg-control-bg px-2 py-1.5 text-md-ui text-control-popover-foreground outline-none transition-colors placeholder:text-control-placeholder focus:border-control-selected-border focus-visible:ring-2 focus-visible:ring-ring/40"
+            class="motion-focus-surface w-full rounded border border-control-border bg-control-bg px-2 py-1.5 text-md-ui text-control-popover-foreground outline-none placeholder:text-control-placeholder focus:border-control-selected-border focus-visible:ring-2 focus-visible:ring-ring/40"
             placeholder={props.searchPlaceholder}
             value={searchValue()}
             onInput={(event) => setSearchValue(event.currentTarget.value)}
@@ -157,7 +166,7 @@ export function ImporterChipDropdown(props: {
           </Match>
         </Switch>
       </div>
-    </details>
+    </div>
   )
 }
 

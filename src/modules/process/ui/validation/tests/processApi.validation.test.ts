@@ -35,18 +35,18 @@ function mockDashboardOperationalSummaryFetch() {
       new Response(
         JSON.stringify({
           generated_at: '2026-01-15T10:00:00.000Z',
-          total_active_alerts: 0,
+          total_active_incidents: 0,
+          affected_containers_count: 0,
+          recognized_incidents_count: 0,
           by_severity: {
             danger: 0,
             warning: 0,
             info: 0,
-            success: 0,
           },
           by_category: {
             eta: 0,
             movement: 0,
             customs: 0,
-            status: 0,
             data: 0,
           },
           process_exceptions: [],
@@ -68,7 +68,8 @@ function mockDashboardKpisFetch() {
         JSON.stringify({
           activeProcesses: 12,
           trackedContainers: 34,
-          processesWithAlerts: 5,
+          activeIncidents: 5,
+          affectedContainers: 8,
           lastSyncAt: '2026-01-15T10:00:00.000Z',
         }),
         {
@@ -123,18 +124,18 @@ function mockAllDashboardFetches() {
       return new Response(
         JSON.stringify({
           generated_at: '2026-01-15T10:00:00.000Z',
-          total_active_alerts: 0,
+          total_active_incidents: 0,
+          affected_containers_count: 0,
+          recognized_incidents_count: 0,
           by_severity: {
             danger: 0,
             warning: 0,
             info: 0,
-            success: 0,
           },
           by_category: {
             eta: 0,
             movement: 0,
             customs: 0,
-            status: 0,
             data: 0,
           },
           process_exceptions: [],
@@ -153,7 +154,8 @@ function mockAllDashboardFetches() {
         JSON.stringify({
           activeProcesses: 12,
           trackedContainers: 34,
-          processesWithAlerts: 5,
+          activeIncidents: 5,
+          affectedContainers: 8,
           lastSyncAt: '2026-01-15T10:00:00.000Z',
         }),
         {
@@ -207,6 +209,7 @@ describe('toCreateProcessInput', () => {
       importerName: 'Importer Co',
       exporterName: 'Exporter Co',
       referenceImporter: 'IMP-REF',
+      depositary: '  Santos Brasil  ',
       product: 'Coffee',
       redestinationNumber: 'RD-9',
     })
@@ -221,6 +224,7 @@ describe('toCreateProcessInput', () => {
       importer_name: 'Importer Co',
       exporter_name: 'Exporter Co',
       reference_importer: 'IMP-REF',
+      depositary: 'Santos Brasil',
       product: 'Coffee',
       redestination_number: 'RD-9',
       containers: [
@@ -242,6 +246,7 @@ describe('toCreateProcessInput', () => {
       importerName: '',
       exporterName: '',
       referenceImporter: '',
+      depositary: '   ',
       product: '',
       redestinationNumber: '',
     })
@@ -251,6 +256,7 @@ describe('toCreateProcessInput', () => {
     expect(payload.importer_name).toBeNull()
     expect(payload.exporter_name).toBeNull()
     expect(payload.reference_importer).toBeNull()
+    expect(payload.depositary).toBeNull()
     expect(payload.product).toBeNull()
     expect(payload.redestination_number).toBeNull()
   })

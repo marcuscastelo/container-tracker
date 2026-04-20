@@ -1,6 +1,6 @@
 # Tracking — Domain Invariants
 
-This document defines non-negotiable invariants of the Tracking bounded context.
+This document defines non-negotiable invariants of Tracking bounded context.
 
 ---
 
@@ -39,17 +39,17 @@ For MSC feeds:
   - `DISCHARGE`
   - `ARRIVAL`
   - `DEPARTURE`
-- Placeholder values `LADEN` and `EMPTY` are never accepted as vessel names.
+- Placeholder values `LADEN` and `EMPTY` are never accepted vessel names.
 - `raw_event.normalizer_version` is technical draft metadata for traceability and does not change persisted domain contracts.
 
 Representative MSC description mapping (`MSC_DESCRIPTION_MAP`):
 
-| MSC event label | Canonical observation type |
+|MSC event label|Canonical observation type|
 |---|---|
-| Full Transshipment Loaded | LOAD |
-| Full Transshipment Discharged | DISCHARGE |
-| Full Transshipment Positioned In | TERMINAL_MOVE |
-| Full Transshipment Positioned Out | TERMINAL_MOVE |
+|Full Transshipment Loaded|LOAD|
+|Full Transshipment Discharged|DISCHARGE|
+|Full Transshipment Positioned In|TERMINAL_MOVE|
+|Full Transshipment Positioned Out|TERMINAL_MOVE|
 
 Normalized transshipment example:
 
@@ -69,7 +69,7 @@ LOAD
 
 Container status:
 
-- Is not stored as truth
+- Is not stored truth
 - Is derived from timeline
 - Must be monotonic when possible
 
@@ -81,7 +81,7 @@ Status cannot regress unless domain rule explicitly allows.
 
 Timeline is derived from full observation history.
 
-The system must tolerate:
+system must tolerate:
 
 - Missing intermediate events
 - Out-of-order carrier emissions
@@ -102,7 +102,7 @@ Fingerprint:
 
 ## 6. No Fact Deletion
 
-The system must never:
+system must never:
 
 - Delete valid observations
 - Rewrite historical event_time
@@ -113,7 +113,7 @@ Corrections are additive, not destructive.
 
 ## 7. UI Consumption Constraint
 
-UI must consume tracking derivations as canonical truth.
+UI must consume tracking derivations canonical truth.
 
 UI may:
 

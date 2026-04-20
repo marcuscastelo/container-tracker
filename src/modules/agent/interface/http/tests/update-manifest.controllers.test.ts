@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { AgentUpdateManifestResponseSchema } from '~/modules/agent/interface/http/agent-monitoring.schemas'
+import { AgentRuntimeUpdateManifestResponseSchema } from '~/modules/agent/interface/http/agent-monitoring.schemas'
 import { createUpdateManifestControllers } from '~/modules/agent/interface/http/update-manifest.controllers'
 
 const TENANT_ID = '11111111-1111-4111-8111-111111111111'
@@ -29,6 +29,7 @@ function createControllers(command: {
           readonly version: string
           readonly downloadUrl: string
           readonly checksum: string
+          readonly selectedPlatform: 'linux-x64' | 'windows-x64'
           readonly channel: string
           readonly publishedAt: string
           readonly updateAvailable: boolean
@@ -59,6 +60,7 @@ function createControllers(command: {
             version: '2.0.0',
             downloadUrl: 'https://example.com/agent/stable/2.0.0/agent-linux-x64.tar.gz',
             checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            selectedPlatform: 'linux-x64' as const,
             channel: 'stable',
             publishedAt: '2026-03-09T10:00:00.000Z',
             updateAvailable: true,
@@ -108,11 +110,15 @@ describe('update manifest controllers', () => {
       }),
     })
 
-    const body = AgentUpdateManifestResponseSchema.parse(await response.json())
+    const body = AgentRuntimeUpdateManifestResponseSchema.parse(await response.json())
     expect(response.status).toBe(200)
     expect(body.channel).toBe('stable')
     expect(body.version).toBe('2.0.0')
     expect(body.published_at).toBe('2026-03-09T10:00:00.000Z')
+    expect(body.platforms['linux-x64']).toEqual({
+      url: 'https://example.com/agent/stable/2.0.0/agent-linux-x64.tar.gz',
+      checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    })
     expect(resolveForAgent).toHaveBeenCalledWith({
       tenantId: TENANT_ID,
       agentId: AGENT_ID,

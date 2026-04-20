@@ -6,7 +6,7 @@ describe('refreshDashboardData', () => {
     const sequence: string[] = []
     const syncAllProcesses = vi.fn(async () => {
       sequence.push('sync')
-      return { ok: true }
+      return { ok: true, httpStatus: 200 }
     })
     const refetchProcesses = vi.fn(async () => [])
     const refetchGlobalAlerts = vi.fn(async () => {
@@ -25,7 +25,7 @@ describe('refreshDashboardData', () => {
         refetchProcesses,
         refetchGlobalAlerts,
       }),
-    ).resolves.toBeUndefined()
+    ).resolves.toEqual({ ok: true, httpStatus: 200 })
 
     expect(syncAllProcesses).toHaveBeenCalledTimes(1)
     expect(refetchProcesses).toHaveBeenCalledTimes(1)

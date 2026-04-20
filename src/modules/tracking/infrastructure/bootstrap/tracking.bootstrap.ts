@@ -1,10 +1,12 @@
 // src/modules/tracking/infrastructure/bootstrap/tracking.bootstrap.ts
 
 import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
+import type { TrackingContainmentRepository } from '~/modules/tracking/application/ports/tracking.containment.repository'
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 // Ports (agora em application, como você moveu)
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
 import type { SyncMetadataRepository } from '~/modules/tracking/application/ports/tracking.sync-metadata.repository'
+import type { TrackingValidationLifecycleRepository } from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
 import {
   createTrackingUseCases,
   type TrackingUseCases,
@@ -14,12 +16,16 @@ import { supabaseObservationRepository } from '~/modules/tracking/infrastructure
 import { supabaseSnapshotRepository } from '~/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository'
 import { supabaseSyncMetadataRepository } from '~/modules/tracking/infrastructure/persistence/supabaseSyncMetadataRepository'
 import { supabaseTrackingAlertRepository } from '~/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository'
+import { supabaseTrackingContainmentRepository } from '~/modules/tracking/infrastructure/persistence/supabaseTrackingContainmentRepository'
+import { supabaseTrackingValidationLifecycleRepository } from '~/modules/tracking/infrastructure/persistence/supabaseTrackingValidationLifecycleRepository'
 
 type TrackingBootstrapOverrides = Partial<{
   readonly snapshotRepository: SnapshotRepository
   readonly observationRepository: ObservationRepository
   readonly trackingAlertRepository: TrackingAlertRepository
   readonly syncMetadataRepository: SyncMetadataRepository
+  readonly trackingContainmentRepository: TrackingContainmentRepository
+  readonly trackingValidationLifecycleRepository: TrackingValidationLifecycleRepository
 }>
 
 type TrackingModule = {
@@ -41,12 +47,18 @@ export function bootstrapTrackingModule(
   const trackingAlertRepository =
     overrides.trackingAlertRepository ?? supabaseTrackingAlertRepository
   const syncMetadataRepository = overrides.syncMetadataRepository ?? supabaseSyncMetadataRepository
+  const trackingContainmentRepository =
+    overrides.trackingContainmentRepository ?? supabaseTrackingContainmentRepository
+  const trackingValidationLifecycleRepository =
+    overrides.trackingValidationLifecycleRepository ?? supabaseTrackingValidationLifecycleRepository
 
   const trackingUseCases = createTrackingUseCases({
     snapshotRepository,
     observationRepository,
     trackingAlertRepository,
     syncMetadataRepository,
+    trackingContainmentRepository,
+    trackingValidationLifecycleRepository,
   })
 
   return { trackingUseCases }

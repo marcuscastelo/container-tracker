@@ -6,9 +6,9 @@ Status: Accepted
 
 # Context
 
-The dashboard allows triggering synchronization of container tracking.
+dashboard allows triggering synchronization of container tracking.
 
-Originally, the UI relied on cached resources to display sync state.
+Originally, UI relied on cached resources to display sync state.
 
 This caused issues:
 
@@ -18,13 +18,13 @@ global sync executed
 → UI still showed old state
 ```
 
-The dashboard required a hard refresh.
+dashboard required hard refresh.
 
 ---
 
 # Decision
 
-Adopt a **server-first reconciliation model**.
+Adopt **server-first reconciliation model**.
 
 Pattern:
 
@@ -34,7 +34,7 @@ mutation
 → reconcile with server snapshot
 ```
 
-Realtime events are allowed to update UI state but must not become a second source of truth.
+Realtime events are allowed to update UI state but must not become second source of truth.
 
 ---
 
@@ -46,11 +46,11 @@ UI must not:
 derive sync semantics
 ```
 
-Server snapshots are the source of truth for sync state; the UI may show
-transient local or realtime indicators (for example: "syncing" feedback or a
-brief "success" state) while reconciliation with the server is in progress.
-These transient indicators must never be treated as authoritative long-term
-state — the UI should always reconcile and display the server snapshot once it
+Server snapshots are source of truth for sync state; UI may show
+transient local or realtime indicators (for example: "syncing" feedback or
+brief "success" state) while reconciliation with server is in progress.
+These transient indicators must never be treated authoritative long-term
+state — UI should always reconcile and display server snapshot once it
 has been fetched.
 
 ---

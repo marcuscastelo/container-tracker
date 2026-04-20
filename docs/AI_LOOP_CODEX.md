@@ -1,8 +1,8 @@
 # Ralph Loop + Codex Workflow
 
-This project integrates [snarktank/ralph](https://github.com/snarktank/ralph) as a submodule in `tools/ralph-loop` and runs it through local wrappers in `scripts/ai`.
+This project integrates [snarktank/ralph](https://github.com/snarktank/ralph) submodule in `tools/ralph-loop` and runs it through local wrappers in `scripts/ai`.
 
-The current default is Codex. Claude can be enabled later via `RALPH_AGENT=claude`.
+current default is Claude. Codex can be enabled via `RALPH_AGENT=codex`.
 
 ## Setup
 
@@ -20,17 +20,17 @@ pnpm run ai:loop:doctor
 
 ## Generate PRD JSON
 
-Generate `prd.json` directly from a feature prompt:
+Generate `prd.json` directly from feature prompt:
 
 ```bash
 pnpm run ai:loop:plan -- "Build dashboard with saved filters" .ralph-loop/prd.json
 ```
 
-Or pass a prompt file as first argument.
+Or pass prompt file first argument.
 
 ## One Command Flow (Markdown -> Ralph)
 
-If you already have a PRD markdown (for example copied from ChatGPT web), run everything with one command:
+If you already have PRD markdown (for example copied from ChatGPT web), run everything with one command:
 
 ```bash
 pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md
@@ -42,7 +42,7 @@ This command will:
 2. Generate `.ralph-loop/docs-ralph-loop/input.json`.
 3. Start Ralph execution immediately.
 
-The flow works from terminal only. VS Code can be closed after you save the PRD file.
+flow works from terminal only. VS Code can be closed after you save PRD file.
 
 Useful options:
 
@@ -51,8 +51,29 @@ Useful options:
 pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --prepare-only
 
 # Limit iterations and retries
-pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --max-iterations 5 --exec-retries 3
+pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --max-iterations 5 --plan-retries 2 --exec-retries 3
 ```
+
+## One Command Flow (Pasted PRD Text -> Ralph)
+
+If you want to paste full PRD text directly in terminal:
+
+```bash
+pnpm run ai:ralph -- "# PRD title
+...texto completo do PRD..."
+```
+
+Or via stdin:
+
+```bash
+cat tasks/prd-docs-ralph-loop.md | pnpm run ai:ralph --
+```
+
+This wrapper will:
+
+1. Infer feature key from PRD title (or use `--feature-key`).
+2. Save markdown under `tasks/prd-<feature-key>.md` (or `-2`, `-3`,... if needed).
+3. Call `pnpm run ai:loop:start` automatically.
 
 ## Build Execution Input
 
@@ -68,15 +89,31 @@ pnpm run ai:loop:input -- .ralph-loop/prd.json .ralph-loop/progress.txt .ralph-l
 pnpm run ai:loop:exec -- .ralph-loop/input.json
 ```
 
-The loop will run one story per iteration and stop when it sees `<promise>COMPLETE</promise>` or reaches max iterations.
+loop will run one story per iteration and stop when it sees `<promise>COMPLETE</promise>` or reaches max iterations.
 
 ## Environment Variables
 
-- `RALPH_AGENT` (default: `codex`): `codex | claude | amp`
+- `RALPH_AGENT` (default: `claude`): `codex | claude | amp`
 - `RALPH_LOOP_ROOT` (default: `tools/ralph-loop`)
 - `RALPH_LOOP_WORKDIR` (default: `.ralph-loop`)
 - `RALPH_MAX_ITERATIONS` (default: `10`)
 - `RALPH_ALLOW_DANGEROUS_EXEC` (default: `1`)
+- `RALPH_AGENT_TIMEOUT_SECONDS` (default: `0`, disabled)
+- `RALPH_NO_PROGRESS_LIMIT` (default: `2`, set `0` to disable no-progress stop)
+- `RALPH_CLAUDE_MODEL` (default: `google/gemma-4-e4b`)
+- `RALPH_CLAUDE_BASE_URL` (default: `http://localhost:1234`)
+- `RALPH_CLAUDE_AUTH_TOKEN` (default: `lmstudio`)
+
+When `RALPH_AGENT=claude`, wrappers export:
+
+- `ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-$RALPH_CLAUDE_BASE_URL}`
+- `ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-$RALPH_CLAUDE_AUTH_TOKEN}`
+
+and execute Claude:
+
+```bash
+claude --model google/gemma-4-e4b "<PROMPT>"
+```
 
 Example:
 
@@ -86,7 +123,7 @@ RALPH_MAX_ITERATIONS=20 pnpm run ai:loop:exec -- .ralph-loop/input.json
 
 ## Devcontainer Policy
 
-The devcontainer is optimized for:
+devcontainer is optimized for:
 
 - Commit in container
 - Push implementation branch in container (for Ralph loop completion)
@@ -109,20 +146,28 @@ Use bypass only when intentional.
 
 ## Host/Container Branch Visibility
 
-Branch and commit history are shared between host and container because the devcontainer mounts the same workspace and `.git` directory.
+Branch and commit history are shared between host and container because devcontainer mounts same workspace and `.git` directory.
 
 Practical flow:
 
 1. Work and commit in container.
-2. Push only the implementation branch from container (or host when preferred).
+2. Push only implementation branch from container (or host when preferred).
 
 ## Claude Swap (Future)
 
-To use Claude later:
+To use Claude with local LM Studio/OpenAI-compatible endpoint:
 
-1. Install/auth Claude CLI inside container.
+1. Install Claude CLI inside container.
 2. Set `RALPH_AGENT=claude`.
-3. Reuse the same `pnpm run ai:loop:*` commands.
+3. Optionally override defaults:
+
+```bash
+export ANTHROPIC_BASE_URL=http://localhost:1234
+export ANTHROPIC_AUTH_TOKEN=lmstudio
+export RALPH_CLAUDE_MODEL=google/gemma-4-e4b
+```
+
+4. Reuse same `pnpm run ai:loop:*` commands.
 
 ## Troubleshooting
 
@@ -172,10 +217,10 @@ cat .ralph-loop/last-exec-output.txt
 2. Confirm persisted state:
    - Plan: `.ralph-loop/prd.json`
    - Progress log: `.ralph-loop/progress.txt`
-3. Re-run the same command:
+3. Re-run same command:
 
 ```bash
 pnpm run ai:loop:exec -- .ralph-loop/input.json
 ```
 
-The loop is append-only and reads persisted files, so it safely continues from the current state.
+loop is append-only and reads persisted files, so it safely continues from current state.

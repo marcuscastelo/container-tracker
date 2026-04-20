@@ -87,7 +87,11 @@ export type AgentSyncControllersDeps = {
     readonly payload: unknown
     readonly parseError?: string | null
     readonly fetchedAt: string
-  }) => Promise<{ readonly snapshotId: string }>
+  }) => Promise<{
+    readonly snapshotId: string
+    readonly newObservationsCount: number
+    readonly newAlertsCount: number
+  }>
   readonly authenticateAgentToken: (command: {
     readonly token: string
   }) => Promise<AgentAuthIdentity | null>
@@ -549,6 +553,8 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
         {
           ok: true,
           snapshot_id: saveResult.snapshotId,
+          new_observations_count: saveResult.newObservationsCount,
+          new_alerts_count: saveResult.newAlertsCount,
         },
         202,
         IngestSnapshotAcceptedResponseSchema,

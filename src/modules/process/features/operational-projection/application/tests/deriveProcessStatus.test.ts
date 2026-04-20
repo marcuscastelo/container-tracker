@@ -17,6 +17,10 @@ describe('deriveProcessStatusFromContainers', () => {
     expect(deriveProcessStatusFromContainers(['UNKNOWN', 'IN_PROGRESS'])).toBe('BOOKED')
   })
 
+  it('returns BOOKED when canonical BOOKED is present in pre-shipment statuses', () => {
+    expect(deriveProcessStatusFromContainers(['UNKNOWN', 'BOOKED'])).toBe('BOOKED')
+  })
+
   it('returns IN_TRANSIT for single transit container', () => {
     expect(deriveProcessStatusFromContainers(['IN_TRANSIT'])).toBe('IN_TRANSIT')
   })
@@ -81,6 +85,20 @@ describe('deriveProcessStatusDispersion', () => {
     expect(result.status_microbadge).toBeNull()
     expect(result.status_counts.UNKNOWN).toBe(2)
     expect(result.has_status_dispersion).toBe(false)
+  })
+
+  it('tracks BOOKED counts and highest container status for mixed pre-shipment states', () => {
+    const statuses = ['IN_PROGRESS', 'BOOKED'] as const
+    const primaryStatus = deriveProcessStatusFromContainers(statuses)
+    const result = deriveProcessStatusDispersion({
+      statuses,
+      primaryStatus,
+    })
+
+    expect(primaryStatus).toBe('BOOKED')
+    expect(result.highest_container_status).toBe('BOOKED')
+    expect(result.status_counts.IN_PROGRESS).toBe(1)
+    expect(result.status_counts.BOOKED).toBe(1)
   })
 
   it('derives ARRIVED_AT_POD microbadge when process is still IN_TRANSIT', () => {

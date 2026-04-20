@@ -48,12 +48,12 @@ Tracking owns event semantics.
 
 - Domain must not import infra.
 - Do not leak snake_case rows into application/ui (use mappers).
-- Avoid `Partial<Entity>` as input shapes.
+- Avoid `Partial<Entity>` input shapes.
 - Validate container number via VO before persistence.
 
 ---
 
 ## Near-Term Improvements
 
-- Add `interface/http` only if container needs a first-class API.
+- Add `interface/http` only if container needs first-class API.
 - Tighten ContainerNumber validation and mapper integration tests.

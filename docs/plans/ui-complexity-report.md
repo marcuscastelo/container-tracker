@@ -46,5 +46,5 @@
 
 ## Phase 7 Closure (2026-02-23)
 1. Thresholds foram congelados no estado atual (lint soft/hard e métricas JSX).
-2. `allowlist` permanece zerada e o gate de no-regression segue ativo.
+2. `allowlist` permanece zerada e gate de no-regression segue ativo.
 3. Recalibração futura só com evidência objetiva e atualização explícita do plano.

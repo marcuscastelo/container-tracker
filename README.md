@@ -124,9 +124,20 @@ pnpm run test
 pnpm run type-check
 pnpm run lint
 pnpm run check
+pnpm sanity
 pnpm run i18n:check
 pnpm run maersk:smoke:puppeteer
 ```
+
+## Commit-Ready Sanity Gate
+
+Any commit-ready package must run `pnpm sanity` before closure.
+
+- If baseline is green, final state must stay green.
+- If baseline is non-green, final state must not regress.
+- Always report initial state, final state, and delta.
+
+Canonical rule source: `AGENTS.md` section `11.1`.
 
 ---
 

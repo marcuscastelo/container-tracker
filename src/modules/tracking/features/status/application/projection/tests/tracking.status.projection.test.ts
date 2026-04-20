@@ -11,6 +11,7 @@ describe('toTrackingStatusCode', () => {
   })
 
   it('maps known status values as-is', () => {
+    expect(toTrackingStatusCode('BOOKED')).toBe('BOOKED')
     expect(toTrackingStatusCode('IN_TRANSIT')).toBe('IN_TRANSIT')
     expect(toTrackingStatusCode('DELIVERED')).toBe('DELIVERED')
   })

@@ -1,6 +1,10 @@
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { computeRowDistribution } from '~/modules/process/ui/components/container-distribution'
+import {
+  toTrackingValidationBadgeClasses,
+  toTrackingValidationDisplayState,
+} from '~/modules/process/ui/components/tracking-review-display.presenter'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
@@ -13,7 +17,9 @@ type ContainerSelectorItemLabels = {
   readonly etaDelayed: string
   readonly etaDelivered: string
   readonly etaMissing: string
+  readonly trackingContainment: string
   readonly dataIssue: string
+  readonly trackingValidation: string
   readonly etaLabel: string
 }
 
@@ -43,12 +49,19 @@ function ContainerSelectorItem(props: {
     return 'border-border bg-surface hover:border-border-strong hover:bg-surface-muted'
   }
 
+  const trackingValidationDisplayState = () =>
+    toTrackingValidationDisplayState({
+      hasIssues: props.container.trackingValidation.hasIssues,
+      highestSeverity: props.container.trackingValidation.highestSeverity,
+    })
+
   return (
     <button
       type="button"
       data-testid={`container-card-${props.container.id}`}
+      data-selected={props.selected ? 'true' : 'false'}
       onClick={() => props.onSelect(props.container.id)}
-      class={`w-full rounded-lg border p-3 text-left transition-colors ${cardClass()}`}
+      class={`motion-focus-surface motion-interactive w-full rounded-lg border p-3 text-left ${cardClass()}`}
     >
       <div class="truncate font-mono text-sm-ui font-semibold tracking-wide text-foreground">
         {props.container.number}
@@ -74,9 +87,23 @@ function ContainerSelectorItem(props: {
 
       <div class="mt-2 flex items-center gap-2">
         <StatusBadge variant={props.container.status} label={props.statusLabel} size="micro" />
+        <Show when={props.container.trackingContainment !== null}>
+          <span class="inline-flex rounded-md border border-tone-info-border bg-tone-info-bg px-1.5 py-0.5 text-micro font-medium text-tone-info-fg">
+            {props.labels.trackingContainment}
+          </span>
+        </Show>
         <Show when={props.container.dataIssueChipVm.visible}>
           <span class="inline-flex rounded-md border border-tone-warning-border bg-tone-warning-bg px-1.5 py-0.5 text-micro font-medium text-tone-warning-fg">
             {props.labels.dataIssue}
+          </span>
+        </Show>
+        <Show when={props.container.trackingValidation.hasIssues}>
+          <span
+            class={`inline-flex rounded-md border px-1.5 py-0.5 text-micro font-medium whitespace-nowrap ${toTrackingValidationBadgeClasses(
+              trackingValidationDisplayState(),
+            )}`}
+          >
+            {props.labels.trackingValidation}
           </span>
         </Show>
       </div>
@@ -97,7 +124,9 @@ export function ContainerSelector(props: {
     etaDelayed: t(keys.shipmentView.operational.header.selectedExpectedDelayed),
     etaDelivered: t(keys.tracking.status.DELIVERED),
     etaMissing: t(keys.shipmentView.operational.chips.etaMissing),
+    trackingContainment: t(keys.shipmentView.containment.containerChip),
     dataIssue: t(keys.shipmentView.operational.chips.dataIssue),
+    trackingValidation: t(keys.shipmentView.validation.containerChip),
     etaLabel: t(keys.shipmentView.currentStatus.eta),
   }
 

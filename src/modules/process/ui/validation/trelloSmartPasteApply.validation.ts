@@ -12,6 +12,7 @@ const SMART_PASTE_SCALAR_FIELDS = [
   'redestinationNumber',
   'origin',
   'destination',
+  'depositary',
   'billOfLading',
   'bookingNumber',
 ] as const
@@ -27,6 +28,7 @@ export type SmartPasteFormSnapshot = {
   readonly redestinationNumber: string
   readonly origin: string
   readonly destination: string
+  readonly depositary: string
   readonly billOfLading: string
   readonly bookingNumber: string
   readonly containers: readonly string[]
@@ -182,6 +184,7 @@ export function applySmartPasteApplyPlan(params: {
     ),
     origin: getResolvedValue('origin', params.current.origin),
     destination: getResolvedValue('destination', params.current.destination),
+    depositary: getResolvedValue('depositary', params.current.depositary),
     billOfLading: getResolvedValue('billOfLading', params.current.billOfLading),
     bookingNumber: getResolvedValue('bookingNumber', params.current.bookingNumber),
     containers: params.plan.containers,

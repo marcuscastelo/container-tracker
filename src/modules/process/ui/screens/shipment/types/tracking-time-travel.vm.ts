@@ -1,4 +1,5 @@
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
+import type { ContainerTrackingValidationVM } from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { TemporalValueDto } from '~/shared/time/dto'
@@ -26,6 +27,15 @@ export type TrackingTimeTravelNextLocationVM = {
   readonly locationCode: string | null
   readonly locationDisplay: string | null
 } | null
+
+export type TrackingTimeTravelTransshipmentVM = {
+  readonly hasTransshipment: boolean
+  readonly count: number
+  readonly ports: readonly {
+    readonly code: string
+    readonly display: string | null
+  }[]
+}
 
 export type TrackingTimeTravelDiffVM =
   | {
@@ -60,6 +70,8 @@ export type TrackingTimeTravelSyncVM = {
   readonly eta: TrackingTimeTravelEtaVM
   readonly currentContext: TrackingTimeTravelCurrentContextVM
   readonly nextLocation: TrackingTimeTravelNextLocationVM
+  readonly transshipment: TrackingTimeTravelTransshipmentVM
+  readonly trackingValidation: ContainerTrackingValidationVM
   readonly diff: TrackingTimeTravelDiffVM
   readonly debugAvailable: boolean
 }
@@ -108,6 +120,9 @@ export type TrackingReplayDebugStateVM = {
       readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
       readonly createdAt: string
       readonly seriesLabel: string
+      readonly vesselName?: string | null
+      readonly voyage?: string | null
+      readonly changeKind?: string | null
     }[]
   }[]
   readonly timeline: readonly TrackingTimelineItem[]

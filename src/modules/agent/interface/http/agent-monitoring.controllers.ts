@@ -1,4 +1,5 @@
 import type { AgentMonitoringUseCases } from '~/modules/agent/application/agent-monitoring.usecases'
+import { toUniqueNormalizedVersions } from '~/modules/agent/application/normalize-blocked-versions'
 import {
   toAgentDetailCommand,
   toAgentLogIngestCommand,
@@ -8,6 +9,7 @@ import {
   toListAgentsCommand,
 } from '~/modules/agent/interface/http/agent-monitoring.http.mappers'
 import {
+  AgentControlStateResponseSchema,
   AgentDetailResponseSchema,
   AgentHeartbeatBodySchema,
   AgentHeartbeatResponseSchema,
@@ -17,7 +19,11 @@ import {
   AgentLogIngestResponseSchema,
   AgentLogsQuerySchema,
   AgentLogsResponseSchema,
+  AgentRemotePolicyOperationResponseSchema,
+  AgentRemotePolicyPatchBodySchema,
   AgentRequestOperationResponseSchema,
+  AgentRequestResetBodySchema,
+  AgentRequestRestartBodySchema,
   AgentRequestUpdateBodySchema,
   AgentUpdateManifestResponseSchema,
 } from '~/modules/agent/interface/http/agent-monitoring.schemas'
@@ -35,6 +41,9 @@ type AgentMonitoringControllersDeps = {
     | 'touchHeartbeat'
     | 'ingestAgentLogs'
     | 'recordActivity'
+    | 'getRemoteControlState'
+    | 'updateAgentRemotePolicy'
+    | 'requestAgentReset'
     | 'requestAgentUpdate'
     | 'requestAgentRestart'
     | 'getUpdateManifestForAgent'
@@ -165,6 +174,50 @@ export function createAgentMonitoringControllers(deps: AgentMonitoringController
         },
         200,
         AgentLogsResponseSchema,
+      )
+    } catch (error) {
+      return mapErrorToResponse(error)
+    }
+  }
+
+  async function getAgentControlState({
+    params,
+  }: {
+    readonly params: { readonly id?: string }
+  }): Promise<Response> {
+    try {
+      const agentId = params.id
+      if (!agentId) {
+        return jsonResponse({ error: 'Agent ID is required' }, 400)
+      }
+
+      const result = await deps.agentMonitoringUseCases.getRemoteControlState({
+        tenantId: deps.defaultTenantId,
+        agentId,
+      })
+
+      if (!result) {
+        return jsonResponse({ error: 'Agent not found' }, 404)
+      }
+
+      return jsonResponse(
+        {
+          policy: {
+            desiredVersion: result.policy.desiredVersion,
+            updateChannel: result.policy.updateChannel,
+            updatesPaused: result.policy.updatesPaused,
+            blockedVersions: [...result.policy.blockedVersions],
+            restartRequestedAt: result.policy.restartRequestedAt,
+          },
+          commands: result.commands.map((command) => ({
+            id: command.id,
+            type: command.type,
+            payload: command.payload,
+            requestedAt: command.requestedAt,
+          })),
+        },
+        200,
+        AgentControlStateResponseSchema,
       )
     } catch (error) {
       return mapErrorToResponse(error)
@@ -348,12 +401,13 @@ export function createAgentMonitoringControllers(deps: AgentMonitoringController
       await deps.agentMonitoringUseCases.recordActivity({
         agentId,
         tenantId: deps.defaultTenantId,
-        type: 'UPDATE_AVAILABLE',
+        type: 'REMOTE_FORCE_UPDATE',
         message: `Update requested to ${parsedBody.data.desired_version}`,
         severity: 'info',
         metadata: {
           desiredVersion: parsedBody.data.desired_version,
           updateChannel: parsedBody.data.update_channel,
+          reason: parsedBody.data.reason,
         },
         occurredAt: requestedAt,
       })
@@ -372,15 +426,170 @@ export function createAgentMonitoringControllers(deps: AgentMonitoringController
     }
   }
 
-  async function requestAgentRestart({
+  async function updateAgentRemotePolicy({
     params,
+    request,
   }: {
     readonly params: { readonly id?: string }
+    readonly request: Request
   }): Promise<Response> {
     try {
       const agentId = params.id
       if (!agentId) {
         return jsonResponse({ error: 'Agent ID is required' }, 400)
+      }
+
+      const rawBody: unknown = await request.json().catch(() => ({}))
+      const parsedBody = AgentRemotePolicyPatchBodySchema.safeParse(rawBody)
+      if (!parsedBody.success) {
+        return jsonResponse({ error: `Invalid request: ${parsedBody.error.message}` }, 400)
+      }
+
+      const requestedAt = new Date().toISOString()
+      const updated = await deps.agentMonitoringUseCases.updateAgentRemotePolicy({
+        tenantId: deps.defaultTenantId,
+        agentId,
+        ...(parsedBody.data.updates_paused === undefined
+          ? {}
+          : { updatesPaused: parsedBody.data.updates_paused }),
+        ...(parsedBody.data.update_channel === undefined
+          ? {}
+          : { updateChannel: parsedBody.data.update_channel }),
+        ...(parsedBody.data.blocked_versions === undefined
+          ? {}
+          : { blockedVersions: toUniqueNormalizedVersions(parsedBody.data.blocked_versions) }),
+        ...(parsedBody.data.desired_version === undefined
+          ? {}
+          : { desiredVersion: parsedBody.data.desired_version }),
+      })
+
+      if (!updated) {
+        return jsonResponse({ error: 'Agent not found' }, 404)
+      }
+
+      const activity: Array<{
+        readonly agentId: string
+        readonly tenantId: string
+        readonly type: 'CHANNEL_CHANGED' | 'CONFIG_UPDATED' | 'REMOTE_FORCE_UPDATE'
+        readonly message: string
+        readonly severity: 'info' | 'warning'
+        readonly metadata: Record<string, unknown>
+        readonly occurredAt: string
+      }> = []
+      const reason = parsedBody.data.reason
+
+      if (parsedBody.data.update_channel !== undefined) {
+        activity.push({
+          agentId,
+          tenantId: deps.defaultTenantId,
+          type: 'CHANNEL_CHANGED',
+          message: `Remote update channel set to ${parsedBody.data.update_channel}`,
+          severity: 'info',
+          metadata: {
+            updateChannel: parsedBody.data.update_channel,
+            reason,
+          },
+          occurredAt: requestedAt,
+        })
+      }
+
+      if (parsedBody.data.updates_paused !== undefined) {
+        activity.push({
+          agentId,
+          tenantId: deps.defaultTenantId,
+          type: 'CONFIG_UPDATED',
+          message: parsedBody.data.updates_paused
+            ? 'Remote updates pause enabled'
+            : 'Remote updates pause disabled',
+          severity: 'warning',
+          metadata: {
+            updatesPaused: parsedBody.data.updates_paused,
+            reason,
+          },
+          occurredAt: requestedAt,
+        })
+      }
+
+      if (parsedBody.data.blocked_versions !== undefined) {
+        activity.push({
+          agentId,
+          tenantId: deps.defaultTenantId,
+          type: 'CONFIG_UPDATED',
+          message: 'Remote blocked versions updated',
+          severity: 'info',
+          metadata: {
+            blockedVersions: toUniqueNormalizedVersions(parsedBody.data.blocked_versions),
+            reason,
+          },
+          occurredAt: requestedAt,
+        })
+      }
+
+      if (parsedBody.data.desired_version !== undefined) {
+        if (parsedBody.data.desired_version === null) {
+          activity.push({
+            agentId,
+            tenantId: deps.defaultTenantId,
+            type: 'CONFIG_UPDATED',
+            message: 'Remote desired version cleared',
+            severity: 'info',
+            metadata: {
+              desiredVersion: null,
+              reason,
+            },
+            occurredAt: requestedAt,
+          })
+        } else {
+          activity.push({
+            agentId,
+            tenantId: deps.defaultTenantId,
+            type: 'REMOTE_FORCE_UPDATE',
+            message: `Remote desired version set to ${parsedBody.data.desired_version}`,
+            severity: 'warning',
+            metadata: {
+              desiredVersion: parsedBody.data.desired_version,
+              reason,
+            },
+            occurredAt: requestedAt,
+          })
+        }
+      }
+
+      if (activity.length > 0) {
+        await deps.agentMonitoringUseCases.recordActivity(activity)
+      }
+
+      return jsonResponse(
+        {
+          ok: true,
+          agentId,
+          requestedAt,
+        },
+        200,
+        AgentRemotePolicyOperationResponseSchema,
+      )
+    } catch (error) {
+      return mapErrorToResponse(error)
+    }
+  }
+
+  async function requestAgentRestart({
+    params,
+    request,
+  }: {
+    readonly params: { readonly id?: string }
+    readonly request: Request
+  }): Promise<Response> {
+    try {
+      const agentId = params.id
+      if (!agentId) {
+        return jsonResponse({ error: 'Agent ID is required' }, 400)
+      }
+
+      const rawBody: unknown = await request.json().catch(() => ({}))
+      const parsedBody = AgentRequestRestartBodySchema.safeParse(rawBody)
+      if (!parsedBody.success) {
+        return jsonResponse({ error: `Invalid request: ${parsedBody.error.message}` }, 400)
       }
 
       const requestedAt = new Date().toISOString()
@@ -400,7 +609,65 @@ export function createAgentMonitoringControllers(deps: AgentMonitoringController
         type: 'RESTART_FOR_UPDATE',
         message: 'Manual restart requested by control plane',
         severity: 'warning',
-        metadata: {},
+        metadata: {
+          reason: parsedBody.data.reason,
+        },
+        occurredAt: requestedAt,
+      })
+
+      return jsonResponse(
+        {
+          ok: true,
+          agentId,
+          requestedAt,
+        },
+        200,
+        AgentRequestOperationResponseSchema,
+      )
+    } catch (error) {
+      return mapErrorToResponse(error)
+    }
+  }
+
+  async function requestAgentReset({
+    params,
+    request,
+  }: {
+    readonly params: { readonly id?: string }
+    readonly request: Request
+  }): Promise<Response> {
+    try {
+      const agentId = params.id
+      if (!agentId) {
+        return jsonResponse({ error: 'Agent ID is required' }, 400)
+      }
+
+      const rawBody: unknown = await request.json().catch(() => ({}))
+      const parsedBody = AgentRequestResetBodySchema.safeParse(rawBody)
+      if (!parsedBody.success) {
+        return jsonResponse({ error: `Invalid request: ${parsedBody.error.message}` }, 400)
+      }
+
+      const requestedAt = new Date().toISOString()
+      const updated = await deps.agentMonitoringUseCases.requestAgentReset({
+        tenantId: deps.defaultTenantId,
+        agentId,
+        requestedAt,
+      })
+
+      if (!updated) {
+        return jsonResponse({ error: 'Agent not found' }, 404)
+      }
+
+      await deps.agentMonitoringUseCases.recordActivity({
+        agentId,
+        tenantId: deps.defaultTenantId,
+        type: 'REMOTE_RESET',
+        message: 'Remote reset requested by control plane',
+        severity: 'warning',
+        metadata: {
+          reason: parsedBody.data.reason,
+        },
         occurredAt: requestedAt,
       })
 
@@ -422,11 +689,14 @@ export function createAgentMonitoringControllers(deps: AgentMonitoringController
     listAgents,
     getAgentById,
     getAgentLogs,
+    getAgentControlState,
     heartbeat,
     ingestLogs,
     getUpdateManifest,
+    updateAgentRemotePolicy,
     requestAgentUpdate,
     requestAgentRestart,
+    requestAgentReset,
   }
 }
 

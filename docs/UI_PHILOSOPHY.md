@@ -2,7 +2,7 @@
 
 ## 1) Purpose
 
-This document defines the canonical UI direction for Container Tracker.
+This document defines canonical UI direction for Container Tracker.
 
 It standardizes how shipment/process and dashboard surfaces should communicate operational truth without redefining domain semantics.
 
@@ -27,12 +27,12 @@ UI is optimized for day-to-day operational decisions, not for decorative minimal
 ### Timeline-first
 
 In shipment view, chronology is primary.
-The timeline is the central operational artifact.
+timeline is central operational artifact.
 
 ### Dense operational UI
 
-The standard is high information density with clear hierarchy.
-The interface should be visually disciplined, not visually sparse.
+standard is high information density with clear hierarchy.
+interface should be visually disciplined, not visually sparse.
 
 ### Exception-oriented scanning
 
@@ -41,12 +41,12 @@ Operators must quickly identify delays, conflicts, stale predictions, and missin
 ### Supporting metadata in sidebar
 
 Shipment information and current status are supporting context.
-They belong in sidebar panels and must not interrupt the chronological flow.
+They belong in sidebar panels and must not interrupt chronological flow.
 
 ### Grouped operational timeline blocks
 
 Timeline rendering must preserve meaningful operational grouping.
-Do not flatten the shipment timeline into a generic event list when grouping exists in the read model.
+Do not flatten shipment timeline into generic event list when grouping exists in read model.
 
 ---
 
@@ -61,7 +61,7 @@ UI may:
 - render uncertainty, conflicts, and missing-data states explicitly
 - provide interaction affordances (selection, expansion, tabs, sticky controls)
 
-UI may polish presentation of timeline blocks and cards, but must preserve the underlying operational meaning provided by backend read models.
+UI may polish presentation of timeline blocks and cards, but must preserve underlying operational meaning provided by backend read models.
 
 ---
 
@@ -73,13 +73,13 @@ UI must never:
 - derive status semantics
 - derive alert semantics
 - reclassify ACTUAL vs EXPECTED
-- perform event-series grouping/classification as domain truth
+- perform event-series grouping/classification domain truth
 - detect transshipment semantics by reinterpreting raw events
-- reinterpret `TERMINAL_MOVE` as lifecycle progression (for example ARRIVAL/LOAD)
+- reinterpret `TERMINAL_MOVE` lifecycle progression (for example ARRIVAL/LOAD)
 - suppress or rewrite conflicting facts to make screens look cleaner
-- collapse append-only historical visibility into a lossy narrative
+- collapse append-only historical visibility into lossy narrative
 
-If a UI requirement needs semantic interpretation, add/adjust a backend read model in the owning bounded context.
+If UI requirement needs semantic interpretation, add/adjust backend read model in owning bounded context.
 
 ---
 
@@ -95,8 +95,8 @@ Canonical shipment/process detail layout:
   - current status
   - supporting operational metadata
 
-On desktop the layout is two-column.
-On mobile the sidebar may stack below the timeline, but the timeline must remain first in reading order.
+On desktop layout is two-column.
+On mobile sidebar may stack below timeline, but timeline must remain first in reading order.
 
 Rules:
 
@@ -107,7 +107,7 @@ Rules:
 
 ### Timeline Content Expectations
 
-The shipment timeline may include grouped operational blocks, such as:
+shipment timeline may include grouped operational blocks, such:
 
 - pre-carriage
 - vessel/voyage block
@@ -121,13 +121,13 @@ Each block may include:
 - conflict/uncertainty indicators
 
 These structures must come from canonical read models (or explicit projection contracts), not UI-side semantic reconstruction.
-`TERMINAL_MOVE` entries should remain visible as operational events and must stay status-neutral in UI behavior.
+`TERMINAL_MOVE` entries should remain visible operational events and must stay status-neutral in UI behavior.
 
 ---
 
 ## 6) Dashboard Philosophy
 
-The dashboard is a high-density operational scan surface.
+dashboard is high-density operational scan surface.
 
 It should prioritize:
 
@@ -136,7 +136,7 @@ It should prioritize:
 - clear severity/status signaling
 - compact rows with stable hierarchy
 
-The dashboard is not the place to re-derive shipment timeline truth.
+dashboard is not place to re-derive shipment timeline truth.
 It prioritizes anomaly detection and operational triage rather than historical detail.
 It consumes operational summaries produced by owning contexts and capabilities.
 
@@ -170,11 +170,11 @@ Invariants remain unchanged:
 When generating or refactoring UI:
 
 1. Start from timeline-first shipment composition.
-2. Keep sidebar metadata as supporting context.
+2. Keep sidebar metadata supporting context.
 3. Preserve grouped operational blocks in timeline rendering.
 4. Favor dense operational clarity over cosmetic minimalism.
 5. Never move semantic derivation into UI.
-6. If semantic data is missing, request a backend projection change.
+6. If semantic data is missing, request backend projection change.
 
 Companion references:
 
@@ -187,8 +187,8 @@ Companion references:
 
 ## 9) Summary Principle
 
-The UI exists to **expose operational truth clearly**, not to reinterpret it.
+UI exists to **expose operational truth clearly**, not to reinterpret it.
 
-Chronology and event history must remain faithful to the canonical read models produced by the domain.
+Chronology and event history must remain faithful to canonical read models produced by domain.
 
 When presentation and semantics conflict, **domain semantics take precedence**.

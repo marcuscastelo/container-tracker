@@ -10,6 +10,7 @@ import type {
   TrackingTimeTravelResult,
 } from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { deriveTrackingValidationSummaryFromState } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { Instant } from '~/shared/time/instant'
 
 type TrackingTimeTravelCheckpointBase = Omit<TrackingTimeTravelCheckpoint, 'diffFromPrevious'>
@@ -26,15 +27,32 @@ function normalizeTimelineForDiff(timeline: TrackingTimeTravelCheckpoint['timeli
       derivedState: item.derivedState,
       vesselName: item.vesselName ?? null,
       voyage: item.voyage ?? null,
+      seriesConflict:
+        item.seriesConflict === undefined || item.seriesConflict === null
+          ? null
+          : {
+              kind: item.seriesConflict.kind,
+              fields: [...item.seriesConflict.fields],
+            },
       seriesHistory: item.seriesHistory
         ? {
             hasActualConflict: item.seriesHistory.hasActualConflict,
+            conflict:
+              item.seriesHistory.conflict === undefined || item.seriesHistory.conflict === null
+                ? null
+                : {
+                    kind: item.seriesHistory.conflict.kind,
+                    fields: [...item.seriesHistory.conflict.fields],
+                  },
             classified: item.seriesHistory.classified.map((historyItem) => ({
               id: historyItem.id,
               type: historyItem.type,
               event_time: historyItem.event_time,
               event_time_type: historyItem.event_time_type,
               seriesLabel: historyItem.seriesLabel,
+              vesselName: historyItem.vesselName ?? null,
+              voyage: historyItem.voyage ?? null,
+              changeKind: historyItem.changeKind ?? null,
             })),
           }
         : null,
@@ -88,10 +106,20 @@ function buildCheckpointState(command: {
     projectionObservations,
     effectiveNow,
   )
+  const transshipment = deriveTransshipment(timelineDomain)
   const operational = deriveTrackingOperationalSummary({
     observations: toTrackingObservationProjections(projectionObservations),
     status: state.status,
-    transshipment: deriveTransshipment(timelineDomain),
+    transshipment,
+    now: effectiveNow,
+  })
+  const trackingValidation = deriveTrackingValidationSummaryFromState({
+    containerId: command.run.containerId,
+    containerNumber,
+    observations: projectionObservations,
+    timeline: timelineDomain,
+    status: state.status,
+    transshipment,
     now: effectiveNow,
   })
 
@@ -104,6 +132,7 @@ function buildCheckpointState(command: {
     alerts: state.alerts,
     eta: operational.eta,
     operational,
+    trackingValidation,
     debugAvailable: true,
   }
 }

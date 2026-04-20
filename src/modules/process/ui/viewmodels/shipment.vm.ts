@@ -2,6 +2,10 @@ import type { ProcessStatusCode } from '~/modules/process/ui/process-status-colo
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { AlertIncidentsVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
 import type { ProcessStatusMicrobadgeVM } from '~/modules/process/ui/viewmodels/process-status-microbadge.vm'
+import type {
+  ContainerTrackingValidationVM,
+  ProcessTrackingValidationVM,
+} from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { TemporalValueDto } from '~/shared/time/dto'
@@ -65,6 +69,13 @@ export type ContainerDataIssueChipVM = {
   readonly visible: boolean
 }
 
+export type ContainerTrackingContainmentVM = {
+  readonly active: true
+  readonly reasonCode: 'CONTAINER_REUSED_AFTER_COMPLETION'
+  readonly activatedAt: string
+  readonly externalTrackingUrl: string | null
+} | null
+
 export type ContainerSyncState = 'syncing' | 'ok' | 'error' | 'never'
 
 export type ContainerSyncVM = {
@@ -111,6 +122,8 @@ export type ContainerDetailVM = {
   readonly nextLocation: ContainerNextLocationVM
   readonly tsChipVm: ContainerTsChipVM
   readonly dataIssueChipVm: ContainerDataIssueChipVM
+  readonly trackingContainment: ContainerTrackingContainmentVM
+  readonly trackingValidation: ContainerTrackingValidationVM
   readonly transshipment: ContainerTransshipmentVM
   readonly timeline: readonly TrackingTimelineItem[]
 }
@@ -150,6 +163,7 @@ export type ShipmentDetailVM = {
   readonly importer_name?: string | null
   readonly exporter_name?: string | null
   readonly reference_importer?: string | null
+  readonly depositary?: string | null
   readonly product?: string | null
   readonly redestination_number?: string | null
   readonly origin: string
@@ -160,6 +174,7 @@ export type ShipmentDetailVM = {
   readonly eta: string | null
   readonly processEtaDisplayVm: ProcessEtaDisplayVM
   readonly processEtaSecondaryVm: ProcessEtaSecondaryVM
+  readonly trackingValidation: ProcessTrackingValidationVM
   readonly containers: readonly ContainerDetailVM[]
   readonly alerts: readonly AlertDisplayVM[]
   readonly alertIncidents: AlertIncidentsVM

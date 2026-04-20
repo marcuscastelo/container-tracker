@@ -11,23 +11,28 @@
       "agents": "Agentes"
     },
     "createProcess": "Criar Processo",
-    "alertsBadge": "{{count}} Alertas",
-    "alertsLabel": "Alertas",
-    "alertsActiveTooltip": "{{count}} alertas ativos",
+    "alertsBadge": "{{count}} Incidentes",
+    "alertsLabel": "Incidentes",
+    "alertsActiveTooltip": "{{count}} incidentes ativos",
     "alertsPanel": {
-      "title": "Alertas ativos",
+      "title": "Incidentes ativos",
       "subtitle": "Processos que requerem atenção",
       "openDashboard": "Abrir dashboard",
       "openProcess": "Abrir processo",
-      "close": "Fechar painel de alertas",
-      "alertsCount": "{{count}} alertas",
+      "close": "Fechar painel de incidentes",
+      "alertsCount": "{{count}} incidentes",
+      "affectedContainerSingle": "1 container afetado",
+      "affectedContainers": "{{count}} containers afetados",
+      "moreContainers": "+{{count}}",
+      "actionRequired": "Ação sugerida",
+      "actionLabel": "Ação: {{action}}",
       "containerStatus": "Status",
       "containerEta": "ETA",
-      "lastEvent": "Último evento: {{date}}",
+      "lastEvent": "Último acionamento: {{date}}",
       "retroactive": "Retroativo",
-      "loading": "Carregando alertas...",
-      "empty": "Nenhum alerta ativo",
-      "error": "Falha ao carregar alertas",
+      "loading": "Carregando incidentes...",
+      "empty": "Nenhum incidente ativo",
+      "error": "Falha ao carregar incidentes",
       "retry": "Tentar novamente",
       "valueUnavailable": "—"
     },
@@ -43,6 +48,7 @@
     "importButton": "Importar",
     "moreActions": "Mais ações",
     "copyTrelloAction": "Copiar para Trello",
+    "copyTrelloCopied": "Copiado",
     "copyTrelloSuccess": "✓ Markdown do Trello copiado para a área de transferência",
     "copyTrelloError": "Não foi possível gerar a exportação do Trello",
     "dialog": {
@@ -86,7 +92,9 @@
     }
   },
   "app": {
-    "unexpectedRenderError": "Ocorreu um erro inesperado. Verifique o console para mais detalhes."
+    "unexpectedRenderError": "Ocorreu um erro inesperado. Verifique o console para mais detalhes.",
+    "serverProblemBanner": "Servidor com problemas, informações podem estar incompletas.",
+    "dismissServerProblemBanner": "Dispensar"
   },
   "process": {
     "containerSelector": {
@@ -105,12 +113,50 @@
       "syncing": "Sincronizando...",
       "syncFailed": "A última sincronização falhou"
     },
+    "syncBatch": {
+      "panel": {
+        "title": "Resultado do Sync All",
+        "subtitle": "O dashboard foi reconciliado com o snapshot mais recente do servidor.",
+        "headlineSuccess": "Todos os targets elegíveis foram enfileirados.",
+        "headlinePartial": "O lote foi processado com resultado parcial.",
+        "headlineNoEnqueue": "Nenhum target foi enfileirado neste lote.",
+        "dismiss": "Dispensar resultado do Sync All",
+        "showAll": "Mostrar +{{count}}",
+        "showLess": "Mostrar menos",
+        "sections": {
+          "failed": "Falhas localizadas",
+          "skipped": "Ignorados explicitamente"
+        },
+        "summary": {
+          "requestedProcesses": "{{count}} processo(s) solicitados",
+          "requestedContainers": "{{count}} container(s) avaliados",
+          "enqueued": "{{count}} enfileirado(s)",
+          "skipped": "{{count}} ignorado(s)",
+          "failed": "{{count}} falha(s)"
+        }
+      },
+      "reasonCodes": {
+        "unsupportedProvider": "Provider não suportado",
+        "duplicateOpenRequest": "Sync já aberto ou duplicado no lote",
+        "missingRequiredData": "Dados obrigatórios ausentes",
+        "ineligibleTarget": "Target inelegível",
+        "enqueueFailed": "Falha ao enfileirar sync",
+        "infrastructureError": "Falha de infraestrutura ao reconciliar sync",
+        "unexpectedError": "Erro inesperado"
+      },
+      "rowIssue": {
+        "failedOnly": "{{failed}} falha(s) no último Sync All",
+        "skippedOnly": "{{skipped}} item(ns) ignorado(s) no último Sync All",
+        "mixed": "{{failed}} falha(s) e {{skipped}} item(ns) ignorado(s) no último Sync All",
+        "additionalItems": "+{{count}} item(ns)"
+      }
+    },
     "alertIndicators": {
-      "title": "Alertas Operacionais",
-      "total": "Total de Alertas Ativos",
-      "loading": "Carregando indicadores de alerta...",
-      "error": "Falha ao carregar indicadores de alerta",
-      "empty": "Nenhum alerta ativo no momento.",
+      "title": "Incidentes Operacionais",
+      "total": "Total de Incidentes Ativos",
+      "loading": "Carregando indicadores de incidentes...",
+      "error": "Falha ao carregar indicadores de incidentes",
+      "empty": "Nenhum incidente ativo no momento.",
       "severity": {
         "danger": "Crítico",
         "warning": "Atenção",
@@ -136,6 +182,8 @@
       "activeProcesses": "Processos Ativos",
       "trackedContainers": "Containers Rastreáveis",
       "processesWithAlerts": "Com Alertas",
+      "activeIncidents": "Incidentes Ativos",
+      "affectedContainers": "Containers Afetados",
       "lastSync": "Último Sync",
       "lastSyncUnavailable": "—"
     },
@@ -179,14 +227,14 @@
         "all": "Todas as severidades",
         "danger": "Crítico",
         "warning": "Atenção",
-        "none": "Sem alerta"
+        "none": "Sem incidente"
       },
       "clearAll": "Limpar filtros",
       "active": "Filtros ativos",
       "removeChip": "Remover {{filter}}"
     },
     "triageSummary": {
-      "alerts": "Alertas",
+      "alerts": "Incidentes",
       "critical": "Críticos",
       "warning": "Atenção",
       "lastUpdate": "Última atualização"
@@ -204,15 +252,15 @@
         "status": "Status",
         "eta": "ETA",
         "dominantSeverity": "Severidade Dominante",
-        "dominantAlert": "Alerta Dominante",
-        "activeAlerts": "Alertas Ativos",
-        "alerts": "Alertas",
+        "dominantAlert": "Incidente Dominante",
+        "activeAlerts": "Incidentes Ativos",
+        "alerts": "Incidentes",
         "sync": "Sync"
       },
       "dominantAlertLabel": {
         "transshipment": "Transbordo detectado",
-        "alertsPresent": "{{count}} alerta(s)",
-        "noAlerts": "Sem alerta"
+        "alertsPresent": "{{count}} incidente(s)",
+        "noAlerts": "Sem incidente"
       },
       "chipOverflow": "+{{count}}",
       "age": {
@@ -223,7 +271,12 @@
         "missing": "—"
       },
       "alertTooltip": {
-        "additionalAlerts": "+{{count}} alerta(s) adicional(ais)"
+        "additionalAlerts": "+{{count}} incidente(s) adicional(is)"
+      },
+      "trackingValidation": {
+        "chip": "Validação necessária",
+        "affectedSingle": "Este processo contém 1 container que requer validação",
+        "affectedMultiple": "Este processo contém {{count}} containers que requerem validação"
       },
       "filters": {
         "title": "Filtros",
@@ -232,7 +285,7 @@
         "warning": "Atenção"
       },
       "severity": {
-        "none": "Sem alerta"
+        "none": "Sem incidente"
       },
       "sync": {
         "idle": "Sincronizar processo",
@@ -280,9 +333,9 @@
       "carrier": "Armador",
       "eta": "ETA",
       "containers": "Containers",
-      "alerts": "Alertas",
+      "alerts": "Incidentes",
       "lastUpdate": "Última atualização",
-      "noAlerts": "Sem alertas",
+      "noAlerts": "Sem incidentes",
       "unknown": "Indisponível"
     },
     "shipmentInfo": {
@@ -293,6 +346,7 @@
       "booking": "Booking",
       "importer": "Importador",
       "exporter": "Exportador",
+      "depositary": "Depositário",
       "product": "Produto",
       "redestinationNumber": "Redestinação"
     },
@@ -321,9 +375,42 @@
         "incomplete": "parcial"
       }
     },
+    "validation": {
+      "bannerTitle": "Validação necessária",
+      "bannerDescriptionSingle": "A leitura atual requer validação em 1 container.",
+      "bannerDescriptionMultiple": "A leitura atual requer validação em {{count}} containers.",
+      "historicalBannerDescription": "O snapshot selecionado do container {{container}} requer validação.",
+      "containerChip": "Validação necessária",
+      "detailsTitle": "Motivos da validação",
+      "detailsDescription": "Confira abaixo por que o container {{container}} requer validação agora e onde revisar a inconsistência.",
+      "historicalDetailsDescription": "Confira abaixo por que o snapshot histórico do container {{container}} exigia validação neste momento.",
+      "labels": {
+        "area": "Área",
+        "block": "Bloco",
+        "location": "Local"
+      },
+      "areas": {
+        "container": "Container",
+        "operational": "Operacional",
+        "process": "Processo",
+        "series": "Série de eventos",
+        "status": "Status",
+        "timeline": "Timeline"
+      }
+    },
+    "containment": {
+      "containerChip": "Outro embarque",
+      "noticeTitle": "Container em outro embarque",
+      "noticeDescription": "O tracking atual deste container pertence a outro embarque. Este processo deixou de receber atualizações automáticas para preservar a consistência histórica.",
+      "openCarrierTracking": "Abrir tracking atual da transportadora"
+    },
     "actions": {
       "refresh": "Atualizar",
       "refreshing": "Atualizando…",
+      "copyTimeline": "Copiar timeline",
+      "copyTimelineCopied": "Copiado",
+      "copyTimelineSuccess": "Timeline copiada para a área de transferência",
+      "copyTimelineError": "Não foi possível copiar a timeline",
       "edit": "Editar",
       "delete": "Excluir embarque"
     },
@@ -342,7 +429,10 @@
       "lastUpdate": "Última atualização",
       "noContainer": "Selecione um container para visualizar o status.",
       "unknown": "—",
-      "vesselNotApplicable": "Já descarregado"
+      "vesselNotApplicable": "Já descarregado",
+      "actions": {
+        "openMenu": "Abrir ações do container"
+      }
     },
     "containerSummary": {
       "moreContainers": "+{{count}} containers neste processo",
@@ -353,6 +443,8 @@
       "vessel": "Navio",
       "expected": "Previsto",
       "actual": "Real",
+      "conflictBadge": "Conflito",
+      "conflictTooltip": "Série com conflito de dados",
       "predictedTooltip": "Este é um evento previsto, ainda não confirmado",
       "expiredExpected": "Expirado",
       "expiredExpectedTooltip": "Este evento previsto não foi confirmado e o tempo planejado já passou",
@@ -404,14 +496,13 @@
         "postCarriage": "Pós-transporte / Entrega",
         "transshipmentTerminal": "Terminal de Transbordo",
         "transshipment": "Transbordo",
+        "plannedTransshipment": "Transbordo Planejado",
+        "events": "Eventos",
+        "markers": "Marcadores",
         "transshipmentPort": "Transbordo — {{port}}",
         "vesselChange": "Troca de navio",
         "vesselChangeDetail": "{{from}} → {{to}}",
-        "transshipmentReason": {
-          "voyageChange": "Mudança de viagem",
-          "vesselChange": "Troca de navio",
-          "vesselAndVoyageChange": "Mudança de navio e viagem"
-        },
+        "vesselChangeNextOnly": "→ {{to}}",
         "currentLeg": "Atual",
         "destinationEta": "→ {{destination}} · ETA {{eta}}",
         "destinationNoEta": "→ {{destination}}",
@@ -423,28 +514,49 @@
       },
       "predictionHistory": {
         "title": "Histórico de Previsões",
-        "eventType": "Tipo",
-        "eventTime": "Horário do Evento",
-        "observedAt": "Observado em",
-        "delta": "Mudança",
-        "status": "Status",
-        "confirmed": "Confirmado",
-        "expired": "Expirado",
-        "active": "Ativo",
-        "redundant": "Redundante",
-        "superseded": "Substituído",
-        "conflicting": "Conflitante",
-        "days": "dias",
         "close": "Fechar",
-        "conflictWarning": "Múltiplos eventos reais conflitantes detectados",
-        "conflictHelper": "Por segurança, exibimos o mais recente. Verifique o histórico abaixo."
+        "copySeries": "Copiar série",
+        "copySeriesCopied": "Copiado",
+        "copySeriesError": "Não foi possível copiar a série",
+        "unavailable": "—",
+        "currentVersionMarker": "Versão atual",
+        "header": {
+          "conflictDetected": "Conflito detectado",
+          "historyUpdated": "Histórico atualizado",
+          "singleVersion": "Histórico registrado",
+          "currentLine": "Atual: {{value}}",
+          "beforeLine": "Antes: {{value}}",
+          "originalLine": "Original: {{value}}",
+          "reasonLine": "Motivo: {{value}}"
+        },
+        "versionStates": {
+          "confirmed": "Confirmado",
+          "confirmedBefore": "Confirmado antes",
+          "substituted": "Substituído",
+          "estimateChanged": "Estimativa alterada",
+          "initial": "Primeira versão"
+        },
+        "explanatoryText": {
+          "actualCorrectedLater": "Informado como real pelo armador e corrigido depois"
+        },
+        "transitions": {
+          "eventConfirmed": "confirmação do evento",
+          "estimateChanged": "estimativa alterada",
+          "previousVersionSubstituted": "versão anterior substituída",
+          "voyageChangedAfterConfirmation": "troca de viagem após confirmação"
+        },
+        "tooltip": {
+          "buttonLabel": "Ver observações desta versão",
+          "observedAt": "Observado em {{date}}",
+          "observedRange": "Observado de {{start}} até {{end}}"
+        }
       }
     },
     "alerts": {
-      "title": "Alertas",
-      "sectionTitle": "Alertas Operacionais",
-      "empty": "Nenhum alerta para este embarque.",
-      "activeEmpty": "Nenhum alerta ativo para este embarque.",
+      "title": "Incidentes",
+      "sectionTitle": "Incidentes Operacionais",
+      "empty": "Nenhum incidente para este embarque.",
+      "activeEmpty": "Nenhum incidente ativo para este embarque.",
       "category": {
         "eta": "eta",
         "movement": "movimentação",
@@ -461,16 +573,13 @@
           "movement": "Movimentação",
           "eta": "ETA",
           "customs": "Alfândega",
-          "data": "Dados",
-          "status": "Status"
+          "data": "Dados"
         },
         "summary": {
-          "activeLine": "{{incidents}} incidentes ativos · {{containers}} containers afetados",
-          "noMovement": "{{count}} containers afetados · último evento mais recente: {{date}}"
+          "activeLine": "{{incidents}} incidentes ativos · {{containers}} containers afetados"
         },
         "emptyFiltered": "Nenhum incidente corresponde ao filtro atual.",
         "title": {
-          "noMovementThreshold": "Sem movimentação há {{days}} dias",
           "transshipmentOccurrence": "ocorrência {{count}} na rota"
         },
         "timing": {
@@ -491,25 +600,22 @@
         },
         "details": {
           "containers": "Containers",
-          "history": "Histórico de thresholds",
           "transshipmentOrder": "Ocorrência na rota",
           "location": "Local",
           "fromVessel": "Origem",
-          "toVessel": "Destino",
-          "lastEvent": "Último evento",
-          "thresholdReachedOn": "atingido com último evento em {{date}}"
+          "toVessel": "Destino"
         }
       },
       "action": {
         "acknowledge": "Reconhecer",
         "acknowledgeContainer": "Reconhecer para esse container",
         "acknowledgeIncident": "Reconhecer para os {{count}} containers",
-        "acknowledgeAria": "Reconhecer alerta",
+        "acknowledgeAria": "Reconhecer incidente",
         "unacknowledge": "Reativar",
-        "unacknowledgeAria": "Reativar alerta",
-        "dismissActionError": "Fechar erro de ação de alerta",
-        "errorAcknowledge": "Falha ao reconhecer alerta. Tente novamente.",
-        "errorUnacknowledge": "Falha ao reativar alerta. Tente novamente."
+        "unacknowledgeAria": "Reativar incidente",
+        "dismissActionError": "Fechar erro de ação de incidente",
+        "errorAcknowledge": "Falha ao reconhecer incidente. Tente novamente.",
+        "errorUnacknowledge": "Falha ao reativar incidente. Tente novamente."
       },
       "aging": {
         "now": "agora",
@@ -656,6 +762,8 @@
       "exporterNamePlaceholder": "ex. Empresa XYZ",
       "referenceImporter": "Referência do Importador",
       "referenceImporterPlaceholder": "ex. PO-98765",
+      "depositary": "Depositário",
+      "depositaryPlaceholder": "ex. Santos Brasil",
       "product": "Produto",
       "productPlaceholder": "ex. Eletrônicos, Têxteis",
       "redestinationNumber": "Número de Redestinação",
@@ -733,10 +841,27 @@
       "failed": "Falha ao criar processo"
     }
   },
+  "incidents": {
+    "fact": {
+      "transshipmentDetected": "Transbordo detectado",
+      "plannedTransshipmentDetected": "Transbordo planejado detectado",
+      "customsHoldDetected": "Retenção alfandegária detectada",
+      "etaMissing": "ETA indisponível",
+      "etaPassed": "ETA expirado sem confirmação de chegada",
+      "portChange": "Alteração operacional de porto detectada",
+      "dataInconsistent": "Inconsistência operacional detectada"
+    },
+    "action": {
+      "updateRedestination": "Atualizar redestinação",
+      "checkEta": "Revisar ETA e acompanhar atualização",
+      "followUpCustoms": "Fazer follow-up com despacho e documentação",
+      "reviewData": "Revisar dados manualmente"
+    }
+  },
   "tracking": {
     "status": {
       "UNKNOWN": "Desconhecido",
-      "BOOKED": "Reservado",
+      "BOOKED": "Pré-embarque",
       "AWAITING_DATA": "Aguardando dados",
       "NOT_SYNCED": "Não sincronizado",
       "IN_PROGRESS": "Em Andamento",
@@ -790,7 +915,6 @@
       "TRANSSHIPMENT": "Transbordo Detectado",
       "CUSTOMS_HOLD": "Retenção Alfandegária",
       "PORT_CHANGE": "Mudança de Porto",
-      "NO_MOVEMENT": "Sem Movimentação",
       "ETA_PASSED": "ETA Ultrapassado",
       "ETA_MISSING": "ETA Ausente",
       "DATA_INCONSISTENT": "Inconsistência de Dados"
@@ -803,6 +927,13 @@
       "info": "Informação",
       "warning": "Aviso",
       "danger": "Crítico"
+    },
+    "validation": {
+      "conflictingCriticalActuals": "Há fatos críticos conflitantes na mesma série de eventos.",
+      "canonicalTimelineClassificationInconsistent": "A classificação canônica da timeline ficou inconsistente com os eventos atuais.",
+      "canonicalTimelineSegmentDuplicated": "A mesma etapa da jornada apareceu duplicada na timeline atual.",
+      "expectedPlanNotReconcilable": "Há previsão remanescente que não se reconcilia com o fato ACTUAL confirmado.",
+      "missingCriticalMilestoneWithContradictoryContext": "Há milestone marítimo crítico ausente em um contexto canônico contraditório."
     }
   },
   "alerts": {
@@ -823,7 +954,7 @@
     "copied": "Copiado"
   },
   "search": {
-    "placeholder": "Busca geral...",
+    "placeholder": "Buscar processos, filtros e ETA...",
     "loading": "Buscando...",
     "error": "Falha na busca. Tente novamente.",
     "noResults": "Nenhum resultado encontrado",
@@ -831,15 +962,25 @@
     "notAvailable": "—",
     "close": "Fechar busca",
     "clear": "Limpar busca",
+    "multiple": "Múltiplos",
     "fields": {
       "processId": "ID do processo",
       "importerName": "Importador",
+      "exporterName": "Exportador",
       "containers": "Containers",
       "carrier": "Armador",
       "vesselName": "Navio",
       "bl": "BL",
       "derivedStatus": "Status",
-      "eta": "ETA"
+      "eta": "ETA",
+      "currentLocation": "Localização atual",
+      "currentVessel": "Navio atual",
+      "currentVoyage": "Viagem atual",
+      "route": "Rota",
+      "origin": "Origem",
+      "destination": "Destino",
+      "terminal": "Terminal",
+      "depot": "Depositário"
     },
     "matchSource": {
       "container": "Match em container",
@@ -854,6 +995,84 @@
       "navigate": "Navegar",
       "select": "Selecionar",
       "close": "Fechar"
+    },
+    "a11y": {
+      "suggestionsList": "Sugestões de busca",
+      "resultsList": "Resultados da busca"
+    },
+    "suggestionKinds": {
+      "field": "campo",
+      "value": "valor",
+      "example": "exemplo"
+    },
+    "badges": {
+      "validationRequired": "Validação necessária"
+    },
+    "empty": {
+      "title": "Nenhum processo encontrado",
+      "description": "Tente combinar texto livre com filtros como status, ETA, terminal ou armador.",
+      "discovery": "Use filtros como status:, eta:, terminal: ou digite um identificador operacional."
+    },
+    "examples": {
+      "container": "Exemplo por container",
+      "multifilter": "Exemplo com múltiplos filtros",
+      "eta": "Exemplo por ETA"
+    },
+    "filters": {
+      "fields": {
+        "process": "Processo",
+        "process_id": "ID do processo",
+        "container": "Container",
+        "bl": "BL",
+        "importer": "Importador",
+        "exporter": "Exportador",
+        "carrier": "Armador",
+        "vessel": "Navio",
+        "voyage": "Viagem",
+        "status": "Status",
+        "origin": "Origem",
+        "origin_country": "País de origem",
+        "destination": "Destino",
+        "destination_country": "País de destino",
+        "terminal": "Terminal",
+        "depot": "Depositário",
+        "route": "Rota",
+        "eta": "ETA",
+        "eta_before": "ETA antes de",
+        "eta_after": "ETA depois de",
+        "eta_month": "ETA no mês",
+        "eta_state": "Estado do ETA",
+        "eta_type": "Tipo de ETA",
+        "current_location": "Localização atual",
+        "current_vessel": "Navio atual",
+        "current_voyage": "Viagem atual",
+        "validation": "Validação",
+        "alert_category": "Categoria de alerta",
+        "event_date": "Data do evento"
+      },
+      "values": {
+        "eta_state": {
+          "ACTUAL": "ETA atual",
+          "ACTIVE_EXPECTED": "ETA ativo",
+          "EXPIRED_EXPECTED": "ETA expirado"
+        },
+        "eta_type": {
+          "ARRIVAL": "Chegada",
+          "DISCHARGE": "Descarga",
+          "DELIVERY": "Entrega"
+        },
+        "validation": {
+          "required": "Validação necessária",
+          "clean": "Sem validação pendente"
+        },
+        "alert_category": {
+          "eta": "Alerta de ETA",
+          "movement": "Alerta de movimentação",
+          "customs": "Alerta aduaneiro",
+          "status": "Alerta de status",
+          "data": "Alerta de dados"
+        }
+      }
     }
   }
 }

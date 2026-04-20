@@ -31,8 +31,18 @@ export function toDashboardProcessExceptionVMs(
       status: processStatusToVariant(statusCode),
       etaCurrent: process.eta_current,
       dominantSeverity: toDashboardProcessExceptionSeverity(process.dominant_severity),
-      activeAlertCount: process.active_alert_count,
-      dominantAlertCreatedAt: process.dominant_alert_created_at,
+      activeIncidentCount: process.active_incident_count,
+      affectedContainerCount: process.affected_container_count,
+      dominantIncident:
+        process.dominant_incident === null
+          ? null
+          : {
+              type: process.dominant_incident.type,
+              severity: process.dominant_incident.severity,
+              factMessageKey: process.dominant_incident.fact.message_key,
+              factMessageParams: process.dominant_incident.fact.message_params,
+              triggeredAt: process.dominant_incident.triggered_at,
+            },
     }
   })
 }

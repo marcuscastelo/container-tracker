@@ -16,7 +16,7 @@ Inspected files:
 
 ## Observations
 
-1. Shared UI extraction is a clear improvement:
+1. Shared UI extraction is clear improvement:
 - navbar alerts UI moved into focused units under `src/shared/ui/navbar-alerts/*`.
 - `AppHeader.tsx` became smaller and easier to review.
 
@@ -34,7 +34,7 @@ Inspected files:
 
 5. Shared API schema growth is expected:
 - `dashboard.schemas.ts` expanded with navbar alerts contracts.
-- this is acceptable as long as contract ownership remains transport-only.
+- this is acceptable long contract ownership remains transport-only.
 
 ---
 

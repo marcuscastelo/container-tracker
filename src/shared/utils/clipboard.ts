@@ -1,10 +1,10 @@
 // Small clipboard utility with fallback for older browsers
-export async function copyToClipboard(text: string): Promise<void> {
-  if (!text) return
+export async function copyToClipboard(text: string): Promise<boolean> {
+  if (!text) return false
   try {
     if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(text)
-      return
+      return true
     }
   } catch {
     // ignore and try fallback
@@ -25,10 +25,13 @@ export async function copyToClipboard(text: string): Promise<void> {
       selection.addRange(range)
     }
     ta.select()
-    document.execCommand('copy')
+    const copied = document.execCommand('copy')
     if (selection) selection.removeAllRanges()
     document.body.removeChild(ta)
+    return copied
   } catch {
     // give up silently
   }
+
+  return false
 }
