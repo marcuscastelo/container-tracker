@@ -11,6 +11,7 @@ import {
   dismissServerProblemBanner,
   useServerProblemBanner,
 } from '~/shared/api/httpDegradationReporter'
+import { ensureWorkosAuthenticated, isWorkosAuthConfigured } from '~/shared/auth/workos-auth.client'
 import { useTranslation } from '~/shared/localization/i18n'
 import '~/app.css'
 
@@ -23,6 +24,10 @@ type AppRouterRootProps = {
   readonly location: {
     readonly pathname: string
   }
+}
+
+function isPublicAuthRoute(pathname: string): boolean {
+  return pathname === '/auth/login' || pathname === '/auth/callback' || pathname === '/auth/logout'
 }
 
 function AppErrorBoundaryFallback(props: AppErrorBoundaryFallbackProps): JSX.Element {
@@ -73,6 +78,18 @@ function GlobalServerProblemBanner(): JSX.Element {
 function AppRouterRoot(props: AppRouterRootProps): JSX.Element {
   const preloadRoute = usePreloadRoute()
   const { locale } = useTranslation()
+
+  createEffect(() => {
+    const pathname = props.location.pathname
+    if (isPublicAuthRoute(pathname)) return
+
+    if (!isWorkosAuthConfigured()) {
+      console.error('WorkOS AuthKit is not configured. Set VITE_PUBLIC_WORKOS_CLIENT_ID.')
+      return
+    }
+
+    void ensureWorkosAuthenticated(pathname)
+  })
 
   return (
     <div class="root">

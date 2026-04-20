@@ -5,7 +5,6 @@ const accessHandlers = vi.hoisted(() => ({
   createTenant: vi.fn(),
   createImporter: vi.fn(),
   upsertMembership: vi.fn(),
-  bridgeSession: vi.fn(),
 }))
 
 vi.mock('~/modules/access/interface/http/access.controllers.bootstrap', () => ({
@@ -14,14 +13,9 @@ vi.mock('~/modules/access/interface/http/access.controllers.bootstrap', () => ({
     createTenant: accessHandlers.createTenant,
     createImporter: accessHandlers.createImporter,
     upsertMembership: accessHandlers.upsertMembership,
-    bridgeSession: accessHandlers.bridgeSession,
   },
 }))
 
-import {
-  POST as bridgeSessionPost,
-  runtime as bridgeSessionRuntime,
-} from '~/routes/api/access/bridge-session'
 import { POST as importersPost, runtime as importersRuntime } from '~/routes/api/access/importers'
 import {
   POST as membershipsPost,
@@ -47,15 +41,10 @@ describe('access routes', () => {
     expect(membershipsPost).toBe(accessHandlers.upsertMembership)
   })
 
-  it('binds POST /api/access/bridge-session to bridgeSession controller', () => {
-    expect(bridgeSessionPost).toBe(accessHandlers.bridgeSession)
-  })
-
   it('forces nodejs runtime for all /api/access routes', () => {
     expect(overviewRuntime).toBe('nodejs')
     expect(tenantsRuntime).toBe('nodejs')
     expect(importersRuntime).toBe('nodejs')
     expect(membershipsRuntime).toBe('nodejs')
-    expect(bridgeSessionRuntime).toBe('nodejs')
   })
 })

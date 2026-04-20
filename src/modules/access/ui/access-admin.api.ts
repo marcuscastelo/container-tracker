@@ -1,4 +1,5 @@
 import { z } from 'zod/v4'
+import { getWorkosAccessToken } from '~/shared/auth/workos-auth.client'
 
 const AccessTenantSchema = z.object({
   id: z.string().uuid(),
@@ -68,13 +69,31 @@ async function throwIfNotOk(response: Response): Promise<void> {
   throw new Error(`Request failed with status ${response.status}`)
 }
 
+async function createAuthorizedHeaders(
+  contentType: 'application/json' | null,
+): Promise<Record<string, string>> {
+  const accessToken = await getWorkosAccessToken()
+  if (contentType) {
+    return {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': contentType,
+    }
+  }
+
+  return {
+    Authorization: `Bearer ${accessToken}`,
+  }
+}
+
 export async function fetchAccessOverview(
   platformTenantId?: string,
 ): Promise<AccessOverviewResponse> {
   const params = new URLSearchParams()
   if (platformTenantId) params.set('platform_tenant_id', platformTenantId)
   const suffix = params.toString().length > 0 ? `?${params.toString()}` : ''
-  const response = await fetch(`/api/access/overview${suffix}`)
+  const response = await fetch(`/api/access/overview${suffix}`, {
+    headers: await createAuthorizedHeaders(null),
+  })
   await throwIfNotOk(response)
   return AccessOverviewSchema.parse(await parseJsonResponse(response))
 }
@@ -85,7 +104,7 @@ export async function createAccessTenant(command: {
 }): Promise<void> {
   const response = await fetch('/api/access/tenants', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await createAuthorizedHeaders('application/json'),
     body: JSON.stringify({
       slug: command.slug,
       name: command.name,
@@ -102,7 +121,7 @@ export async function createAccessImporter(command: {
 }): Promise<void> {
   const response = await fetch('/api/access/importers', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await createAuthorizedHeaders('application/json'),
     body: JSON.stringify({
       platform_tenant_id: command.platformTenantId,
       name: command.name,
@@ -122,7 +141,7 @@ export async function upsertAccessMembership(command: {
 }): Promise<void> {
   const response = await fetch('/api/access/memberships', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await createAuthorizedHeaders('application/json'),
     body: JSON.stringify({
       workos_user_id: command.workosUserId,
       email: command.email,

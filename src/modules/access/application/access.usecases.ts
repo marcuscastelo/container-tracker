@@ -1,4 +1,3 @@
-import { z } from 'zod/v4'
 import type { AccessRepository } from '~/modules/access/application/access.repository'
 import type {
   AccessMembership,
@@ -8,16 +7,9 @@ import type {
   CreateImporterCommand,
   CreateTenantCommand,
 } from '~/modules/access/application/access.types'
-import { type IssuedSupabaseJwt, issueSupabaseJwt } from '~/shared/auth/supabase-jwt'
-import { HttpError } from '~/shared/errors/httpErrors'
-
-const SessionExpiresInSecSchema = z.coerce.number().int().min(60).max(86400).default(3600)
 
 export type AccessUseCases = {
-  readonly listOverview: (
-    platformTenantId: string | null,
-    accessToken: string | null,
-  ) => Promise<AccessOverview>
+  readonly listOverview: (platformTenantId: string | null) => Promise<AccessOverview>
   readonly createTenant: (command: CreateTenantCommand) => Promise<AccessTenant>
   readonly createImporter: (command: CreateImporterCommand) => Promise<void>
   readonly upsertMembershipAndScope: (command: {
@@ -28,24 +20,14 @@ export type AccessUseCases = {
     readonly status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
     readonly importerIds: readonly string[]
   }) => Promise<{ readonly user: AccessUser; readonly membership: AccessMembership }>
-  readonly bridgeSession: (command: {
-    readonly workosUserId: string
-    readonly email: string
-    readonly platformTenantId: string | null
-    readonly expiresInSec: number | undefined
-  }) => Promise<{
-    readonly user: AccessUser
-    readonly token: IssuedSupabaseJwt
-  }>
 }
 
 export function createAccessUseCases(deps: {
   readonly repository: AccessRepository
-  readonly supabaseJwtSecret: string
 }): AccessUseCases {
   return {
-    async listOverview(platformTenantId, accessToken) {
-      return deps.repository.listOverview(platformTenantId, accessToken)
+    async listOverview(platformTenantId) {
+      return deps.repository.listOverview(platformTenantId)
     },
 
     async createTenant(command) {
@@ -66,6 +48,7 @@ export function createAccessUseCases(deps: {
 
       const membership = await deps.repository.upsertMembership({
         userId: user.id,
+        workosUserId: user.workosUserId,
         platformTenantId: command.platformTenantId,
         roleCode: command.roleCode,
         status: command.status,
@@ -74,34 +57,6 @@ export function createAccessUseCases(deps: {
       await deps.repository.replaceMembershipImporterAccess(membership.id, command.importerIds)
 
       return { user, membership }
-    },
-
-    async bridgeSession(command) {
-      const user = await deps.repository.ensureUser({
-        workosUserId: command.workosUserId,
-        email: command.email,
-      })
-
-      if (command.platformTenantId) {
-        const hasMembership = await deps.repository.hasActiveMembershipForTenant(
-          user.id,
-          command.platformTenantId,
-        )
-        if (!hasMembership) {
-          throw new HttpError('No active membership for tenant', 403)
-        }
-      }
-
-      const expiresInSec = SessionExpiresInSecSchema.parse(command.expiresInSec)
-      const token = issueSupabaseJwt({
-        userId: user.id,
-        email: user.email,
-        secret: deps.supabaseJwtSecret,
-        issuer: 'container-tracker/access-bridge',
-        expiresInSec,
-      })
-
-      return { user, token }
     },
   }
 }

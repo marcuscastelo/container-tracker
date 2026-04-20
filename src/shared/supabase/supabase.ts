@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod/v4'
 
+import { getWorkosAccessToken, isWorkosAuthConfigured } from '~/shared/auth/workos-auth.client'
 import { env } from '~/shared/config/env'
 import type { Database } from '~/shared/supabase/database.types'
 import { parseWithStack } from '~/shared/utils/parseWithStack'
@@ -10,6 +11,14 @@ const supabaseUrl = parseWithStack(z.string(), env.VITE_PUBLIC_SUPABASE_URL)
 const supabaseAnonKey = parseWithStack(z.string(), env.VITE_PUBLIC_SUPABASE_ANON_KEY)
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  accessToken: async () => {
+    if (!isWorkosAuthConfigured()) return null
+    try {
+      return await getWorkosAccessToken()
+    } catch (_error) {
+      return null
+    }
+  },
   db: {
     schema: 'public',
   },

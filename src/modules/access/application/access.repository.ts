@@ -13,10 +13,7 @@ import type {
 } from '~/modules/access/application/access.types'
 
 export type AccessRepository = {
-  readonly listOverview: (
-    platformTenantId: string | null,
-    accessToken: string | null,
-  ) => Promise<AccessOverview>
+  readonly listOverview: (platformTenantId: string | null) => Promise<AccessOverview>
   readonly createTenant: (command: CreateTenantCommand) => Promise<AccessTenant>
   readonly seedSystemRolesForTenant: (
     platformTenantId: string,
@@ -28,8 +25,4 @@ export type AccessRepository = {
     membershipId: string,
     importerIds: readonly string[],
   ) => Promise<readonly AccessMembershipImporterAccess[]>
-  readonly hasActiveMembershipForTenant: (
-    userId: string,
-    platformTenantId: string,
-  ) => Promise<boolean>
 }

@@ -74,6 +74,7 @@ export type CreateImporterCommand = {
 
 export type UpsertMembershipCommand = {
   readonly userId: string
+  readonly workosUserId: string
   readonly platformTenantId: string
   readonly roleCode: string
   readonly status: AccessMembershipStatus

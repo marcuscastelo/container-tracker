@@ -46,21 +46,16 @@ Policy behavior:
 - `IMPORTER`: access only when row has explicit authorized `importer_id`.
 - deny-by-default when no active membership.
 
-## WorkOS → internal auth bridge
+## WorkOS/AuthKit + Supabase Third-Party Auth
 
-New HTTP endpoint:
+V1.1 migrates auth to official flow:
 
-- `POST /api/access/bridge-session`
+1. user authenticates with WorkOS/AuthKit
+2. client sends WorkOS access token directly to Supabase (`accessToken: authkit.getAccessToken()`)
+3. Supabase validates WorkOS issuer (Third-Party Auth integration)
+4. RLS authorization remains canonical in app tables (memberships/importer scope)
 
-Behavior:
-
-1. resolve/upsert `public.users` by `workos_user_id`
-2. verify active membership when `platform_tenant_id` provided
-3. issue Supabase-compatible JWT (`role=authenticated`, `sub=users.id`)
-
-Required env for token issuance:
-
-- `SUPABASE_JWT_SECRET`
+Bridge JWT issuance is removed from critical path.
 
 ## Access admin endpoints
 
@@ -68,7 +63,6 @@ Required env for token issuance:
 - `POST /api/access/tenants`
 - `POST /api/access/importers`
 - `POST /api/access/memberships`
-- `POST /api/access/bridge-session`
 
 ## Minimal admin UI
 

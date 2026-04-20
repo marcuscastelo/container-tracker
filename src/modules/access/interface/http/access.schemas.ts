@@ -29,10 +29,3 @@ export const UpsertMembershipBodySchema = z.object({
   status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).default('ACTIVE'),
   importer_ids: z.array(z.string().uuid()).default([]),
 })
-
-export const BridgeSessionBodySchema = z.object({
-  workos_user_id: z.string().min(1),
-  email: z.string().email(),
-  platform_tenant_id: z.string().uuid().nullable().optional(),
-  expires_in_sec: z.coerce.number().int().min(60).max(86400).optional(),
-})

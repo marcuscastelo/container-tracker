@@ -281,7 +281,7 @@ async function listMembershipImporterAccess(
 }
 
 export const supabaseAccessRepository: AccessRepository = {
-  async listOverview(platformTenantId, _accessToken): Promise<AccessOverview> {
+  async listOverview(platformTenantId): Promise<AccessOverview> {
     const [tenants, roleDefinitions, users, memberships, importers, membershipImporterAccess] =
       await Promise.all([
         listTenants(platformTenantId),
@@ -381,6 +381,7 @@ export const supabaseAccessRepository: AccessRepository = {
       .upsert(
         {
           user_id: command.userId,
+          workos_user_id: command.workosUserId,
           platform_tenant_id: command.platformTenantId,
           role_code: command.roleCode,
           status: command.status,
@@ -422,21 +423,5 @@ export const supabaseAccessRepository: AccessRepository = {
       table: 'membership_importer_access',
     })
     return MembershipImporterAccessRowsSchema.parse(data).map(toMembershipImporterAccess)
-  },
-
-  async hasActiveMembershipForTenant(userId, platformTenantId): Promise<boolean> {
-    const result = await accessSupabase
-      .from('tenant_memberships')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('platform_tenant_id', platformTenantId)
-      .eq('status', 'ACTIVE')
-      .limit(1)
-      .maybeSingle()
-    const data = unwrapSupabaseSingleOrNull(result, {
-      operation: 'hasActiveMembershipForTenant',
-      table: 'tenant_memberships',
-    })
-    return data !== null
   },
 }
