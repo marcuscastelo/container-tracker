@@ -20,6 +20,8 @@ export function trackingStatusToLabelKey(
   const normalizedStatusCode = toTrackingStatusCode(statusCode)
 
   switch (normalizedStatusCode) {
+    case 'BOOKED':
+      return keys.tracking.status.BOOKED
     case 'IN_PROGRESS':
       return keys.tracking.status.IN_PROGRESS
     case 'LOADED':

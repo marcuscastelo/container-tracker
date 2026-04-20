@@ -1,6 +1,6 @@
 # Backlog Técnico — Sanitização Incremental do Código
 
-Este documento converte a **análise completa de dívida técnica** em **issues técnicas acionáveis**, prontas para uso em GitHub/Jira/Linear.
+Este documento converte **análise completa de dívida técnica** em **issues técnicas acionáveis**, prontas para uso em GitHub/Jira/Linear.
 
 Cada issue é **isolada**, tem **escopo fechado** e pode ser executada por humanos ou LLMs sem decisões abertas.
 

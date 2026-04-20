@@ -17,6 +17,19 @@ function makeSnapshot(payload: unknown, fetchedAt: string = '2026-02-03T12:00:00
   }
 }
 
+function makeSingleMovePayload(move: Record<string, unknown>): unknown {
+  return {
+    ContainerReference: 'TGBU7416510',
+    PastMoves: [
+      {
+        State: 'DONE',
+        StatusDescription: 'Loaded on board',
+        ...move,
+      },
+    ],
+  }
+}
+
 describe('normalizeCmaCgmSnapshot', () => {
   describe('full payload fixture', () => {
     it('should produce observation drafts from all move arrays', () => {
@@ -138,6 +151,298 @@ describe('normalizeCmaCgmSnapshot', () => {
       expect(drafts[0]?.event_time_type).toBe('EXPECTED')
       expect(drafts[0]?.raw_event_time).toBe('Fri 24-APR-2026 07:00 PM')
       expect(drafts[0]?.event_time_source).toBe('carrier_local_port_time')
+    })
+  })
+
+  describe('temporal priority hotfix (CMA local-port first)', () => {
+    it('keeps local datetime for real CMA cases with DateString + TimeString + location', () => {
+      const payload = {
+        ContainerReference: 'CMAU1234567',
+        PastMoves: [
+          {
+            Date: '2026-02-23T16:00:00',
+            DateString: 'Monday,23-FEB-2026',
+            TimeString: '04:00 PM',
+            State: 'DONE',
+            StatusDescription: 'Empty to shipper',
+            LocationCode: 'LBBEY',
+            Location: 'BEIRUT',
+          },
+          {
+            Date: '2026-03-19T23:13:00',
+            DateString: 'Thursday,19-MAR-2026',
+            TimeString: '11:13 PM',
+            State: 'DONE',
+            StatusDescription: 'Loaded on board',
+            LocationCode: 'LBBEY',
+            Location: 'BEIRUT',
+            Vessel: 'CMA CGM TEST',
+            Voyage: 'V1',
+          },
+          {
+            Date: '2026-04-04T07:48:00',
+            DateString: 'Saturday,04-APR-2026',
+            TimeString: '07:48 AM',
+            State: 'DONE',
+            StatusDescription: 'Vessel Arrival',
+            LocationCode: 'MAPTM',
+            Location: 'TANGER MED',
+            Vessel: 'CMA CGM TEST',
+            Voyage: 'V2',
+          },
+          {
+            Date: '2026-04-04T21:46:00',
+            DateString: 'Saturday,04-APR-2026',
+            TimeString: '09:46 PM',
+            State: 'DONE',
+            StatusDescription: 'Discharged in transhipment',
+            LocationCode: 'MAPTM',
+            Location: 'TANGER MED',
+            Vessel: 'CMA CGM TEST',
+            Voyage: 'V2',
+          },
+          {
+            Date: '2026-04-11T14:25:00',
+            DateString: 'Saturday,11-APR-2026',
+            TimeString: '02:25 PM',
+            State: 'DONE',
+            StatusDescription: 'Loaded on board',
+            LocationCode: 'MAPTM',
+            Location: 'TANGER MED',
+            Vessel: 'CMA CGM TEST',
+            Voyage: 'V3',
+          },
+          {
+            Date: '2026-04-12T04:15:00',
+            DateString: 'Sunday,12-APR-2026',
+            TimeString: '04:15 AM',
+            State: 'DONE',
+            StatusDescription: 'Vessel Departure',
+            LocationCode: 'MAPTM',
+            Location: 'TANGER MED',
+            Vessel: 'CMA CGM TEST',
+            Voyage: 'V3',
+          },
+          {
+            Date: '2026-04-24T19:00:00',
+            DateString: 'Friday,24-APR-2026',
+            TimeString: '07:00 PM',
+            State: 'NONE',
+            StatusDescription: 'Vessel Arrival',
+            LocationCode: 'BRSSZ',
+            Location: 'SANTOS',
+            Vessel: 'CMA CGM TEST',
+            Voyage: 'V4',
+          },
+        ],
+      }
+
+      const drafts = normalizeCmaCgmSnapshot(makeSnapshot(payload, '2026-04-02T12:00:00.000Z'))
+      expect(drafts).toHaveLength(7)
+
+      expect(temporalCanonicalText(drafts[0]?.event_time ?? null)).toBe(
+        '2026-02-23T16:00:00.000[Asia/Beirut]',
+      )
+      expect(drafts[0]?.event_time?.kind).toBe('local-datetime')
+
+      expect(temporalCanonicalText(drafts[1]?.event_time ?? null)).toBe(
+        '2026-03-19T23:13:00.000[Asia/Beirut]',
+      )
+      expect(drafts[1]?.event_time?.kind).toBe('local-datetime')
+
+      expect(temporalCanonicalText(drafts[2]?.event_time ?? null)).toBe(
+        '2026-04-04T07:48:00.000[Africa/Casablanca]',
+      )
+      expect(drafts[2]?.event_time?.kind).toBe('local-datetime')
+
+      expect(temporalCanonicalText(drafts[3]?.event_time ?? null)).toBe(
+        '2026-04-04T21:46:00.000[Africa/Casablanca]',
+      )
+      expect(drafts[3]?.event_time?.kind).toBe('local-datetime')
+
+      expect(temporalCanonicalText(drafts[4]?.event_time ?? null)).toBe(
+        '2026-04-11T14:25:00.000[Africa/Casablanca]',
+      )
+      expect(drafts[4]?.event_time?.kind).toBe('local-datetime')
+
+      expect(temporalCanonicalText(drafts[5]?.event_time ?? null)).toBe(
+        '2026-04-12T04:15:00.000[Africa/Casablanca]',
+      )
+      expect(drafts[5]?.event_time?.kind).toBe('local-datetime')
+
+      expect(temporalCanonicalText(drafts[6]?.event_time ?? null)).toBe(
+        '2026-04-24T19:00:00.000[America/Sao_Paulo]',
+      )
+      expect(drafts[6]?.event_time?.kind).toBe('local-datetime')
+      expect(drafts[6]?.event_time_type).toBe('EXPECTED')
+
+      for (const draft of drafts) {
+        expect(draft.event_time_source).toBe('carrier_local_port_time')
+      }
+    })
+
+    it('falls back to Beirut timezone for LBBEY when location text is missing/noisy', () => {
+      const drafts = normalizeCmaCgmSnapshot(
+        makeSnapshot(
+          makeSingleMovePayload({
+            Date: '2026-02-23T16:00:00',
+            DateString: 'Monday,23-FEB-2026',
+            TimeString: '04:00 PM',
+            LocationCode: 'LBBEY',
+            Location: 'LBBEY TERMINAL UNKNOWN',
+            StatusDescription: 'Empty to shipper',
+          }),
+        ),
+      )
+
+      expect(drafts).toHaveLength(1)
+      expect(temporalCanonicalText(drafts[0]?.event_time ?? null)).toBe(
+        '2026-02-23T16:00:00.000[Asia/Beirut]',
+      )
+      expect(drafts[0]?.event_time?.kind).toBe('local-datetime')
+      expect(drafts[0]?.event_time_source).toBe('carrier_local_port_time')
+    })
+
+    it('uses date-only when DateString is present but TimeString is missing', () => {
+      const drafts = normalizeCmaCgmSnapshot(
+        makeSnapshot(
+          makeSingleMovePayload({
+            DateString: 'Friday,24-APR-2026',
+            TimeString: null,
+            LocationCode: 'BRSSZ',
+            Location: 'SANTOS',
+          }),
+        ),
+      )
+
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time?.kind).toBe('date')
+      expect(temporalCanonicalText(drafts[0]?.event_time ?? null)).toBe(
+        '2026-04-24[America/Sao_Paulo]',
+      )
+      expect(drafts[0]?.event_time_source).toBe('carrier_date_only')
+    })
+
+    it('uses derived fallback when DateString and TimeString exist but timezone cannot be resolved', () => {
+      const drafts = normalizeCmaCgmSnapshot(
+        makeSnapshot(
+          makeSingleMovePayload({
+            DateString: 'Friday,24-APR-2026',
+            TimeString: '07:00 PM',
+            LocationCode: 'ZZZZZ',
+            Location: 'UNKNOWN TERMINAL',
+          }),
+        ),
+      )
+
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time?.kind).toBe('date')
+      expect(temporalCanonicalText(drafts[0]?.event_time ?? null)).toBe('2026-04-24')
+      expect(drafts[0]?.event_time_source).toBe('derived_fallback')
+      expect(drafts[0]?.raw_event_time).toBe('Friday,24-APR-2026 07:00 PM')
+    })
+
+    it('uses move.Date as instant only for explicitly absolute timestamps', () => {
+      const msDateDrafts = normalizeCmaCgmSnapshot(
+        makeSnapshot(
+          makeSingleMovePayload({
+            Date: '/Date(1764659520000)/',
+            DateString: null,
+            TimeString: null,
+            LocationCode: 'ESZAZ',
+            Location: 'ZARAGOZA',
+          }),
+        ),
+      )
+      const zuluDrafts = normalizeCmaCgmSnapshot(
+        makeSnapshot(
+          makeSingleMovePayload({
+            Date: '2026-04-24T19:00:00.000Z',
+            DateString: null,
+            TimeString: null,
+            LocationCode: 'BRSSZ',
+            Location: 'SANTOS',
+          }),
+        ),
+      )
+      const offsetDrafts = normalizeCmaCgmSnapshot(
+        makeSnapshot(
+          makeSingleMovePayload({
+            Date: '2026-04-24T19:00:00-03:00',
+            DateString: null,
+            TimeString: null,
+            LocationCode: 'BRSSZ',
+            Location: 'SANTOS',
+          }),
+        ),
+      )
+
+      expect(msDateDrafts[0]?.event_time?.kind).toBe('instant')
+      expect(zuluDrafts[0]?.event_time?.kind).toBe('instant')
+      expect(offsetDrafts[0]?.event_time?.kind).toBe('instant')
+      expect(msDateDrafts[0]?.event_time_source).toBe('carrier_explicit_timezone')
+      expect(zuluDrafts[0]?.event_time_source).toBe('carrier_explicit_timezone')
+      expect(offsetDrafts[0]?.event_time_source).toBe('carrier_explicit_timezone')
+    })
+
+    it('ignores ambiguous move.Date as instant and preserves raw_event_time for audit', () => {
+      const drafts = normalizeCmaCgmSnapshot(
+        makeSnapshot(
+          makeSingleMovePayload({
+            Date: '2026-04-11T14:25:00',
+            DateString: null,
+            TimeString: null,
+            LocationCode: 'MAPTM',
+            Location: 'TANGER MED',
+          }),
+        ),
+      )
+
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time).toBeNull()
+      expect(drafts[0]?.event_time_source).toBeNull()
+      expect(drafts[0]?.raw_event_time).toBe('2026-04-11T14:25:00')
+    })
+
+    it('keeps local datetime precedence over ambiguous move.Date', () => {
+      const drafts = normalizeCmaCgmSnapshot(
+        makeSnapshot(
+          makeSingleMovePayload({
+            Date: '2026-04-11T14:25:00',
+            DateString: 'Saturday,11-APR-2026',
+            TimeString: '02:25 PM',
+            LocationCode: 'MAPTM',
+            Location: 'TANGER MED',
+          }),
+        ),
+      )
+
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time?.kind).toBe('local-datetime')
+      expect(temporalCanonicalText(drafts[0]?.event_time ?? null)).toBe(
+        '2026-04-11T14:25:00.000[Africa/Casablanca]',
+      )
+      expect(drafts[0]?.event_time_source).toBe('carrier_local_port_time')
+    })
+
+    it('parses ISO-like DateString prefixes as date-only for compatibility', () => {
+      const drafts = normalizeCmaCgmSnapshot(
+        makeSnapshot(
+          makeSingleMovePayload({
+            DateString: '2026-02-01T10:00:00.000Z',
+            TimeString: null,
+            LocationCode: 'BRSSZ',
+            Location: 'SANTOS',
+          }),
+        ),
+      )
+
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time?.kind).toBe('date')
+      expect(temporalCanonicalText(drafts[0]?.event_time ?? null)).toBe(
+        '2026-02-01[America/Sao_Paulo]',
+      )
+      expect(drafts[0]?.event_time_source).toBe('carrier_date_only')
     })
   })
 
@@ -287,6 +592,27 @@ describe('normalizeCmaCgmSnapshot', () => {
     it('should handle payload with no moves', () => {
       const drafts = normalizeCmaCgmSnapshot(makeSnapshot({ ContainerReference: 'TEST1234567' }))
       expect(drafts).toHaveLength(0)
+    })
+
+    it('uses UNKNOWN container number when ContainerReference is blank', () => {
+      const drafts = normalizeCmaCgmSnapshot(
+        makeSnapshot({
+          ContainerReference: '   ',
+          PastMoves: [
+            {
+              State: 'DONE',
+              StatusDescription: 'Loaded on board',
+              DateString: 'Friday,24-APR-2026',
+              TimeString: '07:00 PM',
+              LocationCode: 'ZZZZZ',
+              Location: 'Unknown Terminal',
+            },
+          ],
+        }),
+      )
+
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.container_number).toBe('UNKNOWN')
     })
 
     it('should handle error marker payload gracefully', () => {

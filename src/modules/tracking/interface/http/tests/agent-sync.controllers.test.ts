@@ -16,6 +16,8 @@ const TENANT_ID = '11111111-1111-4111-8111-111111111111'
 const SYNC_REQUEST_ID = '22222222-2222-4222-8222-222222222222'
 const SNAPSHOT_ID = '33333333-3333-4333-8333-333333333333'
 const AGENT_ID = '44444444-4444-4444-8444-444444444444'
+const NEW_OBSERVATIONS_COUNT = 8
+const NEW_ALERTS_COUNT = 1
 
 function createSyncRequestRow(overrides: Partial<SyncRequestRow> = {}): SyncRequestRow {
   return {
@@ -49,7 +51,11 @@ function createDeps(overrides: Partial<AgentSyncControllersDeps> = {}): AgentSyn
         carrierCode: 'msc',
       },
     ]),
-    saveAndProcess: vi.fn(async () => ({ snapshotId: SNAPSHOT_ID })),
+    saveAndProcess: vi.fn(async () => ({
+      snapshotId: SNAPSHOT_ID,
+      newObservationsCount: NEW_OBSERVATIONS_COUNT,
+      newAlertsCount: NEW_ALERTS_COUNT,
+    })),
     authenticateAgentToken: vi.fn(async () => ({
       tenantId: TENANT_ID,
       agentId: AGENT_ID,
@@ -287,6 +293,8 @@ describe('agent sync controllers', () => {
 
     expect(response.status).toBe(202)
     expect(body.snapshot_id).toBe(SNAPSHOT_ID)
+    expect(body.new_observations_count).toBe(NEW_OBSERVATIONS_COUNT)
+    expect(body.new_alerts_count).toBe(NEW_ALERTS_COUNT)
     expect(deps.markSyncRequestDone).toHaveBeenCalledWith({
       tenantId: TENANT_ID,
       syncRequestId: SYNC_REQUEST_ID,
@@ -425,6 +433,8 @@ describe('agent sync controllers', () => {
 
     expect(response.status).toBe(202)
     expect(body.snapshot_id).toBe(SNAPSHOT_ID)
+    expect(body.new_observations_count).toBe(NEW_OBSERVATIONS_COUNT)
+    expect(body.new_alerts_count).toBe(NEW_ALERTS_COUNT)
     expect(deps.saveAndProcess).toHaveBeenCalledWith({
       containerId: 'container-1',
       containerNumber: 'PCIU8712104',

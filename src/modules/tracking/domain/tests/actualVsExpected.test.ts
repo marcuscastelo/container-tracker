@@ -307,8 +307,8 @@ describe('ACTUAL vs EXPECTED differentiation', () => {
         ],
         now,
       )
-      // Only GATE_IN is ACTUAL, so status should be IN_PROGRESS
-      expect(deriveStatus(timeline)).toBe('IN_PROGRESS')
+      // Only GATE_IN is ACTUAL, so status should remain in pre-shipment BOOKED
+      expect(deriveStatus(timeline)).toBe('BOOKED')
     })
   })
 

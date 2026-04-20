@@ -2,7 +2,7 @@
 
 ## Context
 
-This register captures technical debt intentionally left after the functional fixes merged in PR #85 (`6cc1984`).
+This register captures technical debt intentionally left after functional fixes merged in PR #85 (`6cc1984`).
 
 Applied in PR #85:
 - deterministic tracking field merge per `processId` in capability;
@@ -57,7 +57,7 @@ Trigger to pay:
 
 Current state:
 - `listSearchObservations()` performs unfiltered `select('*')` on `container_observations`;
-- then does a second query with large `IN (containerIds...)` against `containers`.
+- then does second query with large `IN (containerIds...)` against `containers`.
 
 Impact:
 - expensive read path and possible PostgREST URL/parameter limit issues.
@@ -90,7 +90,7 @@ Future correction:
 - support server-side filtering in persistence or maintain dedicated projection keyed by searchable fields.
 
 Trigger to pay:
-- before enabling search as primary operational entrypoint for large accounts.
+- before enabling search primary operational entrypoint for large accounts.
 
 ---
 

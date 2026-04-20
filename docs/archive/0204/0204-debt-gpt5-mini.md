@@ -10,10 +10,10 @@ Sumário executivo
   2. parsing/enriquecimento de dados realizado na camada de UI (`ShipmentView`);
   3. utilitários específicos implementados inline (ex.: `carrierTrackUrl`);
   4. gaps de i18n (chaves declaradas no componente vs. locales);
-  5. impacto de refactors massivos de import paths/arquivos (possíveis artefatos .bak e scripts duplicados);
+  5. impacto de refactors massivos de import paths/arquivos (possíveis artefatos.bak e scripts duplicados);
   6. dispersão de parsing entre adapters e UI.
 
-Este documento descreve o racional, evidências, impacto e recomendações práticas ordenadas por prioridade.
+Este documento descreve racional, evidências, impacto e recomendações práticas ordenadas por prioridade.
 
 1) Últimos 10 commits (resumo relevante)
 --------------------------------------
@@ -31,7 +31,7 @@ Este documento descreve o racional, evidências, impacto e recomendações prát
 2) Evidências e locais afetados
 --------------------------------
 - Código duplicado de clipboard
-  - `src/modules/process/ui/ShipmentView.tsx` contém uma função `copyToClipboard` (fallback + execCommand) e o projeto agora tem `src/shared/ui/CopyButton.tsx` com implementação similar.
+  - `src/modules/process/ui/ShipmentView.tsx` contém função `copyToClipboard` (fallback + execCommand) e projeto agora tem `src/shared/ui/CopyButton.tsx` com implementação similar.
 
 - Parsing/enriquecimento no UI
   - `ShipmentView.tsx` implementa `fetchProcess()` que consome `/api/processes/:id` e mapeia `ProcessApiResponse` para `ShipmentDetail` (cria evento de sistema, mapeia events -> timeline, formata datas, monta `AlertDisplay` etc.).
@@ -41,10 +41,10 @@ Este documento descreve o racional, evidências, impacto e recomendações prát
   - `carrierTrackUrl()` está em `ShipmentView.tsx`.
 
 - i18n
-  - `ShipmentView.tsx` declara uma tabela `keys = { ... }` (boa prática), mas algumas chaves referenciadas não encontram correspondentes em todos os `src/locales/*.json` (ex.: `shipmentView.loading`, `shipmentView.noEvents`, `shipmentView.processCreated`, etc.).
+  - `ShipmentView.tsx` declara tabela `keys = { ... }` (boa prática), mas algumas chaves referenciadas não encontram correspondentes em todos `src/locales/*.json` (ex.: `shipmentView.loading`, `shipmentView.noEvents`, `shipmentView.processCreated`, etc.).
 
 - Refactors de imports e schemas
-  - Mudanças de import-path para `~` e movimentação de schemas aumentaram a superfície de alteração; há arquivos com nomes que sugerem artefatos (`*.bak`) e scripts antigos que podem conflitar.
+  - Mudanças de import-path para `~` e movimentação de schemas aumentaram superfície de alteração; há arquivos com nomes que sugerem artefatos (`*.bak`) e scripts antigos que podem conflitar.
 
 3) Impacto no projeto (por prioridade)
 -------------------------------------
@@ -60,42 +60,42 @@ Este documento descreve o racional, evidências, impacto e recomendações prát
 - Média — utilitários inline e falta de testes
   - Dificulta reuso e cobertura de testes.
 
-- Baixa → Média — refactors de import-paths e arquivos .bak
+- Baixa → Média — refactors de import-paths e arquivos.bak
   - Risco de build/lint quebrado se `tsconfig`/bundler não estiverem alinhados; limpeza necessária.
 
 4) Recomendações práticas (ordem sugerida)
 -----------------------------------------
-Curto prazo (quick wins — 0.5h a 1 dia)
+Curto prazo (quick wins — 0.5h 1 dia)
 - Extrair função de clipboard compartilhada
   - Criar `src/shared/utils/clipboard.ts` com `copyToClipboard(text: string): Promise<void>` que implemente fallback e exporte.
-  - Atualizar `src/shared/ui/CopyButton.tsx` para importar e usar a util.
-  - Remover implementação duplicada de `copyToClipboard` de `ShipmentView.tsx` e usar `CopyButton` quando for interação com feedback; quando for ação programática (ex.: abrir link e copiar), importar a util.
+  - Atualizar `src/shared/ui/CopyButton.tsx` para importar e usar util.
+  - Remover implementação duplicada de `copyToClipboard` de `ShipmentView.tsx` e usar `CopyButton` quando for interação com feedback; quando for ação programática (ex.: abrir link e copiar), importar util.
 
 - Extrair `carrierTrackUrl` para util
   - Criar `src/shared/utils/carrier.ts` com `carrierTrackUrl(carrier: string | null, containerNumber: string): string | null` e testes unitários simples.
 
 - Corrigir i18n imediatamente
   - Auditar chaves declaradas em `ShipmentView.tsx`; garantir presença em `src/locales/en-US.json`, `pt-BR.json`, `pt-PT.json` com placeholders curtos.
-  - Rodar o verificador de chaves i18n local: `pnpm i18n:check` (projeto inclui script `scripts/check-i18n-keys.mjs`).
+  - Rodar verificador de chaves i18n local: `pnpm i18n:check` (projeto inclui script `scripts/check-i18n-keys.mjs`).
 
-Médio prazo (refactor seguro — 1 a 5 dias)
+Médio prazo (refactor seguro — 1 5 dias)
 - Mover parsing/enriquecimento para presenter/adapter
-  - Criar `src/modules/process/application/processPresenter.ts` (ou `src/adapters/process.presenter.ts`) que recebe o `ProcessApiResponse` e retorna o `ShipmentDetail` que a UI espera.
-  - A presenter deve reutilizar `src/adapters/*` e `src/schemas/*` (usar tipos canônicos) e conter a transformação (criação de evento system-created, mapeamento de eventos, formatação de datas no formato desejado pela UI, não no formato de exibição — preferir ISO ou data bruta e deixar formatação na UI quando for about locale).
+  - Criar `src/modules/process/application/processPresenter.ts` (ou `src/adapters/process.presenter.ts`) que recebe `ProcessApiResponse` e retorna `ShipmentDetail` que UI espera.
+  - presenter deve reutilizar `src/adapters/*` e `src/schemas/*` (usar tipos canônicos) e conter transformação (criação de evento system-created, mapeamento de eventos, formatação de datas no formato desejado pela UI, não no formato de exibição — preferir ISO ou data bruta e deixar formatação na UI quando for about locale).
   - Adaptar `ShipmentView.fetchProcess()` para delegar ao presenter.
   - Cobrir presenter com testes unitários (sat de inputs dos adapters/carriers).
 
 - Consolidar parsing entre adapters e presenter
-  - Garantir que `src/adapters/*` retornem payload canônico (usar `canonical.schema.ts`) e que o presenter seja a única peça que gere o shape final do UI.
+  - Garantir que `src/adapters/*` retornem payload canônico (usar `canonical.schema.ts`) e que presenter seja única peça que gere shape final do UI.
 
 Longo prazo (robustez, 3–10 dias)
 - Cobertura de testes
   - Escrever testes unitários pour: adapters, presenter, util clipboard, carrier utils.
-  - Considerar testes de integração simples para o fluxo `/api/processes/:id` → presenter → UI resource.
+  - Considerar testes de integração simples para fluxo `/api/processes/:id` → presenter → UI resource.
 
 - Limpeza de repositório
   - Remover arquivos `.bak` e scripts obsoletos ou movê-los para `scripts/archive/` com nota explicativa no README.
-  - Garantir `tsconfig.paths` e `biome`/linter alinhados com o uso de `~`.
+  - Garantir `tsconfig.paths` e `biome`/linter alinhados com uso de `~`.
 
 5) PRs sugeridos (incrementais, cada PR pequeno)
 -----------------------------------------------
@@ -147,12 +147,12 @@ pnpm test
 - [ ] Extrair `carrierTrackUrl` para `src/shared/utils/carrier.ts`
 - [ ] Adicionar chaves i18n faltantes nas 3 locales
 - [ ] Rodar `pnpm i18n:check` e corrigir problemas
-- [ ] Criar PR pequeno com esses quick-fixes e referência a este documento
+- [ ] Criar PR pequeno com esses quick-fixes e referência este documento
 
 9) Notas finais e referências
 --------------------------------
-- Este documento foi produzido com base nos últimos 10 commits observados e nos arquivos de domínio/produto (`docs/master-0204.md`, `docs/idea-dump.md`, `docs/chat-gpt-brainstorm-1.md`). As recomendações seguem as regras de arquitetura do projeto: separar domínio/adapters/presenter/UI, tipagem forte e i18n consistente.
-- Posso aplicar automaticamente os quick-fixes (extrair utils + i18n) e abrir patches locais. Diga se quer que eu comece pelo PR 1 agora.
+- Este documento foi produzido com base nos últimos 10 commits observados e nos arquivos de domínio/produto (`docs/master-0204.md`, `docs/idea-dump.md`, `docs/chat-gpt-brainstorm-1.md`). recomendações seguem regras de arquitetura do projeto: separar domínio/adapters/presenter/UI, tipagem forte e i18n consistente.
+- Posso aplicar automaticamente quick-fixes (extrair utils + i18n) e abrir patches locais. Diga se quer que eu comece pelo PR 1 agora.
 
 ---
 Arquivo gerado automaticamente: `docs/0204-debt-gpt5-mini.md`

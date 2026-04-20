@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines the operational model for one-click Agent install + runtime bootstrap.
+This document defines operational model for one-click Agent install + runtime bootstrap.
 
 Core components:
 
@@ -16,7 +16,7 @@ Core components:
   - `POST /api/agent/enroll` (bootstrap -> effective config contract)
 - Legacy route:
   - `GET/POST /api/refresh-maersk/:container` returns `410 Gone`
-- Local Node runner: `tools/agent/agent.ts`
+- Local Node runner: `apps/agent/src/agent.ts`
 
 Snapshots continue to be persisted in `container_snapshots` via
 `trackingUseCases.saveAndProcess(...)`.
@@ -43,17 +43,17 @@ Snapshots continue to be persisted in `container_snapshots` via
 Notes:
 
 - `GET /api/agent/targets` and `POST /api/tracking/snapshots/ingest` authenticate with
-  `agent_token` issued by `POST /api/agent/enroll`.
+`agent_token` issued by `POST /api/agent/enroll`.
 - Agent token is resolved from `tracking_agents` (active/non-revoked row).
 
 ### 1.2 Agent bootstrap input (`bootstrap.env`)
 
-`bootstrap.env` is installed into `%LOCALAPPDATA%\ContainerTracker` by installer and is the
+`bootstrap.env` is installed into `%LOCALAPPDATA%\ContainerTracker` by installer and is
 primary first-run input:
 
 - `BACKEND_URL` (required)
 - `INSTALLER_TOKEN` (required bootstrap secret)
-- optional runtime defaults such as:
+- optional runtime defaults such:
   - `AGENT_ID`
   - `INTERVAL_SEC`
   - `LIMIT`
@@ -198,7 +198,7 @@ Expected:
 
 - HTTP `200`
 - `targets[]` list
-- request `tenant_id` must match the tenant attached to bearer `agentToken` (`403` on mismatch)
+- request `tenant_id` must match tenant attached to bearer `agentToken` (`403` on mismatch)
 - leased rows become `status=LEASED`
 
 ### 5.3 Ingest snapshot
@@ -230,7 +230,7 @@ Expected:
 ## 6) Run Agent
 
 ```bash
-node --experimental-strip-types tools/agent/agent.ts
+node --experimental-strip-types apps/agent/src/agent.ts
 ```
 
 First execution:

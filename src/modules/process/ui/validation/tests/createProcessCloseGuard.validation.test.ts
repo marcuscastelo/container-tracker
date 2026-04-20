@@ -51,6 +51,7 @@ describe('createProcessCloseGuard.validation', () => {
       importerName: 'Importer A',
       exporterName: 'Exporter B',
       referenceImporter: 'PO-98765',
+      depositary: 'Santos Brasil',
       product: 'Olives',
       redestinationNumber: '129495',
     })
@@ -65,6 +66,7 @@ describe('createProcessCloseGuard.validation', () => {
       importerName: 'Importer A',
       exporterName: 'Exporter B',
       referenceImporter: 'PO-98765',
+      depositary: 'Santos Brasil',
       product: 'Olives',
       redestinationNumber: '129495',
     })
@@ -75,11 +77,13 @@ describe('createProcessCloseGuard.validation', () => {
   it('returns dirty for changed edit form and container set', () => {
     const baseline = createFormSnapshot({
       reference: 'CA074-25',
+      depositary: 'Santos Brasil',
       containers: ['MRSU8798130'],
       carrier: 'maersk',
     })
     const current = createFormSnapshot({
       reference: 'CA074-25',
+      depositary: 'CLI',
       containers: ['MRSU8798130', 'CAAU7648798'],
       carrier: 'msc',
     })

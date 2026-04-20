@@ -1,16 +1,22 @@
+import { applyVoyageExpectedSubstitution } from '~/modules/tracking/application/projection/voyageExpectedSubstitution.readmodel'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import { isTrackingTemporalValueExpired } from '~/modules/tracking/domain/temporal/tracking-temporal'
-import { classifySeries } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
 import {
-  buildSeriesKey,
-  compareObservationsChronologically,
-} from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+  buildCanonicalSeriesGroups,
+  type CanonicalSeriesGroup,
+} from '~/modules/tracking/features/series/domain/reconcile/canonicalSeries'
+import {
+  type ClassifiedObservation,
+  classifySeries,
+  pickLatestObservedExpected,
+} from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import { toTemporalValueDto } from '~/shared/time/dto'
 import type { Instant } from '~/shared/time/instant'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
-type TrackingOperationalEtaState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
+export type TrackingOperationalEtaState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
 export type TrackingLifecycleBucket = 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
 const ROUTE_TYPES = ['LOAD', 'DISCHARGE', 'ARRIVAL', 'DEPARTURE'] as const
 const TERMINAL_MILESTONE_TYPES = ['ARRIVAL', 'DISCHARGE', 'DELIVERY'] as const
@@ -114,40 +120,42 @@ function derivePrimarySeriesObservations(
   observations: readonly TrackingObservationForOperationalSummary[],
   now: Instant,
 ): readonly TrackingObservationForOperationalSummary[] {
-  const groups = new Map<string, TrackingObservationForOperationalSummary[]>()
+  const candidates: Array<{
+    readonly primary: TrackingObservationForOperationalSummary
+    readonly classified: readonly ClassifiedObservation<TrackingObservationForOperationalSummary>[]
+    readonly hasActualConflict: boolean
+  }> = []
 
-  for (const observation of observations) {
-    const key = buildSeriesKey(observation)
-    const series = groups.get(key)
-    if (series) {
-      series.push(observation)
-    } else {
-      groups.set(key, [observation])
-    }
-  }
+  const canonicalSeriesGroups: readonly CanonicalSeriesGroup<TrackingObservationForOperationalSummary>[] =
+    buildCanonicalSeriesGroups(observations, now)
 
-  const primaries: TrackingObservationForOperationalSummary[] = []
-
-  for (const series of groups.values()) {
-    series.sort(compareObservationsChronologically)
-    const classification = classifySeries(series, now)
+  for (const canonicalSeries of canonicalSeriesGroups) {
+    const classification = classifySeries(canonicalSeries.observations, now)
     if (classification.primary) {
-      primaries.push(classification.primary)
+      candidates.push({
+        primary: classification.primary,
+        classified: classification.classified,
+        hasActualConflict: classification.hasActualConflict,
+      })
       continue
     }
 
-    // For operational ETA visibility we keep expired EXPECTED as fallback
-    // when a series has no ACTUAL (safe-first still picks latest EXPECTED).
-    const latestExpected = [...series]
-      .reverse()
-      .find((observation) => observation.event_time_type === 'EXPECTED')
+    // For operational ETA visibility we keep the latest observed EXPECTED as fallback
+    // when the newest revision is expired and therefore omitted from the main timeline.
+    const latestExpected = pickLatestObservedExpected(canonicalSeries.observations)
 
     if (latestExpected) {
-      primaries.push(latestExpected)
+      candidates.push({
+        primary: latestExpected,
+        classified: classification.classified,
+        hasActualConflict: classification.hasActualConflict,
+      })
     }
   }
 
-  return primaries
+  return applyVoyageExpectedSubstitution(candidates).visibleCandidates.map(
+    (candidate) => candidate.primary,
+  )
 }
 
 function locationCodesMatch(

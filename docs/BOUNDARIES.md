@@ -6,7 +6,7 @@ This document formalizes architectural dependency rules.
 
 ## 1. Bounded Context (modules/*)
 
-A Bounded Context:
+Bounded Context:
 
 - Owns domain semantics
 - Defines entities, VOs, invariants
@@ -28,7 +28,7 @@ Forbidden:
 
 ## 2. Capability (capabilities/*)
 
-A Capability:
+Capability:
 
 - Orchestrates multiple BCs
 - Composes read models
@@ -72,7 +72,7 @@ UI layer:
 - Formats dates
 - Applies i18n
 - Handles interaction state
-- Composes shipment view as timeline-first
+- Composes shipment view timeline-first
 - Places supporting metadata/status in sidebar panels
 - Preserves grouped operational timeline blocks from canonical read models
 
@@ -109,9 +109,9 @@ Forbidden:
 
 - `*.vm.ts` -> shape/type only
 - `*.ui-mapper.ts` -> DTO -> ViewModel mapping only
-- `*.service.ts` -> behavior/orchestration in the same layer
+- `*.service.ts` -> behavior/orchestration in same layer
 - `*.utils.ts` -> small pure helper
-- `*.readmodel.ts` -> backend projection owned by the semantic BC
+- `*.readmodel.ts` -> backend projection owned by semantic BC
 
 ---
 

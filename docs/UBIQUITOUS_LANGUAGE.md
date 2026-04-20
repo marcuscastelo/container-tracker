@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the canonical ubiquitous language of Container Tracker.
+This document defines canonical ubiquitous language of Container Tracker.
 
 It exists to:
 - eliminate semantic drift across modules, capabilities, and UI
@@ -17,39 +17,39 @@ This document is normative for terminology only.
 
 1. Each term has one primary meaning.
 2. Avoid synonyms in code — prefer canonical names.
-3. If a term is ambiguous, it must be explicitly qualified.
+3. If term is ambiguous, it must be explicitly qualified.
 4. UI labels may differ, but must map to canonical terms.
-5. Each concept belongs to a bounded context.
+5. Each concept belongs to bounded context.
 6. This document defines vocabulary, not behavior.
 
 ---
 
 ## Canonical Terms
 
-| Term                  | Definition                                                  | Owned by             | Layer        | Aliases to avoid         |
+|Term|Definition|Owned by|Layer|Aliases to avoid|
 | --------------------- | ----------------------------------------------------------- | -------------------- | ------------ | ------------------------ |
-| Process               | Logical shipment grouping                                   | process              | Domain       | shipment (internal), job |
-| Container             | Physical shipping container linked to a process             | container            | Domain       | unit, box                |
-| Snapshot              | Raw immutable carrier payload                               | tracking             | Ingestion    | event, raw event         |
-| Observation           | Normalized immutable fact derived from snapshot             | tracking             | Domain       | event                    |
-| Milestone             | Semantic logistics checkpoint (e.g. LOADED_ON_VESSEL)       | tracking             | Domain       | event                    |
-| Series                | Group of observations for the same milestone                | tracking             | Domain       | event group              |
-| Timeline              | Chronological derived view combining multiple series        | tracking             | Read model   | history, events          |
-| Primary (Observation) | Selected observation representing a series                  | tracking             | Derived      | latest                   |
-| ACTUAL                | Confirmed occurrence of a milestone                         | tracking             | Domain       | real                     |
-| EXPECTED              | Predicted occurrence of a milestone                         | tracking             | Domain       | estimate                 |
-| Active Expected       | Most recent valid EXPECTED in a series                      | tracking             | Derived      | current estimate         |
-| Expired Expected      | EXPECTED no longer valid due to time progression            | tracking             | Derived      | outdated                 |
-| Redundant             | Observation no longer relevant (e.g. EXPECTED after ACTUAL) | tracking             | Derived      | duplicate                |
-| Conflict              | Multiple ACTUAL observations within a series                | tracking             | Derived      | inconsistency            |
-| Status                | Derived operational state from timeline                     | tracking / process   | Derived      | state, phase             |
-| Alert                 | Derived operational signal                                  | tracking             | Derived      | warning, issue           |
-| Read Model            | Projection optimized for reading                            | capability / backend | Read model   | view                     |
-| Response DTO          | Backend HTTP contract                                       | backend              | Transport    | response                 |
-| ViewModel             | UI render model                                             | UI                   | Presentation | model                    |
-| Timeline Item         | UI representation of timeline data                          | UI                   | Presentation | event                    |
-| Capability            | Cross-BC orchestration layer                                | capabilities         | Application  | service                  |
-| Bounded Context       | Semantic ownership boundary                                 | architecture         | Structural   | module                   |
+|Process|Logical shipment grouping|process|Domain|shipment (internal), job|
+|Container|Physical shipping container linked to process|container|Domain|unit, box|
+|Snapshot|Raw immutable carrier payload|tracking|Ingestion|event, raw event|
+|Observation|Normalized immutable fact derived from snapshot|tracking|Domain|event|
+|Milestone|Semantic logistics checkpoint (e.g. LOADED_ON_VESSEL)|tracking|Domain|event|
+|Series|Group of observations for same milestone|tracking|Domain|event group|
+|Timeline|Chronological derived view combining multiple series|tracking|Read model|history, events|
+|Primary (Observation)|Selected observation representing series|tracking|Derived|latest|
+|ACTUAL|Confirmed occurrence of milestone|tracking|Domain|real|
+|EXPECTED|Predicted occurrence of milestone|tracking|Domain|estimate|
+|Active Expected|Most recent valid EXPECTED in series|tracking|Derived|current estimate|
+|Expired Expected|EXPECTED no longer valid due to time progression|tracking|Derived|outdated|
+|Redundant|Observation no longer relevant (e.g. EXPECTED after ACTUAL)|tracking|Derived|duplicate|
+|Conflict|Multiple ACTUAL observations within series|tracking|Derived|inconsistency|
+|Status|Derived operational state from timeline|tracking / process|Derived|state, phase|
+|Alert|Derived operational signal|tracking|Derived|warning, issue|
+|Read Model|Projection optimized for reading|capability / backend|Read model|view|
+|Response DTO|Backend HTTP contract|backend|Transport|response|
+|ViewModel|UI render model|UI|Presentation|model|
+|Timeline Item|UI representation of timeline data|UI|Presentation|event|
+|Capability|Cross-BC orchestration layer|capabilities|Application|service|
+|Bounded Context|Semantic ownership boundary|architecture|Structural|module|
 
 ---
 
@@ -57,7 +57,7 @@ This document is normative for terminology only.
 
 ### Event
 
-“Event” is not a canonical term and should be avoided.
+“Event” is not canonical term and should be avoided.
 
 It may refer to:
 - Observation (data)
@@ -82,10 +82,10 @@ Status is always derived.
 
 ### Series vs Timeline
 
-- Series groups observations of the same milestone
-- Timeline combines multiple series into a chronological view
+- Series groups observations of same milestone
+- Timeline combines multiple series into chronological view
 
-Timeline is not a series.
+Timeline is not series.
 
 ---
 
@@ -109,7 +109,7 @@ Avoid:
 
 ## When Adding New Terms
 
-A new term must define:
+new term must define:
 - definition
 - owned bounded context
 - layer

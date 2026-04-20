@@ -1,6 +1,6 @@
 import type { AgentMonitoringUseCases } from '~/modules/agent/application/agent-monitoring.usecases'
 import type { AgentUpdateManifestService } from '~/modules/agent/application/update-manifest.service'
-import { AgentUpdateManifestResponseSchema } from '~/modules/agent/interface/http/agent-monitoring.schemas'
+import { AgentRuntimeUpdateManifestResponseSchema } from '~/modules/agent/interface/http/agent-monitoring.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 
@@ -26,6 +26,16 @@ function getAgentPlatform(request: Request): string | undefined {
   return normalized.length > 0 ? normalized : undefined
 }
 
+function getAgentChannelOverride(request: Request): string | undefined {
+  const headerValue = request.headers.get('x-agent-update-channel')
+  if (!headerValue) {
+    return undefined
+  }
+
+  const normalized = headerValue.trim().toLowerCase()
+  return normalized.length > 0 ? normalized : undefined
+}
+
 export function createUpdateManifestControllers(deps: UpdateManifestControllersDeps) {
   async function getUpdateManifest({ request }: { readonly request: Request }): Promise<Response> {
     try {
@@ -42,16 +52,19 @@ export function createUpdateManifestControllers(deps: UpdateManifestControllersD
       }
 
       const platform = getAgentPlatform(request)
+      const updateChannel = getAgentChannelOverride(request)
       const result = await deps.updateManifestService.resolveForAgent(
         platform === undefined
           ? {
               tenantId: auth.tenantId,
               agentId: auth.agentId,
+              ...(updateChannel === undefined ? {} : { updateChannel }),
             }
           : {
               tenantId: auth.tenantId,
               agentId: auth.agentId,
               platform,
+              ...(updateChannel === undefined ? {} : { updateChannel }),
             },
       )
 
@@ -76,10 +89,14 @@ export function createUpdateManifestControllers(deps: UpdateManifestControllersD
 
       const response = {
         version: result.manifest.version,
-        download_url: result.manifest.downloadUrl,
-        checksum: result.manifest.checksum,
         channel: result.manifest.channel,
         published_at: result.manifest.publishedAt,
+        platforms: {
+          [result.manifest.selectedPlatform]: {
+            url: result.manifest.downloadUrl,
+            checksum: result.manifest.checksum,
+          },
+        },
         update_available: result.manifest.updateAvailable,
         desired_version: result.manifest.desiredVersion,
         current_version: result.manifest.currentVersion,
@@ -92,7 +109,7 @@ export function createUpdateManifestControllers(deps: UpdateManifestControllersD
         `[agent:update-manifest] 200 resolved tenant=${auth.tenantId} agent=${auth.agentId} channel=${response.channel} version=${response.version} update_available=${response.update_available} desired=${response.desired_version ?? 'none'} current=${response.current_version} update_ready=${response.update_ready_version ?? 'none'} platform=${platform ?? 'default'}`,
       )
 
-      return jsonResponse(response, 200, AgentUpdateManifestResponseSchema)
+      return jsonResponse(response, 200, AgentRuntimeUpdateManifestResponseSchema)
     } catch (error) {
       return mapErrorToResponse(error)
     }

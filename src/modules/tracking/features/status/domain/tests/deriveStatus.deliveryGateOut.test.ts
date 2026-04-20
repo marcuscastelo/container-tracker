@@ -112,4 +112,41 @@ describe('deriveStatus terminal delivery gate-out fallback', () => {
 
     expect(deriveStatus(timeline)).toBe('EMPTY_RETURNED')
   })
+
+  it('does not keep DELIVERED when a new lifecycle continuation appears after delivery gate-out', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000540',
+        fingerprint: 'fp-discharge',
+        type: 'DISCHARGE',
+        event_time: '2026-02-03T09:00:00.000Z',
+        created_at: '2026-02-03T09:00:00.000Z',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS, BR',
+      }),
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000541',
+        fingerprint: 'fp-delivery-gate-out',
+        type: 'GATE_OUT',
+        event_time: '2026-02-04T10:00:00.000Z',
+        created_at: '2026-02-04T10:00:00.000Z',
+        location_code: 'BRIOA',
+        location_display: 'ITAPOA, BR',
+        is_empty: false,
+      }),
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000542',
+        fingerprint: 'fp-load-after-completion',
+        type: 'LOAD',
+        event_time: '2026-02-07T08:00:00.000Z',
+        created_at: '2026-02-07T08:00:00.000Z',
+        location_code: 'ITNAP',
+        location_display: 'NAPLES, IT',
+        vessel_name: 'MSC RESUME',
+        voyage: '777E',
+      }),
+    ])
+
+    expect(deriveStatus(timeline)).toBe('LOADED')
+  })
 })

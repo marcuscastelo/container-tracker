@@ -65,6 +65,9 @@ export function DashboardKpiCard(props: DashboardKpiCardProps): JSX.Element {
         >
           {props.item.value}
         </p>
+        <Show when={props.item.detail}>
+          {(detail) => <p class="mt-1 text-xs-ui text-text-muted">{detail()}</p>}
+        </Show>
       </div>
     </div>
   )

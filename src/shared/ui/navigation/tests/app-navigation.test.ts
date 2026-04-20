@@ -41,13 +41,13 @@ describe('app-navigation href helpers', () => {
   it('builds process href with shipment alert navigation query params', () => {
     expect(
       buildProcessContainerHref('process/with space', ' mscu1234567 ', {
-        source: 'navbar-alerts',
+        source: 'navbar-incidents',
         focusSection: 'current-status',
         revealLiveStatus: true,
-        requestKey: 'navbar-alert-3',
+        requestKey: 'navbar-incident-3',
       }),
     ).toBe(
-      '/shipments/process%2Fwith%20space?container=MSCU1234567&focus=current-status&focusRequest=navbar-alert-3',
+      '/shipments/process%2Fwith%20space?container=MSCU1234567&focus=current-status&focusRequest=navbar-incident-3',
     )
   })
 
@@ -107,27 +107,27 @@ describe('app-navigation href helpers', () => {
       processId: 'p-abc',
       containerNumber: 'mscu7654321',
       navigationState: {
-        source: 'navbar-alerts',
+        source: 'navbar-incidents',
         focusSection: 'current-status',
         revealLiveStatus: true,
-        requestKey: 'navbar-alert-1',
+        requestKey: 'navbar-incident-1',
       },
       state: {
-        source: 'navbar-alerts',
+        source: 'navbar-incidents',
         focusSection: 'current-status',
         revealLiveStatus: true,
-        requestKey: 'navbar-alert-1',
+        requestKey: 'navbar-incident-1',
       },
     })
 
     expect(navigate).toHaveBeenCalledWith(
-      '/shipments/p-abc?container=MSCU7654321&focus=current-status&focusRequest=navbar-alert-1',
+      '/shipments/p-abc?container=MSCU7654321&focus=current-status&focusRequest=navbar-incident-1',
       {
         state: {
-          source: 'navbar-alerts',
+          source: 'navbar-incidents',
           focusSection: 'current-status',
           revealLiveStatus: true,
-          requestKey: 'navbar-alert-1',
+          requestKey: 'navbar-incident-1',
         },
       },
     )
@@ -136,29 +136,29 @@ describe('app-navigation href helpers', () => {
   it('reads valid process container navigation state from router state', () => {
     expect(
       readProcessContainerNavigationState({
-        source: 'navbar-alerts',
+        source: 'navbar-incidents',
         focusSection: 'current-status',
         revealLiveStatus: true,
-        requestKey: 'navbar-alert-2',
+        requestKey: 'navbar-incident-2',
       }),
     ).toEqual({
-      source: 'navbar-alerts',
+      source: 'navbar-incidents',
       focusSection: 'current-status',
       revealLiveStatus: true,
-      requestKey: 'navbar-alert-2',
+      requestKey: 'navbar-incident-2',
     })
   })
 
   it('reads valid process container navigation state from url search params', () => {
     expect(
       readProcessContainerNavigationStateFromSearch(
-        '?container=MSCU1234567&focus=current-status&focusRequest=navbar-alert-4',
+        '?container=MSCU1234567&focus=current-status&focusRequest=navbar-incident-4',
       ),
     ).toEqual({
-      source: 'navbar-alerts',
+      source: 'navbar-incidents',
       focusSection: 'current-status',
       revealLiveStatus: true,
-      requestKey: 'navbar-alert-4',
+      requestKey: 'navbar-incident-4',
     })
   })
 
@@ -168,15 +168,15 @@ describe('app-navigation href helpers', () => {
         source: 'search',
         focusSection: 'current-status',
         revealLiveStatus: true,
-        requestKey: 'navbar-alert-2',
+        requestKey: 'navbar-incident-2',
       }),
     ).toBeNull()
     expect(
       readProcessContainerNavigationState({
-        source: 'navbar-alerts',
+        source: 'navbar-incidents',
         focusSection: 'current-status',
         revealLiveStatus: false,
-        requestKey: 'navbar-alert-2',
+        requestKey: 'navbar-incident-2',
       }),
     ).toBeNull()
     expect(readProcessContainerNavigationState(null)).toBeNull()

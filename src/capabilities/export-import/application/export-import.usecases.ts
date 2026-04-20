@@ -418,6 +418,7 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
         reference: entry.process.reference,
         origin: entry.process.origin,
         destination: entry.process.destination,
+        depositary: entry.process.depositary,
         carrier: entry.process.carrier,
         billOfLading: entry.process.billOfLading,
         bookingNumber: entry.process.bookingNumber,
@@ -499,6 +500,7 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
             reference: processEntry.reference,
             origin: processEntry.origin,
             destination: processEntry.destination,
+            depositary: processEntry.depositary,
             carrier: processEntry.carrier ?? 'unknown',
             bill_of_lading: processEntry.billOfLading,
             booking_number: processEntry.bookingNumber,
@@ -572,14 +574,17 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
           carrier: entry.pwc.process.carrier,
           origin: entry.pwc.process.origin,
           destination: entry.pwc.process.destination,
+          depositary: entry.pwc.process.depositary,
           billOfLading: entry.pwc.process.billOfLading,
           importerName: entry.pwc.process.importerName,
           exporterName: entry.pwc.process.exporterName,
           product: entry.pwc.process.product,
           redestinationNumber: entry.pwc.process.redestinationNumber,
           processStatus: entry.summary.process_status,
-          alertCount: entry.summary.alerts_count,
-          highestAlertSeverity: entry.summary.highest_alert_severity,
+          activeIncidentCount: entry.summary.operational_incidents.summary.active_incidents_count,
+          affectedContainerCount:
+            entry.summary.operational_incidents.summary.affected_containers_count,
+          dominantIncidentSeverity: entry.summary.operational_incidents.dominant?.severity ?? null,
           eta: entry.summary.eta,
           lastEventAt: entry.summary.last_event_at,
           lastSyncAt: entry.sync.lastSyncAt,
@@ -608,8 +613,9 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
       totals: {
         processCount,
         containerCount,
-        processesWithAlerts: executiveSource.filter((processEntry) => processEntry.alertCount > 0)
-          .length,
+        processesWithActiveIncidents: executiveSource.filter(
+          (processEntry) => processEntry.activeIncidentCount > 0,
+        ).length,
         deliveredProcesses: executiveSource.filter(
           (processEntry) =>
             processEntry.processStatus === 'DELIVERED' ||
@@ -629,8 +635,8 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
         }).length,
       },
       methodologicalNotes: [
-        'Status and alerts are derived backend projections at export time.',
-        'Monitoring alerts are time-dependent and reflect the export instant.',
+        'Status and operational incidents are derived backend projections at export time.',
+        'Monitoring incidents are time-dependent and reflect the export instant.',
         'Conflicts and uncertainties are intentionally preserved and not hidden.',
       ],
       processes: reportProcesses,

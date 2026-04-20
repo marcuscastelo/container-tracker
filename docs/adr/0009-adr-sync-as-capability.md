@@ -6,27 +6,27 @@ Proposed
 
 ## Context
 
-O sistema atualmente possui múltiplos mecanismos de sincronização:
+sistema atualmente possui múltiplos mecanismos de sincronização:
 
 - dashboard refresh
 - process refresh
 - container refresh (planejado)
 
-A implementação atual localiza a lógica dentro do BC `process`.
+implementação atual localiza lógica dentro do BC `process`.
 
-Entretanto a sincronização:
+Entretanto sincronização:
 
 - orquestra múltiplos BCs
 - depende de runtime operacional (sync_requests)
 - não pertence semanticamente ao domínio process
 
-Isso viola parcialmente o princípio arquitetural:
+Isso viola parcialmente princípio arquitetural:
 
 "Capabilities orchestrate multiple bounded contexts."
 
 ## Decision
 
-Criar uma capability dedicada:
+Criar capability dedicada:
 
 ```
 capabilities/sync
@@ -38,7 +38,7 @@ Essa capability será responsável por:
 - enqueue de jobs
 - agregação de status operacional
 
-O domínio tracking permanece responsável por:
+domínio tracking permanece responsável por:
 
 ```
 snapshot
@@ -78,7 +78,7 @@ Rejeitado porque:
 - sync não é domínio canônico
 - é runtime operacional
 
-Capabilities são a camada correta.
+Capabilities são camada correta.
 
 ## Implementation plan
 

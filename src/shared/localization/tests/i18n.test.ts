@@ -10,7 +10,7 @@ describe('shared localization', () => {
   it('translates keys with interpolation', () => {
     const { t, keys } = createTranslationApi({ devMode: true })
 
-    expect(t(keys.header.alertsBadge, { count: 3 })).toBe('3 Alertas')
+    expect(t(keys.header.alertsBadge, { count: 3 })).toBe('3 Incidentes')
   })
 
   it('memoizes nested key proxies', () => {

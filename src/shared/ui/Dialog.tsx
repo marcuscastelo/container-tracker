@@ -1,7 +1,13 @@
 import type { JSX } from 'solid-js'
-import { createEffect, onCleanup, Show } from 'solid-js'
+import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import { useTranslation } from '~/shared/localization/i18n'
+import {
+  clearMotionTimeout,
+  prefersReducedMotion,
+  scheduleMotionFrame,
+  scheduleMotionTimeout,
+} from '~/shared/ui/motion/motion.utils'
 
 type Props = {
   readonly open: boolean
@@ -44,7 +50,7 @@ function DialogHeader(props: HeaderProps): JSX.Element {
         <button
           type="button"
           onClick={() => props.onClose()}
-          class="-m-2 rounded-md p-2 text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground"
+          class="-m-2 rounded-md p-2 text-text-muted motion-focus-surface motion-interactive hover:bg-surface-muted hover:text-foreground"
           aria-label={props.closeLabel}
         >
           <svg
@@ -67,11 +73,168 @@ function DialogHeader(props: HeaderProps): JSX.Element {
   )
 }
 
+type PanelSurfaceProps = {
+  readonly widthClass: string
+  readonly panelState: 'open' | 'closed'
+  readonly title: string
+  readonly description: string | undefined
+  readonly closeLabel: string
+  readonly onClose: () => void
+  readonly children: JSX.Element
+  readonly footer: JSX.Element | undefined
+  readonly contentShellStyle: Record<string, string>
+  readonly shouldUseInitialSizeStyle: boolean
+  readonly onContentShellRef: (element: HTMLDivElement) => void
+  readonly onContentMeasureRef: (element: HTMLDivElement) => void
+}
+
+function DialogPanelSurface(props: PanelSurfaceProps): JSX.Element {
+  return (
+    <div
+      data-state={props.panelState}
+      class={`motion-dialog-panel relative w-full ${props.widthClass} rounded-lg border border-border bg-popover text-popover-foreground shadow-xl`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dialog-title"
+    >
+      <div
+        ref={props.onContentShellRef}
+        class="motion-dialog-size"
+        style={props.shouldUseInitialSizeStyle ? {} : props.contentShellStyle}
+      >
+        <div ref={props.onContentMeasureRef}>
+          <DialogHeader
+            title={props.title}
+            description={props.description}
+            closeLabel={props.closeLabel}
+            onClose={props.onClose}
+          />
+          <div class="px-6 py-4">{props.children}</div>
+          <Show when={props.footer}>
+            {(footer) => <div class="border-t border-border px-6 py-4">{footer()}</div>}
+          </Show>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Dialog(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
-  // Handle escape key
+  const [isRendered, setIsRendered] = createSignal(false)
+  const [visualState, setVisualState] = createSignal<'open' | 'closed'>('closed')
+  const [contentShellStyle, setContentShellStyle] = createSignal<Record<string, string>>({})
+  let closeTimeoutId: number | null = null
+  let sizeSettleTimeoutId: number | null = null
+  let resizeObserver: ResizeObserver | null = null
+  let contentHeight = 0
+  let contentShellRef: HTMLDivElement | undefined
+  let contentMeasureRef: HTMLDivElement | undefined
+
+  const clearSizeMotion = (): void => {
+    clearMotionTimeout(sizeSettleTimeoutId)
+    sizeSettleTimeoutId = null
+  }
+
+  const resetSizeTracking = (): void => {
+    resizeObserver?.disconnect()
+    resizeObserver = null
+    clearSizeMotion()
+    contentHeight = 0
+    setContentShellStyle({})
+  }
+
+  const syncDialogHeight = (): void => {
+    if (
+      typeof window === 'undefined' ||
+      contentShellRef === undefined ||
+      contentMeasureRef === undefined
+    ) {
+      return
+    }
+
+    if (prefersReducedMotion()) {
+      contentHeight = 0
+      setContentShellStyle({})
+      return
+    }
+
+    const nextHeight = Math.ceil(contentMeasureRef.getBoundingClientRect().height)
+    if (nextHeight <= 0 || nextHeight === contentHeight) {
+      return
+    }
+
+    contentHeight = nextHeight
+    setContentShellStyle({
+      height: `${nextHeight}px`,
+      overflow: 'clip',
+    })
+
+    clearSizeMotion()
+    sizeSettleTimeoutId = scheduleMotionTimeout(() => {
+      sizeSettleTimeoutId = null
+      setContentShellStyle({
+        height: `${contentHeight}px`,
+        overflow: 'visible',
+      })
+    }, 'panel')
+  }
+
   createEffect(() => {
-    if (!props.open) return
+    if (props.open) {
+      clearMotionTimeout(closeTimeoutId)
+      setIsRendered(true)
+      if (typeof window === 'undefined') {
+        setVisualState('open')
+        return
+      }
+
+      scheduleMotionFrame(() => {
+        setVisualState('open')
+      })
+      return
+    }
+
+    if (!isRendered()) {
+      setVisualState('closed')
+      return
+    }
+
+    setVisualState('closed')
+    closeTimeoutId = scheduleMotionTimeout(() => {
+      setIsRendered(false)
+      closeTimeoutId = null
+    }, 'slow')
+  })
+
+  createEffect(() => {
+    if (!isRendered()) {
+      resetSizeTracking()
+      return
+    }
+
+    scheduleMotionFrame(() => {
+      syncDialogHeight()
+    })
+
+    if (typeof ResizeObserver !== 'function' || contentMeasureRef === undefined) {
+      return
+    }
+
+    resizeObserver?.disconnect()
+    resizeObserver = new ResizeObserver(() => {
+      syncDialogHeight()
+    })
+    resizeObserver.observe(contentMeasureRef)
+
+    onCleanup(() => {
+      resizeObserver?.disconnect()
+      resizeObserver = null
+    })
+  })
+
+  createEffect(() => {
+    if (!isRendered()) return
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -80,7 +243,6 @@ export function Dialog(props: Props): JSX.Element {
     }
 
     document.addEventListener('keydown', handleEscape)
-    // Prevent body scroll when dialog is open
     document.body.style.overflow = 'hidden'
 
     onCleanup(() => {
@@ -89,35 +251,42 @@ export function Dialog(props: Props): JSX.Element {
     })
   })
 
+  onCleanup(() => {
+    clearMotionTimeout(closeTimeoutId)
+    resetSizeTracking()
+  })
+
   const widthClass = () => maxWidthClasses[props.maxWidth ?? 'lg']
 
   return (
-    <Show when={props.open}>
+    <Show when={props.open || isRendered()}>
       <Portal>
         <div class="fixed inset-0 z-50 overflow-y-auto">
           <div
-            class="fixed inset-0 bg-ring/50 transition-opacity"
+            data-state={props.open && !isRendered() ? 'open' : visualState()}
+            class="motion-dialog-overlay fixed inset-0 bg-ring/50"
             onClick={() => props.onClose()}
             aria-hidden="true"
           />
           <div class="flex min-h-full items-start justify-center p-4 pt-16 sm:pt-24">
-            <div
-              class={`relative w-full ${widthClass()} transform rounded-lg border border-border bg-popover text-popover-foreground shadow-xl transition-all`}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="dialog-title"
-            >
-              <DialogHeader
-                title={props.title}
-                description={props.description}
-                closeLabel={t(keys.dialog.close)}
-                onClose={props.onClose}
-              />
-              <div class="px-6 py-4">{props.children}</div>
-              <Show when={props.footer}>
-                {(footer) => <div class="border-t border-border px-6 py-4">{footer}</div>}
-              </Show>
-            </div>
+            <DialogPanelSurface
+              widthClass={widthClass()}
+              panelState={props.open && !isRendered() ? 'open' : visualState()}
+              title={props.title}
+              description={props.description}
+              closeLabel={t(keys.dialog.close)}
+              onClose={props.onClose}
+              children={props.children}
+              footer={props.footer}
+              contentShellStyle={contentShellStyle()}
+              shouldUseInitialSizeStyle={props.open && !isRendered()}
+              onContentShellRef={(element) => {
+                contentShellRef = element
+              }}
+              onContentMeasureRef={(element) => {
+                contentMeasureRef = element
+              }}
+            />
           </div>
         </div>
       </Portal>

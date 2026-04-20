@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Container Tracker Agent Tray
+Comment=Start the Container Tracker agent tray host
+Exec=/usr/bin/ct-agent-tray
+Icon=container-tracker-agent
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

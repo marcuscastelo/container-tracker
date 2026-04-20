@@ -1,6 +1,7 @@
 export type OperationalStatus =
   | 'UNKNOWN'
   | 'IN_PROGRESS'
+  | 'BOOKED'
   | 'LOADED'
   | 'IN_TRANSIT'
   | 'ARRIVED_AT_POD'
@@ -22,6 +23,7 @@ export type ProcessAggregatedStatus =
 const OPERATIONAL_STATUSES: readonly OperationalStatus[] = [
   'UNKNOWN',
   'IN_PROGRESS',
+  'BOOKED',
   'LOADED',
   'IN_TRANSIT',
   'ARRIVED_AT_POD',

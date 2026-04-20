@@ -5,7 +5,7 @@ import type { PersistedProvider, Provider } from '~/modules/tracking/domain/mode
  *
  * Alerts are divided into:
  *   - fact: derived from observed facts (e.g. transshipment). Can be retroactive.
- *   - monitoring: time-based (e.g. no movement). NEVER retroactive.
+ *   - monitoring: time-based (e.g. ETA state). NEVER retroactive.
  *
  * @see docs/master-consolidated-0209.md §3
  */
@@ -17,12 +17,12 @@ export type TrackingAlertResolvedReason = 'condition_cleared' | 'terminal_state'
 export type TrackingAlertType =
   /** Transshipment detected */
   | 'TRANSSHIPMENT'
+  /** Planned transshipment detected from coherent expected continuation */
+  | 'PLANNED_TRANSSHIPMENT'
   /** Customs hold */
   | 'CUSTOMS_HOLD'
   /** Final port changed */
   | 'PORT_CHANGE'
-  /** No movement for X days */
-  | 'NO_MOVEMENT'
   /** ETA passed without arrival */
   | 'ETA_PASSED'
   /** ETA missing */
@@ -44,18 +44,17 @@ export type TrackingAlertMessageContract =
       }
     }
   | {
-      readonly message_key: 'alerts.customsHoldDetected'
+      readonly message_key: 'alerts.plannedTransshipmentDetected'
       readonly message_params: {
-        readonly location: string
+        readonly port: string
+        readonly fromVessel: string
+        readonly toVessel: string
       }
     }
   | {
-      readonly message_key: 'alerts.noMovementDetected'
+      readonly message_key: 'alerts.customsHoldDetected'
       readonly message_params: {
-        readonly threshold_days: number
-        readonly days_without_movement: number
-        readonly days: number
-        readonly lastEventDate: string
+        readonly location: string
       }
     }
   | {
@@ -151,6 +150,7 @@ export type TrackingAlertDerivationState = Pick<
   | 'category'
   | 'type'
   | 'message_params'
+  | 'detected_at'
   | 'source_observation_fingerprints'
   | 'alert_fingerprint'
   | 'acked_at'

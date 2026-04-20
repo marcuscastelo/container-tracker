@@ -1,28 +1,102 @@
-// src/modules/search/interface/http/search.http.mappers.ts
-//
-// Mappers between search use case results and HTTP response DTOs.
-
-import type { SearchResultItem } from '~/capabilities/search/application/search.usecase'
+import type {
+  GlobalSearchResponse,
+  GlobalSearchSuggestionsResponse,
+} from '~/capabilities/search/application/global-search.types'
 import type {
   SearchHttpResponseDto,
-  SearchHttpResultItemDto,
+  SearchSuggestionsHttpResponseDto,
 } from '~/capabilities/search/interface/http/search.schemas'
 
-function toSearchHttpResultItemDto(item: SearchResultItem): SearchHttpResultItemDto {
+export function toSearchHttpResponseDto(result: GlobalSearchResponse): SearchHttpResponseDto {
   return {
-    processId: item.processId,
-    processReference: item.processReference,
-    importerName: item.importerName,
-    containers: [...item.containers],
-    carrier: item.carrier,
-    vesselName: item.vesselName,
-    bl: item.bl,
-    derivedStatus: item.derivedStatus,
-    eta: item.eta,
-    matchSource: item.matchSource,
+    query: {
+      raw: result.query.raw,
+      freeTextTerms: result.query.freeTextTerms.map((term) => ({
+        rawValue: term.rawValue,
+        normalizedValue: term.normalizedValue,
+        kind: term.kind,
+      })),
+      filters: result.query.filters.map((filter) => ({
+        key: filter.key,
+        rawKey: filter.rawKey,
+        rawValue: filter.rawValue,
+        normalizedValue: filter.normalizedValue,
+        source: filter.source,
+        supported: filter.supported,
+      })),
+      warnings: [...result.query.warnings],
+    },
+    results: result.results.map((item) => ({
+      processId: item.processId,
+      processReference: item.processReference,
+      billOfLading: item.billOfLading,
+      importerName: item.importerName,
+      exporterName: item.exporterName,
+      carrierName: item.carrierName,
+      statusCode: item.statusCode,
+      eta: item.eta,
+      etaState: item.etaState,
+      etaType: item.etaType,
+      originLabel: item.originLabel,
+      destinationLabel: item.destinationLabel,
+      terminalLabel: item.terminalLabel,
+      terminalMultiple: item.terminalMultiple,
+      depotLabel: item.depotLabel,
+      routeLabel: item.routeLabel,
+      containerNumbers: [...item.containerNumbers],
+      currentLocationLabel: item.currentLocationLabel,
+      currentLocationMultiple: item.currentLocationMultiple,
+      currentVesselName: item.currentVesselName,
+      currentVesselMultiple: item.currentVesselMultiple,
+      currentVoyageNumber: item.currentVoyageNumber,
+      currentVoyageMultiple: item.currentVoyageMultiple,
+      hasValidationRequired: item.hasValidationRequired,
+      activeAlertCategories: [...item.activeAlertCategories],
+      matchedBy: item.matchedBy.map((match) => ({
+        key: match.key,
+        source: match.source,
+        matchedValue: match.matchedValue,
+        rawQueryValue: match.rawQueryValue,
+        bucket: match.bucket,
+      })),
+    })),
+    emptyState: {
+      titleKey: result.emptyState.titleKey,
+      descriptionKey: result.emptyState.descriptionKey,
+      examples: [...result.emptyState.examples],
+    },
   }
 }
 
-export function toSearchHttpResponseDto(items: readonly SearchResultItem[]): SearchHttpResponseDto {
-  return items.map(toSearchHttpResultItemDto)
+export function toSearchSuggestionsHttpResponseDto(
+  result: GlobalSearchSuggestionsResponse,
+): SearchSuggestionsHttpResponseDto {
+  return {
+    query: {
+      raw: result.query.raw,
+      freeTextTerms: result.query.freeTextTerms.map((term) => ({
+        rawValue: term.rawValue,
+        normalizedValue: term.normalizedValue,
+        kind: term.kind,
+      })),
+      filters: result.query.filters.map((filter) => ({
+        key: filter.key,
+        rawKey: filter.rawKey,
+        rawValue: filter.rawValue,
+        normalizedValue: filter.normalizedValue,
+        source: filter.source,
+        supported: filter.supported,
+      })),
+      warnings: [...result.query.warnings],
+    },
+    suggestions: result.suggestions.map((item) => ({
+      kind: item.kind,
+      fieldKey: item.fieldKey,
+      value: item.value,
+      labelKey: item.labelKey,
+      fallbackLabel: item.fallbackLabel,
+      descriptionKey: item.descriptionKey,
+      insertText: item.insertText,
+    })),
+  }
 }

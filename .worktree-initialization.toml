@@ -1,0 +1,13 @@
+[[copy]]
+source = ".env"
+target = ".env"
+required = true
+overwrite = false
+
+[[run]]
+command = "pnpm install"
+required = true
+
+[[run]]
+command = "git submodule sync --recursive -- tools/ralph-loop && git submodule update --init --recursive tools/ralph-loop"
+required = true

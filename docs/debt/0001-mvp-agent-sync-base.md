@@ -1,10 +1,10 @@
 # MVP Agent Sync — Technical Debt Register
 
 ## Contexto
-Este documento registra conscientemente os débitos técnicos introduzidos durante a implementação acelerada do MVP de Agent Sync (Supabase + SolidStart).
+Este documento registra conscientemente débitos técnicos introduzidos durante implementação acelerada do MVP de Agent Sync (Supabase + SolidStart).
 
 Objetivo:
-- Tornar explícitos os atalhos feitos.
+- Tornar explícitos atalhos feitos.
 - Evitar “normalização do improviso”.
 - Definir gatilhos claros para quitação.
 
@@ -31,14 +31,14 @@ Médio.
 - Controller vira adapter fino.
 
 **Gatilho de quitação**
-Quando o fluxo Agent for considerado estável em produção.
+Quando fluxo Agent for considerado estável em produção.
 
 ---
 
 ## 1.2 Uso direto de Supabase Service Role na rota
 
 **Descrição**
-As routes usam `SUPABASE_SERVICE_ROLE_KEY` diretamente.
+routes usam `SUPABASE_SERVICE_ROLE_KEY` diretamente.
 
 **Impacto**
 - Bypass total de RLS.
@@ -68,7 +68,7 @@ Criada função SQL `lease_sync_requests` específica para esse caso.
 Baixo (justificável para concorrência).
 
 **Correção futura**
-- Documentar formalmente a invariância de leasing.
+- Documentar formalmente invariância de leasing.
 - Criar testes de integração que validem comportamento concorrente.
 
 **Gatilho de quitação**
@@ -81,7 +81,7 @@ Quando surgir necessidade de múltiplos tipos de fila.
 ## 2.1 AGENT_TOKEN global por ambiente
 
 **Descrição**
-Uso de token único para todos os agents.
+Uso de token único para todos agents.
 
 **Impacto**
 - Sem revogação individual.
@@ -119,7 +119,7 @@ Baixo no MVP single-tenant.
 - Remover tenant_id da query.
 
 **Gatilho de quitação**
-Quando houver mais de um tenant ativo.
+Quando houver mais de tenant ativo.
 
 ---
 
@@ -141,7 +141,7 @@ Baixo no MVP.
 - Criar tabela de dedupe por tenant.
 
 **Gatilho de quitação**
-Quando houver mais de um agent por tenant.
+Quando houver mais de agent por tenant.
 
 ---
 
@@ -190,7 +190,7 @@ Primeira investigação de erro não trivial.
 ## 4.1 ref_type limitado a "container"
 
 **Descrição**
-MVP assume apenas container.
+MVP assume container.
 
 **Impacto**
 - Não generalizado.

@@ -1,6 +1,11 @@
 import type { JSX } from 'solid-js'
-import { Show } from 'solid-js'
+import { createMemo, Show } from 'solid-js'
 import { TrackingTimelinePanelContent } from '~/modules/process/ui/components/TimelinePanel'
+import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import {
+  type TimelineTextExportSource,
+  toHistoricalTimelineTextExportSource,
+} from '~/modules/process/ui/screens/shipment/lib/serializeTimelineToText'
 import type { TrackingTimeTravelSyncVM } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Panel } from '~/shared/ui/layout/Panel'
@@ -8,6 +13,7 @@ import { Panel } from '~/shared/ui/layout/Panel'
 type TrackingTimeTravelTimelinePanelProps = {
   readonly containerNumber: string | null
   readonly carrier?: string | null
+  readonly referenceNowIso: string | null
   readonly selectedSync: TrackingTimeTravelSyncVM | null
 }
 
@@ -15,6 +21,19 @@ export function TrackingTimeTravelTimelinePanel(
   props: TrackingTimeTravelTimelinePanelProps,
 ): JSX.Element {
   const { t, keys } = useTranslation()
+  const exportSource = createMemo<TimelineTextExportSource | null>(() => {
+    if (props.selectedSync === null) {
+      return null
+    }
+
+    return toHistoricalTimelineTextExportSource({
+      title: t(keys.shipmentView.timeline.title),
+      containerNumber: props.containerNumber,
+      statusLabel: t(trackingStatusToLabelKey(keys, props.selectedSync.statusCode)),
+      sync: props.selectedSync,
+      referenceNowIso: props.referenceNowIso,
+    })
+  })
 
   return (
     <Show
@@ -35,15 +54,11 @@ export function TrackingTimeTravelTimelinePanel(
             status: selectedSync().statusVariant,
             statusCode: selectedSync().statusCode,
             currentContext: selectedSync().currentContext,
-            transshipment: {
-              hasTransshipment: false,
-              count: 0,
-              ports: [],
-            },
+            transshipment: selectedSync().transshipment,
           }}
           containerId={null}
           timeline={selectedSync().timeline}
-          alerts={selectedSync().alerts}
+          exportSource={exportSource()}
           {...(props.carrier === undefined ? {} : { carrier: props.carrier })}
         />
       )}

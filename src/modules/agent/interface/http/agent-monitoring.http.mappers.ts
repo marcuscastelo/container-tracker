@@ -33,6 +33,14 @@ type HeartbeatActivityCommand = {
     | 'UPDATE_APPLY_FAILED'
     | 'RESTART_FOR_UPDATE'
     | 'ROLLBACK_EXECUTED'
+    | 'LOCAL_UPDATE_PAUSED'
+    | 'LOCAL_UPDATE_RESUMED'
+    | 'CHANNEL_CHANGED'
+    | 'CONFIG_UPDATED'
+    | 'RELEASE_ACTIVATED'
+    | 'LOCAL_RESET'
+    | 'REMOTE_RESET'
+    | 'REMOTE_FORCE_UPDATE'
   readonly message: string
   readonly severity: 'info' | 'warning' | 'danger' | 'success'
   readonly metadata?: unknown

@@ -27,6 +27,7 @@ export type SymmetricProcessEntry = {
   readonly reference: string | null
   readonly origin: string | null
   readonly destination: string | null
+  readonly depositary: string | null
   readonly carrier: string | null
   readonly billOfLading: string | null
   readonly bookingNumber: string | null
@@ -122,14 +123,16 @@ export type ReportProcessEntry = {
   readonly carrier: string | null
   readonly origin: string | null
   readonly destination: string | null
+  readonly depositary: string | null
   readonly billOfLading: string | null
   readonly importerName: string | null
   readonly exporterName: string | null
   readonly product: string | null
   readonly redestinationNumber: string | null
   readonly processStatus: string
-  readonly alertCount: number
-  readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null
+  readonly activeIncidentCount: number
+  readonly affectedContainerCount: number
+  readonly dominantIncidentSeverity: 'info' | 'warning' | 'danger' | null
   readonly eta: TemporalValueDto | null
   readonly lastEventAt: TemporalValueDto | null
   readonly lastSyncAt: string | null
@@ -148,7 +151,7 @@ export type OperationalSnapshotReport = {
   readonly totals: {
     readonly processCount: number
     readonly containerCount: number
-    readonly processesWithAlerts: number
+    readonly processesWithActiveIncidents: number
     readonly deliveredProcesses: number
     readonly inTransitProcesses: number
     readonly processesWithConflict: number
