@@ -1,6 +1,6 @@
 import { A, useLocation } from '@solidjs/router'
 import clsx from 'clsx'
-import { Moon, Sun } from 'lucide-solid'
+import { LogOut, Moon, Sun } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createSignal, Show, Suspense } from 'solid-js'
 import { getTheme, toggleTheme, type UiTheme } from '~/lib/theme'
@@ -234,7 +234,8 @@ function HeaderActions(props: {
         aria-label={props.logoutLabel}
         title={props.logoutLabel}
       >
-        <span class="hidden sm:inline">{props.logoutLabel}</span>
+        <LogOut class="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span class="hidden min-[1400px]:inline">{props.logoutLabel}</span>
       </A>
       <Show when={props.actionsSlot}>
         {(actionsSlot) => <div class="flex items-center gap-2">{actionsSlot()}</div>}

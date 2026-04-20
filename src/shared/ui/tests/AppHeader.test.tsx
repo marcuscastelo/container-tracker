@@ -79,6 +79,10 @@ vi.mock('@solidjs/router', () => ({
 }))
 
 vi.mock('lucide-solid', () => ({
+  LogOut: (props: {
+    readonly class?: string
+    readonly 'aria-hidden'?: boolean | 'true' | 'false'
+  }) => <svg data-icon="logout" class={props.class} aria-hidden={props['aria-hidden']} />,
   Moon: (props: {
     readonly class?: string
     readonly 'aria-hidden'?: boolean | 'true' | 'false'
