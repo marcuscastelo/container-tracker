@@ -15,10 +15,7 @@ import type {
   UpsertMembershipCommand,
 } from '~/modules/access/application/access.types'
 import { serverEnv } from '~/shared/config/server-env'
-import {
-  unwrapSupabaseResultOrThrow,
-  unwrapSupabaseSingleOrNull,
-} from '~/shared/supabase/unwrapSupabaseResult'
+import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'
 
 const TenantRowSchema = z.object({
   id: z.string().uuid(),
