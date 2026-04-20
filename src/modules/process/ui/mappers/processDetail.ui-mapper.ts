@@ -10,13 +10,16 @@ import {
   toProcessStatusCode,
 } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import { toProcessStatusMicrobadgeVM } from '~/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper'
-import { toAlertDisplayVMs } from '~/modules/process/ui/mappers/trackingAlert.ui-mapper'
 import {
   toTrackingStatusCode,
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
-import type { TrackingAlertProjectionSource } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
+import type {
+  ContainerTrackingValidationVM,
+  ProcessTrackingValidationVM,
+  TrackingValidationIssueVM,
+} from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
@@ -34,10 +37,19 @@ type OperationalEta = NonNullable<ContainerOperational['eta']>
 type OperationalTransshipment = ContainerOperational['transshipment']
 type OperationalCurrentContext = ContainerOperational['current_context']
 type OperationalNextLocation = ContainerOperational['next_location']
+type ContainerTrackingValidationResponse =
+  ProcessDetailResponse['containers'][number]['tracking_validation']
+type ContainerTrackingContainmentResponse =
+  ProcessDetailResponse['containers'][number]['tracking_containment']
+type ProcessTrackingValidationResponse = ProcessDetailResponse['tracking_validation']
 
 type TimelineResponseItem = NonNullable<
   ProcessDetailResponse['containers'][number]['timeline']
 >[number]
+
+type TrackingValidationIssueResponse = NonNullable<
+  ProcessDetailResponse['tracking_validation']['top_issue']
+>
 
 function toProcessAggregatedStatus(status: string | null | undefined): ProcessAggregatedStatus {
   const normalizedStatus = toProcessStatusCode(status)
@@ -70,6 +82,14 @@ function toTimelineSeriesHistory(
 
   return {
     hasActualConflict: seriesHistory.has_actual_conflict,
+    ...(seriesHistory.conflict === null || seriesHistory.conflict === undefined
+      ? {}
+      : {
+          conflict: {
+            kind: seriesHistory.conflict.kind,
+            fields: [...seriesHistory.conflict.fields],
+          },
+        }),
     classified: seriesHistory.classified.map((entry) => ({
       id: entry.id,
       type: entry.type,
@@ -77,6 +97,9 @@ function toTimelineSeriesHistory(
       event_time_type: entry.event_time_type,
       created_at: entry.created_at,
       seriesLabel: entry.series_label,
+      ...(entry.vessel_name === undefined ? {} : { vesselName: entry.vessel_name }),
+      ...(entry.voyage === undefined ? {} : { voyage: entry.voyage }),
+      ...(entry.change_kind === undefined ? {} : { changeKind: entry.change_kind }),
     })),
   }
 }
@@ -98,23 +121,16 @@ function toTimelineItem(item: TimelineResponseItem): TrackingTimelineItem {
     ...(item.location === null || item.location === undefined ? {} : { location: item.location }),
     ...(item.vessel_name === undefined ? {} : { vesselName: item.vessel_name }),
     ...(item.voyage === undefined ? {} : { voyage: item.voyage }),
+    ...(item.series_conflict === null || item.series_conflict === undefined
+      ? {}
+      : {
+          seriesConflict: {
+            kind: item.series_conflict.kind,
+            fields: [...item.series_conflict.fields],
+          },
+        }),
     ...(seriesHistory === undefined ? {} : { seriesHistory }),
   }
-}
-
-function toAlertProjectionSources(
-  alerts: ProcessDetailResponse['alerts'] | undefined,
-): readonly TrackingAlertProjectionSource[] {
-  return (alerts ?? []).map((alert) => {
-    const { lifecycle_state, resolved_at, resolved_reason, ...rest } = alert
-
-    return {
-      ...rest,
-      ...(lifecycle_state === undefined ? {} : { lifecycle_state }),
-      ...(resolved_at === undefined ? {} : { resolved_at }),
-      ...(resolved_reason === undefined ? {} : { resolved_reason }),
-    }
-  })
 }
 
 function toEtaTone(
@@ -286,6 +302,62 @@ function toTransshipmentVm(
   }
 }
 
+function toProcessTrackingValidationVm(
+  trackingValidation: ProcessTrackingValidationResponse | undefined,
+): ProcessTrackingValidationVM {
+  return {
+    hasIssues: trackingValidation?.has_issues === true,
+    highestSeverity: trackingValidation?.highest_severity ?? null,
+    affectedContainerCount: trackingValidation?.affected_container_count ?? 0,
+    topIssue: toTrackingValidationIssueVm(trackingValidation?.top_issue),
+  }
+}
+
+function toTrackingValidationIssueVm(
+  issue: TrackingValidationIssueResponse | null | undefined,
+): TrackingValidationIssueVM | null {
+  if (issue === null || issue === undefined) {
+    return null
+  }
+
+  return {
+    code: issue.code,
+    severity: issue.severity,
+    reasonKey: issue.reason_key,
+    affectedArea: issue.affected_area,
+    affectedLocation: issue.affected_location ?? null,
+    affectedBlockLabelKey: issue.affected_block_label_key ?? null,
+  }
+}
+
+function toContainerTrackingValidationVm(
+  trackingValidation: ContainerTrackingValidationResponse | undefined,
+): ContainerTrackingValidationVM {
+  return {
+    hasIssues: trackingValidation?.has_issues === true,
+    highestSeverity: trackingValidation?.highest_severity ?? null,
+    findingCount: trackingValidation?.finding_count ?? 0,
+    activeIssues: (trackingValidation?.active_issues ?? [])
+      .map((issue) => toTrackingValidationIssueVm(issue))
+      .filter((issue): issue is TrackingValidationIssueVM => issue !== null),
+  }
+}
+
+function toContainerTrackingContainmentVm(
+  trackingContainment: ContainerTrackingContainmentResponse,
+): ShipmentDetailVM['containers'][number]['trackingContainment'] {
+  if (trackingContainment === null) {
+    return null
+  }
+
+  return {
+    active: true,
+    reasonCode: trackingContainment.reason_code,
+    activatedAt: trackingContainment.activated_at,
+    externalTrackingUrl: trackingContainment.external_tracking_url,
+  }
+}
+
 function toTsChipVm(
   transshipment: ShipmentDetailVM['containers'][number]['transshipment'],
 ): ShipmentDetailVM['containers'][number]['tsChipVm'] {
@@ -384,6 +456,8 @@ export function toShipmentDetailVM(
       dataIssueChipVm: {
         visible: container.operational?.data_issue === true,
       },
+      trackingContainment: toContainerTrackingContainmentVm(container.tracking_containment ?? null),
+      trackingValidation: toContainerTrackingValidationVm(container.tracking_validation),
       transshipment,
       timeline,
     }
@@ -410,6 +484,7 @@ export function toShipmentDetailVM(
     importer_name: data.importer_name ?? null,
     exporter_name: data.exporter_name ?? null,
     reference_importer: data.reference_importer ?? null,
+    depositary: data.depositary ?? null,
     product: data.product ?? null,
     redestination_number: data.redestination_number ?? null,
     origin: data.origin?.display_name || '—',
@@ -420,8 +495,9 @@ export function toShipmentDetailVM(
     eta: toProcessEtaDate(processEtaDisplayVm),
     processEtaDisplayVm,
     processEtaSecondaryVm,
+    trackingValidation: toProcessTrackingValidationVm(data.tracking_validation),
     containers,
-    alerts: toAlertDisplayVMs(toAlertProjectionSources(data.alerts), locale),
-    alertIncidents: toAlertIncidentsVm(data.alert_incidents),
+    alerts: [],
+    alertIncidents: toAlertIncidentsVm(data.operational_incidents),
   }
 }

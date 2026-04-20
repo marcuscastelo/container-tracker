@@ -11,6 +11,8 @@ export type ContainerStatus =
   | 'UNKNOWN'
   /** Container exists, minimal info */
   | 'IN_PROGRESS'
+  /** Pre-shipment operational preparation confirmed */
+  | 'BOOKED'
   /** Container loaded on vessel */
   | 'LOADED'
   /** Vessel departed (container in transit) */
@@ -32,6 +34,7 @@ export type ContainerStatus =
 export const CONTAINER_STATUSES: readonly ContainerStatus[] = [
   'UNKNOWN',
   'IN_PROGRESS',
+  'BOOKED',
   'LOADED',
   'IN_TRANSIT',
   'ARRIVED_AT_POD',

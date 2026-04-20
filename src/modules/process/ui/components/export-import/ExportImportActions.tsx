@@ -1,100 +1,68 @@
-import { Copy, Download, Upload } from 'lucide-solid'
-import { createMemo, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js'
-import toast from 'solid-toast'
+import { Check, Copy, Download, Upload } from 'lucide-solid'
+import { createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js'
+import type { ReportFormat } from '~/modules/process/ui/api/export-import.api'
 import {
-  executeSymmetricImportBundle,
-  type ReportFormat,
-  requestOperationalReportExport,
-  requestOperationalReportExportText,
-  requestPortableExport,
-  validateSymmetricImportBundle,
-} from '~/modules/process/ui/api/export-import.api'
+  type ExportType,
+  type ImportValidationState,
+  type PortableFormat,
+  useExportImportActionsController,
+} from '~/modules/process/ui/components/export-import/useExportImportActionsController'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
-import { copyToClipboard } from '~/shared/utils/clipboard'
 
 type ExportImportActionsProps = {
   readonly processId: string | null
   readonly showImport: boolean
 }
 
-type ExportType = 'portable' | 'report'
-
-type PortableFormat = 'json' | 'zip'
-
-type ImportValidationState = {
-  readonly canImport: boolean
-  readonly schemaVersion: string | null
-  readonly processCount: number
-  readonly containerCount: number
-  readonly documentCount: number
-  readonly databaseEmpty: boolean
-  readonly errors: readonly string[]
-  readonly warnings: readonly string[]
-}
-
-const HEADER_MENU_BUTTON_CLASS =
-  'inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] cursor-pointer list-none items-center justify-center gap-1.5 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-2.5 text-sm-ui font-medium text-text-muted transition-colors select-none hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
-
-const HEADER_MENU_ITEM_CLASS =
-  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm-ui font-medium text-foreground transition-colors hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none'
-
-function readBundleFromFile(file: File): Promise<unknown> {
-  return file.text().then((text) => JSON.parse(text))
-}
-
-function resolveScope(processId: string | null) {
-  if (!processId) {
-    return {
-      scope: 'all_processes' as const,
-      processId: null,
-    }
-  }
-
-  return {
-    scope: 'single_process' as const,
-    processId,
-  }
-}
-
-function parseExportType(value: string): ExportType {
-  if (value === 'report') return 'report'
-  return 'portable'
-}
-
-function parseReportFormat(value: string): ReportFormat {
-  if (value === 'csv') return 'csv'
-  if (value === 'xlsx') return 'xlsx'
-  if (value === 'markdown') return 'markdown'
-  if (value === 'pdf') return 'pdf'
-  if (value === 'trello') return 'trello'
-  return 'json'
-}
-
-function parsePortableFormat(value: string): PortableFormat {
-  if (value === 'zip') return 'zip'
-  return 'json'
-}
-
 type ExportImportMenuProps = {
   readonly showImport: boolean
   readonly showCopyTrello: boolean
+  readonly copyTrelloFeedback: boolean
   readonly onOpenExport: () => void
   readonly onOpenImport: () => void
   readonly onCopyTrello: () => void
 }
 
+const HEADER_MENU_BUTTON_CLASS =
+  'motion-focus-surface motion-interactive inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] cursor-pointer list-none items-center justify-center gap-1.5 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-2.5 text-sm-ui font-medium text-text-muted select-none hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
+
+const HEADER_MENU_ITEM_CLASS =
+  'motion-focus-surface motion-interactive flex w-full items-center gap-2 px-3 py-2 text-left text-sm-ui font-medium text-foreground hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none'
+
+function CopyTrelloMenuItem(props: {
+  readonly copied: boolean
+  readonly onClick: () => void
+}): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <button type="button" class={HEADER_MENU_ITEM_CLASS} onClick={() => props.onClick()}>
+      <Show
+        when={props.copied}
+        fallback={<Copy class="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />}
+      >
+        <Check
+          class="motion-copy-feedback h-4 w-4 shrink-0 text-tone-success-fg"
+          aria-hidden="true"
+        />
+      </Show>
+      <span class="motion-copy-feedback" data-state={props.copied ? 'copied' : 'idle'}>
+        {props.copied
+          ? t(keys.exportImport.copyTrelloCopied)
+          : t(keys.exportImport.copyTrelloAction)}
+      </span>
+    </button>
+  )
+}
+
 function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
   const { t, keys } = useTranslation()
   const [isMenuOpen, setIsMenuOpen] = createSignal(false)
-  let menuRef: HTMLDetailsElement | undefined
+  let menuRef: HTMLDivElement | undefined
 
   const closeMenu = (): void => {
-    if (!menuRef) {
-      setIsMenuOpen(false)
-      return
-    }
-    menuRef.open = false
+    setIsMenuOpen(false)
   }
 
   const handleExportClick = (): void => {
@@ -115,63 +83,62 @@ function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
   onMount(() => {
     const onDocClick: EventListener = (ev) => {
       if (!menuRef) return
-      if (!menuRef.open) return
+      if (!isMenuOpen()) return
       const target = ev.target
       if (target instanceof Node && menuRef.contains(target)) return
-      menuRef.open = false
+      setIsMenuOpen(false)
     }
 
     const onEscape = (event: KeyboardEvent) => {
-      if (!menuRef?.open) return
+      if (!isMenuOpen()) return
       if (event.key !== 'Escape') return
       event.preventDefault()
-      menuRef.open = false
+      setIsMenuOpen(false)
     }
 
     const onOtherOpened: EventListener = (ev) => {
       if (!menuRef) return
       if (!(ev instanceof CustomEvent)) return
       if (ev.detail !== menuRef) {
-        menuRef.open = false
-      }
-    }
-
-    const onToggle: EventListener = () => {
-      if (!menuRef) return
-      setIsMenuOpen(menuRef.open)
-      if (menuRef.open) {
-        window.dispatchEvent(new CustomEvent('unified-dropdown-opened', { detail: menuRef }))
+        setIsMenuOpen(false)
       }
     }
 
     document.addEventListener('click', onDocClick)
     document.addEventListener('keydown', onEscape)
     window.addEventListener('unified-dropdown-opened', onOtherOpened)
-    menuRef?.addEventListener('toggle', onToggle)
 
     onCleanup(() => {
       document.removeEventListener('click', onDocClick)
       document.removeEventListener('keydown', onEscape)
       window.removeEventListener('unified-dropdown-opened', onOtherOpened)
-      menuRef?.removeEventListener('toggle', onToggle)
     })
   })
 
   return (
-    <details
+    <div
       ref={(el) => {
-        if (el instanceof HTMLDetailsElement) menuRef = el
+        if (el instanceof HTMLDivElement) menuRef = el
         else menuRef = undefined
       }}
       class="group relative"
       data-testid="export-import-actions-menu"
     >
-      <summary
+      <button
+        type="button"
         aria-haspopup="menu"
+        aria-expanded={isMenuOpen()}
         aria-label={t(keys.exportImport.moreActions)}
         title={t(keys.exportImport.moreActions)}
         data-state={isMenuOpen() ? 'open' : 'closed'}
         class={HEADER_MENU_BUTTON_CLASS}
+        onClick={() => {
+          const nextOpen = !isMenuOpen()
+          setIsMenuOpen(nextOpen)
+          if (nextOpen) {
+            window.dispatchEvent(new CustomEvent('unified-dropdown-opened', { detail: menuRef }))
+          }
+        }}
       >
         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <circle cx="12" cy="5" r="1.75" />
@@ -179,15 +146,15 @@ function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
           <circle cx="12" cy="19" r="1.75" />
         </svg>
         <span class="sr-only">{t(keys.exportImport.moreActions)}</span>
-      </summary>
+      </button>
 
-      <div class="absolute right-0 top-full z-20 mt-1 min-w-56 overflow-hidden rounded-md border border-border bg-surface shadow-lg">
+      <div
+        class="motion-dropdown-panel motion-overlay-surface absolute right-0 top-full z-20 mt-1 min-w-56 overflow-hidden rounded-md border border-border bg-surface shadow-lg"
+        data-state={isMenuOpen() ? 'open' : 'closed'}
+      >
         <div class="divide-y divide-border py-1">
           <Show when={props.showCopyTrello}>
-            <button type="button" class={HEADER_MENU_ITEM_CLASS} onClick={handleCopyTrelloClick}>
-              <Copy class="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
-              {t(keys.exportImport.copyTrelloAction)}
-            </button>
+            <CopyTrelloMenuItem copied={props.copyTrelloFeedback} onClick={handleCopyTrelloClick} />
           </Show>
 
           <Show when={props.showImport}>
@@ -203,7 +170,7 @@ function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
           </button>
         </div>
       </div>
-    </details>
+    </div>
   )
 }
 
@@ -300,7 +267,7 @@ function ExportDialog(props: ExportDialogProps): JSX.Element {
         <label class="block space-y-1 text-sm-ui text-foreground">
           <span>{t(keys.exportImport.dialog.exportType)}</span>
           <select
-            class="w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
+            class="motion-focus-surface w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
             value={props.exportType}
             onInput={(event) => props.onExportTypeChange(event.currentTarget.value)}
           >
@@ -315,7 +282,7 @@ function ExportDialog(props: ExportDialogProps): JSX.Element {
             <label class="block space-y-1 text-sm-ui text-foreground">
               <span>{t(keys.exportImport.dialog.format)}</span>
               <select
-                class="w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
+                class="motion-focus-surface w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
                 value={props.reportFormat}
                 onInput={(event) => props.onReportFormatChange(event.currentTarget.value)}
               >
@@ -332,7 +299,7 @@ function ExportDialog(props: ExportDialogProps): JSX.Element {
           <label class="block space-y-1 text-sm-ui text-foreground">
             <span>{t(keys.exportImport.dialog.format)}</span>
             <select
-              class="w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
+              class="motion-focus-surface w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
               value={props.portableFormat}
               onInput={(event) => props.onPortableFormatChange(event.currentTarget.value)}
             >
@@ -394,14 +361,14 @@ function ExportDialog(props: ExportDialogProps): JSX.Element {
         <div class="flex justify-end gap-2">
           <button
             type="button"
-            class="rounded-md px-3 py-2 text-sm-ui font-medium text-text-muted hover:bg-surface-muted"
+            class="motion-focus-surface motion-interactive rounded-md px-3 py-2 text-sm-ui font-medium text-text-muted hover:bg-surface-muted"
             onClick={() => props.onClose()}
           >
             {t(keys.exportImport.dialog.cancel)}
           </button>
           <button
             type="button"
-            class="rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            class="motion-focus-surface motion-interactive rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             disabled={props.isExporting}
             onClick={() => props.onSubmit()}
           >
@@ -450,7 +417,7 @@ function ImportDialog(props: ImportDialogProps): JSX.Element {
           <input
             type="file"
             accept="application/json"
-            class="w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
+            class="motion-focus-surface w-full rounded-md border border-border bg-surface px-2 py-2 text-sm-ui"
             onChange={(event) => props.onFileChange(event)}
           />
         </label>
@@ -458,7 +425,7 @@ function ImportDialog(props: ImportDialogProps): JSX.Element {
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
-            class="rounded-md border border-border bg-surface px-3 py-2 text-sm-ui font-medium text-foreground hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
+            class="motion-focus-surface motion-interactive rounded-md border border-border bg-surface px-3 py-2 text-sm-ui font-medium text-foreground hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!props.canRunDryRun || props.isValidating}
             onClick={() => props.onDryRun()}
           >
@@ -468,7 +435,7 @@ function ImportDialog(props: ImportDialogProps): JSX.Element {
           </button>
           <button
             type="button"
-            class="rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            class="motion-focus-surface motion-interactive rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             disabled={props.isImporting || !props.canExecuteImport}
             onClick={() => props.onExecuteImport()}
           >
@@ -508,200 +475,54 @@ function ImportDialog(props: ImportDialogProps): JSX.Element {
 }
 
 export function ExportImportActions(props: ExportImportActionsProps): JSX.Element {
-  const { t, keys } = useTranslation()
-
-  const [isExportDialogOpen, setIsExportDialogOpen] = createSignal(false)
-  const [isImportDialogOpen, setIsImportDialogOpen] = createSignal(false)
-  const [exportType, setExportType] = createSignal<ExportType>('portable')
-  const [portableFormat, setPortableFormat] = createSignal<PortableFormat>('json')
-  const [reportFormat, setReportFormat] = createSignal<ReportFormat>('json')
-  const [includeContainers, setIncludeContainers] = createSignal(true)
-  const [includeAlerts, setIncludeAlerts] = createSignal(true)
-  const [includeTimelineSummary, setIncludeTimelineSummary] = createSignal(true)
-  const [includeExecutiveSummary, setIncludeExecutiveSummary] = createSignal(true)
-  const [exportError, setExportError] = createSignal<string | null>(null)
-  const [isExporting, setIsExporting] = createSignal(false)
-
-  const [selectedBundle, setSelectedBundle] = createSignal<unknown | null>(null)
-  const [validation, setValidation] = createSignal<ImportValidationState | null>(null)
-  const [isValidating, setIsValidating] = createSignal(false)
-  const [isImporting, setIsImporting] = createSignal(false)
-  const [importError, setImportError] = createSignal<string | null>(null)
-  const [importSuccess, setImportSuccess] = createSignal<string | null>(null)
-
-  const scope = createMemo(() => resolveScope(props.processId))
-  const canExecuteImport = createMemo(() => {
-    const currentValidation = validation()
-    if (currentValidation === null) return false
-    return currentValidation.canImport && currentValidation.databaseEmpty
-  })
-
-  const handleExportSubmit = async () => {
-    setExportError(null)
-    setIsExporting(true)
-
-    try {
-      if (exportType() === 'portable') {
-        await requestPortableExport({ scope: scope(), format: portableFormat() })
-      } else {
-        const isTrelloFormat = reportFormat() === 'trello'
-        await requestOperationalReportExport({
-          scope: scope(),
-          format: reportFormat(),
-          options: {
-            includeContainers: isTrelloFormat ? true : includeContainers(),
-            includeAlerts: isTrelloFormat ? true : includeAlerts(),
-            includeTimelineSummary: isTrelloFormat ? true : includeTimelineSummary(),
-            includeExecutiveSummary: isTrelloFormat ? true : includeExecutiveSummary(),
-          },
-        })
-      }
-
-      setIsExportDialogOpen(false)
-    } catch (error) {
-      setExportError(error instanceof Error ? error.message : 'Export failed')
-    } finally {
-      setIsExporting(false)
-    }
-  }
-
-  const handleCopyTrello = async () => {
-    if (props.processId === null) return
-
-    try {
-      const markdown = await requestOperationalReportExportText({
-        scope: scope(),
-        format: 'trello',
-        options: {
-          includeContainers: true,
-          includeAlerts: true,
-          includeTimelineSummary: true,
-          includeExecutiveSummary: true,
-        },
-      })
-      await copyToClipboard(markdown)
-      toast.success(t(keys.exportImport.copyTrelloSuccess))
-    } catch (error) {
-      console.error('Failed to copy Trello export', error)
-      toast.error(t(keys.exportImport.copyTrelloError))
-    }
-  }
-
-  const handleBundleFileChange = async (event: Event) => {
-    const target = event.currentTarget
-    if (!(target instanceof HTMLInputElement)) return
-
-    const file = target.files?.[0]
-    if (!file) {
-      setSelectedBundle(null)
-      setValidation(null)
-      return
-    }
-
-    try {
-      const bundle = await readBundleFromFile(file)
-      setSelectedBundle(bundle)
-      setValidation(null)
-      setImportError(null)
-      setImportSuccess(null)
-    } catch {
-      setSelectedBundle(null)
-      setValidation(null)
-      setImportError(t(keys.exportImport.importDialog.invalidBundleJson))
-    }
-  }
-
-  const runDryRun = async () => {
-    const bundle = selectedBundle()
-    if (!bundle) return
-
-    setIsValidating(true)
-    setImportError(null)
-    setImportSuccess(null)
-
-    try {
-      const result = await validateSymmetricImportBundle({ bundle })
-      setValidation(result)
-    } catch (error) {
-      setImportError(error instanceof Error ? error.message : 'Import validation failed')
-      setValidation(null)
-    } finally {
-      setIsValidating(false)
-    }
-  }
-
-  const executeImport = async () => {
-    const bundle = selectedBundle()
-    const dryRun = validation()
-    if (!bundle || !dryRun || !dryRun.canImport || !dryRun.databaseEmpty) return
-
-    setIsImporting(true)
-    setImportError(null)
-    setImportSuccess(null)
-
-    try {
-      const result = await executeSymmetricImportBundle({ bundle })
-      setImportSuccess(
-        t(keys.exportImport.importDialog.importSuccess, {
-          processes: result.importedProcesses,
-          containers: result.importedContainers,
-        }),
-      )
-    } catch (error) {
-      setImportError(error instanceof Error ? error.message : 'Import execution failed')
-    } finally {
-      setIsImporting(false)
-    }
-  }
-
-  const IMPORT_DISABLED = true // TODO: enable button when import functionality is tested with stage database
-  // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/239
+  const controller = useExportImportActionsController(props)
 
   return (
     <>
       <ExportImportMenu
-        showImport={props.showImport && !IMPORT_DISABLED}
-        showCopyTrello={props.processId !== null}
-        onOpenExport={() => setIsExportDialogOpen(true)}
-        onOpenImport={() => setIsImportDialogOpen(true)}
-        onCopyTrello={() => void handleCopyTrello()}
+        showImport={controller.showImport()}
+        showCopyTrello={controller.showCopyTrello()}
+        copyTrelloFeedback={controller.copyTrelloFeedback()}
+        onOpenExport={controller.openExportDialog}
+        onOpenImport={controller.openImportDialog}
+        onCopyTrello={controller.copyTrello}
       />
 
       <ExportDialog
-        open={isExportDialogOpen()}
-        onClose={() => setIsExportDialogOpen(false)}
-        exportType={exportType()}
-        onExportTypeChange={(value) => setExportType(parseExportType(value))}
-        portableFormat={portableFormat()}
-        onPortableFormatChange={(value) => setPortableFormat(parsePortableFormat(value))}
-        reportFormat={reportFormat()}
-        onReportFormatChange={(value) => setReportFormat(parseReportFormat(value))}
-        includeContainers={includeContainers()}
-        onIncludeContainersChange={setIncludeContainers}
-        includeAlerts={includeAlerts()}
-        onIncludeAlertsChange={setIncludeAlerts}
-        includeTimelineSummary={includeTimelineSummary()}
-        onIncludeTimelineSummaryChange={setIncludeTimelineSummary}
-        includeExecutiveSummary={includeExecutiveSummary()}
-        onIncludeExecutiveSummaryChange={setIncludeExecutiveSummary}
-        exportError={exportError()}
-        isExporting={isExporting()}
-        onSubmit={() => void handleExportSubmit()}
+        open={controller.isExportDialogOpen()}
+        onClose={controller.closeExportDialog}
+        exportType={controller.exportType()}
+        onExportTypeChange={controller.setExportTypeFromInput}
+        portableFormat={controller.portableFormat()}
+        onPortableFormatChange={controller.setPortableFormatFromInput}
+        reportFormat={controller.reportFormat()}
+        onReportFormatChange={controller.setReportFormatFromInput}
+        includeContainers={controller.includeContainers()}
+        onIncludeContainersChange={controller.setIncludeContainers}
+        includeAlerts={controller.includeAlerts()}
+        onIncludeAlertsChange={controller.setIncludeAlerts}
+        includeTimelineSummary={controller.includeTimelineSummary()}
+        onIncludeTimelineSummaryChange={controller.setIncludeTimelineSummary}
+        includeExecutiveSummary={controller.includeExecutiveSummary()}
+        onIncludeExecutiveSummaryChange={controller.setIncludeExecutiveSummary}
+        exportError={controller.exportError()}
+        isExporting={controller.isExporting()}
+        onSubmit={controller.submitExport}
       />
 
       <ImportDialog
-        open={isImportDialogOpen()}
-        onClose={() => setIsImportDialogOpen(false)}
-        onFileChange={handleBundleFileChange}
-        onDryRun={() => void runDryRun()}
-        onExecuteImport={() => void executeImport()}
-        isValidating={isValidating()}
-        isImporting={isImporting()}
-        canRunDryRun={selectedBundle() !== null}
-        canExecuteImport={canExecuteImport()}
-        validation={validation()}
-        importError={importError()}
-        importSuccess={importSuccess()}
+        open={controller.isImportDialogOpen()}
+        onClose={controller.closeImportDialog}
+        onFileChange={controller.handleBundleFileChange}
+        onDryRun={controller.runDryRun}
+        onExecuteImport={controller.executeImport}
+        isValidating={controller.isValidating()}
+        isImporting={controller.isImporting()}
+        canRunDryRun={controller.canRunDryRun()}
+        canExecuteImport={controller.canExecuteImport()}
+        validation={controller.validation()}
+        importError={controller.importError()}
+        importSuccess={controller.importSuccess()}
       />
     </>
   )

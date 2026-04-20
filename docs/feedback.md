@@ -16,7 +16,7 @@ Lista corrigida com base no seu ajuste manual.
   ALERTAS ATIVOS
   ```
 
-  em uma única coluna **ALERTAS** exibindo:
+em única coluna **ALERTAS** exibindo:
 
   - ícone de severidade
   - contagem de alertas
@@ -25,7 +25,7 @@ Lista corrigida com base no seu ajuste manual.
 ### Shipment / Process View
 
 - **Alertas não devem ser sticky** na página de processo.
-- Devem **rolar junto com a página**.
+- Devem **rolar junto com página**.
 
 ### Agent (Windows)
 
@@ -44,13 +44,13 @@ Lista corrigida com base no seu ajuste manual.
 
 ### Ordenação e Estrutura da Tabela
 
-- Permitir **sort em todas as colunas ordenáveis**.
+- Permitir **sort em todas colunas ordenáveis**.
 
-  Estado atual:
+Estado atual:
   - parte do comportamento existe
   - ainda está inconsistente visualmente
   - algumas colunas parecem texto comum
-  - no mínimo todas as colunas ordenáveis devem parecer clicáveis
+  - no mínimo todas colunas ordenáveis devem parecer clicáveis
 
 - Definir **ordenação padrão por severidade**:
 
@@ -103,21 +103,21 @@ Lista corrigida com base no seu ajuste manual.
 
 # Impacto no planejamento paralelo
 
-Com essa correção, o plano de execução muda assim:
+Com essa correção, plano de execução muda assim:
 
 ## Grupo A — Sistema de Tabela do Dashboard
 
 Cobre juntos:
 
-- sort em todas as colunas ordenáveis
+- sort em todas colunas ordenáveis
 - estado visual consistente de colunas ordenáveis
 - ordenação padrão por severidade
 - reordenação de colunas
 - posicionamento da coluna de sync
-- colunas configuráveis no futuro, se você quiser aproveitar a mesma base
+- colunas configuráveis no futuro, se você quiser aproveitar mesma base
 
 Motivo para agrupar:
-essas mudanças compartilham a mesma infraestrutura de tabela e evitam retrabalho.
+essas mudanças compartilham mesma infraestrutura de tabela e evitam retrabalho.
 
 ---
 
@@ -130,7 +130,7 @@ Cobre juntos:
 - tooltip do warning com alerta dominante + até 2–3 adicionais
 
 Motivo para agrupar:
-é um mesmo bloco visual/comportamental da coluna de alertas.
+é mesmo bloco visual/comportamental da coluna de alertas.
 
 ---
 
@@ -154,7 +154,7 @@ tudo é refinamento visual/operacional com baixo acoplamento ao domínio.
 Cobre juntos:
 
 - trocar botão de sync para ícone de duas setas
-- garantir que a coluna de sync esteja no fim da tabela
+- garantir que coluna de sync esteja no fim da tabela
 
 Observação:
 a posição da coluna também toca Grupo A.  
@@ -172,7 +172,7 @@ Cobre:
 - escurecer fontes secundárias específicas da página de processo
 
 Motivo:
-mudança localizada, ideal para um agente UI separado.
+mudança localizada, ideal para agente UI separado.
 
 ---
 
@@ -202,7 +202,7 @@ mudança localizada, ideal para um agente UI separado.
 
 Nada do feedback do cliente ficou fora.
 
-O que continua fora são itens do backlog técnico / idea dump que não pertencem ao feedback do cliente, por exemplo:
+que continua fora são itens do backlog técnico / idea dump que não pertencem ao feedback do cliente, por exemplo:
 
 - soft-lock create process
 - BL removal bug
@@ -226,12 +226,12 @@ isso pertence ao backlog técnico/produto, não ao pacote “finalizar feedback 
 
 Precisa confirmar se:
 
-- os campos já existem no DTO do dashboard
+- campos já existem no DTO do dashboard
 - ou se será necessário expandir projection / response
 
 ## 2. Sort “todas as colunas ordenáveis”
 
-Convém fechar uma lista explícita de colunas ordenáveis, para evitar interpretação livre do agente.
+Convém fechar lista explícita de colunas ordenáveis, para evitar interpretação livre do agente.
 
 ## 3. Reordenação de colunas
 
@@ -256,7 +256,7 @@ Rodar em paralelo:
 - **Agent UI 2** → Grupo B (alert cell + tooltip)
 - **Agent UI 3** → Grupo C (legibilidade dashboard + navbar)
 - **Agent UI 4** → Grupo E (shipment/process visual)
-- **Agent UI/Eng 5** → Importer/Exporter wiring, se os campos não existirem
+- **Agent UI/Eng 5** → Importer/Exporter wiring, se campos não existirem
 
 Depois disso:
 
@@ -280,7 +280,7 @@ Depois disso:
 
 ---
 
-Se quiser, eu agora gero a versão seguinte: **plano de implementação paralelo final**, já transformado em **blocos de PR/PRD por agente**, com:
+Se quiser, eu agora gero versão seguinte: **plano de implementação paralelo final**, já transformado em **blocos de PR/PRD por agente**, com:
 - objetivo
 - arquivos prováveis
 - boundaries

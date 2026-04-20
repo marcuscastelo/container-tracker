@@ -8,7 +8,7 @@ Base: `#docs/arquitetura_de_tipos_e_camadas_container_tracker_guia_definitivo-02
 
 1. **Infra importando schema do domínio (`ObservationSchema`) e parseando Row → `Observation`.**
 
-   * **Por quê é problema:** domínio não pode depender de Zod como “modelo canônico”; e infra não deve conhecer/produzir `Entity` diretamente (fronteira muda o tipo).
+   * **Por quê é problema:** domínio não pode depender de Zod como “modelo canônico”; e infra não deve conhecer/produzir `Entity` diretamente (fronteira muda tipo).
 
 2. **Repo retorna `Observation` (domínio) e faz “skip” silencioso com `console.error`.**
 
@@ -18,9 +18,9 @@ Base: `#docs/arquitetura_de_tipos_e_camadas_container_tracker_guia_definitivo-02
 
    * **Por quê é problema:** mappers devem ficar **centralizados** em `infrastructure/persistence/*Mapper.ts` (padrão dos módulos `container`/`process`).
 
-4. **Union `{ success: true/false }` interna e tolerância a dados inválidos.**
+4. **Union `{ success: true/false }` interna e tolerância dados inválidos.**
 
-   * **Por quê é problema:** o padrão do projeto é `throw` + erros estruturados; unions “success” reaparecem por tabela.
+   * **Por quê é problema:** padrão do projeto é `throw` + erros estruturados; unions “success” reaparecem por tabela.
 
 ### B. `application/trackingUseCases.ts`
 
@@ -34,7 +34,7 @@ Base: `#docs/arquitetura_de_tipos_e_camadas_container_tracker_guia_definitivo-02
 
 3. **Erros de fetch são persistidos como snapshot com payload `_error` e parse_error, e pipeline roda.**
 
-   * **Nota:** isso pode continuar (é bom pra auditoria), mas o **contrato de retorno** deve ser `Result` explícito (ex.: `kind: 'ok' | 'no_fetcher' | 'fetch_failed'`).
+   * **Nota:** isso pode continuar (é bom pra auditoria), mas **contrato de retorno** deve ser `Result` explícito (ex.: `kind: 'ok' | 'no_fetcher' | 'fetch_failed'`).
 
 ---
 
@@ -132,7 +132,7 @@ export function newObservationToInsertRow(obs: {
 
 **Razão (1–2 frases):** centraliza conversões em infra, e remove Zod como “modelo de domínio” no caminho infra→domain.
 
-> Observação: aqui eu mantive o tipo de `Observation` como está hoje (domínio). Na Etapa 2 a gente decide se `Observation` continuará sendo “domain record” ou vira `ObservationEntity` backend-only.
+> Observação: aqui eu mantive tipo de `Observation` como está hoje (domínio). Na Etapa 2 gente decide se `Observation` continuará sendo “domain record” ou vira `ObservationEntity` backend-only.
 
 ### 2.2 Refatorar `supabaseObservationRepository.ts` para usar mapper e lançar
 
@@ -197,7 +197,7 @@ export const supabaseObservationRepository: ObservationRepository = {
 
 **Razão (1–2 frases):** repository não devolve “parcial” nem mascara inconsistência; infra converte via mapper centralizado e lança em caso de drift.
 
-> Se você quiser manter robustez sem quebrar produção, dá pra lançar com mensagem rica e um `cause` com `row.id` e `container_id`.
+> Se você quiser manter robustez sem quebrar produção, dá pra lançar com mensagem rica e `cause` com `row.id` e `container_id`.
 
 ### 2.3 Remover dependência de Zod no caminho infra
 
@@ -229,7 +229,7 @@ export const supabaseObservationRepository: ObservationRepository = {
 * `application/usecases/getSnapshotsForContainer.ts`
 * `application/usecases/getLatestSnapshot.ts`
 
-Cada um com:
+Cada com:
 
 * `type Command = { ... }`
 * `type Result = { ... }`
@@ -261,7 +261,7 @@ E `application/trackingUseCases.ts` vira **facade** que só compõe.
 1. `src/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository.ts`
 2. `src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts`
 
-Eu vou repetir o mesmo padrão: Row/InsertRow/UpdateRow + mapper centralizado + throw.
+Eu vou repetir mesmo padrão: Row/InsertRow/UpdateRow + mapper centralizado + throw.
 
 ---
 
@@ -276,7 +276,7 @@ Objetivo: substituir `application/trackingUseCases.ts` (factory monolítica) por
 
 * Application expõe **Command/Result** por use case.
 * Controllers (quando existirem) fazem DTO → Command e Result → Response DTO.
-* Domain continua sendo usado internamente (deriveTimeline/deriveStatus etc), mas o **retorno** deve ser Result (contrato), não ViewModel.
+* Domain continua sendo usado internamente (deriveTimeline/deriveStatus etc), mas **retorno** deve ser Result (contrato), não ViewModel.
 
 ---
 
@@ -296,7 +296,7 @@ Criar arquivos:
 * `getSnapshotsForContainer.ts`
 * `getLatestSnapshot.ts`
 
-E manter (refatorar) o facade:
+E manter (refatorar) facade:
 
 * `src/modules/tracking/application/trackingUseCases.ts`
 
@@ -304,7 +304,7 @@ E manter (refatorar) o facade:
 
 ## 2.2 Tipos compartilhados (deps)
 
-Criar (ou manter no facade) o tipo de deps **application-only**:
+Criar (ou manter no facade) tipo de deps **application-only**:
 
 ```ts
 import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepository'
@@ -318,7 +318,7 @@ export type TrackingUseCasesDeps = {
 }
 ```
 
-Razão (1–2 frases): deps explícitas evitam import circular e padronizam DI; o resto é puro.
+Razão (1–2 frases): deps explícitas evitam import circular e padronizam DI; resto é puro.
 
 ---
 
@@ -522,7 +522,7 @@ export async function getContainerSummary(
 }
 ```
 
-Razão (1–2 frases): mantém o mesmo shape atual, mas agora é um **Result** formal (fronteira), e presenters saem daqui depois.
+Razão (1–2 frases): mantém mesmo shape atual, mas agora é **Result** formal (fronteira), e presenters saem daqui depois.
 
 ---
 
@@ -600,8 +600,8 @@ export async function getLatestSnapshot(
 
 Novo comportamento:
 
-* o facade **não implementa lógica**;
-* só injeta deps e expõe funções que chamam os use cases.
+* facade **não implementa lógica**;
+* só injeta deps e expõe funções que chamam use cases.
 
 ```ts
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
@@ -641,7 +641,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
 export type TrackingUseCases = ReturnType<typeof createTrackingUseCases>
 ```
 
-Nota: aqui eu mantive a **API pública do facade** parecida com a de hoje (menor diff). Depois, controllers podem chamar direto os use cases com Command.
+Nota: aqui eu mantive **API pública do facade** parecida com de hoje (menor diff). Depois, controllers podem chamar direto use cases com Command.
 
 ---
 

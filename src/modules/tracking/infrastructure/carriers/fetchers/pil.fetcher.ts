@@ -9,6 +9,14 @@ type PilNoncePayload = {
   readonly n: string
 }
 
+function normalizeLogText(value: string, maxLength = 180): string {
+  const compact = value.replace(/\s+/g, ' ').trim()
+  if (compact.length <= maxLength) {
+    return compact
+  }
+  return `${compact.slice(0, maxLength)}...`
+}
+
 function tryParseJson(value: string): unknown | null {
   try {
     return JSON.parse(value)
@@ -56,22 +64,37 @@ async function fetchPilNonce(
   readonly payload: unknown
   readonly parseError: string | null
 }> {
-  const response = await axios.get(
-    `https://www.pilship.com/wp-content/themes/hello-theme-child-master/pil-api/common/get-n.php?timestamp=${timestampMs}`,
-    {
-      responseType: 'text',
-      decompress: true,
-      timeout: 30_000,
-      validateStatus: () => true,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:148.0) Gecko/20100101 Firefox/148.0',
-        Accept: '*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'X-Requested-With': 'XMLHttpRequest',
-        Referer: `https://www.pilship.com/digital-solutions/?tab=customer&id=track-trace&label=containerTandT&module=TrackContStatus&refNo=${encodeURIComponent(containerNumber)}`,
-      },
+  const url = `https://www.pilship.com/wp-content/themes/hello-theme-child-master/pil-api/common/get-n.php?timestamp=${timestampMs}`
+  const startedAtMs = Date.now()
+  console.log('[tracking:pil] request', {
+    endpoint: 'nonce',
+    method: 'GET',
+    url,
+    containerNumber,
+  })
+
+  const response = await axios.get(url, {
+    responseType: 'text',
+    decompress: true,
+    timeout: 30_000,
+    validateStatus: () => true,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:148.0) Gecko/20100101 Firefox/148.0',
+      Accept: '*/*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'X-Requested-With': 'XMLHttpRequest',
+      Referer: `https://www.pilship.com/digital-solutions/?tab=customer&id=track-trace&label=containerTandT&module=TrackContStatus&refNo=${encodeURIComponent(containerNumber)}`,
     },
-  )
+  })
+  console.log('[tracking:pil] response', {
+    endpoint: 'nonce',
+    method: 'GET',
+    url,
+    containerNumber,
+    status: response.status,
+    ok: response.status >= 200 && response.status < 300,
+    durationMs: Date.now() - startedAtMs,
+  })
 
   const rawText = typeof response.data === 'string' ? response.data : String(response.data)
   const payload = tryParseJson(rawText) ?? { raw_text: rawText }
@@ -119,7 +142,7 @@ function toPilParseError(payload: unknown): string | null {
   }
 
   const trackingParse = parsePilTrackingPayload(schemaResult.data)
-  if (!trackingParse.ok) {
+  if (trackingParse.ok === false) {
     return trackingParse.error
   }
 
@@ -130,6 +153,10 @@ export async function fetchPilStatus(containerNumber: string): Promise<FetchResu
   const timestampMs = Date.now()
   const nonceResult = await fetchPilNonce(timestampMs, containerNumber)
   if (nonceResult.parseError !== null || nonceResult.nonce === null) {
+    console.warn('[tracking:pil] nonce parse failed', {
+      containerNumber,
+      error: nonceResult.parseError,
+    })
     return {
       provider: 'pil',
       payload: {
@@ -146,27 +173,41 @@ export async function fetchPilStatus(containerNumber: string): Promise<FetchResu
     n: nonceResult.nonce,
     timestamp: String(timestampMs),
   })
+  const url = `https://www.pilship.com/wp-content/themes/hello-theme-child-master/pil-api/trackntrace-containertnt.php?${params.toString()}`
+  const startedAtMs = Date.now()
+  console.log('[tracking:pil] request', {
+    endpoint: 'trackntrace-containertnt',
+    method: 'GET',
+    url,
+    containerNumber,
+  })
 
-  const response = await axios.get(
-    `https://www.pilship.com/wp-content/themes/hello-theme-child-master/pil-api/trackntrace-containertnt.php?${params.toString()}`,
-    {
-      responseType: 'text',
-      decompress: true,
-      timeout: 30_000,
-      validateStatus: () => true,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:148.0) Gecko/20100101 Firefox/148.0',
-        Accept: '*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br, zstd',
-        'X-Requested-With': 'XMLHttpRequest',
-        Referer: `https://www.pilship.com/digital-solutions/?tab=customer&id=track-trace&label=containerTandT&module=TrackContStatus&refNo=${encodeURIComponent(containerNumber)}`,
-        Connection: 'keep-alive',
-        Pragma: 'no-cache',
-        'Cache-Control': 'no-cache',
-      },
+  const response = await axios.get(url, {
+    responseType: 'text',
+    decompress: true,
+    timeout: 30_000,
+    validateStatus: () => true,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:148.0) Gecko/20100101 Firefox/148.0',
+      Accept: '*/*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br, zstd',
+      'X-Requested-With': 'XMLHttpRequest',
+      Referer: `https://www.pilship.com/digital-solutions/?tab=customer&id=track-trace&label=containerTandT&module=TrackContStatus&refNo=${encodeURIComponent(containerNumber)}`,
+      Connection: 'keep-alive',
+      Pragma: 'no-cache',
+      'Cache-Control': 'no-cache',
     },
-  )
+  })
+  console.log('[tracking:pil] response', {
+    endpoint: 'trackntrace-containertnt',
+    method: 'GET',
+    url,
+    containerNumber,
+    status: response.status,
+    ok: response.status >= 200 && response.status < 300,
+    durationMs: Date.now() - startedAtMs,
+  })
 
   const rawText = typeof response.data === 'string' ? response.data : String(response.data)
   const payload = tryParseJson(rawText) ?? { raw_text: rawText }
@@ -175,6 +216,18 @@ export async function fetchPilStatus(containerNumber: string): Promise<FetchResu
   if (response.status < 200 || response.status >= 300) {
     const statusError = `PIL request failed with status ${response.status}`
     parseError = parseError === null ? statusError : `${statusError}: ${parseError}`
+  }
+  if (parseError !== null) {
+    console.warn('[tracking:pil] parse failed', {
+      endpoint: 'trackntrace-containertnt',
+      containerNumber,
+      error: normalizeLogText(parseError),
+    })
+  } else {
+    console.log('[tracking:pil] parse success', {
+      endpoint: 'trackntrace-containertnt',
+      containerNumber,
+    })
   }
 
   return {

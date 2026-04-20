@@ -11,6 +11,7 @@ import type {
   AgentLogsChannel,
   AgentLogsConnectionState,
 } from '~/modules/agent/ui/logs/agent-logs.vm'
+import { type ResourceSnapshotLike, readResourceSnapshot } from '~/shared/solid/resourceSnapshot'
 
 const DEFAULT_TAIL_LINES = 500
 const MAX_VIEWPORT_LINES = 2000
@@ -65,6 +66,14 @@ function hasSequence(lines: readonly AgentLogLineVM[], sequence: number): boolea
   return lines.some((line) => line.sequence === sequence)
 }
 
+type AgentLogsBacklogSnapshot = Awaited<ReturnType<typeof fetchAgentLogsBacklog>>
+
+export function readAgentLogsBacklogSnapshot(
+  resource: ResourceSnapshotLike<AgentLogsBacklogSnapshot | undefined>,
+): AgentLogsBacklogSnapshot | undefined {
+  return readResourceSnapshot(resource)
+}
+
 export function useAgentLogsController(command: {
   readonly agentId: string
   readonly enabled?: () => boolean
@@ -106,7 +115,7 @@ export function useAgentLogsController(command: {
   )
 
   createEffect(() => {
-    const data = backlog()
+    const data = readAgentLogsBacklogSnapshot(backlog)
     if (!data) return
 
     setOs(data.os)

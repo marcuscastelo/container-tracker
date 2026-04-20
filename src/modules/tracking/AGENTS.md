@@ -9,6 +9,14 @@ This file contains only tracking-specific additions that are not already explici
 
 ---
 
+## Sanity Gate Inheritance
+
+For any commit-ready tracking change, follow mandatory `pnpm sanity` close-out gate defined in root `AGENTS.md` section `11.1`.
+
+This addendum does not relax or replace that gate.
+
+---
+
 ## 0) Read-First for Tracking Changes
 
 - `docs/TRACKING_INVARIANTS.md`
@@ -35,7 +43,7 @@ No other module should redefine tracking semantics.
 ## 2) Invariants to Protect in This Module
 
 - Always preserve raw payload, even when parsing fails
-- Parsing failures must surface as `data` alerts (do not hide)
+- Parsing failures must surface `data` alerts (do not hide)
 - `domain/derive/*` must stay pure and deterministic (no presentation logic, no implicit `now`)
 - Reconcile layer classifies; it never mutates facts
 - One semantic series must produce one timeline primary
@@ -51,8 +59,8 @@ If changing:
 - timeline derivation -> update derive/reconcile read-model tests
 
 Prefer deterministic fixtures and stable tests.
-- `deriveTimelineWithSeriesReadModel()` emits only series with a valid primary; a series containing only expired EXPECTED events is omitted, so test timestamps/`now` must reflect the intended visibility.
-- For metadata-only additions on observations, add an A/B invariant regression using the same fixture with metadata present vs stripped (`null`) and assert timeline semantics, status derivation, and alert derivation are identical.
+- `deriveTimelineWithSeriesReadModel()` emits only series with valid primary; series containing only expired EXPECTED events is omitted, so test timestamps/`now` must reflect intended visibility.
+- For metadata-only additions on observations, add A/B invariant regression using same fixture with metadata present vs stripped (`null`) and assert timeline semantics, status derivation, and alert derivation are identical.
 
 ---
 
@@ -66,15 +74,15 @@ This section preserves two distinct but related concerns from both branches: ale
 
 5.1 Alert read-model pattern
 
-- `tracking_alerts` does not include `process_id`; when a tracking read model needs process ownership, enrich alert rows through infra repositories that resolve `container_id -> process_id`.
-- `is_active` is derived from `acked_at === null`; expose it as derived read-model data, never as mutable source truth.
-- If dashboard/capabilities need operational alert buckets (`eta | movement | customs | status | data`), keep the `TrackingAlert.type -> operational category` mapping inside tracking application projections (for example `tracking.operational-alert-category.readmodel.ts`) and let capabilities only aggregate rolls ups.
+- `tracking_alerts` does not include `process_id`; when tracking read model needs process ownership, enrich alert rows through infra repositories that resolve `container_id -> process_id`.
+- `is_active` is derived from `acked_at === null`; expose it derived read-model data, never mutable source truth.
+- If dashboard/capabilities need operational alert buckets (`eta | movement | customs | status | data`), keep `TrackingAlert.type -> operational category` mapping inside tracking application projections (for example `tracking.operational-alert-category.readmodel.ts`) and let capabilities only aggregate rolls ups.
 
 5.2 Observation metadata propagation pattern
 
-- When adding provider metadata fields on observations (for example carrier labels), propagate them through the full chain:
-  `normalizers -> ObservationDraft -> diffObservations -> persistence mappers -> TrackingObservationProjection -> tracking timeline read model`.
-- Keep metadata out of semantic derivation inputs (status/series/alerts) unless a canonical domain rule explicitly requires it; metadata is primarily audit/UI context.
-- For carrier semantic label mapping, normalize lookup keys (lowercase, trim, collapse spaces, remove diacritics) but keep `carrier_label` as the original provider text for audit/UI transparency.
+- When adding provider metadata fields on observations (for example carrier labels), propagate them through full chain:
+`normalizers -> ObservationDraft -> diffObservations -> persistence mappers -> TrackingObservationProjection -> tracking timeline read model`.
+- Keep metadata out of semantic derivation inputs (status/series/alerts) unless canonical domain rule explicitly requires it; metadata is primarily audit/UI context.
+- For carrier semantic label mapping, normalize lookup keys (lowercase, trim, collapse spaces, remove diacritics) but keep `carrier_label` original provider text for audit/UI transparency.
 
 *Note:* these rules are complementary: alerts are derived/read-model concerns; metadata propagation guarantees auditability and UI fidelity. Do not conflate read-model enrichment with core semantic derivation.

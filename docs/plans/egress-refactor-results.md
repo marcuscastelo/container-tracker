@@ -11,15 +11,15 @@
   - `GET /api/processes/sync-status`
   - `GET /api/dashboard/operational-summary`
   - `GET /api/alerts/navbar-summary`
-- `[read_audit]` now records the canonical `read_strategy` and aggregated `query_operations` for each audited hot request.
-- Live DB-egress comparison is still required in a dev/staging environment with real data. This branch now emits the logs needed for that comparison.
+- `[read_audit]` now records canonical `read_strategy` and aggregated `query_operations` for each audited hot request.
+- Live DB-egress comparison is still required in dev/staging environment with real data. This branch now emits logs needed for that comparison.
 
 ## What Changed
 
 ### Hot detail contract
 
-- `GET /api/processes/:id` now returns a lean first-paint contract.
-- Removed from the hot detail payload:
+- `GET /api/processes/:id` now returns lean first-paint contract.
+- Removed from hot detail payload:
   - `containers[].observations`
   - inline `series_history` transport by default
   - recognized alert archive
@@ -27,13 +27,13 @@
 - Added to lean timeline items:
   - `observation_id`
   - `has_series_history`
-- Added `tracking_freshness_token` to the shipment detail response.
+- Added `tracking_freshness_token` to shipment detail response.
 
 ### Reconciliation split
 
 - Added `GET /api/processes/:id/sync-state`.
 - Shipment reconciliation now fetches sync state first and only reloads full detail when `tracking_freshness_token` changes.
-- Dashboard realtime reconciliation now uses `GET /api/processes/sync-status` instead of refetching the full process list on every terminal sync event.
+- Dashboard realtime reconciliation now uses `GET /api/processes/sync-status` instead of refetching full process list on every terminal sync event.
 
 ### Lazy history/detail endpoints
 
@@ -47,7 +47,7 @@
 - Added canonical batch tracking projections for process detail, process list aggregation, dashboard operational summary, and navbar active-alert summary.
 - Added lazy detail use cases for recognized incidents, series history, and observation inspector flows.
 - Replaced hot-path `select('*')` reads with explicit projections for observations and alerts.
-- Removed the legacy per-container fallback from process detail, dashboard list aggregation, and the tracking batch projection itself.
+- Removed legacy per-container fallback from process detail, dashboard list aggregation, and tracking batch projection itself.
 - Dashboard list aggregation and navbar active-alert summary now read summary-shaped batch projections directly instead of loading full history and compressing it in memory.
 
 ### Frequency reduction
@@ -59,56 +59,56 @@
 
 ## Baseline reference
 
-- Problem statement baseline: common process detail responses were reported in the `~30–60KB` range.
+- Problem statement baseline: common process detail responses were reported in `~30–60KB` range.
 - Structural audit baseline:
   - process detail loaded full observation history, alert history, and inline series history per container
   - dashboard list aggregated via per-container `getContainerSummary(...)`
-  - recognized/archive incidents were included in the hot shipment read
+  - recognized/archive incidents were included in hot shipment read
 
 ## Branch-local verified payload sizes
 
 These numbers come from deterministic controller tests on this branch. They are useful for contract-size verification, but they are not substitutes for live-data measurement.
 
-| Endpoint | Verified local response size |
+|Endpoint|Verified local response size|
 | --- | ---: |
-| `GET /api/processes/:id` lean detail (simple synthetic cases) | `2,552–4,392 bytes` |
-| `GET /api/processes/:id/sync-state` | `478 bytes` |
-| `GET /api/processes/:id/alerts/recognized` | `1,415 bytes` |
-| `GET /api/dashboard/operational-summary` | `747 bytes` |
+|`GET /api/processes/:id` lean detail (simple synthetic cases)|`2,552–4,392 bytes`|
+|`GET /api/processes/:id/sync-state`|`478 bytes`|
+|`GET /api/processes/:id/alerts/recognized`|`1,415 bytes`|
+|`GET /api/dashboard/operational-summary`|`747 bytes`|
 
 ## Budget check
 
 - Shipment detail first paint:
-  - Local branch verification is comfortably below the interim `<= 20KB` budget.
+  - Local branch verification is comfortably below interim `<= 20KB` budget.
   - Live-data verification is still required for representative multi-container / history-heavy processes.
 - Sync snapshot:
-  - Verified locally at `478 bytes`, well below the `<= 3KB` target.
+  - Verified locally at `478 bytes`, well below `<= 3KB` target.
 - Recognized alert archive:
-  - Moved fully off the hot path.
+  - Moved fully off hot path.
 
 ## Largest Wins
 
 1. Shipment first paint no longer ships raw observation history or recognized alert archive by default.
 2. Timeline history is now modal/lazy instead of being embedded in every visible primary item.
 3. Sync reconciliation is now snapshot-first, with full detail reload gated by `tracking_freshness_token`.
-4. Dashboard realtime sync no longer forces a full process-list refetch on every terminal event.
-5. Hot observation/alert repositories now use explicit column selection, preserving the egress-first query-shaping goal.
+4. Dashboard realtime sync no longer forces full process-list refetch on every terminal event.
+5. Hot observation/alert repositories now use explicit column selection, preserving egress-first query-shaping goal.
 6. No audited hot endpoint silently falls back to per-container summary fan-out anymore.
 
 ## Fallback Elimination
 
-- Removed the legacy fallback chain from:
+- Removed legacy fallback chain from:
   - process detail hot reads
   - process list operational summary aggregation
   - tracking batch hot-read projection internals
-- Migrated hot callers to the canonical batch-only entry points:
+- Migrated hot callers to canonical batch-only entry points:
   - `findContainersHotReadProjection(...)`
   - `findContainersOperationalSummaryProjection(...)`
-- Kept `getContainerSummary(...)` only for non-hot callers such as export/import and replay-oriented flows.
+- Kept `getContainerSummary(...)` only for non-hot callers such export/import and replay-oriented flows.
 - Made batch repository methods mandatory for hot reads:
   - `ObservationRepository.findAllByContainerIds(...)`
   - `TrackingAlertRepository.findActiveByContainerIds(...)`
-- Extended runtime proof via `[read_audit]` so hot requests now identify the canonical strategy used:
+- Extended runtime proof via `[read_audit]` so hot requests now identify canonical strategy used:
   - `tracking.hot_read_projection.process_detail`
   - `tracking.hot_read_projection.process_sync_snapshot`
   - `tracking.hot_read_projection.dashboard_operational_summary`
@@ -118,7 +118,7 @@ These numbers come from deterministic controller tests on this branch. They are 
 ## Remaining Hotspots
 
 1. Live DB byte-read / rows-read validation is still pending.
-   - The instrumentation is shipped, but representative runtime samples still need to be collected from a non-mocked environment.
+   - instrumentation is shipped, but representative runtime samples still need to be collected from non-mocked environment.
 2. Full repo `pnpm check` is still blocked by unrelated workspace issues.
    - Current known unrelated failures include:
      - `dep-graph.html` max-size check
@@ -129,8 +129,8 @@ These numbers come from deterministic controller tests on this branch. They are 
 ## Deferred UX Follow-Ups
 
 - After live audit numbers are collected, decide whether any additional first-paint trimming is needed for history-heavy multi-container shipments.
-- Evaluate whether dashboard manual sync can also avoid an immediate full list refetch in more cases.
-- Consider index follow-ups only after the audited DB logs identify the dominant remaining query shapes.
+- Evaluate whether dashboard manual sync can also avoid immediate full list refetch in more cases.
+- Consider index follow-ups only after audited DB logs identify dominant remaining query shapes.
 
 ## Verification Performed
 
@@ -142,7 +142,7 @@ These numbers come from deterministic controller tests on this branch. They are 
 
 ## Follow-Up Required For Completion Of The Audit Loop
 
-1. Deploy or run the app against representative dev data.
+1. Deploy or run app against representative dev data.
 2. Capture at least 10 requests per audited endpoint from `[read_audit]` logs.
 3. Fill in before/after live numbers for:
    - response bytes

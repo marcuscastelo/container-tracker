@@ -3,7 +3,7 @@
 ## 1. Core Entities
 
 ### Process (Shipment)
-Represents a logical shipment grouping.
+Represents logical shipment grouping.
 
 Owns:
 - Reference
@@ -61,7 +61,7 @@ Examples:
 
 ## 2.1 Canonical Event Types
 
-Observations use canonical event types such as:
+Observations use canonical event types such:
 
 - GATE_IN
 - GATE_OUT
@@ -74,7 +74,7 @@ Observations use canonical event types such as:
 - EMPTY_RETURN
 
 `TERMINAL_MOVE` represents operational movement inside terminals (for example positioned in/out).
-It must not be reinterpreted as ARRIVAL and does not advance lifecycle status on its own.
+It must not be reinterpreted ARRIVAL and does not advance lifecycle status on its own.
 
 ---
 
@@ -95,8 +95,8 @@ Derived states:
 Rules:
 
 - ACTUAL overrides EXPECTED
-- Multiple EXPECTED form a series
-- Series classification chooses a safe-first primary
+- Multiple EXPECTED form series
+- Series classification chooses safe-first primary
 - EXPIRED_EXPECTED indicates stale prediction
 
 ---
@@ -163,6 +163,6 @@ UI may polish presentation, but must not flatten away semantic grouping provided
 
 Domain rule:
 
-> States are derived from events.  
-> Events are derived from snapshots.  
+> States are derived from events.
+> Events are derived from snapshots.
 > Snapshots are never discarded.

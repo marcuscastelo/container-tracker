@@ -9,7 +9,7 @@ export function AlertActionBanner(props: { message: string; onDismiss: () => voi
           <div>{props.message}</div>
           <button
             type="button"
-            class="ml-4 text-tone-warning-fg underline"
+            class="motion-focus-surface ml-4 rounded-sm text-tone-warning-fg underline underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             aria-label={t(keys.shipmentView.alerts.action.dismissActionError)}
             onClick={() => props.onDismiss()}
           >

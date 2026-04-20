@@ -1,0 +1,1392 @@
+import { createHash } from 'node:crypto'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import process from 'node:process'
+import { fileURLToPath } from 'node:url'
+import type { AgentPathLayout } from '@agent/config/config.contract'
+import {
+  consumeBootstrapConfig,
+  readBootstrapConfigFromEnv,
+} from '@agent/config/infrastructure/bootstrap-config.repository'
+import {
+  readRuntimeConfigFromEnv,
+  writeRuntimeConfigToEnv,
+} from '@agent/config/infrastructure/env-config.repository'
+import {
+  readInstallerTokenValue,
+  writeInstallerTokenState,
+} from '@agent/config/infrastructure/installer-token-state.repository'
+import { ensureAgentPathLayout, resolveAgentPathLayout } from '@agent/config/resolve-agent-paths'
+import {
+  acknowledgeRemoteCommand,
+  applyRemoteCommand,
+  type ControlRuntimeConfig,
+  ControlRuntimeConfigSchema,
+  syncAgentControlState,
+} from '@agent/control-core/agent-control-core'
+import { publishAgentControlPublicSnapshot } from '@agent/control-core/public-control-files'
+import {
+  type ValidatedAgentConfig,
+  ValidatedAgentConfigSchema,
+  type ValidatedBootstrapConfig,
+  ValidatedBootstrapConfigSchema,
+} from '@agent/core/contracts/agent-config.contract'
+import {
+  AgentTokenUnauthorizedError,
+  isAgentTokenUnauthorizedError,
+} from '@agent/core/errors/agent-token-unauthorized.error'
+import { BoundaryValidationError } from '@agent/core/errors/boundary-validation.error'
+import { toHeartbeatPayload } from '@agent/observability/observability.mapper'
+import { createProviderRunnerRegistry } from '@agent/providers/common/provider-runner.registry'
+import { writeRuntimeState } from '@agent/runtime/infrastructure/runtime-state.repository'
+import {
+  clearSupervisorControl,
+  readSupervisorControl,
+  writeSupervisorControl,
+} from '@agent/runtime/infrastructure/supervisor-control.repository'
+import { writeStateJsonFile } from '@agent/state/infrastructure/json-state.file-store'
+import { runSyncCycle } from '@agent/sync/application/run-sync-cycle'
+import type { SyncCycleActivity } from '@agent/sync/application/sync-types'
+import { createSyncBackendClient } from '@agent/sync/infrastructure/sync-backend.client'
+import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod/v4'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import type { SyncRequestsRealtimeStatusUpdate } from '../../../../src/shared/supabase/sync-requests.realtime.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { subscribeSyncRequestsByTenant } from '../../../../src/shared/supabase/sync-requests.realtime.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { type AgentRunReason, createAgentScheduler } from '../agent.scheduler.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { computeBackoffDelayMs } from '../backoff.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { createAgentLogForwarder } from '../log-forwarder.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { appendPendingActivityEvents, drainPendingActivityEvents } from '../pending-activity.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { EXIT_FATAL, EXIT_UPDATE_RESTART } from './lifecycle-exit-codes.ts'
+
+function normalizeOptionalEnv(value: string | undefined): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim()
+  if (normalized.length === 0) return undefined
+  return normalized
+}
+
+function normalizeOptionalText(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  if (normalized.length === 0) return null
+  return normalized
+}
+
+function sanitizeText(value: string, secrets: readonly string[]): string {
+  let sanitized = value
+  for (const secret of secrets) {
+    if (secret.length === 0) continue
+    sanitized = sanitized.split(secret).join('[REDACTED]')
+  }
+  return sanitized
+}
+
+function hasCauseProperty(value: unknown): value is { readonly cause: unknown } {
+  return typeof value === 'object' && value !== null && 'cause' in value
+}
+
+function toUnknownMessage(value: unknown): string {
+  if (value instanceof Error) {
+    return value.message
+  }
+
+  if (typeof value === 'string') {
+    return value
+  }
+
+  try {
+    const json = JSON.stringify(value)
+    if (typeof json === 'string' && json.length > 0) {
+      return json
+    }
+  } catch {
+    // fall back to String(value)
+  }
+
+  return String(value)
+}
+
+function toErrorMessage(error: unknown, secrets: readonly string[] = []): string {
+  if (error instanceof Error) {
+    const message = sanitizeText(error.message, secrets)
+    if (!hasCauseProperty(error) || typeof error.cause === 'undefined') {
+      return message
+    }
+
+    const causeMessage = sanitizeText(toUnknownMessage(error.cause), secrets)
+    if (causeMessage.length === 0 || causeMessage === message) {
+      return message
+    }
+
+    return `${message} (cause: ${causeMessage})`
+  }
+
+  return sanitizeText(String(error), secrets)
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+type RuntimeConfig = ValidatedAgentConfig
+type BootstrapConfig = ValidatedBootstrapConfig
+
+function toControlRuntimeConfig(config: RuntimeConfig): ControlRuntimeConfig {
+  return {
+    AGENT_ID: config.AGENT_ID,
+    AGENT_TOKEN: config.AGENT_TOKEN,
+    AGENT_UPDATE_MANIFEST_CHANNEL: config.AGENT_UPDATE_MANIFEST_CHANNEL,
+    BACKEND_URL: config.BACKEND_URL,
+    INTERVAL_SEC: config.INTERVAL_SEC,
+    LIMIT: config.LIMIT,
+    MAERSK_ENABLED: config.MAERSK_ENABLED,
+    MAERSK_HEADLESS: config.MAERSK_HEADLESS,
+    MAERSK_TIMEOUT_MS: config.MAERSK_TIMEOUT_MS,
+    MAERSK_USER_DATA_DIR: config.MAERSK_USER_DATA_DIR ?? null,
+    SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY ?? null,
+    SUPABASE_URL: config.SUPABASE_URL ?? null,
+    TENANT_ID: config.TENANT_ID,
+  }
+}
+
+function toRuntimeConfigFromControlConfig(config: ControlRuntimeConfig): RuntimeConfig {
+  return ValidatedAgentConfigSchema.parse({
+    BACKEND_URL: config.BACKEND_URL,
+    SUPABASE_URL: config.SUPABASE_URL,
+    SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY,
+    AGENT_TOKEN: config.AGENT_TOKEN,
+    TENANT_ID: config.TENANT_ID,
+    AGENT_ID: config.AGENT_ID,
+    INTERVAL_SEC: config.INTERVAL_SEC,
+    LIMIT: config.LIMIT,
+    MAERSK_ENABLED: config.MAERSK_ENABLED,
+    MAERSK_HEADLESS: config.MAERSK_HEADLESS,
+    MAERSK_TIMEOUT_MS: config.MAERSK_TIMEOUT_MS,
+    MAERSK_USER_DATA_DIR: config.MAERSK_USER_DATA_DIR,
+    AGENT_UPDATE_MANIFEST_CHANNEL: config.AGENT_UPDATE_MANIFEST_CHANNEL,
+  })
+}
+
+function persistBaseRuntimeConfig(command: {
+  readonly layout: AgentPathLayout
+  readonly runtimeConfig: RuntimeConfig
+}): void {
+  writeStateJsonFile({
+    filePath: command.layout.baseRuntimeConfigPath,
+    schema: ControlRuntimeConfigSchema,
+    value: toControlRuntimeConfig(command.runtimeConfig),
+  })
+}
+
+function persistRuntimeConfig(command: {
+  readonly layout: AgentPathLayout
+  readonly runtimeConfig: RuntimeConfig
+}): void {
+  writeRuntimeConfigToEnv({
+    paths: command.layout,
+    config: command.runtimeConfig,
+  })
+  persistBaseRuntimeConfig(command)
+}
+
+async function syncControlStateAndPersistPublicState(command: {
+  readonly layout: AgentPathLayout
+  readonly currentConfig: ControlRuntimeConfig
+  readonly forceRemoteFetch?: boolean
+}) {
+  const syncCommand =
+    typeof command.forceRemoteFetch === 'boolean'
+      ? {
+          layout: command.layout,
+          currentConfig: command.currentConfig,
+          forceRemoteFetch: command.forceRemoteFetch,
+        }
+      : {
+          layout: command.layout,
+          currentConfig: command.currentConfig,
+        }
+  const result = await syncAgentControlState(syncCommand)
+  persistPublicControlState({
+    layout: command.layout,
+    controlSync: result,
+  })
+  return result
+}
+
+function persistPublicControlState(command: {
+  readonly layout: AgentPathLayout
+  readonly controlSync?: Awaited<ReturnType<typeof syncAgentControlState>>
+}): void {
+  void publishAgentControlPublicSnapshot({
+    filePath: command.layout.publicStatePath,
+    backendStatePath: command.layout.publicBackendStatePath,
+    layout: command.layout,
+    forceRemoteFetch: false,
+    ...(typeof command.controlSync === 'undefined' ? {} : { controlSync: command.controlSync }),
+  }).catch((error) => {
+    console.warn(`[agent] failed to write public control state: ${toErrorMessage(error)}`)
+  })
+}
+
+const enrollResponseSchema = z.object({
+  agentToken: z.string().min(1),
+  tenantId: z.string().uuid(),
+  intervalSec: z.number().int().positive(),
+  limit: z.number().int().min(1).max(100),
+  supabaseUrl: z.string().url().optional(),
+  supabaseAnonKey: z.string().min(1).optional(),
+  providers: z.object({
+    maerskEnabled: z.boolean(),
+    maerskHeadless: z.boolean(),
+    maerskTimeoutMs: z.number().int().positive(),
+    maerskUserDataDir: z.string().min(1).optional(),
+  }),
+})
+
+type EnrollResponse = z.infer<typeof enrollResponseSchema>
+
+const packageJsonSchema = z.object({
+  version: z.string().min(1),
+})
+
+type PathLayout = AgentPathLayout
+
+function resolveMachineFingerprint(hostname: string): string {
+  const providedMachineGuid = normalizeOptionalEnv(process.env.AGENT_MACHINE_GUID)
+  const machineGuid = providedMachineGuid ?? hostname
+  return createHash('sha256').update(`${machineGuid}|${hostname}`, 'utf8').digest('hex')
+}
+
+function resolveAgentVersion(): string {
+  const activeReleaseVersion = normalizeOptionalEnv(process.env.AGENT_ACTIVE_RELEASE_VERSION)
+  if (activeReleaseVersion) {
+    return activeReleaseVersion
+  }
+
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url))
+  const candidatePaths = [
+    path.resolve(scriptDir, '../../package.json'),
+    path.resolve(scriptDir, '../../../package.json'),
+  ]
+
+  for (const candidatePath of candidatePaths) {
+    if (!fs.existsSync(candidatePath)) continue
+
+    try {
+      const raw = fs.readFileSync(candidatePath, 'utf8')
+      const parsed = packageJsonSchema.safeParse(JSON.parse(raw))
+      if (parsed.success) return parsed.data.version
+    } catch {
+      // ignore and try next candidate
+    }
+  }
+
+  return 'unknown'
+}
+
+async function enrollRuntime(command: {
+  readonly bootstrapConfig: BootstrapConfig
+  readonly machineFingerprint: string
+  readonly hostname: string
+  readonly osName: string
+  readonly agentVersion: string
+}): Promise<EnrollResponse> {
+  const response = await fetch(`${command.bootstrapConfig.BACKEND_URL}/api/agent/enroll`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${command.bootstrapConfig.INSTALLER_TOKEN}`,
+      'content-type': 'application/json',
+      'x-agent-id': command.bootstrapConfig.AGENT_ID,
+      'user-agent': `container-tracker-agent/${command.bootstrapConfig.AGENT_ID}`,
+    },
+    body: JSON.stringify({
+      machineFingerprint: command.machineFingerprint,
+      hostname: command.hostname,
+      os: command.osName,
+      agentVersion: command.agentVersion,
+    }),
+  })
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => '')
+    throw new Error(`enroll request failed (${response.status}): ${details}`)
+  }
+
+  const payload: unknown = await response.json().catch(() => ({}))
+  const parsed = enrollResponseSchema.safeParse(payload)
+  if (!parsed.success) {
+    throw new Error(`invalid enroll response: ${parsed.error.message}`)
+  }
+
+  return parsed.data
+}
+
+function toRuntimeConfig(command: {
+  readonly bootstrapConfig: BootstrapConfig
+  readonly enrollResponse: EnrollResponse
+}): RuntimeConfig {
+  return ValidatedAgentConfigSchema.parse({
+    BACKEND_URL: command.bootstrapConfig.BACKEND_URL,
+    SUPABASE_URL: command.enrollResponse.supabaseUrl ?? null,
+    SUPABASE_ANON_KEY: command.enrollResponse.supabaseAnonKey ?? null,
+    AGENT_TOKEN: command.enrollResponse.agentToken,
+    TENANT_ID: command.enrollResponse.tenantId,
+    AGENT_ID: command.bootstrapConfig.AGENT_ID,
+    INTERVAL_SEC: command.enrollResponse.intervalSec,
+    LIMIT: command.enrollResponse.limit,
+    MAERSK_ENABLED: command.enrollResponse.providers.maerskEnabled,
+    MAERSK_HEADLESS: command.enrollResponse.providers.maerskHeadless,
+    MAERSK_TIMEOUT_MS: command.enrollResponse.providers.maerskTimeoutMs,
+    MAERSK_USER_DATA_DIR: command.enrollResponse.providers.maerskUserDataDir ?? null,
+    AGENT_UPDATE_MANIFEST_CHANNEL: command.bootstrapConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
+  })
+}
+
+function toBootstrapConfigFromRuntime(command: {
+  readonly runtimeConfig: RuntimeConfig
+  readonly installerToken: string
+}): BootstrapConfig {
+  return ValidatedBootstrapConfigSchema.parse({
+    BACKEND_URL: command.runtimeConfig.BACKEND_URL,
+    INSTALLER_TOKEN: command.installerToken,
+    AGENT_ID: command.runtimeConfig.AGENT_ID,
+    INTERVAL_SEC: command.runtimeConfig.INTERVAL_SEC,
+    LIMIT: command.runtimeConfig.LIMIT,
+    MAERSK_ENABLED: command.runtimeConfig.MAERSK_ENABLED,
+    MAERSK_HEADLESS: command.runtimeConfig.MAERSK_HEADLESS,
+    MAERSK_TIMEOUT_MS: command.runtimeConfig.MAERSK_TIMEOUT_MS,
+    MAERSK_USER_DATA_DIR: command.runtimeConfig.MAERSK_USER_DATA_DIR,
+    AGENT_UPDATE_MANIFEST_CHANNEL: command.runtimeConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
+  })
+}
+
+function resolveBootstrapConfigForReenroll(command: {
+  readonly paths: PathLayout
+  readonly runtimeConfig: RuntimeConfig
+}): {
+  readonly config: BootstrapConfig
+  readonly source: 'INSTALLER_TOKEN_STATE' | 'BOOTSTRAP_ENV'
+} {
+  const installerToken = readInstallerTokenValue({
+    paths: command.paths,
+  })
+  if (installerToken) {
+    return {
+      config: toBootstrapConfigFromRuntime({
+        runtimeConfig: command.runtimeConfig,
+        installerToken,
+      }),
+      source: 'INSTALLER_TOKEN_STATE',
+    }
+  }
+
+  const bootstrap = readBootstrapConfigFromEnv({
+    paths: command.paths,
+  })
+  if (bootstrap) {
+    return {
+      config: bootstrap.config,
+      source: 'BOOTSTRAP_ENV',
+    }
+  }
+
+  throw new Error(
+    `auto re-enroll unavailable: installer token state and bootstrap.env are missing under ${command.paths.dataDir}`,
+  )
+}
+
+async function attemptAutoReenroll(command: {
+  readonly paths: PathLayout
+  readonly runtimeConfig: RuntimeConfig
+  readonly agentVersion: string
+}): Promise<{
+  readonly runtimeConfig: RuntimeConfig
+  readonly source: 'INSTALLER_TOKEN_STATE' | 'BOOTSTRAP_ENV'
+}> {
+  const bootstrapConfig = resolveBootstrapConfigForReenroll({
+    paths: command.paths,
+    runtimeConfig: command.runtimeConfig,
+  })
+  const hostname = os.hostname()
+  const machineFingerprint = resolveMachineFingerprint(hostname)
+  const enrollResponse = await enrollRuntime({
+    bootstrapConfig: bootstrapConfig.config,
+    machineFingerprint,
+    hostname,
+    osName: `${os.platform()} ${os.release()}`,
+    agentVersion: command.agentVersion,
+  })
+  const runtimeConfig = toRuntimeConfig({
+    bootstrapConfig: bootstrapConfig.config,
+    enrollResponse,
+  })
+  persistRuntimeConfig({
+    layout: command.paths,
+    runtimeConfig,
+  })
+  writeInstallerTokenState({
+    paths: command.paths,
+    installerToken: bootstrapConfig.config.INSTALLER_TOKEN,
+  })
+  return {
+    runtimeConfig,
+    source: bootstrapConfig.source,
+  }
+}
+
+async function resolveRuntimeConfigWithBootstrap(paths: PathLayout): Promise<RuntimeConfig> {
+  let enrollAttempt = 0
+
+  for (;;) {
+    try {
+      const existingConfig = readRuntimeConfigFromEnv({
+        paths,
+      })
+      if (existingConfig) {
+        return existingConfig
+      }
+    } catch (error) {
+      if (error instanceof BoundaryValidationError) {
+        console.warn(`[agent] config.env is invalid, switching to bootstrap mode: ${error.details}`)
+      } else {
+        console.warn(
+          `[agent] config.env is invalid, switching to bootstrap mode: ${toErrorMessage(error)}`,
+        )
+      }
+    }
+
+    let bootstrapLoaded: { readonly config: BootstrapConfig; readonly raw: string } | null = null
+    try {
+      bootstrapLoaded = readBootstrapConfigFromEnv({
+        paths,
+      })
+      if (!bootstrapLoaded) {
+        throw new Error(`bootstrap.env not found at ${paths.bootstrapEnvPath}`)
+      }
+    } catch (error) {
+      const delayMs = computeBackoffDelayMs(enrollAttempt)
+      console.error(
+        `[agent] bootstrap configuration unavailable: ${toErrorMessage(error)} (retry in ${Math.round(delayMs / 1000)}s)`,
+      )
+      enrollAttempt += 1
+      await sleep(delayMs)
+      continue
+    }
+
+    const secrets = [bootstrapLoaded.config.INSTALLER_TOKEN]
+    const hostname = os.hostname()
+    const machineFingerprint = resolveMachineFingerprint(hostname)
+    const agentVersion = resolveAgentVersion()
+
+    try {
+      const enrollResponse = await enrollRuntime({
+        bootstrapConfig: bootstrapLoaded.config,
+        machineFingerprint,
+        hostname,
+        osName: `${os.platform()} ${os.release()}`,
+        agentVersion,
+      })
+
+      const runtimeConfig = toRuntimeConfig({
+        bootstrapConfig: bootstrapLoaded.config,
+        enrollResponse,
+      })
+
+      persistRuntimeConfig({
+        layout: paths,
+        runtimeConfig,
+      })
+      writeInstallerTokenState({
+        paths,
+        installerToken: bootstrapLoaded.config.INSTALLER_TOKEN,
+      })
+      consumeBootstrapConfig({
+        paths,
+        config: bootstrapLoaded.config,
+        rawContent: bootstrapLoaded.raw,
+      })
+      return runtimeConfig
+    } catch (error) {
+      const delayMs = computeBackoffDelayMs(enrollAttempt)
+      console.error(
+        `[agent] enrollment failed (attempt=${enrollAttempt + 1}): ${toErrorMessage(error, secrets)} (retry in ${Math.round(delayMs / 1000)}s)`,
+      )
+      enrollAttempt += 1
+      await sleep(delayMs)
+    }
+  }
+}
+
+const HeartbeatAckResponseSchema = z.object({
+  ok: z.literal(true).optional(),
+  updatedAt: z.string().datetime({ offset: true }).optional(),
+  updated_at: z.string().datetime({ offset: true }).optional(),
+})
+
+type AgentRealtimeState = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CONNECTING' | 'DISCONNECTED' | 'UNKNOWN'
+type AgentProcessingState = 'idle' | 'leasing' | 'processing' | 'backing_off' | 'unknown'
+type AgentLeaseHealth = 'healthy' | 'stale' | 'conflict' | 'unknown'
+type AgentActivitySeverity = 'info' | 'warning' | 'danger' | 'success'
+type AgentBootStatus = 'starting' | 'healthy' | 'degraded' | 'unknown'
+type AgentUpdateState =
+  | 'idle'
+  | 'checking'
+  | 'downloading'
+  | 'ready'
+  | 'draining'
+  | 'applying'
+  | 'rollback'
+  | 'blocked'
+  | 'error'
+  | 'unknown'
+type AgentActivityType =
+  | 'ENROLLED'
+  | 'HEARTBEAT'
+  | 'LEASED_TARGET'
+  | 'SNAPSHOT_INGESTED'
+  | 'REQUEST_FAILED'
+  | 'REALTIME_SUBSCRIBED'
+  | 'REALTIME_CHANNEL_ERROR'
+  | 'LEASE_CONFLICT'
+  | 'UPDATE_CHECKED'
+  | 'UPDATE_AVAILABLE'
+  | 'UPDATE_DOWNLOAD_STARTED'
+  | 'UPDATE_DOWNLOAD_COMPLETED'
+  | 'UPDATE_READY'
+  | 'UPDATE_APPLY_STARTED'
+  | 'UPDATE_APPLY_FAILED'
+  | 'RESTART_FOR_UPDATE'
+  | 'ROLLBACK_EXECUTED'
+  | 'LOCAL_UPDATE_PAUSED'
+  | 'LOCAL_UPDATE_RESUMED'
+  | 'CHANNEL_CHANGED'
+  | 'CONFIG_UPDATED'
+  | 'RELEASE_ACTIVATED'
+  | 'LOCAL_RESET'
+  | 'REMOTE_RESET'
+  | 'REMOTE_FORCE_UPDATE'
+
+type AgentRuntimeActivity = {
+  readonly type: AgentActivityType
+  readonly message: string
+  readonly severity: AgentActivitySeverity
+  readonly metadata?: Record<string, unknown>
+  readonly occurredAt?: string
+}
+
+type AgentRealtimeSignalMetadata = {
+  readonly channelState: SyncRequestsRealtimeStatusUpdate['state']
+  readonly scope: SyncRequestsRealtimeStatusUpdate['scope']
+  readonly key: string
+  readonly errorMessage: string | null
+}
+
+type AgentRealtimeSignal = {
+  readonly state: AgentRealtimeState
+  readonly message: string | null
+  readonly metadata: AgentRealtimeSignalMetadata | null
+}
+
+type AgentRuntimeState = {
+  realtimeState: AgentRealtimeState
+  processingState: AgentProcessingState
+  leaseHealth: AgentLeaseHealth
+  activeJobs: number
+  queueLagSeconds: number | null
+  lastError: string | null
+  bootStatus: AgentBootStatus
+  updateState: AgentUpdateState
+  desiredVersion: string | null
+  updateReadyVersion: string | null
+  restartRequestedAt: string | null
+  updaterLastCheckedAt: string | null
+}
+
+function buildHeaders(config: RuntimeConfig, contentType: boolean): Headers {
+  const headers = new Headers()
+  headers.set('x-agent-id', config.AGENT_ID)
+  headers.set('user-agent', `container-tracker-agent/${config.AGENT_ID}`)
+
+  if (contentType) {
+    headers.set('content-type', 'application/json')
+  }
+
+  headers.set('authorization', `Bearer ${config.AGENT_TOKEN}`)
+  return headers
+}
+
+function resolveAgentCapabilities(
+  config: RuntimeConfig,
+): Array<'maersk' | 'msc' | 'cmacgm' | 'pil' | 'one'> {
+  if (config.MAERSK_ENABLED) return ['msc', 'cmacgm', 'pil', 'one', 'maersk']
+  return ['msc', 'cmacgm', 'pil', 'one']
+}
+
+async function sendHeartbeat(command: {
+  readonly config: RuntimeConfig
+  readonly agentVersion: string
+  readonly state: AgentRuntimeState
+  readonly activity: readonly AgentRuntimeActivity[]
+  readonly occurredAt: string
+}): Promise<string> {
+  const payload = toHeartbeatPayload({
+    tenant_id: command.config.TENANT_ID,
+    hostname: os.hostname(),
+    agent_version: command.agentVersion,
+    current_version: command.agentVersion,
+    desired_version: command.state.desiredVersion,
+    update_channel: command.config.AGENT_UPDATE_MANIFEST_CHANNEL,
+    update_ready_version: command.state.updateReadyVersion,
+    restart_requested_at: command.state.restartRequestedAt,
+    realtime_state: command.state.realtimeState,
+    processing_state: command.state.processingState,
+    lease_health: command.state.leaseHealth,
+    boot_status: command.state.bootStatus,
+    update_state: command.state.updateState,
+    updater_last_checked_at: command.state.updaterLastCheckedAt,
+    active_jobs: command.state.activeJobs,
+    capabilities: resolveAgentCapabilities(command.config),
+    logs_supported: true,
+    interval_sec: command.config.INTERVAL_SEC,
+    queue_lag_seconds: command.state.queueLagSeconds,
+    last_error: command.state.lastError,
+    occurred_at: command.occurredAt,
+    activity: command.activity.map((event) => ({
+      type: event.type,
+      message: event.message,
+      severity: event.severity,
+      metadata: event.metadata ?? {},
+      ...(event.occurredAt === undefined ? {} : { occurred_at: event.occurredAt }),
+    })),
+  })
+
+  const response = await fetch(`${command.config.BACKEND_URL}/api/agent/heartbeat`, {
+    method: 'POST',
+    headers: buildHeaders(command.config, true),
+    body: JSON.stringify(payload),
+  })
+
+  if (response.status === 401) {
+    throw new AgentTokenUnauthorizedError('heartbeat request unauthorized (401)')
+  }
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => '')
+    throw new Error(`heartbeat failed (${response.status}): ${details}`)
+  }
+
+  const responsePayload: unknown = await response.json().catch(() => ({}))
+  const parsed = HeartbeatAckResponseSchema.safeParse(responsePayload)
+  if (!parsed.success) {
+    throw new Error(`invalid heartbeat response: ${parsed.error.message}`)
+  }
+
+  const updatedAt = parsed.data.updatedAt ?? parsed.data.updated_at ?? new Date().toISOString()
+  return updatedAt
+}
+
+async function sendHeartbeatSafely(command: {
+  readonly config: RuntimeConfig
+  readonly agentVersion: string
+  readonly state: AgentRuntimeState
+  readonly activity?: readonly AgentRuntimeActivity[]
+  readonly occurredAt?: string
+}): Promise<{
+  readonly ok: boolean
+  readonly updatedAt: string | null
+  readonly unauthorized: boolean
+}> {
+  try {
+    const updatedAt = await sendHeartbeat({
+      config: command.config,
+      agentVersion: command.agentVersion,
+      state: command.state,
+      activity: command.activity ?? [],
+      occurredAt: command.occurredAt ?? new Date().toISOString(),
+    })
+
+    return {
+      ok: true,
+      updatedAt,
+      unauthorized: false,
+    }
+  } catch (error) {
+    if (isAgentTokenUnauthorizedError(error)) {
+      return {
+        ok: false,
+        updatedAt: null,
+        unauthorized: true,
+      }
+    }
+    console.warn(`[agent] heartbeat publish failed: ${toErrorMessage(error)}`)
+    return {
+      ok: false,
+      updatedAt: null,
+      unauthorized: false,
+    }
+  }
+}
+
+function toRuntimeActivityFromPending(
+  event: ReturnType<typeof drainPendingActivityEvents>[number],
+): AgentRuntimeActivity {
+  return {
+    type: event.type,
+    message: event.message,
+    severity: event.severity,
+    metadata: event.metadata,
+    occurredAt: event.occurred_at,
+  }
+}
+
+async function sendHeartbeatAndPersistHealth(command: {
+  readonly config: RuntimeConfig
+  readonly agentVersion: string
+  readonly state: AgentRuntimeState
+  readonly activity?: readonly AgentRuntimeActivity[]
+  readonly occurredAt?: string
+  readonly healthPath: string
+  readonly throwOnUnauthorized?: boolean
+}): Promise<void> {
+  const occurredAt = command.occurredAt ?? new Date().toISOString()
+  const heartbeat = await sendHeartbeatSafely({
+    config: command.config,
+    agentVersion: command.agentVersion,
+    state: command.state,
+    activity: command.activity ?? [],
+    occurredAt,
+  })
+
+  if (heartbeat.ok && heartbeat.updatedAt) {
+    command.state.bootStatus = 'healthy'
+  } else if (command.state.bootStatus === 'starting') {
+    command.state.bootStatus = 'degraded'
+  }
+
+  if (heartbeat.unauthorized && command.throwOnUnauthorized) {
+    throw new AgentTokenUnauthorizedError('heartbeat request unauthorized (401)')
+  }
+
+  writeRuntimeState(command.healthPath, {
+    agent_version: command.agentVersion,
+    boot_status: command.state.bootStatus,
+    update_state: command.state.updateState,
+    last_heartbeat_at: occurredAt,
+    last_heartbeat_ok_at: heartbeat.updatedAt,
+    active_jobs: command.state.activeJobs,
+    processing_state: command.state.processingState,
+    updated_at: new Date().toISOString(),
+    pid: process.pid,
+  })
+}
+
+function toRuntimeActivityFromSync(event: SyncCycleActivity): AgentRuntimeActivity {
+  return {
+    type: event.type,
+    message: event.message,
+    severity: event.severity,
+    metadata: event.metadata,
+  }
+}
+
+async function runOnce(
+  config: RuntimeConfig,
+  agentVersion: string,
+  state: AgentRuntimeState,
+  reason: AgentRunReason,
+  providerRegistry: ReturnType<typeof createProviderRunnerRegistry>,
+): Promise<readonly AgentRuntimeActivity[]> {
+  const backendClient = createSyncBackendClient({
+    config,
+  })
+
+  const syncActivities = await runSyncCycle({
+    config,
+    agentVersion,
+    state,
+    reason,
+    providerRegistry,
+    backendClient,
+    leaseBatchSize: 1,
+    onRecoveredOwnedLeases() {
+      console.log('[agent] recovered owned lease(s) on startup')
+    },
+    onNoTargets() {
+      console.log('[agent] no targets available')
+    },
+    onCycleProcessed(processed) {
+      console.log(`[agent] cycle processed ${processed} target(s)`)
+    },
+  })
+
+  return syncActivities.map((event) => toRuntimeActivityFromSync(event))
+}
+
+function shouldWakeForRealtimeEvent(event: {
+  readonly eventType: 'INSERT' | 'UPDATE' | 'DELETE'
+  readonly row: { readonly status: string } | null
+}): boolean {
+  if (event.eventType === 'DELETE') {
+    return false
+  }
+
+  return event.row?.status === 'PENDING'
+}
+
+function buildRealtimeSignalFingerprint(signal: AgentRealtimeSignal): string {
+  const metadataFingerprint = signal.metadata
+    ? `${signal.metadata.channelState}|${signal.metadata.scope}|${signal.metadata.key}|${signal.metadata.errorMessage ?? 'none'}`
+    : 'none'
+
+  return `${signal.state}|${signal.message ?? 'none'}|${metadataFingerprint}`
+}
+
+function buildRealtimeDegradedMessage(status: SyncRequestsRealtimeStatusUpdate): string {
+  const errorMessage = normalizeOptionalText(status.errorMessage)
+  const detail =
+    errorMessage ??
+    (status.state === 'TIMED_OUT'
+      ? 'subscription timed out without an explicit error from Supabase Realtime'
+      : 'Supabase Realtime did not provide an explicit error message')
+
+  return `Realtime ${status.state.toLowerCase()} for ${status.scope} (${status.key}): ${detail}`
+}
+
+function toRealtimeSignal(status: SyncRequestsRealtimeStatusUpdate): AgentRealtimeSignal {
+  const metadata: AgentRealtimeSignalMetadata = {
+    channelState: status.state,
+    scope: status.scope,
+    key: status.key,
+    errorMessage: normalizeOptionalText(status.errorMessage),
+  }
+
+  if (status.state === 'SUBSCRIBED') {
+    return {
+      state: 'SUBSCRIBED',
+      message: 'Realtime subscribed for tenant sync requests',
+      metadata,
+    }
+  }
+
+  if (status.state === 'CLOSED') {
+    return {
+      state: 'DISCONNECTED',
+      message: `Realtime channel closed for ${status.scope} (${status.key})`,
+      metadata,
+    }
+  }
+
+  return {
+    state: 'CHANNEL_ERROR',
+    message: buildRealtimeDegradedMessage(status),
+    metadata,
+  }
+}
+
+function subscribeToRealtimeIfConfigured(command: {
+  readonly config: RuntimeConfig
+  readonly onWake: () => void
+  readonly onRealtimeStateChange: (signal: AgentRealtimeSignal) => void
+}): { readonly unsubscribe: () => void } | null {
+  if (!command.config.SUPABASE_URL || !command.config.SUPABASE_ANON_KEY) {
+    console.warn('[agent] realtime disabled: SUPABASE_URL/SUPABASE_ANON_KEY not configured')
+    command.onRealtimeStateChange({
+      state: 'DISCONNECTED',
+      message: 'Realtime disabled: SUPABASE_URL/SUPABASE_ANON_KEY not configured',
+      metadata: null,
+    })
+    return null
+  }
+
+  try {
+    command.onRealtimeStateChange({
+      state: 'CONNECTING',
+      message: 'Connecting to Supabase Realtime',
+      metadata: null,
+    })
+    let lastLoggedSignalFingerprint: string | null = null
+
+    const supabaseRealtime = createClient(
+      command.config.SUPABASE_URL,
+      command.config.SUPABASE_ANON_KEY,
+      {
+        db: {
+          schema: 'public',
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      },
+    )
+
+    return subscribeSyncRequestsByTenant({
+      client: supabaseRealtime,
+      tenantId: command.config.TENANT_ID,
+      onEvent(event) {
+        if (!shouldWakeForRealtimeEvent(event)) {
+          return
+        }
+        command.onWake()
+      },
+      onStatus(status) {
+        const signal = toRealtimeSignal(status)
+        const signalFingerprint = buildRealtimeSignalFingerprint(signal)
+        const shouldLogSignal = lastLoggedSignalFingerprint !== signalFingerprint
+        lastLoggedSignalFingerprint = signalFingerprint
+
+        if (signal.state === 'SUBSCRIBED') {
+          if (shouldLogSignal) {
+            console.log('[agent] realtime subscribed for tenant sync requests')
+          }
+          command.onRealtimeStateChange(signal)
+          return
+        }
+
+        if (signal.state === 'CHANNEL_ERROR') {
+          if (shouldLogSignal) {
+            console.warn('[agent] realtime channel degraded; interval sweep remains active', {
+              ...status,
+              diagnostic: signal.message,
+            })
+          }
+          command.onRealtimeStateChange(signal)
+          return
+        }
+
+        if (signal.state === 'DISCONNECTED') {
+          command.onRealtimeStateChange(signal)
+        }
+      },
+    })
+  } catch (error) {
+    const message = `Realtime setup failed; continuing with interval sweep only: ${toErrorMessage(error)}`
+    console.warn(`[agent] ${message}`)
+    command.onRealtimeStateChange({
+      state: 'CHANNEL_ERROR',
+      message,
+      metadata: null,
+    })
+    return null
+  }
+}
+
+// Canonical runtime entrypoint. All executable wrappers must delegate to this function.
+export async function runRuntimeMain(): Promise<void> {
+  const agentLayout = resolveAgentPathLayout()
+  ensureAgentPathLayout(agentLayout)
+  let runtimeConfig = await resolveRuntimeConfigWithBootstrap(agentLayout)
+  const agentVersion = resolveAgentVersion()
+  let scheduler: ReturnType<typeof createAgentScheduler> | null = null
+  let realtimeSubscription: { readonly unsubscribe: () => void } | null = null
+  let logForwarder: ReturnType<typeof createAgentLogForwarder> | null = null
+  let requestRestartAfterHeartbeat = false
+
+  async function requestRuntimeRestartAfterReenroll(): Promise<void> {
+    scheduler?.stop()
+    realtimeSubscription?.unsubscribe()
+    await logForwarder?.stop().catch((error) => {
+      console.warn(
+        `[agent] log forwarder stop failed during re-enroll restart: ${toErrorMessage(error)}`,
+      )
+    })
+    process.exit(EXIT_UPDATE_RESTART)
+  }
+
+  async function handleUnauthorizedAgentToken(command: {
+    readonly reason: string
+    readonly runtimeState?: AgentRuntimeState
+  }): Promise<void> {
+    console.warn(
+      `[agent] detected unauthorized agent token during ${command.reason}; attempting auto re-enroll`,
+    )
+    const currentInstallerToken = readInstallerTokenValue({ paths: agentLayout })
+    const secrets = currentInstallerToken
+      ? [runtimeConfig.AGENT_TOKEN, currentInstallerToken]
+      : [runtimeConfig.AGENT_TOKEN]
+
+    try {
+      const reenrolled = await attemptAutoReenroll({
+        paths: agentLayout,
+        runtimeConfig,
+        agentVersion,
+      })
+      runtimeConfig = reenrolled.runtimeConfig
+      const occurredAt = new Date().toISOString()
+      if (command.runtimeState) {
+        command.runtimeState.lastError = null
+        command.runtimeState.processingState = 'idle'
+      }
+      console.log(
+        `[agent] auto re-enroll succeeded via ${reenrolled.source}; requesting runtime restart`,
+      )
+
+      const successActivity: AgentRuntimeActivity = {
+        type: 'ENROLLED',
+        message: `Auto re-enroll succeeded via ${reenrolled.source}; runtime restart requested`,
+        severity: 'success',
+        metadata: {
+          reason: command.reason,
+          source: reenrolled.source,
+        },
+        occurredAt,
+      }
+
+      if (command.runtimeState) {
+        await sendHeartbeatAndPersistHealth({
+          config: runtimeConfig,
+          agentVersion,
+          state: command.runtimeState,
+          activity: [successActivity],
+          occurredAt,
+          healthPath: agentLayout.runtimeStatePath,
+        })
+      } else {
+        appendPendingActivityEvents(agentLayout.pendingActivityPath, [
+          {
+            type: successActivity.type,
+            message: successActivity.message,
+            severity: successActivity.severity,
+            metadata: successActivity.metadata ?? {},
+            occurred_at: occurredAt,
+          },
+        ])
+      }
+
+      await requestRuntimeRestartAfterReenroll()
+    } catch (reenrollError) {
+      const reenrollMessage = toErrorMessage(reenrollError, secrets)
+      const occurredAt = new Date().toISOString()
+      if (command.runtimeState) {
+        command.runtimeState.lastError = reenrollMessage
+      }
+      appendPendingActivityEvents(agentLayout.pendingActivityPath, [
+        {
+          type: 'REQUEST_FAILED',
+          message: `Auto re-enroll failed: ${reenrollMessage}`,
+          severity: 'danger',
+          metadata: {
+            reason: command.reason,
+          },
+          occurred_at: occurredAt,
+        },
+      ])
+      console.error(`[agent] auto re-enroll failed during ${command.reason}: ${reenrollMessage}`)
+      throw reenrollError
+    }
+  }
+
+  let controlSync: Awaited<ReturnType<typeof syncAgentControlState>>
+  try {
+    controlSync = await syncControlStateAndPersistPublicState({
+      layout: agentLayout,
+      currentConfig: toControlRuntimeConfig(runtimeConfig),
+    })
+  } catch (error) {
+    if (isAgentTokenUnauthorizedError(error)) {
+      await handleUnauthorizedAgentToken({
+        reason: 'startup control sync',
+      })
+      return
+    }
+    throw error
+  }
+
+  runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+
+  console.log(
+    `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
+  )
+
+  const runtimeState: AgentRuntimeState = {
+    realtimeState:
+      runtimeConfig.SUPABASE_URL && runtimeConfig.SUPABASE_ANON_KEY ? 'CONNECTING' : 'DISCONNECTED',
+    processingState: 'idle',
+    leaseHealth: 'unknown',
+    activeJobs: 0,
+    queueLagSeconds: null,
+    lastError: null,
+    bootStatus: 'starting',
+    updateState: 'idle',
+    desiredVersion: controlSync.remotePolicy.desiredVersion,
+    updateReadyVersion: controlSync.releaseState.target_version,
+    restartRequestedAt: controlSync.remotePolicy.restartRequestedAt,
+    updaterLastCheckedAt: null,
+  }
+
+  logForwarder = createAgentLogForwarder({
+    backendUrl: runtimeConfig.BACKEND_URL,
+    agentToken: runtimeConfig.AGENT_TOKEN,
+    agentId: runtimeConfig.AGENT_ID,
+    logsDir: agentLayout.logsDir,
+    statePath: agentLayout.agentLogForwarderStatePath,
+  })
+  logForwarder.start()
+
+  const pendingActivities = drainPendingActivityEvents(agentLayout.pendingActivityPath).map(
+    toRuntimeActivityFromPending,
+  )
+  try {
+    await sendHeartbeatAndPersistHealth({
+      config: runtimeConfig,
+      agentVersion,
+      state: runtimeState,
+      activity: pendingActivities,
+      healthPath: agentLayout.runtimeStatePath,
+      throwOnUnauthorized: true,
+    })
+    controlSync = await syncControlStateAndPersistPublicState({
+      layout: agentLayout,
+      currentConfig: toControlRuntimeConfig(runtimeConfig),
+      forceRemoteFetch: false,
+    })
+    runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+  } catch (error) {
+    if (isAgentTokenUnauthorizedError(error)) {
+      await handleUnauthorizedAgentToken({
+        reason: 'startup heartbeat/control sync',
+        runtimeState,
+      })
+      return
+    }
+    throw error
+  }
+
+  let lastRealtimeSignalFingerprint: string | null = null
+  const providerRegistry = createProviderRunnerRegistry()
+
+  scheduler = createAgentScheduler({
+    intervalMs: runtimeConfig.INTERVAL_SEC * 1000,
+    runCycle: async (reason) => {
+      const cycleActivities: AgentRuntimeActivity[] = []
+      try {
+        controlSync = await syncControlStateAndPersistPublicState({
+          layout: agentLayout,
+          currentConfig: toControlRuntimeConfig(runtimeConfig),
+        })
+        runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+        runtimeState.desiredVersion = controlSync.remotePolicy.desiredVersion
+        runtimeState.updateReadyVersion = controlSync.releaseState.target_version
+
+        const pendingRemoteCommand = controlSync.remoteCommands[0]
+        if (pendingRemoteCommand) {
+          const remoteCommandResult = await applyRemoteCommand({
+            layout: agentLayout,
+            currentConfig: toControlRuntimeConfig(runtimeConfig),
+            remoteCommand: pendingRemoteCommand,
+          })
+          controlSync = remoteCommandResult.result
+          runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+
+          try {
+            await acknowledgeRemoteCommand({
+              config: toControlRuntimeConfig(runtimeConfig),
+              remoteCommandId: pendingRemoteCommand.id,
+              status: 'APPLIED',
+            })
+          } catch (error) {
+            console.warn(`[agent] failed to acknowledge remote command: ${toErrorMessage(error)}`)
+          }
+
+          if (remoteCommandResult.requiresRestart) {
+            runtimeState.updateState = 'draining'
+            runtimeState.restartRequestedAt = pendingRemoteCommand.requestedAt
+            writeSupervisorControl(agentLayout.supervisorControlPath, {
+              drain_requested: true,
+              reason: 'restart',
+              requested_at: pendingRemoteCommand.requestedAt,
+            })
+          }
+        }
+
+        const controlState = readSupervisorControl(agentLayout.supervisorControlPath)
+        if (controlState?.drain_requested) {
+          runtimeState.updateState = 'draining'
+          runtimeState.restartRequestedAt = controlState.requested_at
+        }
+
+        if (runtimeState.updateState !== 'draining') {
+          const runActivities = await runOnce(
+            runtimeConfig,
+            agentVersion,
+            runtimeState,
+            reason,
+            providerRegistry,
+          )
+          cycleActivities.push(...runActivities)
+        } else {
+          runtimeState.processingState = 'idle'
+          runtimeState.activeJobs = 0
+        }
+
+        if (runtimeState.updateState === 'draining' && runtimeState.activeJobs === 0) {
+          requestRestartAfterHeartbeat = true
+          cycleActivities.push({
+            type: 'RESTART_FOR_UPDATE',
+            message: 'Runtime drained and ready to restart for update',
+            severity: 'warning',
+            metadata: {
+              targetVersion: runtimeState.updateReadyVersion,
+              desiredVersion: runtimeState.desiredVersion,
+            },
+            occurredAt: new Date().toISOString(),
+          })
+        }
+
+        await sendHeartbeatAndPersistHealth({
+          config: runtimeConfig,
+          agentVersion,
+          state: runtimeState,
+          activity: cycleActivities,
+          healthPath: agentLayout.runtimeStatePath,
+          throwOnUnauthorized: true,
+        })
+        controlSync = await syncControlStateAndPersistPublicState({
+          layout: agentLayout,
+          currentConfig: toControlRuntimeConfig(runtimeConfig),
+          forceRemoteFetch: false,
+        })
+        runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+
+        if (requestRestartAfterHeartbeat && runtimeState.activeJobs === 0) {
+          writeSupervisorControl(agentLayout.supervisorControlPath, {
+            drain_requested: false,
+            reason: null,
+            requested_at: null,
+          })
+          scheduler?.stop()
+          realtimeSubscription?.unsubscribe()
+          void logForwarder?.stop().finally(() => {
+            process.exit(EXIT_UPDATE_RESTART)
+          })
+        }
+      } catch (error) {
+        if (isAgentTokenUnauthorizedError(error)) {
+          await handleUnauthorizedAgentToken({
+            reason: `cycle ${reason}`,
+            runtimeState,
+          })
+          return
+        }
+        throw error
+      }
+    },
+    onRunError({ reason, error }) {
+      const errorMessage = toErrorMessage(error)
+      runtimeState.processingState = 'backing_off'
+      runtimeState.bootStatus = 'degraded'
+      runtimeState.lastError = errorMessage
+      console.error(`[agent] cycle failed (reason=${reason}): ${errorMessage}`)
+      void sendHeartbeatAndPersistHealth({
+        config: runtimeConfig,
+        agentVersion,
+        state: runtimeState,
+        activity: [
+          {
+            type: 'REQUEST_FAILED',
+            message: `Agent cycle failed (${reason}): ${errorMessage}`,
+            severity: 'danger',
+            metadata: {
+              reason,
+            },
+          },
+        ],
+        healthPath: agentLayout.runtimeStatePath,
+      })
+    },
+  })
+
+  realtimeSubscription = subscribeToRealtimeIfConfigured({
+    config: runtimeConfig,
+    onWake() {
+      scheduler?.triggerRun('realtime')
+    },
+    onRealtimeStateChange(signal) {
+      const fingerprint = buildRealtimeSignalFingerprint(signal)
+      if (lastRealtimeSignalFingerprint === fingerprint) return
+      lastRealtimeSignalFingerprint = fingerprint
+      runtimeState.realtimeState = signal.state
+
+      if (signal.state === 'SUBSCRIBED') {
+        runtimeState.lastError = null
+        void sendHeartbeatAndPersistHealth({
+          config: runtimeConfig,
+          agentVersion,
+          state: runtimeState,
+          activity: [
+            {
+              type: 'REALTIME_SUBSCRIBED',
+              message: signal.message ?? 'Realtime subscribed for tenant sync requests',
+              severity: 'success',
+              metadata: signal.metadata ?? {},
+            },
+          ],
+          healthPath: agentLayout.runtimeStatePath,
+        })
+        return
+      }
+
+      if (signal.state === 'CHANNEL_ERROR') {
+        runtimeState.lastError = signal.message ?? 'Realtime channel degraded'
+        void sendHeartbeatAndPersistHealth({
+          config: runtimeConfig,
+          agentVersion,
+          state: runtimeState,
+          activity: [
+            {
+              type: 'REALTIME_CHANNEL_ERROR',
+              message: signal.message ?? 'Realtime channel error; interval sweep is active',
+              severity: 'warning',
+              metadata: signal.metadata ?? {},
+            },
+          ],
+          healthPath: agentLayout.runtimeStatePath,
+        })
+      }
+    },
+  })
+
+  scheduler.start()
+
+  const shutdown = (signal: 'SIGINT' | 'SIGTERM') => {
+    console.log(`[agent] received ${signal}, shutting down`)
+    runtimeState.realtimeState = 'DISCONNECTED'
+    runtimeState.processingState = 'idle'
+    runtimeState.updateState = 'idle'
+    runtimeState.bootStatus = 'degraded'
+    void sendHeartbeatAndPersistHealth({
+      config: runtimeConfig,
+      agentVersion,
+      state: runtimeState,
+      activity: [],
+      healthPath: agentLayout.runtimeStatePath,
+    })
+    realtimeSubscription?.unsubscribe()
+    scheduler?.stop()
+    void logForwarder?.stop().catch((error) => {
+      console.warn(`[agent] log forwarder stop failed: ${toErrorMessage(error)}`)
+    })
+    clearSupervisorControl(agentLayout.supervisorControlPath)
+  }
+
+  process.once('SIGINT', () => shutdown('SIGINT'))
+  process.once('SIGTERM', () => shutdown('SIGTERM'))
+}
+
+export function launchRuntimeMain(): void {
+  void runRuntimeMain().catch((error) => {
+    console.error(`[agent] fatal startup error: ${toErrorMessage(error)}`)
+    process.exitCode = EXIT_FATAL
+  })
+}

@@ -1,7 +1,15 @@
+import { Check, Copy } from 'lucide-solid'
 import { createMemo, For, type JSX, Show } from 'solid-js'
+import toast from 'solid-toast'
 import { TimelineNode } from '~/modules/process/ui/components/TimelineNode'
 import type { NonMappedIndicatorVariant } from '~/modules/process/ui/mappers/trackingEventLabel.ui-mapper'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import {
+  serializeTimelineToText,
+  shouldShowTimelineCopyAction,
+  type TimelineTextExportSource,
+  toCurrentTimelineTextExportSource,
+} from '~/modules/process/ui/screens/shipment/lib/serializeTimelineToText'
 import {
   resolveCurrentVoyageIndex,
   toCurrentVoyageGroups,
@@ -10,6 +18,7 @@ import {
   BlockCard,
   EventSeparator,
   GapMarkerRow,
+  PlannedTransshipmentBlockCard,
   PortRiskMarkerRow,
   TerminalBlockHeader,
   TransshipmentBlockCard,
@@ -19,18 +28,18 @@ import {
   buildTimelineRenderList,
   type TimelineRenderItem,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
-import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Panel } from '~/shared/ui/layout/Panel'
+import { useTransientFlag } from '~/shared/ui/motion/useTransientFlag'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
+import { copyToClipboard } from '~/shared/utils/clipboard'
 
 type Props = {
   selectedContainer: ContainerDetailVM | null
   carrier?: string | null
   nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  alerts?: readonly AlertDisplayVM[]
 }
 
 type TrackingTimelinePanelContainerContext = Pick<
@@ -43,33 +52,9 @@ type TrackingTimelinePanelContentProps = {
   readonly container: TrackingTimelinePanelContainerContext | null
   readonly containerId: string | null
   readonly timeline: readonly TrackingTimelineItem[]
+  readonly exportSource: TimelineTextExportSource | null
   readonly carrier?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly alerts?: readonly AlertDisplayVM[]
-}
-
-/** Maps alert types to related observation type prefixes for visual linking */
-function alertTypeToEventTypes(alertType: AlertDisplayVM['type']): readonly string[] {
-  switch (alertType) {
-    case 'transshipment':
-      return ['DEPARTURE', 'ARRIVAL', 'LOAD', 'DISCHARGE']
-    case 'delay':
-      return ['ARRIVAL', 'DISCHARGE', 'DELIVERY']
-    case 'customs':
-      return ['CUSTOMS_HOLD', 'CUSTOMS_RELEASE']
-    default:
-      return []
-  }
-}
-
-function buildHighlightedEventTypes(alerts: readonly AlertDisplayVM[]): ReadonlySet<string> {
-  const types = new Set<string>()
-  for (const alert of alerts) {
-    for (const eventType of alertTypeToEventTypes(alert.type)) {
-      types.add(eventType)
-    }
-  }
-  return types
 }
 
 function derivePortsRoute(container: TrackingTimelinePanelContainerContext | null): string | null {
@@ -101,12 +86,10 @@ function toOptionalTrackingTimelinePanelContentProps(params: {
   readonly containerId: string | null
   readonly carrier: string | null | undefined
   readonly nonMappedIndicatorVariant: NonMappedIndicatorVariant | undefined
-  readonly alerts: readonly AlertDisplayVM[] | undefined
 }): {
   readonly containerId: string | null
   readonly carrier?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly alerts?: readonly AlertDisplayVM[]
 } {
   return {
     containerId: params.containerId,
@@ -114,7 +97,6 @@ function toOptionalTrackingTimelinePanelContentProps(params: {
     ...(params.nonMappedIndicatorVariant === undefined
       ? {}
       : { nonMappedIndicatorVariant: params.nonMappedIndicatorVariant }),
-    ...(params.alerts === undefined ? {} : { alerts: params.alerts }),
   }
 }
 
@@ -123,13 +105,11 @@ function toOptionalTimelineNodeProps(params: {
   readonly carrier: string | null | undefined
   readonly containerNumber: string | null | undefined
   readonly nonMappedIndicatorVariant: NonMappedIndicatorVariant | undefined
-  readonly highlighted: boolean | undefined
 }): {
   readonly containerId: string
   readonly carrier?: string | null
   readonly containerNumber?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly highlighted?: boolean
 } {
   return {
     containerId: params.containerId,
@@ -138,26 +118,83 @@ function toOptionalTimelineNodeProps(params: {
     ...(params.nonMappedIndicatorVariant === undefined
       ? {}
       : { nonMappedIndicatorVariant: params.nonMappedIndicatorVariant }),
-    ...(params.highlighted === undefined ? {} : { highlighted: params.highlighted }),
   }
 }
 
 export function TrackingTimelinePanelContent(
   props: TrackingTimelinePanelContentProps,
 ): JSX.Element {
-  const { t, keys } = useTranslation()
+  const { t, keys, locale } = useTranslation()
+  const copyFeedback = useTransientFlag()
   const timeline = () => props.timeline
-  const highlightedTypes = () => buildHighlightedEventTypes(props.alerts ?? [])
   const currentVessel = createMemo(() =>
     props.container?.currentContext.vesselVisible === false
       ? null
       : (props.container?.currentContext.vesselName ?? null),
   )
   const portsRoute = createMemo(() => derivePortsRoute(props.container))
-  const renderList = createMemo(() => buildTimelineRenderList(timeline()))
+  const renderList = createMemo(
+    () => props.exportSource?.renderList ?? buildTimelineRenderList(timeline()),
+  )
+  const showCopyAction = createMemo(() => shouldShowTimelineCopyAction(props.exportSource))
+
+  const handleCopyTimeline = async (): Promise<void> => {
+    if (props.exportSource === null) {
+      return
+    }
+
+    try {
+      const copied = await copyToClipboard(
+        serializeTimelineToText(props.exportSource, {
+          t,
+          keys,
+          locale: locale(),
+        }),
+      )
+      if (copied) {
+        copyFeedback.activate()
+      } else {
+        toast.error(t(keys.shipmentView.actions.copyTimelineError))
+      }
+    } catch (error) {
+      console.error('Failed to copy timeline text export', error)
+      toast.error(t(keys.shipmentView.actions.copyTimelineError))
+    }
+  }
 
   return (
-    <Panel title={props.title} class="rounded-xl" bodyClass="px-3 py-3">
+    <Panel
+      title={props.title}
+      class="rounded-xl"
+      bodyClass="px-3 py-3"
+      headerSlot={
+        <Show when={showCopyAction()}>
+          <button
+            type="button"
+            class="motion-focus-surface motion-interactive inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs-ui font-medium text-foreground hover:bg-surface-muted"
+            onClick={() => void handleCopyTimeline()}
+          >
+            <Show
+              when={copyFeedback.isActive()}
+              fallback={<Copy class="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden="true" />}
+            >
+              <Check
+                class="motion-copy-feedback h-3.5 w-3.5 shrink-0 text-tone-success-fg"
+                aria-hidden="true"
+              />
+            </Show>
+            <span
+              class="motion-copy-feedback"
+              data-state={copyFeedback.isActive() ? 'copied' : 'idle'}
+            >
+              {copyFeedback.isActive()
+                ? t(keys.shipmentView.actions.copyTimelineCopied)
+                : t(keys.shipmentView.actions.copyTimeline)}
+            </span>
+          </button>
+        </Show>
+      }
+    >
       <div>
         {/* Phase 6 — Timeline Header: Selected Container Context */}
         <Show when={props.container}>
@@ -179,7 +216,6 @@ export function TrackingTimelinePanelContent(
         >
           <TimelineBlockList
             renderList={renderList()}
-            highlightedTypes={highlightedTypes()}
             containerId={props.containerId}
             {...toOptionalTimelineBlockListProps({
               carrier: props.carrier,
@@ -241,17 +277,28 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
 
 export function TimelinePanel(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
+  const exportSource = createMemo<TimelineTextExportSource | null>(() => {
+    if (props.selectedContainer === null) {
+      return null
+    }
+
+    return toCurrentTimelineTextExportSource({
+      title: t(keys.shipmentView.timeline.title),
+      statusLabel: t(trackingStatusToLabelKey(keys, props.selectedContainer.statusCode)),
+      container: props.selectedContainer,
+    })
+  })
 
   return (
     <TrackingTimelinePanelContent
       title={t(keys.shipmentView.timeline.title)}
       container={props.selectedContainer}
       timeline={props.selectedContainer?.timeline ?? []}
+      exportSource={exportSource()}
       {...toOptionalTrackingTimelinePanelContentProps({
         containerId: props.selectedContainer?.id ?? null,
         carrier: props.carrier,
         nonMappedIndicatorVariant: props.nonMappedIndicatorVariant,
-        alerts: props.alerts,
       })}
     />
   )
@@ -275,6 +322,10 @@ type BlockGroup =
   | {
       readonly kind: 'transshipment'
       readonly block: Extract<TimelineRenderItem, { type: 'transshipment-block' }>['block']
+    }
+  | {
+      readonly kind: 'planned-transshipment'
+      readonly block: Extract<TimelineRenderItem, { type: 'planned-transshipment-block' }>['block']
     }
   | { readonly kind: 'standalone'; readonly item: TimelineRenderItem }
 
@@ -306,6 +357,9 @@ function groupRenderItems(items: readonly TimelineRenderItem[]): readonly BlockG
     } else if (item.type === 'transshipment-block') {
       groups.push({ kind: 'transshipment', block: item.block })
       i++
+    } else if (item.type === 'planned-transshipment-block') {
+      groups.push({ kind: 'planned-transshipment', block: item.block })
+      i++
     } else if (item.type === 'block-end') {
       i++ // skip orphan block-end
     } else {
@@ -327,7 +381,6 @@ function BlockChildren(props: {
   readonly carrier?: string | null
   readonly containerNumber?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly highlightedTypes: ReadonlySet<string>
 }): JSX.Element {
   let eventIdx = 0
 
@@ -352,7 +405,6 @@ function BlockChildren(props: {
                       carrier: props.carrier,
                       containerNumber: props.containerNumber,
                       nonMappedIndicatorVariant: props.nonMappedIndicatorVariant,
-                      highlighted: props.highlightedTypes.has(child.event.type),
                     })}
                   />
                 </>
@@ -377,7 +429,6 @@ function TimelineBlockList(props: {
   readonly carrier?: string | null
   readonly containerNumber?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly highlightedTypes: ReadonlySet<string>
 }): JSX.Element {
   const groups = createMemo(() => groupRenderItems(props.renderList))
   const currentVoyageIdx = createMemo(() =>
@@ -387,15 +438,14 @@ function TimelineBlockList(props: {
   const renderGroupContent = (group: BlockGroup, isCurrent: boolean): JSX.Element | null => {
     switch (group.kind) {
       case 'voyage': {
-        const containerId = props.containerId
-        if (containerId === null) return null
+        if (props.containerId === null) return null
+        const containerId: string = props.containerId
         return (
           <BlockCard variant="voyage" isCurrent={isCurrent}>
             <VoyageBlockHeader block={group.block} isCurrent={isCurrent} />
             <BlockChildren
               children={group.children}
               containerId={containerId}
-              highlightedTypes={props.highlightedTypes}
               {...toOptionalTimelineBlockListProps({
                 carrier: props.carrier,
                 containerNumber: props.containerNumber,
@@ -406,15 +456,14 @@ function TimelineBlockList(props: {
         )
       }
       case 'terminal': {
-        const containerId = props.containerId
-        if (containerId === null) return null
+        if (props.containerId === null) return null
+        const containerId: string = props.containerId
         return (
           <BlockCard variant="terminal">
             <TerminalBlockHeader block={group.block} />
             <BlockChildren
               children={group.children}
               containerId={containerId}
-              highlightedTypes={props.highlightedTypes}
               {...toOptionalTimelineBlockListProps({
                 carrier: props.carrier,
                 containerNumber: props.containerNumber,
@@ -425,7 +474,16 @@ function TimelineBlockList(props: {
         )
       }
       case 'transshipment':
-        return <TransshipmentBlockCard block={group.block} />
+        return (
+          <TransshipmentBlockCard
+            block={group.block}
+            containerId={props.containerId}
+            carrier={props.carrier}
+            containerNumber={props.containerNumber}
+          />
+        )
+      case 'planned-transshipment':
+        return <PlannedTransshipmentBlockCard block={group.block} />
       case 'standalone':
         switch (group.item.type) {
           case 'event':
@@ -439,7 +497,6 @@ function TimelineBlockList(props: {
                   carrier: props.carrier,
                   containerNumber: props.containerNumber,
                   nonMappedIndicatorVariant: props.nonMappedIndicatorVariant,
-                  highlighted: props.highlightedTypes.has(group.item.event.type),
                 })}
               />
             )

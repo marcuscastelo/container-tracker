@@ -1,67 +1,67 @@
 # Respostas do quiz — entendimento prévio
 
-As respostas abaixo refletem o entendimento do domínio e das regras arquiteturais do projeto `Container Tracker` antes de informações adicionais.
+respostas abaixo refletem entendimento do domínio e das regras arquiteturais do projeto `Container Tracker` antes de informações adicionais.
 
 ## Section 1 — Layering & Types
 
 Q1
-A repository method receives `CreateContainerCommand` directly and maps it to `ContainerRow`.
-Resposta: Viola a separação de camadas. A camada de aplicação/domínio não deve criar rows de persistência; isso é responsabilidade do mapper de infraestrutura. Misturar esses papéis vaza detalhes de persistência para as camadas superiores e quebra abstração.
+repository method receives `CreateContainerCommand` directly and maps it to `ContainerRow`.
+Resposta: Viola separação de camadas. camada de aplicação/domínio não deve criar rows de persistência; isso é responsabilidade do mapper de infraestrutura. Misturar esses papéis vaza detalhes de persistência para camadas superiores e quebra abstração.
 
 Q2
-A UI component imports `ContainerEntity` to derive a label.
-Resposta: Não é permitido. A UI deve consumir read models/view models (application layer) e não importar entidades de domínio — isso evita acoplamento e duplicação de lógica de negócio no frontend.
+UI component imports `ContainerEntity` to derive label.
+Resposta: Não é permitido. UI deve consumir read models/view models (application layer) e não importar entidades de domínio — isso evita acoplamento e duplicação de lógica de negócio no frontend.
 
 Q3
-Where must snake_case exist? A) Domain B) Application C) Infrastructure persistence mappers D) UI
-Resposta: C) Infrastructure persistence mappers. Snake_case pertence ao shape do DB/rows; as camadas superiores usam camelCase.
+Where must snake_case exist?) Domain B) Application C) Infrastructure persistence mappers D) UI
+Resposta: C) Infrastructure persistence mappers. Snake_case pertence ao shape do DB/rows; camadas superiores usam camelCase.
 
 Q4
-Is `Partial<ProcessEntity>` allowed as an update input model?
+Is `Partial<ProcessEntity>` allowed update input model?
 Resposta: Não. `Partial<Entity>` é proibido porque quebra contratos e invariantes; preferir DTOs/comandos explícitos e validados.
 
 Q5
 `Response DTO` contains `created_at: string`. In domain it becomes `createdAt: Date`. Where must this transformation occur?
-Resposta: No boundary infra → application: o mapper/adapter que converte o DTO para o modelo de domínio (ou input do application) deve transformar strings em `Date`.
+Resposta: No boundary infra → application: mapper/adapter que converte DTO para modelo de domínio (ou input do application) deve transformar strings em `Date`.
 
 ## Section 2 — Domain & Tracking Invariants
 
 Q6
-Can a Snapshot ever be updated in place?
+Can Snapshot ever be updated in place?
 Resposta: Não. Snapshots são imutáveis para garantir auditabilidade e reprodutibilidade.
 
 Q7
 Why must Observations be append-only?
-Resposta: Para preservar o histórico factual; se forem mutáveis perde-se auditoria, surgem inconsistências e corrompe-se a capacidade de gerar alerts retroativos e investigar conflitos.
+Resposta: Para preservar histórico factual; se forem mutáveis perde-se auditoria, surgem inconsistências e corrompe-se capacidade de gerar alerts retroativos e investigar conflitos.
 
 Q8
-Is ContainerStatus a stored truth or a derived value?
-Resposta: É derivado — obtido a partir da timeline/observations/event series.
+Is ContainerStatus stored truth or derived value?
+Resposta: É derivado — obtido partir da timeline/observations/event series.
 
 Q9
-If a carrier sends: EXPECTED LOAD → EXPECTED LOAD (updated date) → ACTUAL LOAD
-Resposta: Observations: 3 (append-only). Timeline entries exibidas: tipicamente 2 (a série EXPECTED/LOAD e, quando ACTUAL chega, o primary passa a ACTUAL). Mantém-se todos os facts; timeline escolhe primaries por série.
+If carrier sends: EXPECTED LOAD → EXPECTED LOAD (updated date) → ACTUAL LOAD
+Resposta: Observations: 3 (append-only). Timeline entries exibidas: tipicamente 2 (série EXPECTED/LOAD e, quando ACTUAL chega, primary passa ACTUAL). Mantém-se todos facts; timeline escolhe primaries por série.
 
 Q10
-Two ACTUAL events appear in the same series.
-Resposta: Registrar ambas as Observations, sinalizar conflito na série, exibir ambos com indicação de conflito e gerar alert/fact alert para investigação.
+Two ACTUAL events appear in same series.
+Resposta: Registrar ambas Observations, sinalizar conflito na série, exibir ambos com indicação de conflito e gerar alert/fact alert para investigação.
 
 ## Section 3 — Event Series Nuance
 
 Q11
-What is the Safe-First Primary Selection rule?
-Resposta: Em cada série, selecione um único primary que maximize segurança/consistência: preferir ACTUAL se presente; caso contrário escolher EXPECTED relevante. Não apagar ACTUAL em favor de EXPECTED.
+What is Safe-First Primary Selection rule?
+Resposta: Em cada série, selecione único primary que maximize segurança/consistência: preferir ACTUAL se presente; caso contrário escolher EXPECTED relevante. Não apagar ACTUAL em favor de EXPECTED.
 
 Q12
 When does EXPECTED become EXPIRED_EXPECTED?
-Resposta: Quando o ETA/expected time expira sem ocorrência do ACTUAL, segundo regras de expiração na camada de leitura/derivação (read model).
+Resposta: Quando ETA/expected time expira sem ocorrência do ACTUAL, segundo regras de expiração na camada de leitura/derivação (read model).
 
 Q13
 Should EXPECTED events after ACTUAL be deleted?
 Resposta: Não. Mantém-se como histórico; podem ser ocultados, marcados como redundantes, mas não deletados.
 
 Q14
-Why is series grouping necessary instead of simply sorting all events chronologically?
+Why is series grouping necessary instead of sorting all events chronologically?
 Resposta: Series mantêm associação semântica entre eventos relacionados, permitem escolher primaries, detectar conflitos e derivar status corretamente — ordenação cronológica simples perde essa semântica.
 
 ## Section 4 — Alert Policy
@@ -71,17 +71,17 @@ Difference between Fact Alert and Monitoring Alert?
 Resposta: Fact Alert: derivado de fatos (pode ser retroativo). Monitoring Alert: depende de "now" (tempo real) e não pode ser retroativo.
 
 Q16
-Can a Monitoring alert be generated retroactively?
+Can Monitoring alert be generated retroactively?
 Resposta: Não. Monitoring alerts dependem do estado corrente e não devem ser geradas retroativamente.
 
 Q17
 If fingerprint collision occurs for two conflicting ACTUAL events,
-Resposta: Registrar ambas as Observations, sinalizar conflito, gerar alert; revisar fingerprinting/dedup logic. Nunca suprimir fatos automaticamente.
+Resposta: Registrar ambas Observations, sinalizar conflito, gerar alert; revisar fingerprinting/dedup logic. Nunca suprimir fatos automaticamente.
 
 ## Section 5 — BC vs Capability
 
 Q18
-Can a capability import `modules/*/domain`?
+Can capability import `modules/*/domain`?
 Resposta: Não. Capabilities podem usar `modules/*/application` (read models/usecases) mas não importar domain do BC. Isso preserva boundaries.
 
 Q19
@@ -89,7 +89,7 @@ Dashboard needing ProcessOperationalSummary, Active Alerts, Tracking Status — 
 Resposta: `capabilities/dashboard`. Dashboards orquestram múltiplos BCs e vivem nas capabilities.
 
 Q20
-If two BCs need the same Value Object, what is preferred?
+If two BCs need same Value Object, what is preferred?
 Resposta: Duplicar intencionalmente primeiro; só extrair shared kernel quando houver necessidade estável. Evita acoplamento prematuro.
 
 ## Section 6 — Read Models & Performance
@@ -133,7 +133,7 @@ Carrier omits intermediate milestones — timeline fail or tolerate holes?
 Resposta: Tolerate holes; incomplete data is valid and must be explicit in UI.
 
 Q30
-Explain why: "The UI must never define domain truth."
+Explain why: " UI must never define domain truth."
 Resposta: Domain truth contém regras/invariantes; UI é para apresentação. Se UI define verdades surgem inconsistências, duplicação de lógica e perda de auditabilidade. Domain logic deve ficar nos domain services/read models.
 
 ## Bonus Section — Master Alignment

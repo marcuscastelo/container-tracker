@@ -21,12 +21,12 @@ This guideline standardizes operational SPA behavior for dashboard/process flows
 
 - `navigate`: changes visual route.
 - `sync action`: asks backend to refresh/sync facts.
-- `refetch`: fetches the view data again.
+- `refetch`: fetches view data again.
 - `reconcile`: updates current view with targeted data refresh without hard reset.
 
 Operational rule:
-- Refresh/sync actions must not reload the document.
-- Alert ack/unack must stay on the same page and reconcile tracking data in place.
+- Refresh/sync actions must not reload document.
+- Alert ack/unack must stay on same page and reconcile tracking data in place.
 
 ## 4) Failure Isolation
 
@@ -38,7 +38,7 @@ Operational rule:
 - Shipment/process detail remains timeline-first.
 - Supporting metadata (shipment info, current status, alerts) should live in sidebar/supporting panels.
 - Supporting panels must not break chronological timeline flow.
-- Grouped operational timeline blocks should be preserved when present in the read model.
+- Grouped operational timeline blocks should be preserved when present in read model.
 
 Reference:
 - `docs/UI_PHILOSOPHY.md`

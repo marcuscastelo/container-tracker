@@ -4,7 +4,7 @@
     "node_modules",
     "dist",
     ".output",
-    "tools/agent/**/*",
+    "apps/agent/**/*",
     "tools/ralph-loop/**/*",
     ".ralph-loop/**/*",
     "packaging/arch/src/agent-app/**/*"

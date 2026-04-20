@@ -2,12 +2,17 @@ import type {
   AgentActivityEventRecord,
   AgentActivityInsertRecord,
   AgentAuthenticatedIdentity,
+  AgentControlCommandType,
+  AgentInfraConfigRecord,
   AgentLogEventRecord,
   AgentLogInsertRecord,
   AgentMonitoringRecord,
+  AgentRemoteCommandRecord,
+  AgentRemotePolicyRecord,
   AgentRuntimeStateUpdate,
 } from '~/modules/agent/application/agent-monitoring.repository'
 import type {
+  AgentControlCommandRow,
   AgentLogEventInsert,
   AgentLogEventRow,
   TrackingAgentActivityEventInsert,
@@ -77,6 +82,14 @@ function toAgentActivityType(value: string): AgentActivityEventRecord['type'] {
   if (value === 'UPDATE_APPLY_STARTED') return 'UPDATE_APPLY_STARTED'
   if (value === 'UPDATE_APPLY_FAILED') return 'UPDATE_APPLY_FAILED'
   if (value === 'RESTART_FOR_UPDATE') return 'RESTART_FOR_UPDATE'
+  if (value === 'LOCAL_UPDATE_PAUSED') return 'LOCAL_UPDATE_PAUSED'
+  if (value === 'LOCAL_UPDATE_RESUMED') return 'LOCAL_UPDATE_RESUMED'
+  if (value === 'CHANNEL_CHANGED') return 'CHANNEL_CHANGED'
+  if (value === 'CONFIG_UPDATED') return 'CONFIG_UPDATED'
+  if (value === 'RELEASE_ACTIVATED') return 'RELEASE_ACTIVATED'
+  if (value === 'LOCAL_RESET') return 'LOCAL_RESET'
+  if (value === 'REMOTE_RESET') return 'REMOTE_RESET'
+  if (value === 'REMOTE_FORCE_UPDATE') return 'REMOTE_FORCE_UPDATE'
   return 'ROLLBACK_EXECUTED'
 }
 
@@ -123,6 +136,22 @@ function toNullableInteger(value: number | null): number | null {
   return Math.max(0, Math.round(value))
 }
 
+function toJsonRecord(value: unknown): Readonly<Record<string, unknown>> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {}
+  }
+
+  return Object.fromEntries(Object.entries(value))
+}
+
+function toControlCommandType(value: string): AgentControlCommandType {
+  if (value === 'RESET_AGENT') {
+    return 'RESET_AGENT'
+  }
+
+  return 'RESTART_AGENT'
+}
+
 export const agentMonitoringPersistenceMappers = {
   fromTrackingAgentRow(row: TrackingAgentRow): AgentMonitoringRecord {
     return {
@@ -139,6 +168,8 @@ export const agentMonitoringPersistenceMappers = {
       updaterLastError: row.updater_last_error,
       updateReadyVersion: row.update_ready_version,
       restartRequestedAt: row.restart_requested_at,
+      remoteUpdatesPaused: row.remote_updates_paused,
+      remoteBlockedVersions: row.remote_blocked_versions,
       bootStatus: toAgentBootStatus(row.boot_status),
       status: toAgentStatus(row.status),
       enrolledAt: row.enrolled_at,
@@ -255,6 +286,38 @@ export const agentMonitoringPersistenceMappers = {
       message: event.message,
       occurred_at: event.occurredAt,
       truncated: event.truncated,
+    }
+  },
+
+  toRemotePolicyRecord(row: TrackingAgentRow): AgentRemotePolicyRecord {
+    return {
+      desiredVersion: row.desired_version,
+      updateChannel: row.update_channel,
+      updatesPaused: row.remote_updates_paused,
+      blockedVersions: row.remote_blocked_versions,
+      restartRequestedAt: row.restart_requested_at,
+    }
+  },
+
+  fromControlCommandRow(row: AgentControlCommandRow): AgentRemoteCommandRecord {
+    return {
+      id: row.id,
+      agentId: row.agent_id,
+      tenantId: row.tenant_id,
+      type: toControlCommandType(row.command_type),
+      payload: toJsonRecord(row.payload),
+      requestedAt: row.requested_at,
+    }
+  },
+
+  toInfraConfigRecord(row: TrackingAgentRow): AgentInfraConfigRecord | null {
+    if (row.supabase_url === null || row.supabase_anon_key === null) {
+      return null
+    }
+
+    return {
+      supabaseUrl: row.supabase_url,
+      supabaseAnonKey: row.supabase_anon_key,
     }
   },
 }

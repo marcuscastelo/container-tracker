@@ -1,15 +1,27 @@
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
-import type { NavbarAlertVM } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
+import type { NavbarIncidentVM } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
+import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 type AlertItemProps = {
-  readonly alert: NavbarAlertVM
-  readonly onOpenContainer: () => void
+  readonly processId: string
+  readonly processReference: string | null
+  readonly processCarrier: string | null
+  readonly processRouteSummary: string
+  readonly incident: NavbarIncidentVM
+  readonly onOpenProcess: (processId: string) => void
+  readonly onOpenContainer: (processId: string, containerNumber: string) => void
 }
 
-function toSeverityClasses(severity: NavbarAlertVM['severity']): string {
+function toDisplayValue(value: string | null, fallback: string): string {
+  if (value === null) return fallback
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : fallback
+}
+
+function toSeverityClasses(severity: NavbarIncidentVM['severity']): string {
   if (severity === 'danger') {
     return 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg'
   }
@@ -19,7 +31,7 @@ function toSeverityClasses(severity: NavbarAlertVM['severity']): string {
   return 'border-tone-info-border bg-tone-info-bg text-tone-info-fg'
 }
 
-function toAlertCardTone(severity: NavbarAlertVM['severity']): string {
+function toAlertCardTone(severity: NavbarIncidentVM['severity']): string {
   if (severity === 'danger') {
     return 'border-tone-danger-border/80 bg-tone-danger-bg/35'
   }
@@ -29,7 +41,7 @@ function toAlertCardTone(severity: NavbarAlertVM['severity']): string {
   return 'border-tone-info-border/80 bg-tone-info-bg/35'
 }
 
-function toAlertCardHoverTone(severity: NavbarAlertVM['severity']): string {
+function toAlertCardHoverTone(severity: NavbarIncidentVM['severity']): string {
   if (severity === 'danger') {
     return 'hover:border-tone-danger-strong hover:bg-tone-danger-bg/45'
   }
@@ -40,7 +52,7 @@ function toAlertCardHoverTone(severity: NavbarAlertVM['severity']): string {
 }
 
 function toSeverityLabel(
-  severity: NavbarAlertVM['severity'],
+  severity: NavbarIncidentVM['severity'],
   t: ReturnType<typeof useTranslation>['t'],
   keys: ReturnType<typeof useTranslation>['keys'],
 ): string {
@@ -52,41 +64,98 @@ function toSeverityLabel(
 export function AlertItem(props: AlertItemProps): JSX.Element {
   const { t, keys } = useTranslation()
 
+  const processReferenceLabel = () => toDisplayValue(props.processReference, props.processId)
+
+  const carrierLabel = () =>
+    toDisplayValue(
+      toCarrierDisplayLabel(props.processCarrier),
+      t(keys.header.alertsPanel.valueUnavailable),
+    )
+
+  const routeSummaryLabel = () =>
+    toDisplayValue(props.processRouteSummary, t(keys.header.alertsPanel.valueUnavailable))
+
   const occurredAtLabel = () => {
-    const formattedDate = formatDateForLocale(props.alert.occurredAt)
+    const formattedDate = formatDateForLocale(props.incident.triggeredAt)
     const dateLabel =
       formattedDate.length > 0 ? formattedDate : t(keys.header.alertsPanel.valueUnavailable)
     return t(keys.header.alertsPanel.lastEvent, { date: dateLabel })
   }
 
+  const actionLabel = () => {
+    if (props.incident.action === null) return null
+    const actionText = t(props.incident.action.actionKey, props.incident.action.actionParams)
+    return t(keys.header.alertsPanel.actionLabel, {
+      action: actionText,
+    })
+  }
+
+  const affectedContainersLabel = () => {
+    if (props.incident.affectedContainerCount === 1) {
+      return t(keys.header.alertsPanel.affectedContainerSingle)
+    }
+    return t(keys.header.alertsPanel.affectedContainers, {
+      count: props.incident.affectedContainerCount,
+    })
+  }
+
+  const containersPreview = () => {
+    const visible = props.incident.containers
+      .slice(0, 3)
+      .map((container) => container.containerNumber.trim())
+      .filter((containerNumber) => containerNumber.length > 0)
+    if (visible.length === 0) {
+      return t(keys.header.alertsPanel.valueUnavailable)
+    }
+    const extra = Math.max(0, props.incident.containers.length - visible.length)
+    if (extra === 0) {
+      return visible.join(' · ')
+    }
+    return `${visible.join(' · ')} · ${t(keys.header.alertsPanel.moreContainers, { count: extra })}`
+  }
+
   return (
-    <button
-      type="button"
-      onClick={() => props.onOpenContainer()}
-      class={`block w-full rounded-md border px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${toAlertCardTone(
-        props.alert.severity,
-      )} ${toAlertCardHoverTone(props.alert.severity)}`}
+    <div
+      class={`motion-overlay-surface rounded-md border px-2.5 py-2 ${toAlertCardTone(
+        props.incident.severity,
+      )} ${toAlertCardHoverTone(props.incident.severity)}`}
     >
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
-          <p class="text-xs-ui font-medium text-foreground truncate">
-            {t(props.alert.messageKey, props.alert.messageParams)}
-          </p>
-          <p class="mt-1 text-xs-ui text-text-muted">{occurredAtLabel()}</p>
+          <p class="truncate text-sm-ui font-semibold text-foreground">{processReferenceLabel()}</p>
         </div>
-        <span
-          class={`inline-flex shrink-0 rounded border px-1.5 py-0.5 text-micro font-semibold ${toSeverityClasses(
-            props.alert.severity,
-          )}`}
-        >
-          {toSeverityLabel(props.alert.severity, t, keys)}
-        </span>
+        <div class="flex shrink-0 items-start gap-1.5">
+          <span
+            class={`inline-flex rounded border px-1.5 py-0.5 text-micro font-semibold ${toSeverityClasses(
+              props.incident.severity,
+            )}`}
+          >
+            {toSeverityLabel(props.incident.severity, t, keys)}
+          </span>
+          <button
+            type="button"
+            onClick={() => props.onOpenProcess(props.processId)}
+            class="motion-focus-surface motion-interactive inline-flex h-7 items-center justify-center rounded border border-border bg-surface px-2 text-xs-ui font-medium text-foreground hover:border-border-strong hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            {t(keys.header.alertsPanel.openProcess)}
+          </button>
+        </div>
       </div>
-      <Show when={props.alert.retroactive}>
-        <span class="mt-1 inline-flex rounded border border-tone-warning-border bg-tone-warning-bg px-1.5 py-0.5 text-micro font-semibold text-tone-warning-fg">
-          {t(keys.header.alertsPanel.retroactive)}
-        </span>
-      </Show>
-    </button>
+
+      <p class="mt-1 truncate text-xs-ui text-text-muted">{carrierLabel()}</p>
+      <p class="mt-1 truncate text-xs-ui text-text-muted">{routeSummaryLabel()}</p>
+
+      <div class="mt-2.5">
+        <p class="text-xs-ui font-medium text-foreground">
+          {t(props.incident.factMessageKey, props.incident.factMessageParams)}
+        </p>
+        <Show when={props.incident.action !== null}>
+          <p class="mt-1 text-xs-ui text-text-muted">{actionLabel()}</p>
+        </Show>
+        <p class="mt-1 text-xs-ui text-text-muted">{occurredAtLabel()}</p>
+        <p class="mt-1 text-xs-ui text-text-muted">{affectedContainersLabel()}</p>
+        <p class="mt-1 truncate font-mono text-micro text-text-muted">{containersPreview()}</p>
+      </div>
+    </div>
   )
 }

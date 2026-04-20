@@ -1,12 +1,12 @@
 import type { AlertIncidentVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
+import type { PredictionHistorySource } from '~/modules/process/ui/viewmodels/prediction-history.vm'
 import type { ContainerObservationVM } from '~/modules/process/ui/viewmodels/shipment.vm'
-import type { TrackingSeriesHistory } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { typedFetch } from '~/shared/api/typedFetch'
 import {
   ObservationResponseSchema,
-  ProcessRecognizedAlertIncidentsResponseSchema,
+  ProcessRecognizedOperationalIncidentsResponseSchema,
   ProcessSyncSnapshotResponseSchema,
-  TrackingTimelineSeriesHistoryResponseSchema,
+  TrackingPredictionHistoryResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 
 function toReadTriggerHeaders(triggeredBy: string): HeadersInit {
@@ -40,59 +40,106 @@ function toObservationInspectorVm(
   }
 }
 
-function toSeriesHistory(
-  seriesHistory: ReturnType<typeof TrackingTimelineSeriesHistoryResponseSchema.parse>,
-): TrackingSeriesHistory {
+function toPredictionHistorySource(
+  predictionHistory: ReturnType<typeof TrackingPredictionHistoryResponseSchema.parse>,
+): PredictionHistorySource {
   return {
-    hasActualConflict: seriesHistory.has_actual_conflict,
-    classified: seriesHistory.classified.map((item) => ({
-      id: item.id,
-      type: item.type,
-      event_time: item.event_time,
-      event_time_type: item.event_time_type,
-      created_at: item.created_at,
-      seriesLabel: item.series_label,
+    header: {
+      tone: predictionHistory.header.tone,
+      summaryKind: predictionHistory.header.summary_kind,
+      currentVersionId: predictionHistory.header.current_version_id,
+      previousVersionId: predictionHistory.header.previous_version_id,
+      originalVersionId: predictionHistory.header.original_version_id,
+      reasonKind: predictionHistory.header.reason_kind,
+    },
+    versions: predictionHistory.versions.map((version) => ({
+      id: version.id,
+      isCurrent: version.is_current,
+      type: version.type,
+      eventTime: version.event_time,
+      eventTimeType: version.event_time_type,
+      vesselName: version.vessel_name,
+      voyage: version.voyage,
+      versionState: version.version_state,
+      explanatoryTextKind: version.explanatory_text_kind,
+      transitionKindFromPreviousVersion: version.transition_kind_from_previous_version,
+      observedAtCount: version.observed_at_count,
+      observedAtList: [...version.observed_at_list],
+      firstObservedAt: version.first_observed_at,
+      lastObservedAt: version.last_observed_at,
     })),
   }
 }
 
 function toAlertIncidentVm(
   incident: ReturnType<
-    typeof ProcessRecognizedAlertIncidentsResponseSchema.parse
+    typeof ProcessRecognizedOperationalIncidentsResponseSchema.parse
   >['recognized'][number],
 ): AlertIncidentVM {
+  const transshipmentOrder = (() => {
+    if (incident.type !== 'TRANSSHIPMENT' && incident.type !== 'PLANNED_TRANSSHIPMENT') {
+      return null
+    }
+
+    const [, maybeOrder] = incident.incident_key.split(':')
+    const order = Number(maybeOrder ?? '')
+    return Number.isInteger(order) && order > 0 ? order : null
+  })()
+  const port =
+    typeof incident.fact.message_params.port === 'string' ? incident.fact.message_params.port : null
+  const fromVessel =
+    typeof incident.fact.message_params.fromVessel === 'string'
+      ? incident.fact.message_params.fromVessel
+      : null
+  const toVessel =
+    typeof incident.fact.message_params.toVessel === 'string'
+      ? incident.fact.message_params.toVessel
+      : null
+  const activeAlertIds = incident.members.flatMap((member) =>
+    member.records
+      .filter((record) => record.lifecycle_state === 'ACTIVE')
+      .map((record) => record.alert_id),
+  )
+  const ackedAlertIds = incident.members.flatMap((member) =>
+    member.records
+      .filter((record) => record.lifecycle_state === 'ACKED')
+      .map((record) => record.alert_id),
+  )
+
   return {
     incidentKey: incident.incident_key,
     bucket: incident.bucket,
     category: incident.category,
     type: incident.type,
     severity: incident.severity,
-    messageKey: incident.message_key,
-    messageParams: incident.message_params,
+    messageKey: incident.fact.message_key,
+    messageParams: incident.fact.message_params,
+    action:
+      incident.action === null
+        ? null
+        : {
+            actionKey: incident.action.action_key,
+            actionParams: incident.action.action_params,
+            actionKind: incident.action.action_kind,
+          },
     detectedAtIso: incident.detected_at,
     triggeredAtIso: incident.triggered_at,
-    thresholdDays: incident.threshold_days,
-    daysWithoutMovement: incident.days_without_movement,
-    lastEventDate: incident.last_event_date,
-    transshipmentOrder: incident.transshipment_order,
-    port: incident.port,
-    fromVessel: incident.from_vessel,
-    toVessel: incident.to_vessel,
-    affectedContainerCount: incident.affected_container_count,
-    activeAlertIds: [...incident.active_alert_ids],
-    ackedAlertIds: [...incident.acked_alert_ids],
+    transshipmentOrder,
+    port,
+    fromVessel,
+    toVessel,
+    affectedContainerCount: incident.scope.affected_container_count,
+    activeAlertIds,
+    ackedAlertIds,
     members: incident.members.map((member) => ({
       containerId: member.container_id,
       containerNumber: member.container_number,
       lifecycleState: member.lifecycle_state,
       detectedAtIso: member.detected_at,
-      thresholdDays: member.threshold_days,
-      daysWithoutMovement: member.days_without_movement,
-      lastEventDate: member.last_event_date,
-      transshipmentOrder: member.transshipment_order,
-      port: member.port,
-      fromVessel: member.from_vessel,
-      toVessel: member.to_vessel,
+      transshipmentOrder,
+      port,
+      fromVessel,
+      toVessel,
       records: member.records.map((record) => ({
         alertId: record.alert_id,
         lifecycleState: record.lifecycle_state,
@@ -101,22 +148,7 @@ function toAlertIncidentVm(
         ackedAtIso: record.acked_at,
         resolvedAtIso: record.resolved_at,
         resolvedReason: record.resolved_reason,
-        thresholdDays: record.threshold_days,
-        daysWithoutMovement: record.days_without_movement,
-        lastEventDate: record.last_event_date,
       })),
-    })),
-    monitoringHistory: incident.monitoring_history.map((record) => ({
-      alertId: record.alert_id,
-      lifecycleState: record.lifecycle_state,
-      detectedAtIso: record.detected_at,
-      triggeredAtIso: record.triggered_at,
-      ackedAtIso: record.acked_at,
-      resolvedAtIso: record.resolved_at,
-      resolvedReason: record.resolved_reason,
-      thresholdDays: record.threshold_days,
-      daysWithoutMovement: record.days_without_movement,
-      lastEventDate: record.last_event_date,
     })),
   }
 }
@@ -135,25 +167,25 @@ export async function fetchRecognizedAlertIncidents(
   processId: string,
 ): Promise<readonly AlertIncidentVM[]> {
   const response = await typedFetch(
-    `/api/processes/${encodeURIComponent(processId)}/alerts/recognized`,
+    `/api/processes/${encodeURIComponent(processId)}/operational-incidents/recognized`,
     undefined,
-    ProcessRecognizedAlertIncidentsResponseSchema,
+    ProcessRecognizedOperationalIncidentsResponseSchema,
   )
 
   return response.recognized.map(toAlertIncidentVm)
 }
 
-export async function fetchTimelineSeriesHistory(
+export async function fetchTimelinePredictionHistory(
   containerId: string,
   timelineItemId: string,
-): Promise<TrackingSeriesHistory> {
+): Promise<PredictionHistorySource> {
   const response = await typedFetch(
     `/api/tracking/containers/${encodeURIComponent(containerId)}/timeline-items/${encodeURIComponent(timelineItemId)}/history`,
     undefined,
-    TrackingTimelineSeriesHistoryResponseSchema,
+    TrackingPredictionHistoryResponseSchema,
   )
 
-  return toSeriesHistory(response)
+  return toPredictionHistorySource(response)
 }
 
 export async function fetchObservationInspector(

@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.control-ui.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "../../dist/apps/agent/control-ui",
+    "rootDir": "../..",
+    "types": ["node", "electron"]
+  },
+  "include": ["./src/electron/main.ts", "./src/electron/ipc.ts", "./src/runtime/alias-loader.ts"]
+}

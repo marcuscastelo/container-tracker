@@ -2,26 +2,26 @@
 
 Objetivo deste plano:
 
-- finalizar **todo o feedback do cliente**
+- finalizar **todo feedback do cliente**
 - integrar **bugs correlatos nos mesmos grupos**
 - reduzir retrabalho e economizar tokens de LLM
 - manter **N >= 2 agentes em paralelo**
 - minimizar merge conflicts
 - separar **UI-mocked-first** de **wiring/E2E**
-- deixar explícito o que está coberto e o que não está
+- deixar explícito que está coberto e que não está
 
 ---
 
 # Princípios de agrupamento
 
-Os grupos abaixo foram montados por **superfície de código compartilhada**, não apenas por tema funcional.
+grupos abaixo foram montados por **superfície de código compartilhada**, não por tema funcional.
 
 Critérios usados:
 
-1. juntar mudanças que tocam os mesmos componentes / hooks / projections
+1. juntar mudanças que tocam mesmos componentes / hooks / projections
 2. evitar abrir vários PRs mexendo na mesma tabela/página
-3. resolver bug junto com o refinamento visual da mesma área
-4. manter o domínio canônico no backend quando houver semântica de tracking
+3. resolver bug junto com refinamento visual da mesma área
+4. manter domínio canônico no backend quando houver semântica de tracking
 5. preferir:
    - **PR 1 = UI mock / estrutura**
    - **PR 2 = wiring / backend / realtime / cache / mutation reconciliation**
@@ -42,10 +42,10 @@ Grupo G — Dashboard Data Contract Expansion (Importer/Exporter)
 
 Observação importante:
 
-- **Grupo A** é a base estrutural da tabela.
-- **Grupo C** depende parcialmente de A.
-- **Grupo G** pode rodar em paralelo com A porque toca projection/DTO, não necessariamente o componente visual principal.
-- **Grupo F** é backend/domain e roda em paralelo quase sem conflito com os grupos de UI.
+- **Grupo ** é base estrutural da tabela.
+- **Grupo C** depende parcialmente de.
+- **Grupo G** pode rodar em paralelo com porque toca projection/DTO, não necessariamente componente visual principal.
+- **Grupo F** é backend/domain e roda em paralelo quase sem conflito com grupos de UI.
 
 ---
 
@@ -53,7 +53,7 @@ Observação importante:
 
 ## Objetivo
 
-Consolidar toda a infraestrutura da tabela do dashboard em um único bloco evolutivo.
+Consolidar toda infraestrutura da tabela do dashboard em único bloco evolutivo.
 
 ## Cobre
 
@@ -62,12 +62,12 @@ Consolidar toda a infraestrutura da tabela do dashboard em um único bloco evolu
 - garantir que **Process Ref** caiba melhor
 - escurecer fontes secundárias no dashboard
 - cards/panels com mais destaque
-- permitir **sort em todas as colunas ordenáveis**
-- fazer todas as colunas ordenáveis parecerem clicáveis
+- permitir **sort em todas colunas ordenáveis**
+- fazer todas colunas ordenáveis parecerem clicáveis
 - definir **ordenação padrão por severidade**
 - permitir **reordenação de colunas**
 - posicionar **coluna de sync** como penúltima ou última
-- preparar base para colunas configuráveis, se você decidir aproveitar o embalo
+- preparar base para colunas configuráveis, se você decidir aproveitar embalo
 
 ### Bugs integrados
 - inconsistência visual de headers que parecem texto comum em vez de header ordenável
@@ -88,13 +88,13 @@ Consolidar toda a infraestrutura da tabela do dashboard em um único bloco evolu
 Agente ideal: **UI**
 
 ### Entregas
-- unificar definição de colunas em um único módulo/config
+- unificar definição de colunas em único módulo/config
 - separar:
   - `column definition`
   - `sortable metadata`
   - `reorder metadata`
   - `visibility metadata` se for aproveitar
-- deixar todos os headers ordenáveis com affordance visual consistente
+- deixar todos headers ordenáveis com affordance visual consistente
 - implementar layout da tabela:
   - divisórias verticais suaves
   - widths/min-widths previsíveis
@@ -107,12 +107,12 @@ Agente ideal: **UI**
   - `none`
 
 ### Critérios de aceite
-- todas as colunas ordenáveis têm affordance visual de click
+- todas colunas ordenáveis têm affordance visual de click
 - nenhuma coluna ordenável parece texto estático
 - trocar ordenação não quebra layout
 - reordenar colunas persiste ao recarregar
 - coluna sync abre no fim por padrão
-- `Process Ref` fica mais resiliente a Windows/Chrome/EN/PTBR
+- `Process Ref` fica mais resiliente Windows/Chrome/EN/PTBR
 - dashboard continua funcional com dados mockados
 
 ---
@@ -143,13 +143,13 @@ Agente ideal: **engenharia frontend/fullstack**
 
 ## Objetivo
 
-Concentrar toda a célula de alertas do dashboard em um único pacote visual/comportamental.
+Concentrar toda célula de alertas do dashboard em único pacote visual/comportamental.
 
 ## Cobre
 
 ### Feedback do cliente
 - remover chip **"atenção"**
-- manter apenas:
+- manter:
   - strip de atenção
   - ícone warning
 - tooltip do warning mostrando:
@@ -201,17 +201,17 @@ Agente ideal: **frontend/fullstack**
 
 ### Entregas
 - conectar tooltip aos dados reais
-- garantir que a UI só consome DTO/VM
+- garantir que UI só consome DTO/VM
 - ajustar ordenação/agrupamento do que aparece no tooltip sem reimplementar regras de domínio
 
 ### Critérios de aceite
-- dominante exibido bate com o payload real
+- dominante exibido bate com payload real
 - extras respeitam limite 2–3
 - célula não recalcula severidade canônica
 - atualização do dashboard reflete alertas reais sem hard refresh
 
 ### Dependência
-- se a severidade canônica estiver errada por aging, depende do **Grupo F**
+- se severidade canônica estiver errada por aging, depende do **Grupo F**
 
 ---
 
@@ -219,7 +219,7 @@ Agente ideal: **frontend/fullstack**
 
 ## Objetivo
 
-Resolver de uma vez toda a superfície de sync no dashboard: visual, estados transitórios, mutation reconciliation, atualização em tempo real das rows.
+Resolver de vez toda superfície de sync no dashboard: visual, estados transitórios, mutation reconciliation, atualização em tempo real das rows.
 
 ## Cobre
 
@@ -228,7 +228,7 @@ Resolver de uma vez toda a superfície de sync no dashboard: visual, estados tra
 - manter coluna de sync no final da tabela
 
 ### Bugs integrados
-- **global sync não atualiza visualmente os sync states das rows sem hard refresh**
+- **global sync não atualiza visualmente sync states das rows sem hard refresh**
 - botões de sync no dashboard apresentam bugs visuais
 - sync state da row não reflete mutation/realtime de forma imediata
 - inconsistência entre “sync disparado” e feedback visual por linha
@@ -281,9 +281,9 @@ Agente ideal: **engenharia frontend/fullstack**
 - corrigir bugs visuais atuais do botão de sync
 
 ### Critérios de aceite
-- clicar sync em uma row atualiza a própria row imediatamente
-- disparar sync global atualiza visualmente as rows afetadas sem hard refresh
-- retorno a estado idle/success/error é previsível
+- clicar sync em row atualiza própria row imediatamente
+- disparar sync global atualiza visualmente rows afetadas sem hard refresh
+- retorno estado idle/success/error é previsível
 - dashboard não precisa recarregar para refletir sync em andamento ou concluído
 - mudança não introduz reload de página
 
@@ -295,7 +295,7 @@ Agente ideal: **engenharia frontend/fullstack**
 - VM de sync state
 
 ### Dependências
-- idealmente depois de **Grupo A Fase A1** se a coluna de sync estiver sendo reorganizada
+- idealmente depois de **Grupo Fase A1** se coluna de sync estiver sendo reorganizada
 
 ---
 
@@ -303,7 +303,7 @@ Agente ideal: **engenharia frontend/fullstack**
 
 ## Objetivo
 
-Resolver de forma consolidada os bugs de criação/edição de processo que compartilham lógica de formulário, validação e reconciliação de containers.
+Resolver de forma consolidada bugs de criação/edição de processo que compartilham lógica de formulário, validação e reconciliação de containers.
 
 ## Cobre
 
@@ -329,7 +329,7 @@ Agente ideal: **engenharia**
 ### Entregas
 - mapear fluxos exatos do formulário
 - criar reprodução automatizada ou pelo menos testes de unidade/integration dos cenários
-- identificar onde o estado do form quebra:
+- identificar onde estado do form quebra:
   - UI local
   - validator
   - DTO mapping
@@ -368,7 +368,7 @@ Agente ideal: **engenharia**
 
 ## Objetivo
 
-Concentrar o refinamento visual restante da página de shipment/process.
+Concentrar refinamento visual restante da página de shipment/process.
 
 ## Cobre
 
@@ -382,7 +382,7 @@ Concentrar o refinamento visual restante da página de shipment/process.
 
 ## Já está feito e não precisa entrar aqui
 - alertas não sticky
-- alertas rolarem com a página
+- alertas rolarem com página
 
 ## Não cobre
 - busca global na página
@@ -416,23 +416,23 @@ Agente ideal: **UI**
 
 ## Objetivo
 
-Agrupar as correções de domínio que afetam alertas, timeline e severidade canônica, sem misturar com rendering da UI.
+Agrupar correções de domínio que afetam alertas, timeline e severidade canônica, sem misturar com rendering da UI.
 
 ## Cobre
 
 ### Bugs integrados
 - alertas de transbordo duplicam após sync
 - melhoria da fingerprint/deduplicação de alerta de transbordo
-- severidade do dashboard continua exibindo atenção incorretamente por muitas horas, **se a origem for a regra canônica**
+- severidade do dashboard continua exibindo atenção incorretamente por muitas horas, **se origem for regra canônica**
 - melhoria de promoção:
   - `EXPECTED -> ACTUAL`
   - evitar timeline duplicada
 - TODO de domínio relacionado:
-  - gerar evento de transbordo de forma canônica, se necessário para corrigir a origem do problema
+  - gerar evento de transbordo de forma canônica, se necessário para corrigir origem do problema
 
 ## Possível cobertura de feedback indireta
-- melhora a qualidade do dado consumido pelo tooltip do Grupo B
-- melhora a coerência da severidade usada no default sort do Grupo A
+- melhora qualidade do dado consumido pelo tooltip do Grupo B
+- melhora coerência da severidade usada no default sort do Grupo
 
 ## Não cobre
 - rendering da tabela
@@ -456,7 +456,7 @@ Agente ideal: **engenharia/domain**
   - na regra canônica
   - no projection/dashboard
   - no VM/UI
-- confirmar o ponto correto para promoção `EXPECTED -> ACTUAL`
+- confirmar ponto correto para promoção `EXPECTED -> ACTUAL`
 
 ### Critérios de aceite
 - causa raiz de cada bug documentada
@@ -474,13 +474,13 @@ Agente ideal: **engenharia/domain**
 
 ### Entregas
 - corrigir dedupe/fingerprint de transshipment alert
-- corrigir regra de aging/severity se a origem for canônica
+- corrigir regra de aging/severity se origem for canônica
 - corrigir promoção `EXPECTED -> ACTUAL` sem apagar histórico indevidamente
 - adicionar/ajustar testes do tracking pipeline
 
 ### Critérios de aceite
 - sync repetido não duplica indevidamente alerta de transbordo
-- timeline não duplica desnecessariamente EXPECTED e ACTUAL para o mesmo marco
+- timeline não duplica desnecessariamente EXPECTED e ACTUAL para mesmo marco
 - severidade canônica evolui corretamente ao longo do tempo
 - domínio continua determinístico e auditável
 
@@ -490,7 +490,7 @@ Agente ideal: **engenharia/domain**
 
 ## Objetivo
 
-Adicionar os campos necessários para completar o feedback operacional do dashboard sem misturar isso com o trabalho visual principal da tabela.
+Adicionar campos necessários para completar feedback operacional do dashboard sem misturar isso com trabalho visual principal da tabela.
 
 ## Cobre
 
@@ -500,7 +500,7 @@ Adicionar os campos necessários para completar o feedback operacional do dashbo
 
 ### Bugs integrados
 - nenhum bug crítico direto
-- apenas contract expansion / projection alignment
+- contract expansion / projection alignment
 
 ## Não cobre
 - configuração visual profunda da tabela
@@ -537,15 +537,15 @@ Agente ideal: **frontend**
 ### Entregas
 - plugar colunas no dashboard
 - colocar Importador logo após `Process Ref`
-- integrar com a infraestrutura de colunas do Grupo A
+- integrar com infraestrutura de colunas do Grupo
 
 ### Critérios de aceite
 - importer/exporter aparecem com dados reais
 - posição default respeitada
-- não quebra responsividade atual mais do que o aceitável
+- não quebra responsividade atual mais do que aceitável
 
 ### Dependência
-- idealmente depois de **Grupo A Fase A1**
+- idealmente depois de **Grupo Fase A1**
 
 ---
 
@@ -555,7 +555,7 @@ Agente ideal: **frontend**
 
 Rodar juntos:
 
-- **Agent 1** → Grupo A / Fase A1
+- **Agent 1** → Grupo / Fase A1
 - **Agent 2** → Grupo B / Fase B1
 - **Agent 3** → Grupo D / Fase D1
 - **Agent 4** → Grupo E / Fase E1
@@ -563,7 +563,7 @@ Rodar juntos:
 - **Agent 6** → Grupo G / Fase G1
 
 Motivo:
-- A, B, E são superfícies visuais diferentes
+- , B, E são superfícies visuais diferentes
 - D e F são backend/domain diferentes
 - G toca projection/DTO
 
@@ -573,7 +573,7 @@ Motivo:
 
 Depois da Onda 1:
 
-- **Agent 1** → Grupo A / Fase A2
+- **Agent 1** → Grupo / Fase A2
 - **Agent 2** → Grupo C / Fase C1
 - **Agent 3** → Grupo D / Fase D2
 - **Agent 4** → Grupo F / Fase F2
@@ -583,12 +583,12 @@ Depois da Onda 1:
 
 ## Onda 3 — sync realtime final
 
-Depois de A2 e preferencialmente depois de estabilizar a tabela:
+Depois de A2 e preferencialmente depois de estabilizar tabela:
 
 - **Agent 6** → Grupo C / Fase C2
 
 Motivo:
-o bug de sync em realtime é o mais propenso a conflito com a estrutura da tabela.
+bug de sync em realtime é mais propenso conflito com estrutura da tabela.
 
 ---
 
@@ -607,7 +607,7 @@ o bug de sync em realtime é o mais propenso a conflito com a estrutura da tabel
 ## Melhor evitar ao mesmo tempo
 - A2 com C2
 - A2 com G2 se ambos mexerem diretamente na mesma definição final de colunas
-- B2 com F2 se o formato do payload de alertas ainda estiver mudando
+- B2 com F2 se formato do payload de alertas ainda estiver mudando
 - C2 com qualquer PR que refatore subscriptions/caching do dashboard ao mesmo tempo
 
 ---
@@ -620,7 +620,7 @@ o bug de sync em realtime é o mais propenso a conflito com a estrutura da tabel
 - Process Ref caber melhor
 - cards/panels com mais destaque
 - escurecer fontes secundárias no dashboard
-- sort em todas as colunas ordenáveis
+- sort em todas colunas ordenáveis
 - affordance visual consistente para colunas clicáveis
 - ordenação padrão por severidade
 - trocar botão de sync por ícone de duas setas
@@ -634,7 +634,7 @@ o bug de sync em realtime é o mais propenso a conflito com a estrutura da tabel
 - escurecer fontes secundárias específicas na página de processo
 
 ## Bugs cobertos
-- global sync não atualiza visualmente os sync states das rows sem hard refresh
+- global sync não atualiza visualmente sync states das rows sem hard refresh
 - bugs visuais dos botões de sync do dashboard
 - severidade do dashboard exibindo ATENÇÃO incorretamente por tempo excessivo
 - alerta de transbordo duplicado após sync
@@ -649,16 +649,16 @@ o bug de sync em realtime é o mais propenso a conflito com a estrutura da tabel
 
 Itens fora deste recorte, mesmo que importantes:
 
-- copy button hit area não cobre todo o botão
+- copy button hit area não cobre todo botão
 - barra de busca global na página de processo
 - animações de dialog / blur overlay
 - colar múltiplos containers
 - importar CSV / markdown human-friendly
-- copiar valores da tabela com um clique
+- copiar valores da tabela com clique
 - paginação no dashboard
 - clicar em N alertas para abrir overlay de processos/containers
 - clicar no container dentro do alerta para navegar/scroll
-- sync apenas um container como feature nova explícita
+- sync container como feature nova explícita
 - sync all ignorar archived / recently synced
 - progress do container no status
 - carrier auto-detection
@@ -684,18 +684,18 @@ Esses itens pertencem ao backlog técnico/produto mais amplo, não ao objetivo i
 # Ambiguidades abertas
 
 ## 1. Navbar height
-Você marcou que **não foi feito**.  
-Ambiguidade restante: a navbar deve crescer:
-- globalmente em toda a aplicação
+Você marcou que **não foi feito**.
+Ambiguidade restante: navbar deve crescer:
+- globalmente em toda aplicação
 - ou só no dashboard / desktop
-- ou apenas ajustar padding/height sem mexer no logo/brand balance
+- ou ajustar padding/height sem mexer no logo/brand balance
 
 ## 2. Sort “todas as colunas ordenáveis”
-Precisamos idealmente fechar a lista exata de colunas ordenáveis.
-Hoje a frase correta para os agentes deve ser:
-- “todas as colunas que semanticamente podem ser ordenadas precisam ser clicáveis e parecer clicáveis”
+Precisamos idealmente fechar lista exata de colunas ordenáveis.
+Hoje frase correta para agentes deve ser:
+- “todas colunas que semanticamente podem ser ordenadas precisam ser clicáveis e parecer clicáveis”
 
-Mas ainda faltaria congelar a lista.
+Mas ainda faltaria congelar lista.
 
 ## 3. Reorder de colunas
 Precisamos decidir se algumas colunas serão fixas:
@@ -705,18 +705,18 @@ Precisamos decidir se algumas colunas serão fixas:
 
 Minha recomendação:
 - `Process Ref` fixo
-- `Alertas` e `Sync` movíveis apenas dentro de um subconjunto, ou `Sync` fixo no fim
+- `Alertas` e `Sync` movíveis dentro de subconjunto, ou `Sync` fixo no fim
 
 ## 4. Severidade incorreta
-Ainda existe uma ambiguidade importante:
-- o erro está na regra canônica do tracking
+Ainda existe ambiguidade importante:
+- erro está na regra canônica do tracking
 - ou no projection/dashboard
 - ou só na representação visual
 
-O Grupo F resolve isso via investigação antes da correção.
+Grupo F resolve isso via investigação antes da correção.
 
 ## 5. Importer / Exporter
-Precisa confirmar se os dados já existem de forma confiável no backend atual ou se haverá lacunas por processo.
+Precisa confirmar se dados já existem de forma confiável no backend atual ou se haverá lacunas por processo.
 
 ---
 
@@ -729,7 +729,7 @@ Preciso de 3 definições para transformar isso em PRDs executáveis por agente 
 3. **Regra desejada da navbar**
    - aumentar só altura
    - aumentar altura + padding interno
-   - desktop apenas ou global
+   - desktop ou global
 
 Com isso, eu consigo converter este plano diretamente em:
 - PRDs por grupo

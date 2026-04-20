@@ -155,7 +155,11 @@ export function bootstrapAgentSyncControllers(): AgentSyncControllers {
         fetchedAt,
       )
 
-      return { snapshotId: result.snapshot.id }
+      return {
+        snapshotId: result.snapshot.id,
+        newObservationsCount: result.pipeline.newObservations.length,
+        newAlertsCount: result.pipeline.newAlerts.length,
+      }
     },
 
     async authenticateAgentToken({ token }) {

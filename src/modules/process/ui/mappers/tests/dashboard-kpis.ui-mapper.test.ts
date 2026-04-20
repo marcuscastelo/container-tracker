@@ -5,13 +5,13 @@ import type { DashboardKpiVM } from '~/modules/process/ui/viewmodels/dashboard-k
 describe('toDashboardKpiVMs', () => {
   const ActiveProcessesIcon: DashboardKpiVM['icon'] = () => null
   const TrackedContainersIcon: DashboardKpiVM['icon'] = () => null
-  const ProcessesWithAlertsIcon: DashboardKpiVM['icon'] = () => null
+  const ActiveIncidentsIcon: DashboardKpiVM['icon'] = () => null
   const LastSyncIcon: DashboardKpiVM['icon'] = () => null
 
   const icons = {
     activeProcesses: ActiveProcessesIcon,
     trackedContainers: TrackedContainersIcon,
-    processesWithAlerts: ProcessesWithAlertsIcon,
+    activeIncidents: ActiveIncidentsIcon,
     lastSync: LastSyncIcon,
   } as const
 
@@ -20,14 +20,16 @@ describe('toDashboardKpiVMs', () => {
       source: {
         activeProcesses: 24,
         trackedContainers: 61,
-        processesWithAlerts: 8,
+        activeIncidents: 8,
+        affectedContainers: 13,
         lastSyncAt: '2026-03-12T13:42:00.000Z',
       },
       locale: 'en-US',
       labels: {
         activeProcesses: 'Active Processes',
         trackedContainers: 'Tracked Containers',
-        processesWithAlerts: 'With Alerts',
+        activeIncidents: 'Active Incidents',
+        affectedContainers: 'Affected Containers',
         lastSync: 'Last Sync',
         lastSyncUnavailable: '—',
       },
@@ -52,10 +54,11 @@ describe('toDashboardKpiVMs', () => {
     expect(result[1]?.tone).toBe('default')
     expect(result[1]?.icon).toBe(TrackedContainersIcon)
 
-    expect(result[2]?.label).toBe('With Alerts')
+    expect(result[2]?.label).toBe('Active Incidents')
     expect(result[2]?.value).toBe('8')
+    expect(result[2]?.detail).toBe('Affected Containers: 13')
     expect(result[2]?.tone).toBe('warning')
-    expect(result[2]?.icon).toBe(ProcessesWithAlertsIcon)
+    expect(result[2]?.icon).toBe(ActiveIncidentsIcon)
 
     expect(result[3]?.label).toBe('Last Sync')
     expect(result[3]?.value).toBe(expectedLastSync)
@@ -67,7 +70,8 @@ describe('toDashboardKpiVMs', () => {
     const labels = {
       activeProcesses: 'Active Processes',
       trackedContainers: 'Tracked Containers',
-      processesWithAlerts: 'With Alerts',
+      activeIncidents: 'Active Incidents',
+      affectedContainers: 'Affected Containers',
       lastSync: 'Last Sync',
       lastSyncUnavailable: 'No sync yet',
     } as const
@@ -76,7 +80,8 @@ describe('toDashboardKpiVMs', () => {
       source: {
         activeProcesses: 0,
         trackedContainers: 0,
-        processesWithAlerts: 0,
+        activeIncidents: 0,
+        affectedContainers: 0,
         lastSyncAt: null,
       },
       locale: 'en-US',
@@ -88,7 +93,8 @@ describe('toDashboardKpiVMs', () => {
       source: {
         activeProcesses: 0,
         trackedContainers: 0,
-        processesWithAlerts: 0,
+        activeIncidents: 0,
+        affectedContainers: 0,
         lastSyncAt: 'not-a-date',
       },
       locale: 'en-US',

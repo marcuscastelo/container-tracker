@@ -214,6 +214,296 @@ describe('groupVoyageSegments', () => {
     expect(segment.events).toHaveLength(3)
   })
 
+  it('creates a planned continuation segment after actual discharge plus intended transshipment', () => {
+    const events = [
+      makeEvent({
+        id: 'leg-a-load',
+        type: 'LOAD',
+        vesselName: 'MSC MIRAYA V',
+        voyage: 'OB612R',
+        location: 'Karachi',
+      }),
+      makeEvent({
+        id: 'leg-a-discharge',
+        type: 'DISCHARGE',
+        location: 'Singapore',
+      }),
+      makeEvent({
+        id: 'planned-intended',
+        type: 'TRANSSHIPMENT_INTENDED',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Singapore',
+      }),
+      makeEvent({
+        id: 'planned-arrival',
+        type: 'ARRIVAL',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Santos',
+      }),
+      makeEvent({
+        id: 'planned-discharge',
+        type: 'DISCHARGE',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Santos',
+      }),
+    ]
+
+    const segments = groupVoyageSegments(events)
+
+    expect(segments).toHaveLength(2)
+    const plannedSegment = requireDefined(segments[1])
+    expect(plannedSegment.vessel).toBeNull()
+    expect(plannedSegment.voyage).toBeNull()
+    expect(plannedSegment.origin).toBe('Singapore')
+    expect(plannedSegment.destination).toBe('Santos')
+    expect(plannedSegment.plannedContinuation).toBe(true)
+    expect(plannedSegment.events.map((event) => event.type)).toEqual([
+      'TRANSSHIPMENT_INTENDED',
+      'ARRIVAL',
+      'DISCHARGE',
+    ])
+  })
+
+  it('creates the GLDU2928252 expected maritime leg after Singapore transshipment', () => {
+    const events = [
+      makeEvent({
+        id: 'gsl-violetta-load',
+        type: 'LOAD',
+        eventTime: temporalDtoFromCanonical('2026-03-31'),
+        vesselName: 'GSL VIOLETTA',
+        voyage: 'ZF609R',
+        location: 'COLOMBO, LK',
+      }),
+      makeEvent({
+        id: 'gsl-violetta-discharge',
+        type: 'DISCHARGE',
+        eventTime: temporalDtoFromCanonical('2026-04-07'),
+        vesselName: 'GSL VIOLETTA',
+        voyage: 'ZF609R',
+        location: 'SINGAPORE, SG',
+      }),
+      makeEvent({
+        id: 'sao-paulo-transshipment-intended',
+        type: 'TRANSSHIPMENT_INTENDED',
+        eventTime: temporalDtoFromCanonical('2026-04-11'),
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'SAO PAULO EXPRESS',
+        voyage: '2613W',
+        location: 'SINGAPORE, SG',
+      }),
+      makeEvent({
+        id: 'santos-arrival-expected',
+        type: 'ARRIVAL',
+        eventTime: temporalDtoFromCanonical('2026-05-06'),
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'SAO PAULO EXPRESS',
+        voyage: '2613W',
+        location: 'SANTOS, BR',
+      }),
+    ]
+
+    const segments = groupVoyageSegments(events)
+
+    expect(segments).toHaveLength(2)
+
+    const previousLeg = requireDefined(segments[0])
+    expect(previousLeg.vessel).toBe('GSL VIOLETTA')
+    expect(previousLeg.voyage).toBe('ZF609R')
+    expect(previousLeg.origin).toBe('COLOMBO, LK')
+    expect(previousLeg.destination).toBe('SINGAPORE, SG')
+    expect(previousLeg.plannedContinuation).toBe(false)
+    expect(previousLeg.events.map((event) => event.id)).toEqual([
+      'gsl-violetta-load',
+      'gsl-violetta-discharge',
+    ])
+
+    const expectedLeg = requireDefined(segments[1])
+    expect(expectedLeg.plannedContinuation).toBe(true)
+    expect(expectedLeg.origin).toBe('SINGAPORE, SG')
+    expect(expectedLeg.destination).toBe('SANTOS, BR')
+    expect(expectedLeg.events.map((event) => event.id)).toEqual([
+      'sao-paulo-transshipment-intended',
+      'santos-arrival-expected',
+    ])
+  })
+
+  it('does not infer a future maritime leg from arrival expected without intended transshipment', () => {
+    const events = [
+      makeEvent({
+        id: 'gsl-violetta-load',
+        type: 'LOAD',
+        eventTime: temporalDtoFromCanonical('2026-03-31'),
+        vesselName: 'GSL VIOLETTA',
+        voyage: 'ZF609R',
+        location: 'COLOMBO, LK',
+      }),
+      makeEvent({
+        id: 'gsl-violetta-discharge',
+        type: 'DISCHARGE',
+        eventTime: temporalDtoFromCanonical('2026-04-07'),
+        vesselName: 'GSL VIOLETTA',
+        voyage: 'ZF609R',
+        location: 'SINGAPORE, SG',
+      }),
+      makeEvent({
+        id: 'santos-arrival-expected',
+        type: 'ARRIVAL',
+        eventTime: temporalDtoFromCanonical('2026-05-06'),
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'SAO PAULO EXPRESS',
+        voyage: '2613W',
+        location: 'SANTOS, BR',
+      }),
+    ]
+
+    const segments = groupVoyageSegments(events)
+
+    expect(segments).toHaveLength(2)
+    expect(requireDefined(segments[0]).plannedContinuation).toBe(false)
+
+    const terminalRemainder = requireDefined(segments[1])
+    expect(terminalRemainder.plannedContinuation).toBe(false)
+    expect(terminalRemainder.vessel).toBeNull()
+    expect(terminalRemainder.events.map((event) => event.id)).toEqual(['santos-arrival-expected'])
+  })
+
+  it('creates chained planned continuation segments after predicted arrivals', () => {
+    const events = [
+      makeEvent({
+        id: 'leg-a-departure',
+        type: 'DEPARTURE',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'MSC MIRAYA V',
+        voyage: 'OB612R',
+        location: 'Karachi',
+      }),
+      makeEvent({
+        id: 'leg-a-arrival',
+        type: 'ARRIVAL',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'MSC MIRAYA V',
+        voyage: 'OB612R',
+        location: 'Colombo',
+      }),
+      makeEvent({
+        id: 'planned-colombo',
+        type: 'TRANSSHIPMENT_INTENDED',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Colombo',
+      }),
+      makeEvent({
+        id: 'planned-singapore-arrival',
+        type: 'ARRIVAL',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Singapore',
+      }),
+      makeEvent({
+        id: 'planned-singapore',
+        type: 'TRANSSHIPMENT_INTENDED',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Singapore',
+      }),
+      makeEvent({
+        id: 'planned-santos-arrival',
+        type: 'ARRIVAL',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Santos',
+      }),
+    ]
+
+    const segments = groupVoyageSegments(events)
+
+    expect(segments).toHaveLength(3)
+    expect(requireDefined(segments[0]).events.map((event) => event.type)).toEqual([
+      'DEPARTURE',
+      'ARRIVAL',
+    ])
+
+    const colomboContinuation = requireDefined(segments[1])
+    expect(colomboContinuation.plannedContinuation).toBe(true)
+    expect(colomboContinuation.origin).toBe('Colombo')
+    expect(colomboContinuation.destination).toBe('Singapore')
+    expect(colomboContinuation.events.map((event) => event.type)).toEqual([
+      'TRANSSHIPMENT_INTENDED',
+      'ARRIVAL',
+    ])
+
+    const singaporeContinuation = requireDefined(segments[2])
+    expect(singaporeContinuation.plannedContinuation).toBe(true)
+    expect(singaporeContinuation.origin).toBe('Singapore')
+    expect(singaporeContinuation.destination).toBe('Santos')
+    expect(singaporeContinuation.events.map((event) => event.type)).toEqual([
+      'TRANSSHIPMENT_INTENDED',
+      'ARRIVAL',
+    ])
+  })
+
+  it('keeps explicit future legs stronger than intended transshipment anchors', () => {
+    const events = [
+      makeEvent({
+        id: 'leg-a-load',
+        type: 'LOAD',
+        vesselName: 'MSC MIRAYA V',
+        voyage: 'OB612R',
+        location: 'Karachi',
+      }),
+      makeEvent({
+        id: 'leg-a-discharge',
+        type: 'DISCHARGE',
+        location: 'Singapore',
+      }),
+      makeEvent({
+        id: 'planned-intended',
+        type: 'TRANSSHIPMENT_INTENDED',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Singapore',
+      }),
+      makeEvent({
+        id: 'leg-b-load',
+        type: 'LOAD',
+        vesselName: 'SAO PAULO EXPRESS',
+        voyage: 'SPX001',
+        location: 'Singapore',
+      }),
+      makeEvent({
+        id: 'leg-b-arrival',
+        type: 'ARRIVAL',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'SAO PAULO EXPRESS',
+        voyage: 'SPX001',
+        location: 'Santos',
+      }),
+    ]
+
+    const segments = groupVoyageSegments(events)
+
+    expect(segments).toHaveLength(3)
+    expect(requireDefined(segments[1]).plannedContinuation).toBe(false)
+    expect(requireDefined(segments[1]).events.map((event) => event.type)).toEqual([
+      'TRANSSHIPMENT_INTENDED',
+    ])
+
+    const explicitLeg = requireDefined(segments[2])
+    expect(explicitLeg.plannedContinuation).toBe(false)
+    expect(explicitLeg.vessel).toBe('SAO PAULO EXPRESS')
+    expect(explicitLeg.origin).toBe('Singapore')
+    expect(explicitLeg.destination).toBe('Santos')
+  })
+
   it('preserves event order within segments', () => {
     const events = [
       makeEvent({ id: 'e1', type: 'LOAD', vesselName: 'V1', location: 'A' }),

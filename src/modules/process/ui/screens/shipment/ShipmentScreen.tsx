@@ -65,6 +65,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
 
   const trackingTimeTravel = useTrackingTimeTravelController({
     selectedContainer: selection.selectedContainer,
+    trackingFreshnessToken: () => resource.latestShipment()?.trackingFreshnessToken ?? null,
   })
 
   useShipmentAlertNavigation({
@@ -186,6 +187,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
           activeAlerts={activeAlerts}
           alertIncidents={alertIncidents}
           busyAlertIds={alertActions.busyAlertIds}
+          recentlyChangedAlertIds={alertActions.recentlyChangedAlertIds}
           onAcknowledgeAlert={alertActions.acknowledgeAlerts}
           onUnacknowledgeAlert={alertActions.unacknowledgeAlerts}
           isRefreshing={refresh.isRefreshing}

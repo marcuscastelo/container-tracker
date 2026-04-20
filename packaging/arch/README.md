@@ -1,13 +1,13 @@
 # Container Tracker Agent no Arch Linux
 
-Este diretório contém o pacote Arch/AUR-compatible do runtime Linux do agent.
+Este diretório contém pacote Arch/AUR-compatible do runtime Linux do agent.
 
 ## Pré-requisitos
 
 - Arch Linux (ou derivado com `makepkg`)
 - `base-devel`
 - `nodejs`
-- `pnpm` disponível no PATH (uma das opções abaixo):
+- `pnpm` disponível no PATH (das opções abaixo):
   - `pacman -S pnpm`
   - `npm i -g pnpm`
   - `corepack enable` (com `nodejs` recente)
@@ -29,9 +29,9 @@ cd packaging/arch
 makepkg -si
 ```
 
-Se você já tiver `pnpm` instalado por `npm`, o `PKGBUILD` atual funciona sem forçar instalação do pacote `pnpm` via pacman.
+Se você já tiver `pnpm` instalado por `npm`, `PKGBUILD` atual funciona sem forçar instalação do pacote `pnpm` via pacman.
 
-Se já estiver dentro de `packaging/arch`, rode apenas:
+Se já estiver dentro de `packaging/arch`, rode:
 
 ```bash
 makepkg -si -f
@@ -39,7 +39,7 @@ makepkg -si -f
 
 ## Pós-instalação (systemd)
 
-O pacote **não habilita** o serviço automaticamente.
+pacote **não habilita** serviço automaticamente.
 
 ```bash
 sudo systemctl daemon-reload
@@ -49,12 +49,12 @@ sudo systemctl status container-tracker-agent.service
 
 ### Rebuild/restart Linux a partir do `.env` do repositório
 
-Use o script abaixo no root do repositório para:
+Use script abaixo no root do repositório para:
 
 - rebuild do pacote Arch
 - reinstalação do serviço
 - limpeza completa de `/var/lib/container-tracker-agent`
-- geração de `bootstrap.env` a partir de `./.env`
+- geração de `bootstrap.env` partir de `./.env`
 - restart + logs finais do serviço
 
 ```bash
@@ -65,9 +65,30 @@ pnpm run rebuild-restart:linux
 
 - Runtime: `/usr/lib/container-tracker-agent`
 - CLI: `/usr/bin/ct-agent`
+- Admin helper: `/usr/bin/ct-agent-admin`
+- Electron UI launcher: `/usr/bin/ct-agent-ui`
+- Tray launcher: `/usr/bin/ct-agent-tray`
 - Service file: `/usr/lib/systemd/system/container-tracker-agent.service`
 - Config dir: `/etc/container-tracker-agent`
 - Data dir: `/var/lib/container-tracker-agent`
+- Public tray/UI state: `/run/container-tracker-agent/control-ui-state.json`
+- Desktop launcher: `/usr/share/applications/container-tracker-agent-ui.desktop`
+- Autostart tray file: `/etc/xdg/autostart/container-tracker-agent-tray.desktop`
+- Icon: `/usr/share/icons/hicolor/256x256/apps/container-tracker-agent.png`
+
+## UI Electron + tray
+
+- pacote instala tray autostart global para sessoes graficas locais via `/etc/xdg/autostart`.
+- tray abre Electron UI e UI conversa com servico systemd sem rodar como root.
+- Leituras iniciais usam estado publico em `/run/container-tracker-agent/control-ui-state.json`.
+- Acoes privilegiadas e refresh de logs usam elevacao local sob demanda.
+
+Launchers manuais:
+
+```bash
+ct-agent-ui
+ct-agent-tray
+```
 
 ## Uso do CLI (`ct-agent`)
 
@@ -89,7 +110,7 @@ ct-agent logs
 
 ### `ct-agent restart`
 
-Reinicia o serviço systemd:
+Reinicia serviço systemd:
 
 ```bash
 sudo ct-agent restart
