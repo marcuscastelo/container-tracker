@@ -214,6 +214,7 @@ function HeaderActions(props: {
   readonly syncSlot?: JSX.Element
   readonly actionsSlot?: JSX.Element
   readonly createProcessLabel: string
+  readonly logoutLabel: string
   readonly onCreateProcess?: () => void
 }): JSX.Element {
   return (
@@ -227,6 +228,14 @@ function HeaderActions(props: {
       />
       <NavbarAlertsButton />
       <ThemeToggleButton />
+      <A
+        href="/auth/logout"
+        class={OUTLINE_BUTTON_CLASS}
+        aria-label={props.logoutLabel}
+        title={props.logoutLabel}
+      >
+        <span class="hidden sm:inline">{props.logoutLabel}</span>
+      </A>
       <Show when={props.actionsSlot}>
         {(actionsSlot) => <div class="flex items-center gap-2">{actionsSlot()}</div>}
       </Show>
@@ -260,6 +269,7 @@ export function AppHeader(props: Props): JSX.Element {
         <div class="max-[1023px]:justify-self-end">
           <HeaderActions
             createProcessLabel={t(keys.header.createProcess)}
+            logoutLabel={t(keys.header.logout)}
             {...(props.syncSlot ? { syncSlot: props.syncSlot } : {})}
             {...(props.actionsSlot ? { actionsSlot: props.actionsSlot } : {})}
             {...(props.onCreateProcess ? { onCreateProcess: props.onCreateProcess } : {})}

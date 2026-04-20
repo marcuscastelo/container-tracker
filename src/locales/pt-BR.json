@@ -11,6 +11,7 @@
       "agents": "Agentes"
     },
     "createProcess": "Criar Processo",
+    "logout": "Sair",
     "alertsBadge": "{{count}} Incidentes",
     "alertsLabel": "Incidentes",
     "alertsActiveTooltip": "{{count}} incidentes ativos",
