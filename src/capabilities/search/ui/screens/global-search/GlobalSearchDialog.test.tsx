@@ -243,7 +243,7 @@ describe('GlobalSearchDialog', () => {
   it('renders only the trigger when the dialog is closed', () => {
     const html = normalizeSsrHtml(renderToString(() => createComponent(GlobalSearchDialog, {})))
 
-    expect(html).toContain('trigger:Buscar processos, filtros e ETA...')
+    expect(html).toContain('trigger:Buscar processos')
     expect(html).not.toContain('composer:')
     expect(html).not.toContain('body:')
   })

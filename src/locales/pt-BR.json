@@ -977,7 +977,7 @@
     "copied": "Copiado"
   },
   "search": {
-    "placeholder": "Buscar processos, filtros e ETA...",
+    "placeholder": "Buscar processos",
     "loading": "Buscando...",
     "error": "Falha na busca. Tente novamente.",
     "noResults": "Nenhum resultado encontrado",
