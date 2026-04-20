@@ -383,16 +383,22 @@ using (
   exists (
     select 1
     from public.tenant_memberships tm
+    join public.importers i
+      on i.id = membership_importer_access.importer_id
     where tm.id = membership_importer_access.membership_id
       and private.is_tenant_admin(tm.platform_tenant_id)
+      and i.platform_tenant_id = tm.platform_tenant_id
   )
 )
 with check (
   exists (
     select 1
     from public.tenant_memberships tm
+    join public.importers i
+      on i.id = membership_importer_access.importer_id
     where tm.id = membership_importer_access.membership_id
       and private.is_tenant_admin(tm.platform_tenant_id)
+      and i.platform_tenant_id = tm.platform_tenant_id
   )
 );
 

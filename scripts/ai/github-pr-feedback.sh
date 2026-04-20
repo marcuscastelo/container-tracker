@@ -425,13 +425,25 @@ render_prompt() {
   local issue_comments_json="$3"
   local threads_json="$4"
 
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  trap 'rm -rf "$tmpdir"' RETURN
+
+  printf '%s' "$comments_json" > "$tmpdir/comments.json"
+  printf '%s' "$reviews_json" > "$tmpdir/reviews.json"
+  printf '%s' "$issue_comments_json" > "$tmpdir/issue_comments.json"
+
   jq -rn \
     --arg repo "$REPO" \
     --arg pr "$PR_NUMBER" \
-    --argjson comments "$comments_json" \
-    --argjson reviews "$reviews_json" \
-    --argjson issue_comments "$issue_comments_json" \
+    --slurpfile comments "$tmpdir/comments.json" \
+    --slurpfile reviews "$tmpdir/reviews.json" \
+    --slurpfile issue_comments "$tmpdir/issue_comments.json" \
 '
+($comments[0] // []) as $comments
+| ($reviews[0] // []) as $reviews
+| ($issue_comments[0] // []) as $issue_comments
+|
 def norm:
   gsub("\r\n"; "\n")
   | gsub("\r"; "\n")

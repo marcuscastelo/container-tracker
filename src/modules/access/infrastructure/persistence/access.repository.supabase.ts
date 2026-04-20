@@ -70,6 +70,7 @@ const MembershipRowsSchema = z.array(MembershipRowSchema)
 const ImporterRowsSchema = z.array(ImporterRowSchema)
 const MembershipImporterAccessRowsSchema = z.array(MembershipImporterAccessRowSchema)
 const MembershipIdRowsSchema = z.array(z.object({ id: z.string().uuid() }))
+const MembershipUserIdRowsSchema = z.array(z.object({ user_id: z.string().uuid() }))
 
 const accessSupabase = createClient(serverEnv.SUPABASE_URL, serverEnv.SUPABASE_SERVICE_ROLE_KEY, {
   db: { schema: 'public' },
@@ -176,10 +177,38 @@ async function listRoleDefinitions(
   return RoleDefinitionRowsSchema.parse(data).map(toRoleDefinition)
 }
 
-async function listUsers(): Promise<readonly AccessUser[]> {
+async function listUsers(platformTenantId: string | null): Promise<readonly AccessUser[]> {
+  if (platformTenantId === null) {
+    const result = await accessSupabase
+      .from('users')
+      .select('id,workos_user_id,email')
+      .order('created_at', { ascending: true })
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'listUsers',
+      table: 'users',
+    })
+    return UserRowsSchema.parse(data).map(toUser)
+  }
+
+  const membershipResult = await accessSupabase
+    .from('tenant_memberships')
+    .select('user_id')
+    .eq('platform_tenant_id', platformTenantId)
+  const membershipData = unwrapSupabaseResultOrThrow(membershipResult, {
+    operation: 'listUsers.memberships',
+    table: 'tenant_memberships',
+  })
+  const userIds = [
+    ...new Set(MembershipUserIdRowsSchema.parse(membershipData).map((row) => row.user_id)),
+  ]
+  if (userIds.length === 0) {
+    return []
+  }
+
   const result = await accessSupabase
     .from('users')
     .select('id,workos_user_id,email')
+    .in('id', userIds)
     .order('created_at', { ascending: true })
   const data = unwrapSupabaseResultOrThrow(result, {
     operation: 'listUsers',
@@ -257,7 +286,7 @@ export const supabaseAccessRepository: AccessRepository = {
       await Promise.all([
         listTenants(platformTenantId),
         listRoleDefinitions(platformTenantId),
-        listUsers(),
+        listUsers(platformTenantId),
         listMemberships(platformTenantId),
         listImporters(platformTenantId),
         listMembershipImporterAccess(platformTenantId),
