@@ -427,12 +427,12 @@ render_prompt() {
 
   local tmpdir
   tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"' RETURN
 
   printf '%s' "$comments_json" > "$tmpdir/comments.json"
   printf '%s' "$reviews_json" > "$tmpdir/reviews.json"
   printf '%s' "$issue_comments_json" > "$tmpdir/issue_comments.json"
 
+  local jq_status=0
   jq -rn \
     --arg repo "$REPO" \
     --arg pr "$PR_NUMBER" \
@@ -511,6 +511,9 @@ def block($path; $body; $meta):
 + "`pnpm check` green ao fim da implementacao\n"
 + "Commite com `chore(pr): apply PR #\($pr) suggestions`\n"
 '
+  jq_status=$?
+  rm -rf "$tmpdir"
+  return "$jq_status"
 }
 
 if [[ ${#RESOLVE_IDS[@]} -gt 0 ]]; then

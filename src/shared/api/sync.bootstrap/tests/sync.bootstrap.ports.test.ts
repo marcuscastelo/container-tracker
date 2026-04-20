@@ -111,6 +111,10 @@ const supabaseMock = vi.hoisted(() => {
   }
 })
 
+vi.hoisted(() => {
+  process.env.SUPABASE_ANON_KEY ??= 'test-supabase-anon-key'
+})
+
 vi.mock('~/shared/supabase/supabase.server', () => ({
   supabaseServer: {
     from: supabaseMock.from,
