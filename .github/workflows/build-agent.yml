@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-agent:
+  build-agent-linux:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,8 +41,18 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN }}
 
-      - name: Build release app
+      - name: Type-check agent
+        run: pnpm run type-check:agent
+
+      - name: Agent boundary gates
+        run: pnpm run agent:boundary-scan
+
+      - name: Agent smoke suites
+        run: pnpm run agent:smoke
+
+      - name: Build Linux release app
         env:
+          AGENT_RELEASE_TARGET: linux-x64
           BACKEND_URL: https://agent.invalid
           INSTALLER_TOKEN: ci-installer-token
         run: pnpm run agent:release
@@ -62,25 +72,92 @@ jobs:
           tar -C /tmp -czf agent-linux-x64.tar.gz agent-linux-x64
           sha256sum agent-linux-x64.tar.gz | awk '{print $1}' > agent-linux-x64.sha256
 
-      - name: Package windows artifact
-        run: |
-          rm -rf /tmp/agent-windows-x64
-          mkdir -p /tmp/agent-windows-x64
-          cp -R release/app/. /tmp/agent-windows-x64
-          test -f /tmp/agent-windows-x64/node_modules/@supabase/supabase-js/package.json
-          (
-            cd /tmp
-            zip -qr "${GITHUB_WORKSPACE}/agent-windows-x64.zip" agent-windows-x64
-          )
-          sha256sum agent-windows-x64.zip | awk '{print $1}' > agent-windows-x64.sha256
-
-      - name: Upload artifact
+      - name: Upload linux artifact
         uses: actions/upload-artifact@v4
         with:
-          name: agent-release-assets
+          name: agent-release-linux-x64
           path: |
             agent-linux-x64.tar.gz
             agent-linux-x64.sha256
+          if-no-files-found: error
+
+  build-agent-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN }}
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build Windows release app
+        env:
+          AGENT_RELEASE_TARGET: windows-x64
+          BACKEND_URL: https://agent.invalid
+          INSTALLER_TOKEN: ci-installer-token
+        run: pnpm run agent:release
+
+      - name: Assert Windows startup launcher artifact
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'release/ct-agent-startup.exe')) {
+            throw 'release/ct-agent-startup.exe was not generated.'
+          }
+
+      - name: Package windows artifact
+        shell: pwsh
+        run: |
+          $targetDir = Join-Path $env:RUNNER_TEMP 'agent-windows-x64'
+          Remove-Item -LiteralPath $targetDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $targetDir | Out-Null
+          Copy-Item -Path 'release/*' -Destination $targetDir -Recurse -Force
+
+          $zipPath = Join-Path $env:GITHUB_WORKSPACE 'agent-windows-x64.zip'
+          Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
+          Compress-Archive -Path (Join-Path $targetDir '*') -DestinationPath $zipPath -Force
+
+          $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLowerInvariant()
+          Set-Content -Path 'agent-windows-x64.sha256' -Value $hash -NoNewline
+
+      - name: Build native Windows installer
+        run: pnpm run agent:setup:native
+
+      - name: Assert setup artifact
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'apps/agent/src/installer/Output/ContainerTrackerAgent-Setup.exe')) {
+            throw 'ContainerTrackerAgent-Setup.exe was not generated.'
+          }
+
+      - name: Upload windows release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-release-windows-x64
+          path: |
             agent-windows-x64.zip
             agent-windows-x64.sha256
+          if-no-files-found: error
+
+      - name: Upload setup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-windows-setup
+          path: apps/agent/src/installer/Output/ContainerTrackerAgent-Setup.exe
           if-no-files-found: error

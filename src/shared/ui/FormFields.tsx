@@ -55,7 +55,7 @@ export function FormInput(props: InputProps): JSX.Element {
         placeholder={local.placeholder}
         disabled={local.disabled}
         required={local.required}
-        class={`block w-full rounded-md border border-control-border bg-control-bg px-3 py-2 text-sm-ui text-control-popover-foreground shadow-sm transition-colors placeholder:text-control-placeholder focus:outline-none focus:ring-2 focus:ring-ring/40 disabled:cursor-not-allowed disabled:bg-control-bg-hover disabled:text-control-foreground ${
+        class={`motion-focus-surface block w-full rounded-md border border-control-border bg-control-bg px-3 py-2 text-sm-ui text-control-popover-foreground shadow-sm placeholder:text-control-placeholder focus:bg-surface focus:outline-none focus:ring-2 focus:ring-ring/40 disabled:cursor-not-allowed disabled:bg-control-bg-hover disabled:text-control-foreground ${
           hasError()
             ? 'border-tone-danger-border focus:border-tone-danger-strong focus:ring-tone-danger-strong/40'
             : 'focus:border-control-selected-border'
@@ -112,7 +112,7 @@ export function FormSelect(props: SelectProps): JSX.Element {
         onInput={(e) => props.onInput(e.currentTarget.value)}
         disabled={props.disabled}
         required={props.required}
-        class="block w-full rounded-md border border-control-border bg-control-bg px-3 py-2 text-sm-ui text-control-popover-foreground shadow-sm transition-colors focus:border-control-selected-border focus:outline-none focus:ring-2 focus:ring-ring/40 disabled:cursor-not-allowed disabled:bg-control-bg-hover disabled:text-control-foreground"
+        class="motion-focus-surface block w-full rounded-md border border-control-border bg-control-bg px-3 py-2 text-sm-ui text-control-popover-foreground shadow-sm focus:bg-surface focus:border-control-selected-border focus:outline-none focus:ring-2 focus:ring-ring/40 disabled:cursor-not-allowed disabled:bg-control-bg-hover disabled:text-control-foreground"
       >
         <Show when={props.placeholder}>
           {/* Placeholder option is hidden from the dropdown list so it can act as an

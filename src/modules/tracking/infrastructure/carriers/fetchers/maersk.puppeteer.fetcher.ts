@@ -34,6 +34,11 @@ type CapturedRequestMeta = {
   readonly postData?: string
 }
 
+type CapturedResponseMeta = {
+  readonly url: string
+  readonly status: number
+}
+
 function normalizeForMatch(value: string): string {
   return value.toUpperCase().trim()
 }
@@ -384,6 +389,90 @@ export function createMaerskCaptureService(): MaerskCaptureService {
           score: Number.NEGATIVE_INFINITY,
         }
         const reqMap = new Map<string, CapturedRequestMeta>()
+        const resMap = new Map<string, CapturedResponseMeta>()
+        const inFlightBodyCapture = new Set<string>()
+
+        const clearTrackedRequest = (requestId: string) => {
+          reqMap.delete(requestId)
+          resMap.delete(requestId)
+        }
+
+        const captureResponseBodyFromRequest = async (requestId: string) => {
+          const responseMeta = resMap.get(requestId)
+          if (!responseMeta || inFlightBodyCapture.has(requestId)) return
+          inFlightBodyCapture.add(requestId)
+
+          try {
+            const bodyResult = await cdpClient.send('Network.getResponseBody', {
+              requestId,
+            })
+            if (!isRecord(bodyResult) || typeof bodyResult.body !== 'string') {
+              clearTrackedRequest(requestId)
+              return
+            }
+
+            const body = bodyResult.base64Encoded
+              ? Buffer.from(bodyResult.body, 'base64').toString('utf8')
+              : bodyResult.body
+
+            const reqInfo = reqMap.get(requestId)
+
+            let telemetry: string | null = null
+            try {
+              telemetry = await page.evaluate(() => {
+                try {
+                  // @ts-expect-error dynamic access to anti-bot runtime
+                  const bmak = window.bmak
+                  if (bmak && typeof bmak.get_telemetry === 'function') return bmak.get_telemetry()
+                } catch {
+                  /* ignore */
+                }
+                return null
+              })
+            } catch {
+              telemetry = null
+            }
+
+            const cookiesRaw = await page.cookies()
+            const cookies = cookiesRaw.map(toCaptureCookie)
+            const userAgent = await page.evaluate(() => navigator.userAgent)
+            const candidateScore = scoreTrackingCaptureCandidate(
+              responseMeta.url,
+              body,
+              command.container,
+            )
+
+            if (candidateScore >= captureState.score) {
+              captureState.data = {
+                url: responseMeta.url,
+                method: reqInfo?.method ?? 'GET',
+                headers: reqInfo?.headers ?? {},
+                status: responseMeta.status,
+                body,
+                cookies,
+                userAgent,
+                telemetry,
+                timestamp: systemClock.now().toIsoString(),
+                ...(reqInfo?.postData === undefined ? {} : { postData: reqInfo.postData }),
+              }
+              captureState.score = candidateScore
+            }
+
+            console.log('[maersk-refresh] Candidate capture score:', candidateScore)
+            clearTrackedRequest(requestId)
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            if (message.includes('No resource with given identifier found')) {
+              // Can happen if response lifecycle closed before body retrieval; skip noisy stack trace.
+              console.debug('[maersk-refresh] Response body unavailable for requestId:', requestId)
+            } else {
+              console.warn('[maersk-refresh] Error getting response body:', error)
+            }
+            clearTrackedRequest(requestId)
+          } finally {
+            inFlightBodyCapture.delete(requestId)
+          }
+        }
 
         cdpClient.on('Network.requestWillBeSent', (evt: unknown) => {
           try {
@@ -403,7 +492,7 @@ export function createMaerskCaptureService(): MaerskCaptureService {
           }
         })
 
-        cdpClient.on('Network.responseReceived', async (evt: unknown) => {
+        cdpClient.on('Network.responseReceived', (evt: unknown) => {
           try {
             if (!isRecord(evt)) return
             const response = isRecord(evt.response) ? evt.response : null
@@ -417,67 +506,32 @@ export function createMaerskCaptureService(): MaerskCaptureService {
               status !== null &&
               isTrackingApiResponseUrl(responseUrl)
             ) {
+              resMap.set(requestId, { url: responseUrl, status })
               console.log('[maersk-refresh] CDP captured response:', responseUrl, 'status:', status)
-
-              try {
-                const bodyResult = await cdpClient.send('Network.getResponseBody', {
-                  requestId,
-                })
-                if (!isRecord(bodyResult) || typeof bodyResult.body !== 'string') return
-
-                const body = bodyResult.base64Encoded
-                  ? Buffer.from(bodyResult.body, 'base64').toString('utf8')
-                  : bodyResult.body
-
-                const reqInfo = reqMap.get(requestId)
-
-                let telemetry: string | null = null
-                try {
-                  telemetry = await page.evaluate(() => {
-                    try {
-                      // @ts-expect-error dynamic access to anti-bot runtime
-                      const bmak = window.bmak
-                      if (bmak && typeof bmak.get_telemetry === 'function')
-                        return bmak.get_telemetry()
-                    } catch {
-                      /* ignore */
-                    }
-                    return null
-                  })
-                } catch {
-                  telemetry = null
-                }
-
-                const cookiesRaw = await page.cookies()
-                const cookies = cookiesRaw.map(toCaptureCookie)
-                const userAgent = await page.evaluate(() => navigator.userAgent)
-                const candidateScore = scoreTrackingCaptureCandidate(
-                  responseUrl,
-                  body,
-                  command.container,
-                )
-
-                if (candidateScore >= captureState.score) {
-                  captureState.data = {
-                    url: responseUrl,
-                    method: reqInfo?.method ?? 'GET',
-                    headers: reqInfo?.headers ?? {},
-                    status,
-                    body,
-                    cookies,
-                    userAgent,
-                    telemetry,
-                    timestamp: systemClock.now().toIsoString(),
-                    ...(reqInfo?.postData === undefined ? {} : { postData: reqInfo.postData }),
-                  }
-                  captureState.score = candidateScore
-                }
-
-                console.log('[maersk-refresh] Candidate capture score:', candidateScore)
-              } catch (error) {
-                console.error('[maersk-refresh] Error getting response body:', error)
-              }
             }
+          } catch {
+            /* ignore */
+          }
+        })
+
+        cdpClient.on('Network.loadingFinished', async (evt: unknown) => {
+          try {
+            if (!isRecord(evt)) return
+            const requestId = typeof evt.requestId === 'string' ? evt.requestId : null
+            if (!requestId || !resMap.has(requestId)) return
+
+            await captureResponseBodyFromRequest(requestId)
+          } catch {
+            /* ignore */
+          }
+        })
+
+        cdpClient.on('Network.loadingFailed', (evt: unknown) => {
+          try {
+            if (!isRecord(evt)) return
+            const requestId = typeof evt.requestId === 'string' ? evt.requestId : null
+            if (!requestId) return
+            clearTrackedRequest(requestId)
           } catch {
             /* ignore */
           }

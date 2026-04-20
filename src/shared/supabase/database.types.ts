@@ -121,6 +121,59 @@ export type Database = {
           },
         ]
       }
+      agent_control_commands: {
+        Row: {
+          acknowledgement_detail: string | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          acknowledged_status: string | null
+          agent_id: string
+          command_type: string
+          created_at: string
+          id: string
+          payload: Json
+          requested_at: string
+          requested_by: string | null
+          tenant_id: string
+        }
+        Insert: {
+          acknowledgement_detail?: string | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          acknowledged_status?: string | null
+          agent_id: string
+          command_type: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          requested_at?: string
+          requested_by?: string | null
+          tenant_id: string
+        }
+        Update: {
+          acknowledgement_detail?: string | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          acknowledged_status?: string | null
+          agent_id?: string
+          command_type?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          requested_at?: string
+          requested_by?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'agent_control_commands_agent_id_fkey'
+            columns: ['agent_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_agents'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       container_observations: {
         Row: {
           carrier_label: string | null
@@ -310,6 +363,7 @@ export type Database = {
           created_at: string | null
           deleted_at: string | null
           destination: Json | null
+          depositary: string | null
           exporter_name: string | null
           id: string
           importer_name: string | null
@@ -331,6 +385,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           destination?: Json | null
+          depositary?: string | null
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
@@ -352,6 +407,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           destination?: Json | null
+          depositary?: string | null
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
@@ -488,6 +544,8 @@ export type Database = {
           processing_state: string
           queue_lag_seconds: number | null
           realtime_state: string
+          remote_blocked_versions: string[]
+          remote_updates_paused: boolean
           restart_requested_at: string | null
           revoked_at: string | null
           status: string
@@ -532,6 +590,8 @@ export type Database = {
           processing_state?: string
           queue_lag_seconds?: number | null
           realtime_state?: string
+          remote_blocked_versions?: string[]
+          remote_updates_paused?: boolean
           restart_requested_at?: string | null
           revoked_at?: string | null
           status?: string
@@ -576,6 +636,8 @@ export type Database = {
           processing_state?: string
           queue_lag_seconds?: number | null
           realtime_state?: string
+          remote_blocked_versions?: string[]
+          remote_updates_paused?: boolean
           restart_requested_at?: string | null
           revoked_at?: string | null
           status?: string
@@ -665,6 +727,85 @@ export type Database = {
             columns: ['container_id']
             isOneToOne: false
             referencedRelation: 'containers'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      tracking_validation_issue_transitions: {
+        Row: {
+          affected_scope: string
+          container_id: string
+          created_at: string
+          detector_id: string
+          detector_version: string
+          evidence_summary: string
+          id: string
+          issue_code: string
+          lifecycle_key: string
+          occurred_at: string
+          process_id: string
+          provider: string
+          severity: string
+          snapshot_id: string
+          state_fingerprint: string
+          transition_type: string
+        }
+        Insert: {
+          affected_scope: string
+          container_id: string
+          created_at?: string
+          detector_id: string
+          detector_version: string
+          evidence_summary: string
+          id?: string
+          issue_code: string
+          lifecycle_key: string
+          occurred_at: string
+          process_id: string
+          provider: string
+          severity: string
+          snapshot_id: string
+          state_fingerprint: string
+          transition_type: string
+        }
+        Update: {
+          affected_scope?: string
+          container_id?: string
+          created_at?: string
+          detector_id?: string
+          detector_version?: string
+          evidence_summary?: string
+          id?: string
+          issue_code?: string
+          lifecycle_key?: string
+          occurred_at?: string
+          process_id?: string
+          provider?: string
+          severity?: string
+          snapshot_id?: string
+          state_fingerprint?: string
+          transition_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tracking_validation_issue_transitions_container_id_fkey'
+            columns: ['container_id']
+            isOneToOne: false
+            referencedRelation: 'containers'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_validation_issue_transitions_process_id_fkey'
+            columns: ['process_id']
+            isOneToOne: false
+            referencedRelation: 'processes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_validation_issue_transitions_snapshot_id_fkey'
+            columns: ['snapshot_id']
+            isOneToOne: false
+            referencedRelation: 'container_snapshots'
             referencedColumns: ['id']
           },
         ]

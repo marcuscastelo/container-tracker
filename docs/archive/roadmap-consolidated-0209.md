@@ -1,6 +1,6 @@
 # Roadmap Técnico — v2 (Consolidado com Datas)
 
-Este roadmap consolida **todas as decisões, ideias, feedbacks de cliente e discussões técnicas** até o momento. Ele é orientado a **execução**, com **entregáveis claros, previsões de data e critérios de aceite**. As datas são **estimativas realistas**, ajustáveis conforme feedback.
+Este roadmap consolida **todas decisões, ideias, feedbacks de cliente e discussões técnicas** até momento. Ele é orientado **execução**, com **entregáveis claros, previsões de data e critérios de aceite**. datas são **estimativas realistas**, ajustáveis conforme feedback.
 
 > Horizonte considerado: **curto prazo (4–6 semanas)** com validação contínua do cliente.
 
@@ -23,7 +23,7 @@ Este roadmap consolida **todas as decisões, ideias, feedbacks de cliente e disc
 ### F0.1 — Modelo Canônico Executável (DONE)
 
 **Objetivo**
-Estabelecer o vocabulário único do sistema.
+Estabelecer vocabulário único do sistema.
 
 ---
 
@@ -69,7 +69,7 @@ Converter dados inconsistentes em verdade operacional confiável **com correçã
 📅 **Status:** EM PROGRESSO
 
 **Objetivo**
-Padronizar e estabilizar os campos operacionais do processo antes de avançar para alertas e automações.
+Padronizar e estabilizar campos operacionais do processo antes de avançar para alertas e automações.
 
 **Entregas (parciais)**
 
@@ -96,8 +96,8 @@ Padronizar e estabilizar os campos operacionais do processo antes de avançar pa
 
 **Critério de aceite**
 
-* Todos os campos 2–9 padronizados e documentados
-* Nenhum campo ambíguo para o usuário final
+* Todos campos 2–9 padronizados e documentados
+* Nenhum campo ambíguo para usuário final
 
 ---
 
@@ -106,7 +106,7 @@ Padronizar e estabilizar os campos operacionais do processo antes de avançar pa
 📅 **Status:** DEPOIS DO F0.2
 
 **Objetivo**
-Tratar apenas bugs não críticos ou específicos que não impactam a derivação canônica.
+Tratar bugs não críticos ou específicos que não impactam derivação canônica.
 
 **Escopo**
 
@@ -198,7 +198,7 @@ Tratar apenas bugs não críticos ou específicos que não impactam a derivaçã
 * Envio de email em alertas FACT
 * Assunto claro (mudança de navio)
 * Conteúdo objetivo
-* Link direto para o processo
+* Link direto para processo
 
 ---
 
@@ -223,4 +223,4 @@ Tratar apenas bugs não críticos ou específicos que não impactam a derivaçã
 
 ---
 
-Este roadmap é o **contrato técnico-operacional do projeto**. Novos pedidos entram como fase ou ajuste explícito, nunca de forma implícita.
+Este roadmap é **contrato técnico-operacional do projeto**. Novos pedidos entram como fase ou ajuste explícito, nunca de forma implícita.

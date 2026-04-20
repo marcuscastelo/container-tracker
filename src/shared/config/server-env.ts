@@ -1,5 +1,6 @@
 import { z } from 'zod/v4'
 
+import { resolveAgentEnrollInfraConfigFromEnv } from '~/shared/config/agent-enroll-infra-env'
 import { parseWithStack } from '~/shared/utils/parseWithStack'
 
 function normalizeOptionalEnv(value: string | undefined): string | undefined {
@@ -47,6 +48,8 @@ const serverEnvSchema = z.object({
 })
 
 const getServerEnvVars = (): unknown => {
+  const agentEnrollInfra = resolveAgentEnrollInfraConfigFromEnv(process.env)
+
   return {
     SUPABASE_URL: process.env.SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -55,14 +58,8 @@ const getServerEnvVars = (): unknown => {
     AGENT_LEASE_MINUTES: process.env.AGENT_LEASE_MINUTES,
     AGENT_ENROLL_DEFAULT_INTERVAL_SEC: process.env.AGENT_ENROLL_DEFAULT_INTERVAL_SEC,
     AGENT_ENROLL_DEFAULT_LIMIT: process.env.AGENT_ENROLL_DEFAULT_LIMIT,
-    AGENT_ENROLL_SUPABASE_URL: normalizeOptionalEnv(
-      process.env.AGENT_ENROLL_SUPABASE_URL ?? process.env.SUPABASE_URL,
-    ),
-    AGENT_ENROLL_SUPABASE_ANON_KEY: normalizeOptionalEnv(
-      process.env.AGENT_ENROLL_SUPABASE_ANON_KEY ??
-        process.env.SUPABASE_ANON_KEY ??
-        process.env.VITE_PUBLIC_SUPABASE_ANON_KEY,
-    ),
+    AGENT_ENROLL_SUPABASE_URL: agentEnrollInfra.supabaseUrl,
+    AGENT_ENROLL_SUPABASE_ANON_KEY: agentEnrollInfra.supabaseAnonKey,
     AGENT_ENROLL_DEFAULT_MAERSK_ENABLED: parseBooleanEnv(
       process.env.AGENT_ENROLL_DEFAULT_MAERSK_ENABLED,
       true,

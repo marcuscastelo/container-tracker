@@ -14,8 +14,30 @@ export const scenarioSeeder = createScenarioSeeder({
     return {
       process: {
         id: result.process.id,
+        reference: result.process.reference,
       },
       containers: result.containers.map((container) => ({
+        id: String(container.id),
+        containerNumber: String(container.containerNumber),
+      })),
+    }
+  },
+
+  async findProcessByIdWithContainers({ processId }) {
+    const result = await processUseCases.findProcessByIdWithContainers({ processId })
+    if (result.process === null) {
+      return {
+        process: null,
+        containers: [],
+      }
+    }
+
+    return {
+      process: {
+        id: result.process.process.id,
+        reference: result.process.process.reference,
+      },
+      containers: result.process.containers.map((container) => ({
         id: String(container.id),
         containerNumber: String(container.containerNumber),
       })),

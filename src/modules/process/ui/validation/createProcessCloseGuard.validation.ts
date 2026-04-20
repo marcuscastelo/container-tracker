@@ -9,6 +9,7 @@ export type CreateProcessCloseGuardFormSnapshot = {
   readonly importerName: string
   readonly exporterName: string
   readonly referenceImporter: string
+  readonly depositary: string
   readonly product: string
   readonly redestinationNumber: string
 }
@@ -35,6 +36,7 @@ export function createDefaultCreateProcessCloseGuardFormSnapshot(): CreateProces
     importerName: '',
     exporterName: '',
     referenceImporter: '',
+    depositary: '',
     product: '',
     redestinationNumber: '',
   }
@@ -54,6 +56,7 @@ export function isCreateProcessCloseGuardFormDirty(params: {
   if (params.current.importerName !== params.baseline.importerName) return true
   if (params.current.exporterName !== params.baseline.exporterName) return true
   if (params.current.referenceImporter !== params.baseline.referenceImporter) return true
+  if (params.current.depositary !== params.baseline.depositary) return true
   if (params.current.product !== params.baseline.product) return true
   if (params.current.redestinationNumber !== params.baseline.redestinationNumber) return true
   return false

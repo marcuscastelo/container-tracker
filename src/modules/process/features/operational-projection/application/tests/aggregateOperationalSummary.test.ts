@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { aggregateOperationalSummary } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
+import { aggregateOperationalSummary as aggregateOperationalSummaryV2 } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import type { OperationalStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
+import { createEmptyTrackingValidationContainerProjectionSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { resolveTemporalValue, temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 type TrackingAlertLike = {
@@ -20,11 +22,185 @@ function makeAlert(overrides: Partial<TrackingAlertLike> = {}): TrackingAlertLik
   }
 }
 
+type TestSummary = ReturnType<typeof makeSummary>
+
+function toIncidentType(type: string): OperationalIncidentReadModel['type'] {
+  switch (type) {
+    case 'TRANSSHIPMENT':
+    case 'PLANNED_TRANSSHIPMENT':
+    case 'CUSTOMS_HOLD':
+    case 'PORT_CHANGE':
+    case 'ETA_PASSED':
+    case 'ETA_MISSING':
+    case 'DATA_INCONSISTENT':
+      return type
+    default:
+      return 'DATA_INCONSISTENT'
+  }
+}
+
+function toIncidentCategory(
+  type: OperationalIncidentReadModel['type'],
+): OperationalIncidentReadModel['category'] {
+  if (type === 'TRANSSHIPMENT' || type === 'PLANNED_TRANSSHIPMENT' || type === 'PORT_CHANGE') {
+    return 'movement'
+  }
+  if (type === 'ETA_PASSED' || type === 'ETA_MISSING') return 'eta'
+  if (type === 'CUSTOMS_HOLD') return 'customs'
+  return 'data'
+}
+
+function toIncidentFact(
+  type: OperationalIncidentReadModel['type'],
+): OperationalIncidentReadModel['fact'] {
+  switch (type) {
+    case 'TRANSSHIPMENT':
+      return { messageKey: 'incidents.fact.transshipmentDetected', messageParams: {} }
+    case 'PLANNED_TRANSSHIPMENT':
+      return { messageKey: 'incidents.fact.plannedTransshipmentDetected', messageParams: {} }
+    case 'CUSTOMS_HOLD':
+      return { messageKey: 'incidents.fact.customsHoldDetected', messageParams: {} }
+    case 'PORT_CHANGE':
+      return { messageKey: 'incidents.fact.portChange', messageParams: {} }
+    case 'ETA_PASSED':
+      return { messageKey: 'incidents.fact.etaPassed', messageParams: {} }
+    case 'ETA_MISSING':
+      return { messageKey: 'incidents.fact.etaMissing', messageParams: {} }
+    case 'DATA_INCONSISTENT':
+      return { messageKey: 'incidents.fact.dataInconsistent', messageParams: {} }
+  }
+}
+
+function toIncidentAction(
+  type: OperationalIncidentReadModel['type'],
+): OperationalIncidentReadModel['action'] {
+  if (type === 'TRANSSHIPMENT' || type === 'PLANNED_TRANSSHIPMENT' || type === 'PORT_CHANGE') {
+    return {
+      actionKey: 'incidents.action.updateRedestination',
+      actionParams: {},
+      actionKind: 'UPDATE_REDESTINATION',
+    }
+  }
+  if (type === 'CUSTOMS_HOLD') {
+    return {
+      actionKey: 'incidents.action.followUpCustoms',
+      actionParams: {},
+      actionKind: 'FOLLOW_UP_CUSTOMS',
+    }
+  }
+  if (type === 'DATA_INCONSISTENT') {
+    return {
+      actionKey: 'incidents.action.reviewData',
+      actionParams: {},
+      actionKind: 'REVIEW_DATA',
+    }
+  }
+  return {
+    actionKey: 'incidents.action.checkEta',
+    actionParams: {},
+    actionKind: 'CHECK_ETA',
+  }
+}
+
+function toActiveIncidentsFromSummaries(
+  summaries: readonly TestSummary[],
+): readonly OperationalIncidentReadModel[] {
+  return summaries.flatMap((summary, summaryIndex) =>
+    summary.alerts.map((alert, alertIndex) => {
+      const type = toIncidentType(alert.type)
+      const containerId = `${summary.container_number}-${summaryIndex}`
+      const alertId = alert.id
+
+      return {
+        incidentKey: `${type}:${containerId}:${alertIndex}`,
+        category: toIncidentCategory(type),
+        type,
+        bucket: 'active',
+        severity:
+          alert.severity === 'danger' || alert.severity === 'warning' ? alert.severity : 'info',
+        fact: toIncidentFact(type),
+        action: toIncidentAction(type),
+        scope: {
+          affectedContainerCount: 1,
+          containers: [
+            {
+              containerId,
+              containerNumber: summary.container_number,
+              lifecycleState: 'ACTIVE',
+            },
+          ],
+        },
+        detectedAt: alert.triggered_at,
+        triggeredAt: alert.triggered_at,
+        triggerRefs: [
+          {
+            alertId,
+            containerId,
+          },
+        ],
+        members: [
+          {
+            containerId,
+            containerNumber: summary.container_number,
+            lifecycleState: 'ACTIVE',
+            detectedAt: alert.triggered_at,
+            records: [
+              {
+                alertId,
+                lifecycleState: 'ACTIVE',
+                detectedAt: alert.triggered_at,
+                triggeredAt: alert.triggered_at,
+                ackedAt: null,
+                resolvedAt: null,
+                resolvedReason: null,
+              },
+            ],
+          },
+        ],
+      } satisfies OperationalIncidentReadModel
+    }),
+  )
+}
+
+function aggregateOperationalSummary(
+  processId: string,
+  reference: string | null,
+  carrier: string | null,
+  containerCount: number,
+  summaries: readonly TestSummary[],
+  now?: ReturnType<typeof temporalDtoFromCanonical>,
+) {
+  const activeOperationalIncidents = toActiveIncidentsFromSummaries(summaries)
+  const result = aggregateOperationalSummaryV2(
+    processId,
+    reference,
+    carrier,
+    containerCount,
+    summaries,
+    activeOperationalIncidents,
+    now,
+  )
+
+  return {
+    ...result,
+    alerts_count: result.operational_incidents.summary.active_incidents_count,
+    highest_alert_severity: result.operational_incidents.dominant?.severity ?? null,
+    dominant_alert_created_at: result.operational_incidents.dominant?.triggeredAt ?? null,
+    has_transshipment: activeOperationalIncidents.some(
+      (incident) => incident.type === 'TRANSSHIPMENT',
+    ),
+  }
+}
+
 function makeSummary(
   overrides: {
+    containerNumber?: string
     status?: OperationalStatus
     alerts?: readonly TrackingAlertLike[]
     observations?: readonly { event_time: string | null }[]
+    trackingValidation?: Partial<
+      ReturnType<typeof createEmptyTrackingValidationContainerProjectionSummary>
+    >
     operational?: {
       etaEventTime?: string | null
       etaState?: 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
@@ -52,10 +228,19 @@ function makeSummary(
             ? {}
             : { lifecycleBucket: overrides.operational.lifecycleBucket }),
         }
+  const defaultTrackingValidation = createEmptyTrackingValidationContainerProjectionSummary()
 
   return {
+    container_number: overrides.containerNumber ?? 'MSCU1234567',
     status: overrides.status ?? 'UNKNOWN',
     alerts: overrides.alerts ?? [],
+    tracking_validation:
+      overrides.trackingValidation === undefined
+        ? defaultTrackingValidation
+        : {
+            ...defaultTrackingValidation,
+            ...overrides.trackingValidation,
+          },
     has_observations: (overrides.observations?.length ?? 0) > 0,
     last_event_at:
       overrides.observations === undefined || overrides.observations.length === 0
@@ -115,7 +300,7 @@ describe('aggregateOperationalSummary', () => {
   it('returns BOOKED when observations include both pre-shipment and transit statuses', () => {
     const summaries = [
       makeSummary({
-        status: 'IN_PROGRESS',
+        status: 'BOOKED',
         observations: [{ event_time: '2026-03-01T00:00:00.000Z' }],
       }),
       makeSummary({
@@ -349,7 +534,7 @@ describe('aggregateOperationalSummary', () => {
     const summaries = [
       makeSummary({
         alerts: [
-          makeAlert({ id: 'a1', severity: 'info', type: 'NO_MOVEMENT' }),
+          makeAlert({ id: 'a1', severity: 'info', type: 'ETA_PASSED' }),
           makeAlert({ id: 'a2', severity: 'warning', type: 'TRANSSHIPMENT' }),
         ],
       }),
@@ -369,7 +554,7 @@ describe('aggregateOperationalSummary', () => {
         alerts: [
           makeAlert({
             severity: 'info',
-            type: 'NO_MOVEMENT',
+            type: 'ETA_PASSED',
             triggered_at: '2026-03-03T10:00:00.000Z',
           }),
         ],
@@ -397,7 +582,7 @@ describe('aggregateOperationalSummary', () => {
         alerts: [
           makeAlert({
             severity: 'info',
-            type: 'NO_MOVEMENT',
+            type: 'ETA_PASSED',
             triggered_at: '2026-03-03T09:00:00.000Z',
           }),
           makeAlert({
@@ -427,7 +612,7 @@ describe('aggregateOperationalSummary', () => {
           makeAlert({
             id: 'a1',
             severity: 'warning',
-            type: 'NO_MOVEMENT',
+            type: 'ETA_PASSED',
             triggered_at: '2026-03-03T10:00:00.000Z',
           }),
         ],
@@ -450,6 +635,40 @@ describe('aggregateOperationalSummary', () => {
     expect(result.dominant_alert_created_at).toBe('2026-03-03T11:00:00.000Z')
   })
 
+  it('elevates attention severity to danger when tracking validation is critical', () => {
+    const summaries = [
+      makeSummary({
+        trackingValidation: {
+          hasIssues: true,
+          findingCount: 1,
+          highestSeverity: 'CRITICAL',
+        },
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 1, summaries)
+
+    expect(result.highest_alert_severity).toBeNull()
+    expect(result.attention_severity).toBe('danger')
+  })
+
+  it('keeps attention severity null when tracking validation is advisory only', () => {
+    const summaries = [
+      makeSummary({
+        trackingValidation: {
+          hasIssues: true,
+          findingCount: 1,
+          highestSeverity: 'ADVISORY',
+        },
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 1, summaries)
+
+    expect(result.highest_alert_severity).toBeNull()
+    expect(result.attention_severity).toBeNull()
+  })
+
   it('detects transshipment alert at process level', () => {
     const summaries = [
       makeSummary({
@@ -466,7 +685,7 @@ describe('aggregateOperationalSummary', () => {
   it('returns false for transshipment when no such alert', () => {
     const summaries = [
       makeSummary({
-        alerts: [makeAlert({ type: 'NO_MOVEMENT' })],
+        alerts: [makeAlert({ type: 'ETA_PASSED' })],
       }),
     ]
 

@@ -13,11 +13,17 @@
       "!.vinxi",
       "!.vinxi",
       "!dist",
+      "!release",
       "!release/app/dist",
-      "!tools/agent/dist",
+      "!apps/agent/dist",
+      "!apps/agent/.cache",
+      "!apps/agent/release",
       "!build",
       "!out",
       "!.output",
+      "!tools/agent/.cache",
+      "!tools/agent/dist",
+      "!tools/agent/installer/Output",
       "!tools/ralph-loop",
       "!.ralph-loop",
       "!coverage",
@@ -99,7 +105,8 @@
   "formatter": {
     "lineWidth": 100,
     "indentStyle": "space",
-    "indentWidth": 2
+    "indentWidth": 2,
+    "lineEnding": "lf"
   },
   "javascript": {
     "formatter": {

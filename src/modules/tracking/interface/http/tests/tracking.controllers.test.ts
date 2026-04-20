@@ -112,6 +112,39 @@ function createControllers(options?: {
   }
 }
 
+type TrackingObservationTestOverrides = Omit<Partial<Observation>, 'event_time'> & {
+  readonly id: string
+  readonly fingerprint: string
+  readonly event_time: string
+}
+
+function makeTrackingObservation(
+  containerId: string,
+  overrides: TrackingObservationTestOverrides,
+): Observation {
+  const { event_time, ...rest } = overrides
+
+  return {
+    container_id: containerId,
+    container_number: 'FCIU2000205',
+    type: 'ARRIVAL',
+    event_time: temporalValueFromCanonical(event_time),
+    event_time_type: 'EXPECTED',
+    location_code: 'BRSSZ',
+    location_display: 'SANTOS, BR',
+    vessel_name: 'MSC BIANCA SILVIA',
+    voyage: 'UX614R',
+    is_empty: null,
+    confidence: 'medium',
+    provider: 'msc',
+    created_from_snapshot_id: 'snapshot-1',
+    carrier_label: 'Estimated Time of Arrival',
+    created_at: '2026-04-01T00:00:00.000Z',
+    retroactive: false,
+    ...rest,
+  }
+}
+
 describe('tracking controllers', () => {
   it('list alerts returns enriched display DTO with container and semantic message contract', async () => {
     const containerId = 'container-1'
@@ -262,7 +295,7 @@ describe('tracking controllers', () => {
     expect(unacknowledge).toHaveBeenCalledWith('alert-3')
   })
 
-  it('series-history drilldown returns lazy timeline history for a primary item', async () => {
+  it('prediction-history drilldown returns aggregated versions for a primary item', async () => {
     const containerId = 'container-series'
     const observations: readonly Observation[] = [
       {
@@ -321,13 +354,338 @@ describe('tracking controllers', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body.has_actual_conflict).toBe(false)
-    expect(body.classified).toHaveLength(2)
-    expect(body.classified.map((item: { id: string }) => item.id)).toEqual([
-      'obs-expected-1',
-      'obs-expected-2',
-    ])
+    expect(body).toEqual({
+      header: {
+        tone: 'neutral',
+        summary_kind: 'HISTORY_UPDATED',
+        current_version_id: 'obs-expected-2',
+        previous_version_id: null,
+        original_version_id: 'obs-expected-1',
+        reason_kind: 'ESTIMATE_CHANGED',
+      },
+      versions: [
+        {
+          id: 'obs-expected-2',
+          is_current: true,
+          type: 'ARRIVAL',
+          event_time: { kind: 'instant', value: '2026-03-12T10:00:00.000Z' },
+          event_time_type: 'EXPECTED',
+          vessel_name: null,
+          voyage: null,
+          version_state: 'ESTIMATE_CHANGED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: 'ESTIMATE_CHANGED',
+          observed_at_count: 1,
+          observed_at_list: ['2026-03-02T10:00:00.000Z'],
+          first_observed_at: '2026-03-02T10:00:00.000Z',
+          last_observed_at: '2026-03-02T10:00:00.000Z',
+        },
+        {
+          id: 'obs-expected-1',
+          is_current: false,
+          type: 'ARRIVAL',
+          event_time: { kind: 'instant', value: '2026-03-10T10:00:00.000Z' },
+          event_time_type: 'EXPECTED',
+          vessel_name: null,
+          voyage: null,
+          version_state: 'INITIAL',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: null,
+          observed_at_count: 1,
+          observed_at_list: ['2026-03-01T10:00:00.000Z'],
+          first_observed_at: '2026-03-01T10:00:00.000Z',
+          last_observed_at: '2026-03-01T10:00:00.000Z',
+        },
+      ],
+    })
     expect(findAllObservationsByContainerId).toHaveBeenCalledWith(containerId)
+  })
+
+  it('prediction-history drilldown marks latest observed ETA revision current when date moves earlier', async () => {
+    const containerId = 'container-eta-revision-regression'
+    const observations: readonly Observation[] = [
+      makeTrackingObservation(containerId, {
+        id: 'eta-08',
+        fingerprint: 'fp-eta-08',
+        event_time: '2026-05-08',
+        created_at: '2026-04-04T16:08:30.906851Z',
+      }),
+      makeTrackingObservation(containerId, {
+        id: 'eta-12',
+        fingerprint: 'fp-eta-12',
+        event_time: '2026-05-12',
+        created_at: '2026-04-08T20:05:19.293794Z',
+      }),
+      makeTrackingObservation(containerId, {
+        id: 'eta-03',
+        fingerprint: 'fp-eta-03',
+        event_time: '2026-05-03',
+        created_at: '2026-04-10T10:36:02.943421Z',
+      }),
+      makeTrackingObservation(containerId, {
+        id: 'eta-05',
+        fingerprint: 'fp-eta-05',
+        event_time: '2026-05-05',
+        created_at: '2026-04-10T17:37:48.410353Z',
+      }),
+    ]
+
+    const { controllers } = createControllers({
+      observationsByContainerId: new Map([[containerId, observations]]),
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/timeline-items/eta-05/history?now=2026-04-11T00:00:00.000Z`,
+    )
+    const response = await controllers.detail.getTimelineItemSeriesHistory({
+      params: { containerId, timelineItemId: 'eta-05' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.header.current_version_id).toBe('eta-05')
+    expect(
+      body.versions.map((version: { readonly id: string; readonly is_current: boolean }) => ({
+        id: version.id,
+        isCurrent: version.is_current,
+      })),
+    ).toEqual([
+      { id: 'eta-05', isCurrent: true },
+      { id: 'eta-03', isCurrent: false },
+      { id: 'eta-12', isCurrent: false },
+      { id: 'eta-08', isCurrent: false },
+    ])
+  })
+
+  it('prediction-history drilldown includes cross-series substitutions on the promoted item', async () => {
+    const containerId = 'container-voyage-substitution'
+    const observations: readonly Observation[] = [
+      {
+        id: 'final-generic-old',
+        fingerprint: 'fp-final-generic-old',
+        container_id: containerId,
+        container_number: 'MSDU1976635',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-05-20'),
+        event_time_type: 'EXPECTED',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS, BR',
+        vessel_name: null,
+        voyage: null,
+        is_empty: null,
+        confidence: 'medium',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-1',
+        carrier_label: 'Estimated Time of Arrival',
+        created_at: '2026-04-01T00:00:00.000Z',
+        retroactive: false,
+      },
+      {
+        id: 'singapore-intended',
+        fingerprint: 'fp-singapore-intended',
+        container_id: containerId,
+        container_number: 'MSDU1976635',
+        type: 'TRANSSHIPMENT_INTENDED',
+        event_time: temporalValueFromCanonical('2026-04-23'),
+        event_time_type: 'EXPECTED',
+        location_code: 'SGSIN',
+        location_display: 'SINGAPORE, SG',
+        vessel_name: null,
+        voyage: null,
+        is_empty: null,
+        confidence: 'medium',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-2',
+        carrier_label: 'Full Intended Transshipment',
+        created_at: '2026-04-05T00:00:00.000Z',
+        retroactive: false,
+      },
+      {
+        id: 'final-specific-new',
+        fingerprint: 'fp-final-specific-new',
+        container_id: containerId,
+        container_number: 'MSDU1976635',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-05-15'),
+        event_time_type: 'EXPECTED',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS, BR',
+        vessel_name: 'SAO PAULO EXPRESS',
+        voyage: '2613W',
+        is_empty: null,
+        confidence: 'medium',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-2',
+        carrier_label: 'Estimated Time of Arrival',
+        created_at: '2026-04-05T00:00:00.000Z',
+        retroactive: false,
+      },
+    ]
+
+    const { controllers } = createControllers({
+      observationsByContainerId: new Map([[containerId, observations]]),
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/timeline-items/final-specific-new/history?now=2026-04-06T00:00:00.000Z`,
+    )
+    const response = await controllers.detail.getTimelineItemSeriesHistory({
+      params: { containerId, timelineItemId: 'final-specific-new' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      header: {
+        tone: 'neutral',
+        summary_kind: 'HISTORY_UPDATED',
+        current_version_id: 'final-specific-new',
+        previous_version_id: null,
+        original_version_id: 'final-generic-old',
+        reason_kind: 'PREVIOUS_VERSION_SUBSTITUTED',
+      },
+      versions: [
+        {
+          id: 'final-specific-new',
+          is_current: true,
+          type: 'ARRIVAL',
+          event_time: { kind: 'date', value: '2026-05-15', timezone: null },
+          event_time_type: 'EXPECTED',
+          vessel_name: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+          version_state: 'ESTIMATE_CHANGED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: 'PREVIOUS_VERSION_SUBSTITUTED',
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-05T00:00:00.000Z'],
+          first_observed_at: '2026-04-05T00:00:00.000Z',
+          last_observed_at: '2026-04-05T00:00:00.000Z',
+        },
+        {
+          id: 'final-generic-old',
+          is_current: false,
+          type: 'ARRIVAL',
+          event_time: { kind: 'date', value: '2026-05-20', timezone: null },
+          event_time_type: 'EXPECTED',
+          vessel_name: null,
+          voyage: null,
+          version_state: 'SUBSTITUTED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: null,
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-01T00:00:00.000Z'],
+          first_observed_at: '2026-04-01T00:00:00.000Z',
+          last_observed_at: '2026-04-01T00:00:00.000Z',
+        },
+      ],
+    })
+  })
+
+  it('prediction-history drilldown exposes voyage conflict metadata for merged discharge ACTUAL siblings', async () => {
+    const containerId = 'container-discharge-voyage-conflict'
+    const observations: readonly Observation[] = [
+      {
+        id: 'discharge-old',
+        fingerprint: 'fp-discharge-old',
+        container_id: containerId,
+        container_number: 'GLDU2928252',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-03-28'),
+        event_time_type: 'ACTUAL',
+        location_code: 'LKCMB',
+        location_display: 'COLOMBO, LK',
+        vessel_name: 'MSC ARICA',
+        voyage: 'IV610A',
+        is_empty: null,
+        confidence: 'high',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-1',
+        carrier_label: 'Full Transshipment Discharged',
+        created_at: '2026-04-02T19:12:43.853916Z',
+        retroactive: false,
+      },
+      {
+        id: 'discharge-new',
+        fingerprint: 'fp-discharge-new',
+        container_id: containerId,
+        container_number: 'GLDU2928252',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-03-28'),
+        event_time_type: 'ACTUAL',
+        location_code: 'LKCMB',
+        location_display: 'COLOMBO, LK',
+        vessel_name: 'MSC ARICA',
+        voyage: 'OB610R',
+        is_empty: null,
+        confidence: 'high',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-2',
+        carrier_label: 'Full Transshipment Discharged',
+        created_at: '2026-04-04T16:53:10.273469Z',
+        retroactive: false,
+      },
+    ]
+
+    const { controllers } = createControllers({
+      observationsByContainerId: new Map([[containerId, observations]]),
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/timeline-items/discharge-new/history?now=2026-04-05T00:00:00.000Z`,
+    )
+    const response = await controllers.detail.getTimelineItemSeriesHistory({
+      params: { containerId, timelineItemId: 'discharge-new' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      header: {
+        tone: 'danger',
+        summary_kind: 'CONFLICT_DETECTED',
+        current_version_id: 'discharge-new',
+        previous_version_id: 'discharge-old',
+        original_version_id: null,
+        reason_kind: 'VOYAGE_CHANGED_AFTER_CONFIRMATION',
+      },
+      versions: [
+        {
+          id: 'discharge-new',
+          is_current: true,
+          type: 'DISCHARGE',
+          event_time: { kind: 'date', value: '2026-03-28', timezone: null },
+          event_time_type: 'ACTUAL',
+          vessel_name: 'MSC ARICA',
+          voyage: 'OB610R',
+          version_state: 'CONFIRMED',
+          explanatory_text_kind: null,
+          transition_kind_from_previous_version: 'VOYAGE_CHANGED_AFTER_CONFIRMATION',
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-04T16:53:10.273469Z'],
+          first_observed_at: '2026-04-04T16:53:10.273469Z',
+          last_observed_at: '2026-04-04T16:53:10.273469Z',
+        },
+        {
+          id: 'discharge-old',
+          is_current: false,
+          type: 'DISCHARGE',
+          event_time: { kind: 'date', value: '2026-03-28', timezone: null },
+          event_time_type: 'ACTUAL',
+          vessel_name: 'MSC ARICA',
+          voyage: 'IV610A',
+          version_state: 'CONFIRMED_BEFORE',
+          explanatory_text_kind: 'REPORTED_AS_ACTUAL_AND_CORRECTED_LATER',
+          transition_kind_from_previous_version: null,
+          observed_at_count: 1,
+          observed_at_list: ['2026-04-02T19:12:43.853916Z'],
+          first_observed_at: '2026-04-02T19:12:43.853916Z',
+          last_observed_at: '2026-04-02T19:12:43.853916Z',
+        },
+      ],
+    })
   })
 
   it('observation-inspector drilldown returns a single observation payload', async () => {
@@ -404,6 +762,12 @@ describe('tracking controllers', () => {
     expect(body.sync_count).toBe(1)
     expect(body.selected_snapshot_id).toBe('snapshot-1')
     expect(body.syncs[0]?.snapshot_id).toBe('snapshot-1')
+    expect(body.syncs[0]?.tracking_validation).toEqual({
+      has_issues: false,
+      highest_severity: null,
+      finding_count: 0,
+      active_issues: [],
+    })
     expect(body.syncs[0]?.diff_from_previous.kind).toBe('initial')
   })
 

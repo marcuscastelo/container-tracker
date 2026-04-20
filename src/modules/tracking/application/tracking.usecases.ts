@@ -1,4 +1,5 @@
 import type { PipelineResult } from '~/modules/tracking/application/orchestration/pipeline'
+import type { TrackingGlobalSearchProjection } from '~/modules/tracking/application/projection/tracking.global-search.readmodel'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
 import {
@@ -15,9 +16,9 @@ import {
   findContainersOperationalSummaryProjection as findContainersOperationalSummaryProjectionUseCase,
 } from '~/modules/tracking/application/usecases/find-containers-operational-summary-projection.usecase'
 import {
-  findContainersRecognizedAlertIncidentsProjection,
+  findContainersRecognizedOperationalIncidentsProjection,
   findObservationInspectorProjection,
-  findTimelineItemSeriesHistory,
+  findTimelineItemPredictionHistory,
 } from '~/modules/tracking/application/usecases/find-lazy-tracking-detail.usecases'
 import {
   type GetContainerSummaryResult,
@@ -34,6 +35,7 @@ import {
   type ListActiveAlertsByContainerIdResult,
   listActiveAlertsByContainerId,
 } from '~/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase'
+import { listTrackingGlobalSearchProjections } from '~/modules/tracking/application/usecases/list-tracking-global-search-projections.usecase'
 import { saveAndProcess } from '~/modules/tracking/application/usecases/save-and-process.usecase'
 import { searchTrackingByDerivedStatusText } from '~/modules/tracking/application/usecases/search-tracking-by-derived-status-text.usecase'
 import { searchTrackingByVesselName } from '~/modules/tracking/application/usecases/search-tracking-by-vessel-name.usecase'
@@ -172,12 +174,12 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       return findContainersHotReadProjection(deps, command)
     },
 
-    async findTimelineItemSeriesHistory(command: {
+    async findTimelineItemPredictionHistory(command: {
       readonly containerId: string
       readonly timelineItemId: string
       readonly now?: Instant
     }) {
-      return findTimelineItemSeriesHistory(deps, {
+      return findTimelineItemPredictionHistory(deps, {
         containerId: command.containerId,
         timelineItemId: command.timelineItemId,
         now: command.now ?? systemClock.now(),
@@ -191,13 +193,13 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       return findObservationInspectorProjection(deps, command)
     },
 
-    async findContainersRecognizedAlertIncidentsProjection(command: {
+    async findContainersRecognizedOperationalIncidentsProjection(command: {
       readonly containers: readonly {
         readonly containerId: string
         readonly containerNumber: string
       }[]
     }) {
-      return findContainersRecognizedAlertIncidentsProjection(deps, command)
+      return findContainersRecognizedOperationalIncidentsProjection(deps, command)
     },
 
     /**
@@ -229,6 +231,12 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       limit: number,
     ): Promise<readonly TrackingSearchProjection[]> {
       return searchTrackingByDerivedStatusText(deps, { query, limit, now: systemClock.now() })
+    },
+
+    async listGlobalSearchProjections(command?: {
+      readonly now?: Instant
+    }): Promise<readonly TrackingGlobalSearchProjection[]> {
+      return listTrackingGlobalSearchProjections(deps, command)
     },
 
     /**

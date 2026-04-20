@@ -18,6 +18,7 @@ function createCurrentSnapshot(
     redestinationNumber: '',
     origin: '',
     destination: '',
+    depositary: '',
     billOfLading: '',
     bookingNumber: '',
     containers: [''],
@@ -46,6 +47,7 @@ describe('trelloSmartPasteApply.validation', () => {
       reference: 'CA074-25',
       importerName: 'NACOM GOYA',
       product: 'AZEITONA',
+      depositary: 'MOVECTA',
       containers: ['MRSU8798130', 'MSCU1234567', 'CAAU7648798'],
     })
 
@@ -54,6 +56,7 @@ describe('trelloSmartPasteApply.validation', () => {
     expect(plan.scalarUpdates).toEqual({
       reference: 'CA074-25',
       product: 'AZEITONA',
+      depositary: 'MOVECTA',
     })
     expect(plan.conflicts).toEqual([
       {
@@ -63,6 +66,22 @@ describe('trelloSmartPasteApply.validation', () => {
       },
     ])
     expect(plan.containers).toEqual(['MRSU8798130', 'MSCU1234567', 'CAAU7648798'])
+  })
+
+  it('preserves distinct destination and depositary updates', () => {
+    const current = createCurrentSnapshot()
+    const draft = createParsedDraft({
+      destination: 'Santos',
+      depositary: 'Santos Brasil',
+      containers: ['MSCU1234567'],
+    })
+
+    const plan = buildSmartPasteApplyPlan({ current, draft })
+
+    expect(plan.scalarUpdates).toEqual({
+      destination: 'Santos',
+      depositary: 'Santos Brasil',
+    })
   })
 
   it('applies plan without overwriting conflicts when overwriteConflicts=false', () => {

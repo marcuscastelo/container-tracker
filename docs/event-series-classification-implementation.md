@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implemented comprehensive event series classification enhancement for the Container Tracker platform, adding safe-first conflict detection and redundant EXPECTED event handling as specified in the addendum.
+Implemented comprehensive event series classification enhancement for Container Tracker platform, adding safe-first conflict detection and redundant EXPECTED event handling specified in addendum.
 
 ## Files Created/Modified
 
@@ -48,9 +48,9 @@ Implemented comprehensive event series classification enhancement for the Contai
 
 ### 1. EXPECTED Post-ACTUAL Classification (Rule E1)
 
-**Rule**: EXPECTED entries with `event_time >= lastActualTime` are marked as `REDUNDANT_AFTER_ACTUAL`.
+**Rule**: EXPECTED entries with `event_time >= lastActualTime` are marked `REDUNDANT_AFTER_ACTUAL`.
 
-**Rationale**: Once an event is confirmed (ACTUAL), subsequent carrier predictions for the same milestone are operationally meaningless (API quirks/delayed cache).
+**Rationale**: Once event is confirmed (ACTUAL), subsequent carrier predictions for same milestone are operationally meaningless (API quirks/delayed cache).
 
 **Example**:
 ```
@@ -64,13 +64,13 @@ Series: DEPARTURE @ Port A
 
 ### 2. Conflicting ACTUAL Detection (Safe-First)
 
-**Rule**: When multiple ACTUAL entries exist in a series, select latest by `event_time` (tie-breaker: `created_at`).
+**Rule**: When multiple ACTUAL entries exist in series, select latest by `event_time` (tie-breaker: `created_at`).
 
 **Detection**: Sets `hasActualConflict: true`, `conflictingActualCount: N-1`.
 
 **UI Warning**: Shows red alert badge in modal header:
 - "Multiple confirmed events detected"
-- "For safety, we're showing the most recent event. Please review the history below."
+- "For safety, we're showing most recent event. Please review history below."
 
 **Example**:
 ```
@@ -82,9 +82,9 @@ Series: ARRIVAL @ POD
 
 ### 3. Superseded EXPECTED Classification
 
-**Rule**: EXPECTED entries before ACTUAL are marked `SUPERSEDED_EXPECTED` (not EXPIRED), because they were confirmed by the ACTUAL.
+**Rule**: EXPECTED entries before ACTUAL are marked `SUPERSEDED_EXPECTED` (not EXPIRED), because they were confirmed by ACTUAL.
 
-**Rule 2**: When an active EXPECTED exists, older EXPECTED entries are `SUPERSEDED_EXPECTED` (not EXPIRED).
+**Rule 2**: When active EXPECTED exists, older EXPECTED entries are `SUPERSEDED_EXPECTED` (not EXPIRED).
 
 **Example**:
 ```
@@ -95,14 +95,14 @@ Series: Only EXPECTED, no ACTUAL
 
 ### 4. Main Timeline Primary Selection
 
-**Rule**: Primary is always the latest ACTUAL if any exists, otherwise latest valid (non-expired, non-redundant) EXPECTED.
+**Rule**: Primary is always latest ACTUAL if any exists, otherwise latest valid (non-expired, non-redundant) EXPECTED.
 
 **Precedence**: ACTUAL > active EXPECTED > (nothing if all EXPECTED are expired/redundant)
 
 ### 5. Null `event_time` Handling
 
 - ACTUAL with null `event_time`: Uses `created_at` for comparison
-- EXPECTED with null `event_time`: Treated as active (not expired)
+- EXPECTED with null `event_time`: Treated active (not expired)
 - Conflict detection: Works correctly with null times
 
 ## Test Coverage
@@ -120,8 +120,8 @@ All 23 tests passing (133 total in tracking domain):
 
 ## Acceptance Criteria
 
-✅ EXPECTED entries after ACTUAL labeled as redundant/invalid in history
-✅ Series with 2+ ACTUAL shows warning and labels non-primary as conflicting
+✅ EXPECTED entries after ACTUAL labeled redundant/invalid in history
+✅ Series with 2+ ACTUAL shows warning and labels non-primary conflicting
 ✅ Main timeline stays clean (primary = latest ACTUAL)
 ✅ No persistence changes (projection-only)
 ✅ Deterministic (uses only event_time, event_time_type, created_at, series key)

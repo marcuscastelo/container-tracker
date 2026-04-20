@@ -8,6 +8,9 @@ import type {
   ProcessAggregatedStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { TrackingLifecycleBucket } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { OperationalIncidentReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
+import type { TrackingValidationProcessSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import type { TemporalValueDto } from '~/shared/time/dto'
 
 /**
@@ -56,10 +59,28 @@ export type ProcessOperationalSummary = {
     readonly with_eta: number
   }
 
-  readonly alerts_count: number
-  readonly highest_alert_severity: OperationalAlertSeverity | null
-  readonly dominant_alert_created_at: string | null
+  readonly operational_incidents: {
+    readonly summary: {
+      readonly active_incidents_count: number
+      readonly affected_containers_count: number
+      readonly recognized_incidents_count: number
+    }
+    readonly dominant: Pick<
+      OperationalIncidentReadModel,
+      | 'incidentKey'
+      | 'category'
+      | 'type'
+      | 'severity'
+      | 'fact'
+      | 'action'
+      | 'detectedAt'
+      | 'triggeredAt'
+      | 'scope'
+    > | null
+  }
+  readonly attention_severity: OperationalAlertSeverity | null
+  readonly tracking_validation: TrackingValidationProcessSummary
+  readonly tracking_validation_top_issue: TrackingValidationDisplayIssue | null
 
-  readonly has_transshipment: boolean
   readonly last_event_at: TemporalValueDto | null
 }

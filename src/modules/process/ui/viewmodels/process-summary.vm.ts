@@ -1,5 +1,6 @@
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type { ProcessStatusMicrobadgeVM } from '~/modules/process/ui/viewmodels/process-status-microbadge.vm'
+import type { ProcessTrackingValidationVM } from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
@@ -37,11 +38,26 @@ export type ProcessSummaryVM = {
       }
   readonly etaMsOrNull: number | null
   readonly carrier: string | null
-  readonly alertsCount: number
-  readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null
-  readonly dominantAlertCreatedAt: string | null
+  readonly activeIncidentCount: number
+  readonly affectedContainerCount: number
+  readonly recognizedIncidentCount: number
+  readonly dominantIncident: {
+    readonly type:
+      | 'TRANSSHIPMENT'
+      | 'PLANNED_TRANSSHIPMENT'
+      | 'CUSTOMS_HOLD'
+      | 'PORT_CHANGE'
+      | 'ETA_PASSED'
+      | 'ETA_MISSING'
+      | 'DATA_INCONSISTENT'
+    readonly severity: 'info' | 'warning' | 'danger'
+    readonly factMessageKey: string
+    readonly factMessageParams: Record<string, string | number>
+    readonly triggeredAt: string
+  } | null
+  readonly attentionSeverity: 'info' | 'warning' | 'danger' | null
+  readonly trackingValidation: ProcessTrackingValidationVM
   readonly redestinationNumber?: string | null
-  readonly hasTransshipment: boolean
   readonly lastEventAt: TemporalValueDto | null
   readonly syncStatus: ProcessSyncStatus
   readonly lastSyncAt: string | null

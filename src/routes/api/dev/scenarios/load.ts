@@ -9,6 +9,7 @@ export const runtime = 'nodejs'
 const LoadScenarioBodySchema = z.object({
   scenario_id: z.string().min(1),
   step: z.coerce.number().int().min(1).default(1),
+  reuse_process_id: z.string().min(1).optional(),
 })
 
 const LoadScenarioResponseSchema = z.object({
@@ -18,6 +19,7 @@ const LoadScenarioResponseSchema = z.object({
     appliedStep: z.number().int().min(1),
     processId: z.string(),
     processReference: z.string(),
+    reusedExistingProcess: z.boolean(),
     stage: z.number().int().min(0).max(10),
     containerIds: z.array(z.string()),
     containerNumbers: z.array(z.string()),
@@ -46,6 +48,9 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     const result = await scenarioSeeder.loadScenario({
       scenarioId: parsed.data.scenario_id,
       step: parsed.data.step,
+      ...(parsed.data.reuse_process_id === undefined
+        ? {}
+        : { reuseProcessId: parsed.data.reuse_process_id }),
     })
 
     const payload = { ok: true, result }

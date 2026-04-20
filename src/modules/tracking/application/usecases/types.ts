@@ -1,7 +1,9 @@
 import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
+import type { TrackingContainmentRepository } from '~/modules/tracking/application/ports/tracking.containment.repository'
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
 import type { SyncMetadataRepository } from '~/modules/tracking/application/ports/tracking.sync-metadata.repository'
+import type { TrackingValidationLifecycleRepository } from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
 
 /**
  * Shared dependency type for all tracking use cases.
@@ -14,4 +16,6 @@ export type TrackingUseCasesDeps = {
   readonly observationRepository: ObservationRepository
   readonly trackingAlertRepository: TrackingAlertRepository
   readonly syncMetadataRepository: SyncMetadataRepository
+  readonly trackingContainmentRepository?: TrackingContainmentRepository
+  readonly trackingValidationLifecycleRepository?: TrackingValidationLifecycleRepository
 }

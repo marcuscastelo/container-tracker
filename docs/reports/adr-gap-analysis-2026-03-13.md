@@ -24,7 +24,7 @@ Cobertura já existente relevante:
 - **Repository/mappers/contracts**: já existe em `docs/TYPE_ARCHITECTURE.md` (mappers, repositories, comandos/records/rows).
 - **Server-first sync reconciliation**: já formalizado em ADR-0013.
 
-Leitura objetiva: o repositório já tem bastante decisão arquitetural formal. O gap principal não é “falta total de ADR”, e sim **lacunas específicas de enforcement e de detalhamento em áreas de validação multi-fronteira**.
+Leitura objetiva: repositório já tem bastante decisão arquitetural formal. gap principal não é “falta total de ADR”, e sim **lacunas específicas de enforcement e de detalhamento em áreas de validação multi-fronteira**.
 
 ## 2. Evidence found in codebase
 
@@ -50,7 +50,7 @@ Sinais de ambiguidade nominal:
 - `service` de sort/filter está em `viewmodels/` (`dashboard-filter.service.ts`, `dashboard-sort.service.ts`).
 - `mapper` aparece fora de `mappers/` (`shipmentEdit.mapper.ts` em `lib/`).
 
-Conclusão A: há drift real de taxonomia UI, porém o espaço já está parcialmente coberto por `ARCHITECTURE.md` + ADR-0010 (proposed).
+Conclusão: há drift real de taxonomia UI, porém espaço já está parcialmente coberto por `ARCHITECTURE.md` + ADR-0010 (proposed).
 
 ### B) Validation layering
 
@@ -64,7 +64,7 @@ Separação existe, mas com zonas cinzentas recorrentes:
 
 Ambiguidades concretas:
 
-- `src/modules/process/ui/validation/processApi.validation.ts` mistura validação com **I/O HTTP, cache/prefetch e montagem de query**.
+- `src/modules/process/ui/validation/processApi.validation.ts` mistura validação com **I/ HTTP, cache/prefetch e montagem de query**.
 - `src/modules/tracking/infrastructure/persistence/supabaseSyncMetadataRepository.ts` importa normalizador de usecase (`normalizeContainerNumber`), misturando responsabilidade de camada.
 - `src/modules/process/ui/screens/shipment/lib/shipmentRefresh.status.ts` define schemas e contratos de resposta dentro de `lib/`, não numa fronteira de schema clara.
 
@@ -80,7 +80,7 @@ Padrão robusto já existe no dashboard de process:
   - `dashboardSortStorage.validation.ts`
   - `dashboardFilterQuery.validation.ts`
   - `dashboardFilterStorage.validation.ts`
-- reconciliação server-first explícita em `dashboard-sync-reconciliation.ts` (alinhado a ADR-0013).
+- reconciliação server-first explícita em `dashboard-sync-reconciliation.ts` (alinhado ADR-0013).
 
 Inconsistências observadas:
 
@@ -117,7 +117,7 @@ Drift observado:
 - profundidade de cobertura desigual (`msc` com muito mais testes que `maersk`).
 - `maersk` tem fetcher significativamente mais operacional/complexo (`maersk.puppeteer.fetcher.ts`) e rota legacy deprecada (`src/routes/api/refresh-maersk/[container].ts`).
 
-Conclusão E: a decomposição estrutural já existe e está clara; gap atual é mais de hardening/refactor local que de decisão arquitetural nova.
+Conclusão E: decomposição estrutural já existe e está clara; gap atual é mais de hardening/refactor local que de decisão arquitetural nova.
 
 ### F) Testes grandes
 
@@ -135,15 +135,15 @@ Conclusão F: problema de mantenabilidade local e hygiene contínua, não de dec
 
 ## 3. Candidate ADR evaluation matrix
 
-| Candidate ADR | Evidence strength | Cross-cutting recurrence | Architectural impact | Already covered? | Recommendation | Rationale |
+|Candidate ADR|Evidence strength|Cross-cutting recurrence|Architectural impact|Already covered?|Recommendation|Rationale|
 |---|---|---|---|---|---|---|
-| 1) ADR — UI component taxonomy beyond screens | High | High | High | **Partial** (`ARCHITECTURE.md` + ADR-0010 Proposed) | **Already covered by existing ADR/docs** | O repositório já tem direção formal; criar novo ADR agora seria redundante. Falta rollout/enforcement da ADR-0010 e alinhamento entre módulos (`process/ui`, `agent/ui`, `capabilities/search/ui`). |
-| 2) ADR — UI state / filter / sort / selection separation | Medium | Medium | Medium/High | **Yes (partial-operational)** (`ARCHITECTURE.md` + ADR-0013) | **Prefer guideline/checklist** | O dashboard já implementa padrão robusto; drift remanescente é operacional (coluna/order persistence, variações em `agent/ui`). Checklist de PR + convenção de pastas resolve melhor que ADR novo. |
-| 3) ADR — Validation layering | **High** | **High** | **High** | **Partial** (`TYPE_ARCHITECTURE.md` cobre macro, não modos detalhados) | **Create ADR now** | Há mistura recorrente entre validação, parsing tolerante, boundary decoding e I/O (`processApi.validation.ts`, schemas infra/provider, parse em persistence). Sem decisão formal mais precisa, regressão de layering é provável. |
-| 4) ADR — Repository / Query / Mapper separation | Medium | Medium | High | **Yes (base rules exist)** (`TYPE_ARCHITECTURE.md`) | **Refactor first, ADR later** | Existem arquivos inflados, mas o contrato arquitetural base já está definido. Primeiro extrair hotspots (tracking alert repo, sync bootstrap queries); depois avaliar se falta decisão nova. |
-| 5) ADR — Provider fetcher / schema / normalizer decomposition | Medium/High | High | Medium/High | **Mostly yes (de facto in code + tracking docs)** | **Do not create** | O padrão já existe e é repetido nos 3 carriers. Gaps são de robustez/cobertura desigual, não de falta de decisão estrutural. |
-| 6) ADR — Test suite partitioning strategy | Medium | High | Medium | **Partially yes (AGENTS conventions)** | **Prefer guideline/checklist** | As suítes grandes já usam partições semânticas; o que falta é higiene contínua (extração de builders/helpers), melhor tratada por guideline + lint/CI gradual. |
-| 7) (extra) ADR — Controller orchestration boundary (HTTP adapter thinness) | Medium | Medium/High | High | Partial (`routes thin` sim; controller thin não está formalizado) | **Refactor first, ADR later** | Há controllers/bootstraps muito grandes, mas ainda é cedo para ADR novo antes de medir refactor de 2–3 hotspots e verificar padrão recorrente pós-limpeza. |
+|1) ADR — UI component taxonomy beyond screens|High|High|High|**Partial** (`ARCHITECTURE.md` + ADR-0010 Proposed)|**Already covered by existing ADR/docs**|repositório já tem direção formal; criar novo ADR agora seria redundante. Falta rollout/enforcement da ADR-0010 e alinhamento entre módulos (`process/ui`, `agent/ui`, `capabilities/search/ui`).|
+|2) ADR — UI state / filter / sort / selection separation|Medium|Medium|Medium/High|**Yes (partial-operational)** (`ARCHITECTURE.md` + ADR-0013)|**Prefer guideline/checklist**|dashboard já implementa padrão robusto; drift remanescente é operacional (coluna/order persistence, variações em `agent/ui`). Checklist de PR + convenção de pastas resolve melhor que ADR novo.|
+|3) ADR — Validation layering|**High**|**High**|**High**|**Partial** (`TYPE_ARCHITECTURE.md` cobre macro, não modos detalhados)|**Create ADR now**|Há mistura recorrente entre validação, parsing tolerante, boundary decoding e I/ (`processApi.validation.ts`, schemas infra/provider, parse em persistence). Sem decisão formal mais precisa, regressão de layering é provável.|
+|4) ADR — Repository / Query / Mapper separation|Medium|Medium|High|**Yes (base rules exist)** (`TYPE_ARCHITECTURE.md`)|**Refactor first, ADR later**|Existem arquivos inflados, mas contrato arquitetural base já está definido. Primeiro extrair hotspots (tracking alert repo, sync bootstrap queries); depois avaliar se falta decisão nova.|
+|5) ADR — Provider fetcher / schema / normalizer decomposition|Medium/High|High|Medium/High|**Mostly yes (de facto in code + tracking docs)**|**Do not create**|padrão já existe e é repetido nos 3 carriers. Gaps são de robustez/cobertura desigual, não de falta de decisão estrutural.|
+|6) ADR — Test suite partitioning strategy|Medium|High|Medium|**Partially yes (AGENTS conventions)**|**Prefer guideline/checklist**|suítes grandes já usam partições semânticas; que falta é higiene contínua (extração de builders/helpers), melhor tratada por guideline + lint/CI gradual.|
+|7) (extra) ADR — Controller orchestration boundary (HTTP adapter thinness)|Medium|Medium/High|High|Partial (`routes thin` sim; controller thin não está formalizado)|**Refactor first, ADR later**|Há controllers/bootstraps muito grandes, mas ainda é cedo para ADR novo antes de medir refactor de 2–3 hotspots e verificar padrão recorrente pós-limpeza.|
 
 ## 4. Recommended ADRs now
 
@@ -167,13 +167,13 @@ Conclusão F: problema de mantenabilidade local e hygiene contínua, não de dec
 
 - Onde validação de contrato canônico deve falhar fast (ex.: HTTP boundary).
 - Onde parsing tolerante é aceitável (ex.: payload externo de carrier) e como sinalizar falha (sem esconder incerteza).
-- O que `*.validation.ts` pode ou não conter (evitar mistura com transporte/caching/orquestração).
+- que `*.validation.ts` pode ou não conter (evitar mistura com transporte/caching/orquestração).
 - Regras para parsing de row externa em infra e dependências permitidas entre camadas.
 
 ### What it must explicitly forbid
 
 - `domain` dependente de Zod/schemas de transporte.
-- `*.validation.ts` com I/O de rede/cache como responsabilidade principal.
+- `*.validation.ts` com I/ de rede/cache como responsabilidade principal.
 - infra importando helpers de usecase para normalização que deveriam viver em utilitário de boundary estável.
 - “parse falhou -> silenciar sem sinalização explícita” em fluxos sensíveis de tracking.
 
@@ -183,13 +183,13 @@ Conclusão F: problema de mantenabilidade local e hygiene contínua, não de dec
 - Estratégia de persistência específica de `dashboardColumnOrder`: guideline local de UI state persistence.
 - Tamanho máximo de arquivo de teste por si só: melhor via lint/checklist e extração incremental de fixture builders.
 - Ajustes específicos de coverage por carrier (ex.: aumentar testes de Maersk): isso é backlog técnico, não decisão arquitetural.
-- Reorganização pontual de um repository/controller gigante isolado: primeiro refatorar hotspots, depois reavaliar necessidade de ADR.
+- Reorganização pontual de repository/controller gigante isolado: primeiro refatorar hotspots, depois reavaliar necessidade de ADR.
 
 ## 6. Impact on current balancing plan
 
 Mudanças recomendadas no plano de balanceamento/inspeção da tree:
 
-1. **Criar uma trilha transversal de Validation Layering** (curta, focada em fronteiras), antes de novos refactors amplos de UI.
+1. **Criar trilha transversal de Validation Layering** (curta, focada em fronteiras), antes de novos refactors amplos de UI.
 2. **Tratar UI taxonomy como rollout de decisão existente** (ADR-0010 + ARCHITECTURE), com checklist de PR em vez de novo ADR.
 3. **Executar refactors-alvo em hotspots de infraestrutura** antes de qualquer ADR novo de repository/query split:
    - `supabaseTrackingAlertRepository.ts`
@@ -218,4 +218,4 @@ Mudanças recomendadas no plano de balanceamento/inspeção da tree:
 
 ## Nota de método
 
-`code-report.txt` foi usado como apoio de inventário (tree/tamanho), mas as conclusões acima foram validadas na codebase como source-of-truth (arquivos e trechos citados).
+`code-report.txt` foi usado como apoio de inventário (tree/tamanho), mas conclusões acima foram validadas na codebase como source-of-truth (arquivos e trechos citados).

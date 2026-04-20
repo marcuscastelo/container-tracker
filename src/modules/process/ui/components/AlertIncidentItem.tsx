@@ -8,11 +8,13 @@ import type {
 import { useTranslation } from '~/shared/localization/i18n'
 import { systemClock } from '~/shared/time/clock'
 import { parseInstantFromIso } from '~/shared/time/parsing'
+import { MotionCollapse } from '~/shared/ui/motion/MotionCollapse'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 type Props = {
   readonly incident: AlertIncidentVM
   readonly busyAlertIds: ReadonlySet<string>
+  readonly recentlyChangedAlertIds: ReadonlySet<string>
   readonly onAcknowledgeIncident: (alertIds: readonly string[]) => void
   readonly onUnacknowledgeIncident: (alertIds: readonly string[]) => void
   readonly onSelectContainer: (containerId: string) => void
@@ -83,8 +85,6 @@ function toCategoryLabel(
       return t(keys.shipmentView.alerts.category.eta)
     case 'customs':
       return t(keys.shipmentView.alerts.category.customs)
-    case 'status':
-      return t(keys.shipmentView.alerts.category.status)
     case 'data':
       return t(keys.shipmentView.alerts.category.data)
   }
@@ -117,14 +117,7 @@ function toLifecycleChipClasses(lifecycleState: AlertIncidentMemberVM['lifecycle
 function toIncidentBaseTitle(
   incident: AlertIncidentVM,
   t: ReturnType<typeof useTranslation>['t'],
-  keys: ReturnType<typeof useTranslation>['keys'],
 ): string {
-  if (incident.type === 'NO_MOVEMENT' && incident.thresholdDays !== null) {
-    return t(keys.shipmentView.alerts.incidents.title.noMovementThreshold, {
-      days: incident.thresholdDays,
-    })
-  }
-
   return t(incident.messageKey, incident.messageParams)
 }
 
@@ -155,16 +148,6 @@ function toIncidentSummary(
   t: ReturnType<typeof useTranslation>['t'],
   keys: ReturnType<typeof useTranslation>['keys'],
 ): string {
-  if (incident.type === 'NO_MOVEMENT') {
-    return t(keys.shipmentView.alerts.incidents.summary.noMovement, {
-      count: incident.affectedContainerCount,
-      date:
-        incident.lastEventDate === null
-          ? t(keys.header.alertsPanel.valueUnavailable)
-          : formatDateForLocale(incident.lastEventDate),
-    })
-  }
-
   return toContainerPreview(incident, t, keys)
 }
 
@@ -230,7 +213,7 @@ function AlertIncidentHeader(props: {
         </div>
 
         <p class="text-sm-ui font-semibold leading-tight text-foreground">
-          {toIncidentBaseTitle(props.incident, t, keys)}
+          {toIncidentBaseTitle(props.incident, t)}
           <Show
             when={props.showTransshipmentOccurrence && props.incident.transshipmentOrder !== null}
           >
@@ -252,7 +235,7 @@ function AlertIncidentHeader(props: {
 
       <button
         type="button"
-        class="inline-flex h-8 shrink-0 items-center rounded border border-border bg-surface px-2 text-micro font-semibold uppercase tracking-wide text-text-muted transition hover:bg-surface-muted"
+        class="motion-focus-surface motion-interactive inline-flex h-8 shrink-0 items-center rounded border border-border bg-surface px-2 text-micro font-semibold uppercase tracking-wide text-text-muted hover:bg-surface-muted"
         aria-expanded={props.isExpanded}
         onClick={() => props.onToggle()}
       >
@@ -295,14 +278,6 @@ function AlertIncidentMemberMetadata(props: {
           <span class="font-medium text-foreground">{props.member.toVessel}</span>
         </p>
       </Show>
-      <Show when={props.member.lastEventDate !== null}>
-        <p>
-          {t(keys.shipmentView.alerts.incidents.details.lastEvent)}:{' '}
-          <span class="font-medium text-foreground">
-            {formatDateForLocale(props.member.lastEventDate ?? '')}
-          </span>
-        </p>
-      </Show>
     </div>
   )
 }
@@ -343,7 +318,7 @@ function AlertIncidentMemberCard(props: {
           <button
             type="button"
             disabled={toMemberActiveAlertIds(props.member).length === 0 || props.isBusy}
-            class="inline-flex items-center rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-semibold text-foreground transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+            class="motion-focus-surface motion-interactive inline-flex items-center rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-semibold text-foreground hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
             onClick={() => props.onAcknowledgeIncident(toMemberActiveAlertIds(props.member))}
           >
             {t(keys.shipmentView.alerts.action.acknowledgeContainer)}
@@ -385,36 +360,6 @@ function AlertIncidentMembersSection(props: {
   )
 }
 
-function AlertIncidentMonitoringHistory(props: {
-  readonly records: AlertIncidentVM['monitoringHistory']
-}): JSX.Element {
-  const { t, keys } = useTranslation()
-
-  return (
-    <div class="space-y-2">
-      <p class="text-micro font-semibold uppercase tracking-wide text-text-muted">
-        {t(keys.shipmentView.alerts.incidents.details.history)}
-      </p>
-
-      <ul class="space-y-1 text-xs-ui text-text-muted">
-        <For each={props.records}>
-          {(record) => (
-            <li class="list-none">
-              <span class="font-medium text-foreground">{record.thresholdDays ?? 0}d</span>{' '}
-              {t(keys.shipmentView.alerts.incidents.details.thresholdReachedOn, {
-                date:
-                  record.lastEventDate === null
-                    ? t(keys.header.alertsPanel.valueUnavailable)
-                    : formatDateForLocale(record.lastEventDate),
-              })}
-            </li>
-          )}
-        </For>
-      </ul>
-    </div>
-  )
-}
-
 function AlertIncidentActionBar(props: {
   readonly incident: AlertIncidentVM
   readonly isBusy: boolean
@@ -431,7 +376,7 @@ function AlertIncidentActionBar(props: {
         <button
           type="button"
           disabled={props.isBusy}
-          class="inline-flex items-center rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-semibold text-foreground transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+          class="motion-focus-surface motion-interactive inline-flex items-center rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-semibold text-foreground hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
           onClick={() => props.onAcknowledgeIncident(props.incident.activeAlertIds)}
         >
           {t(keys.shipmentView.alerts.action.acknowledgeIncident, {
@@ -444,7 +389,7 @@ function AlertIncidentActionBar(props: {
         <button
           type="button"
           disabled={props.isBusy}
-          class="inline-flex items-center rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-semibold text-foreground transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+          class="motion-focus-surface motion-interactive inline-flex items-center rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-semibold text-foreground hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
           onClick={() => props.onUnacknowledgeIncident(props.incident.ackedAlertIds)}
         >
           {t(keys.shipmentView.alerts.action.unacknowledge)}
@@ -471,9 +416,6 @@ function AlertIncidentExpandedContent(props: {
         onAcknowledgeIncident={props.onAcknowledgeIncident}
         onSelectContainer={props.onSelectContainer}
       />
-      <Show when={props.incident.monitoringHistory.length > 0}>
-        <AlertIncidentMonitoringHistory records={props.incident.monitoringHistory} />
-      </Show>
       <AlertIncidentActionBar
         incident={props.incident}
         isBusy={props.isBusy}
@@ -492,6 +434,9 @@ export function AlertIncidentItem(props: Props): JSX.Element {
     ...props.incident.activeAlertIds,
     ...props.incident.ackedAlertIds,
   ])
+  const isRecentlyChanged = createMemo(() =>
+    relatedAlertIds().some((alertId) => props.recentlyChangedAlertIds.has(alertId)),
+  )
   const isBusy = createMemo(() =>
     relatedAlertIds().some((alertId) => props.busyAlertIds.has(alertId)),
   )
@@ -507,8 +452,9 @@ export function AlertIncidentItem(props: Props): JSX.Element {
 
   return (
     <article
+      data-highlighted={isRecentlyChanged() ? 'true' : 'false'}
       class={clsx(
-        'rounded-lg border border-l-4 px-3 py-2 shadow-sm transition-colors',
+        'motion-highlight rounded-lg border border-l-4 px-3 py-2 shadow-sm',
         toCardClasses(props.incident.severity),
       )}
     >
@@ -519,7 +465,7 @@ export function AlertIncidentItem(props: Props): JSX.Element {
         showTransshipmentOccurrence={props.showTransshipmentOccurrence === true}
       />
 
-      <Show when={isExpanded()}>
+      <MotionCollapse open={isExpanded()}>
         <AlertIncidentExpandedContent
           incident={props.incident}
           isBusy={isBusy()}
@@ -529,7 +475,7 @@ export function AlertIncidentItem(props: Props): JSX.Element {
           onUnacknowledgeIncident={props.onUnacknowledgeIncident}
           onSelectContainer={props.onSelectContainer}
         />
-      </Show>
+      </MotionCollapse>
     </article>
   )
 }

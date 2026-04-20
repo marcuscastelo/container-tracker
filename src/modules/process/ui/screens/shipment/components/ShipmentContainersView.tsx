@@ -13,6 +13,7 @@ type ShipmentContainersViewProps = {
   readonly activeAlerts: Accessor<readonly AlertDisplayVM[]>
   readonly alertIncidents: Accessor<AlertIncidentsVM>
   readonly busyAlertIds: Accessor<ReadonlySet<string>>
+  readonly recentlyChangedAlertIds: Accessor<ReadonlySet<string>>
   readonly onAcknowledgeAlert: (alertIds: readonly string[]) => void
   readonly onUnacknowledgeAlert: (alertIds: readonly string[]) => void
   readonly isRefreshing: Accessor<boolean>
@@ -39,6 +40,7 @@ export function ShipmentContainersView(props: ShipmentContainersViewProps) {
           activeAlerts={props.activeAlerts()}
           alertIncidents={props.alertIncidents()}
           busyAlertIds={props.busyAlertIds()}
+          recentlyChangedAlertIds={props.recentlyChangedAlertIds()}
           onAcknowledgeAlert={props.onAcknowledgeAlert}
           onUnacknowledgeAlert={props.onUnacknowledgeAlert}
           isRefreshing={props.isRefreshing()}

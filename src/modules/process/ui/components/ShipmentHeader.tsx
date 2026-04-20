@@ -1,16 +1,26 @@
-import { RefreshCw } from 'lucide-solid'
+import { RefreshCw, TriangleAlert } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
 import { DeleteShipmentDialog } from '~/modules/process/ui/components/DeleteShipmentDialog'
 import { toProcessStatusBadgesDisplay } from '~/modules/process/ui/components/process-status-badges.presenter'
+import { resolveShipmentTrackingValidationBannerDescription } from '~/modules/process/ui/components/shipment-header-tracking-review.presenter'
+import {
+  toTrackingValidationBannerClasses,
+  toTrackingValidationDisplayState,
+} from '~/modules/process/ui/components/tracking-review-display.presenter'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
+type ShipmentHeaderTrackingReview = ShipmentDetailVM['trackingValidation']
+
 type Props = {
   data: ShipmentDetailVM
+  trackingValidation?: ShipmentHeaderTrackingReview
+  trackingValidationMode?: 'current' | 'historical'
+  historicalTrackingValidationContainerNumber?: string | null
   isRefreshing: boolean
   refreshRetry: {
     readonly current: number
@@ -47,8 +57,8 @@ type HeaderIconButtonProps = {
 function HeaderIconButton(props: HeaderIconButtonProps): JSX.Element {
   const className = () =>
     props.variant === 'danger'
-      ? 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg transition-colors hover:bg-tone-danger-bg'
-      : 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground'
+      ? 'motion-focus-surface motion-interactive inline-flex h-8 w-8 items-center justify-center rounded-md border border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg hover:bg-tone-danger-bg'
+      : 'motion-focus-surface motion-interactive inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-text-muted hover:bg-surface-muted hover:text-foreground'
 
   return (
     <button type="button" title={props.title} onClick={() => props.onClick()} class={className()}>
@@ -65,7 +75,7 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
       <button
         type="button"
         aria-label={props.message}
-        class="inline-flex h-4 w-16 p-2 text-xs align-text-top italic bold text-tone-warning-fg items-center justify-center rounded-full bg-tone-warning-bg text-xs-ui font-medium animate-pulse transition-transform hover:cursor-pointer hover:scale-110 hover:bg-surface-muted"
+        class="motion-focus-surface motion-interactive inline-flex h-4 w-16 items-center justify-center rounded-full bg-tone-warning-bg p-2 text-xs-ui font-medium italic text-tone-warning-fg hover:cursor-pointer hover:bg-surface-muted"
         onClick={() => setOpen((current) => !current)}
       >
         sem ref
@@ -80,7 +90,7 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
           <div class="mt-2 text-right">
             <button
               type="button"
-              class="rounded bg-secondary px-2 py-1 text-sm-ui font-medium text-secondary-foreground outline hover:bg-surface-muted"
+              class="motion-focus-surface motion-interactive rounded bg-secondary px-2 py-1 text-sm-ui font-medium text-secondary-foreground outline hover:bg-surface-muted"
               onClick={() => {
                 props.onOpenReference()
                 setOpen(false)
@@ -105,14 +115,14 @@ function UnknownCarrierActions(props: {
     <div class="flex justify-end gap-3">
       <button
         type="button"
-        class="rounded-md px-3 py-2 text-sm-ui font-medium text-text-muted hover:bg-surface-muted"
+        class="motion-focus-surface motion-interactive rounded-md px-3 py-2 text-sm-ui font-medium text-text-muted hover:bg-surface-muted"
         onClick={() => props.onCancel()}
       >
         {props.cancelLabel}
       </button>
       <button
         type="button"
-        class="rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover"
+        class="motion-focus-surface motion-interactive rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover"
         onClick={() => props.onEdit()}
       >
         {props.editLabel}
@@ -154,7 +164,7 @@ function HeaderActions(props: {
       <button
         type="button"
         onClick={() => props.onRefresh()}
-        class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-sm-ui font-semibold text-foreground transition-colors hover:bg-surface-muted"
+        class="motion-focus-surface motion-interactive inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-sm-ui font-semibold text-foreground hover:bg-surface-muted"
         title={props.refreshLabel}
       >
         <RefreshCw class={`h-3.5 w-3.5 ${props.isRefreshing ? 'animate-spin' : ''}`} />
@@ -205,12 +215,41 @@ function HeaderMeta(props: {
   )
 }
 
+function TrackingValidationBanner(props: {
+  readonly title: string
+  readonly description: string
+  readonly highestSeverity: ShipmentDetailVM['trackingValidation']['highestSeverity']
+}): JSX.Element {
+  const displayState = () =>
+    toTrackingValidationDisplayState({
+      hasIssues: true,
+      highestSeverity: props.highestSeverity,
+    })
+
+  return (
+    <div
+      class={`mt-4 flex items-start gap-3 rounded-lg px-3 py-2 ${toTrackingValidationBannerClasses(
+        displayState(),
+      )}`}
+    >
+      <TriangleAlert aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0" />
+      <div class="min-w-0">
+        <p class="text-sm-ui font-semibold">{props.title}</p>
+        <p class="text-xs-ui">{props.description}</p>
+      </div>
+    </div>
+  )
+}
+
 export function ShipmentHeader(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   const translate = (key: string, options?: Record<string, unknown>): string =>
     options === undefined ? t(key) : t(key, options)
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
   const [showDeleteDialog, setShowDeleteDialog] = createSignal(false)
+  const trackingValidation = createMemo(
+    () => props.trackingValidation ?? props.data.trackingValidation,
+  )
 
   const statusBadge = createMemo(
     () =>
@@ -252,6 +291,15 @@ export function ShipmentHeader(props: Props): JSX.Element {
     })()
 
     return `${t(keys.shipmentView.eta)}: ${value}`
+  })
+  const trackingValidationDescription = createMemo(() => {
+    return resolveShipmentTrackingValidationBannerDescription({
+      trackingValidationMode: props.trackingValidationMode,
+      affectedContainerCount: trackingValidation().affectedContainerCount,
+      historicalContainerNumber: props.historicalTrackingValidationContainerNumber,
+      translate,
+      unknownContainerLabel: t(keys.shipmentView.currentStatus.unknown),
+    })
   })
 
   const handleRefresh = () => {
@@ -313,6 +361,14 @@ export function ShipmentHeader(props: Props): JSX.Element {
           </Show>
         </div>
       </div>
+
+      <Show when={trackingValidation().hasIssues}>
+        <TrackingValidationBanner
+          title={t(keys.shipmentView.validation.bannerTitle)}
+          description={trackingValidationDescription()}
+          highestSeverity={trackingValidation().highestSeverity}
+        />
+      </Show>
 
       <UnknownCarrierDialog
         open={showUnknownCarrierDialog()}

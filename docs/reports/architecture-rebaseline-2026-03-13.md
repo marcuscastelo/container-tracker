@@ -1,7 +1,7 @@
 # Architecture Rebaseline Report (v3 candidate)
 
-Date: 2026-03-13  
-Objective: establish a comparable post-plan baseline and support ADR decisions with evidence.
+Date: 2026-03-13
+Objective: establish comparable post-plan baseline and support ADR decisions with evidence.
 
 Baselines compared:
 - Previous snapshot: `docs/reports/code-report/code_report_20260313_024007.txt`
@@ -33,20 +33,20 @@ Interpretation:
 
 ## 2) Hotspot evolution (priority set)
 
-| Hotspot | Old status/lines | New status/lines | Delta | Category now | Action taken | Result |
+|Hotspot|Old status/lines|New status/lines|Delta|Category now|Action taken|Result|
 |---|---|---|---:|---|---|---|
-| `src/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel.ts` | CRITICO / 566 | CRITICO / 566 | 0 | structural-hotspot | monitored via cluster inspection | observe |
-| `src/capabilities/dashboard/interface/http/dashboard.controllers.ts` | ALERTA / 264 | ALERTA / 264 | 0 | refactor-local | monitored via cluster inspection | observe |
-| `src/capabilities/dashboard/interface/http/tests/dashboard.controllers.test.ts` | CRITICO / 409 | CRITICO / 409 | 0 | guideline-checklist | identified for behavior-family split | next-round |
-| `src/capabilities/dashboard/application/tests/dashboard.operational-summary.readmodel.integration.test.ts` | CRITICO / 611 | CRITICO / 611 | 0 | guideline-checklist | identified for behavior-family split | next-round |
-| `src/shared/api-schemas/dashboard.schemas.ts` | OK / 170 | OK / 170 | 0 | growth-legit | transport-only ownership maintained | acceptable |
-| `src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts` | CRITICO / 529 | CRITICO / 392 | -137 | structural-hotspot | partial decomposition | next-round |
-| `src/modules/tracking/infrastructure/persistence/tracking.persistence.mappers.ts` | CRITICO / 533 | OK / 178 | -355 | refactor-local | decomposition completed | resolved |
-| `src/modules/tracking/infrastructure/persistence/supabaseSyncMetadataRepository.ts` | OK / 58 | OK / 58 | 0 | growth-legit | stable | acceptable |
-| `src/modules/process/interface/http/process.controllers.ts` | ALERTA / 369 | OK / 244 | -125 | refactor-local | controller thinning | resolved |
-| `src/shared/api/sync.controllers.bootstrap.ts` | ALERTA / 333 | OK / 43 | -290 | refactor-local | bootstrap thinning | resolved |
-| `src/modules/process/ui/screens/DashboardScreen.tsx` | CRITICO / 661 | CRITICO / 661 | 0 | structural-hotspot | none in this cycle | next-round |
-| `src/capabilities/search/ui/SearchOverlay.panel.tsx` | CRITICO / 547 | CRITICO / 547 | 0 | structural-hotspot | none in this cycle | next-round |
+|`src/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel.ts`|CRITICO / 566|CRITICO / 566|0|structural-hotspot|monitored via cluster inspection|observe|
+|`src/capabilities/dashboard/interface/http/dashboard.controllers.ts`|ALERTA / 264|ALERTA / 264|0|refactor-local|monitored via cluster inspection|observe|
+|`src/capabilities/dashboard/interface/http/tests/dashboard.controllers.test.ts`|CRITICO / 409|CRITICO / 409|0|guideline-checklist|identified for behavior-family split|next-round|
+|`src/capabilities/dashboard/application/tests/dashboard.operational-summary.readmodel.integration.test.ts`|CRITICO / 611|CRITICO / 611|0|guideline-checklist|identified for behavior-family split|next-round|
+|`src/shared/api-schemas/dashboard.schemas.ts`|OK / 170|OK / 170|0|growth-legit|transport-only ownership maintained|acceptable|
+|`src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts`|CRITICO / 529|CRITICO / 392|-137|structural-hotspot|partial decomposition|next-round|
+|`src/modules/tracking/infrastructure/persistence/tracking.persistence.mappers.ts`|CRITICO / 533|OK / 178|-355|refactor-local|decomposition completed|resolved|
+|`src/modules/tracking/infrastructure/persistence/supabaseSyncMetadataRepository.ts`|OK / 58|OK / 58|0|growth-legit|stable|acceptable|
+|`src/modules/process/interface/http/process.controllers.ts`|ALERTA / 369|OK / 244|-125|refactor-local|controller thinning|resolved|
+|`src/shared/api/sync.controllers.bootstrap.ts`|ALERTA / 333|OK / 43|-290|refactor-local|bootstrap thinning|resolved|
+|`src/modules/process/ui/screens/DashboardScreen.tsx`|CRITICO / 661|CRITICO / 661|0|structural-hotspot|none in this cycle|next-round|
+|`src/capabilities/search/ui/SearchOverlay.panel.tsx`|CRITICO / 547|CRITICO / 547|0|structural-hotspot|none in this cycle|next-round|
 
 ---
 
@@ -77,7 +77,7 @@ Needs next round:
 
 `Repository / Query / Mapper separation`:
 - keep in hold
-- reason: substantial progress was achieved by refactor-first; ambiguity not yet proven as cross-module recurring after cleanup
+- reason: substantial progress was achieved by refactor-first; ambiguity not yet proven cross-module recurring after cleanup
 
 `Controller thinness / HTTP adapter thinness`:
 - keep in hold

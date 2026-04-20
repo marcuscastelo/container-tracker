@@ -49,10 +49,48 @@ describe('deriveStatus', () => {
     expect(deriveStatus(timeline)).toBe('IN_PROGRESS')
   })
 
-  it('should return IN_PROGRESS for GATE_IN events', () => {
+  it('should return BOOKED for GATE_IN events', () => {
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
       makeObs({ type: 'GATE_IN', id: '00000000-0000-0000-0000-000000000011', fingerprint: 'fp1' }),
     ])
+    expect(deriveStatus(timeline)).toBe('BOOKED')
+  })
+
+  it('should return BOOKED for ACTUAL GATE_OUT when a relevant future route chain exists', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'GATE_OUT',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+      }),
+      makeObs({
+        type: 'DEPARTURE',
+        event_time_type: 'EXPECTED',
+        id: '00000000-0000-0000-0000-000000000012',
+        fingerprint: 'fp2',
+        event_time: '2027-11-26T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'ARRIVAL',
+        event_time_type: 'EXPECTED',
+        id: '00000000-0000-0000-0000-000000000013',
+        fingerprint: 'fp3',
+        event_time: '2027-12-05T00:00:00.000Z',
+      }),
+    ])
+
+    expect(deriveStatus(timeline)).toBe('BOOKED')
+  })
+
+  it('should keep IN_PROGRESS for isolated ACTUAL GATE_OUT without future route chain', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'GATE_OUT',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+      }),
+    ])
+
     expect(deriveStatus(timeline)).toBe('IN_PROGRESS')
   })
 

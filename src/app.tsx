@@ -1,4 +1,4 @@
-import { Router, useLocation, usePreloadRoute } from '@solidjs/router'
+import { Router, usePreloadRoute } from '@solidjs/router'
 import { FileRoutes } from '@solidjs/start/router'
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, ErrorBoundary, Show, Suspense } from 'solid-js'
@@ -7,6 +7,10 @@ import { getAppErrorDetails } from '~/app-error-details'
 import { AppInitialRoutePrefetchBoundary } from '~/modules/process/ui/screens/app/AppInitialRoutePrefetchBoundary'
 import { AppRouteSkeleton } from '~/modules/process/ui/screens/app/AppRouteSkeleton'
 import { DashboardKeepWarmBoundary } from '~/modules/process/ui/screens/dashboard/DashboardKeepWarmBoundary'
+import {
+  dismissServerProblemBanner,
+  useServerProblemBanner,
+} from '~/shared/api/httpDegradationReporter'
 import { useTranslation } from '~/shared/localization/i18n'
 import '~/app.css'
 
@@ -16,6 +20,9 @@ type AppErrorBoundaryFallbackProps = {
 
 type AppRouterRootProps = {
   readonly children: JSX.Element
+  readonly location: {
+    readonly pathname: string
+  }
 }
 
 function AppErrorBoundaryFallback(props: AppErrorBoundaryFallbackProps): JSX.Element {
@@ -41,17 +48,42 @@ function AppErrorBoundaryFallback(props: AppErrorBoundaryFallbackProps): JSX.Ele
   )
 }
 
+function GlobalServerProblemBanner(): JSX.Element {
+  const { t, keys } = useTranslation()
+  const bannerState = useServerProblemBanner()
+
+  return (
+    <Show when={bannerState().visible}>
+      <div class="border-b border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg">
+        <div class="mx-auto flex max-w-(--dashboard-container-max-width) items-start justify-between gap-4 px-[var(--dashboard-container-px)] py-2.5 text-sm-ui">
+          <p class="font-medium">{t(keys.app.serverProblemBanner)}</p>
+          <button
+            type="button"
+            class="shrink-0 text-sm-ui font-medium underline underline-offset-2"
+            onClick={() => dismissServerProblemBanner()}
+          >
+            {t(keys.app.dismissServerProblemBanner)}
+          </button>
+        </div>
+      </div>
+    </Show>
+  )
+}
+
 function AppRouterRoot(props: AppRouterRootProps): JSX.Element {
-  const location = useLocation()
   const preloadRoute = usePreloadRoute()
   const { locale } = useTranslation()
 
   return (
     <div class="root">
-      <AppInitialRoutePrefetchBoundary pathname={() => location.pathname} locale={locale} />
-      <DashboardKeepWarmBoundary pathname={() => location.pathname} preloadRoute={preloadRoute} />
+      <AppInitialRoutePrefetchBoundary pathname={() => props.location.pathname} locale={locale} />
+      <DashboardKeepWarmBoundary
+        pathname={() => props.location.pathname}
+        preloadRoute={preloadRoute}
+      />
+      <GlobalServerProblemBanner />
       <ErrorBoundary fallback={(err) => <AppErrorBoundaryFallback error={err} />}>
-        <Suspense fallback={<AppRouteSkeleton pathname={() => location.pathname} />}>
+        <Suspense fallback={<AppRouteSkeleton pathname={() => props.location.pathname} />}>
           {props.children}
         </Suspense>
       </ErrorBoundary>
@@ -63,7 +95,7 @@ function AppRouterRoot(props: AppRouterRootProps): JSX.Element {
 /** @public */
 export default function App() {
   return (
-    <Router root={(props) => <AppRouterRoot>{props.children}</AppRouterRoot>}>
+    <Router root={(props) => <AppRouterRoot {...props}>{props.children}</AppRouterRoot>}>
       <FileRoutes />
     </Router>
   )

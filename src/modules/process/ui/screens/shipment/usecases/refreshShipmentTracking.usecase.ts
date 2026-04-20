@@ -19,6 +19,7 @@ import {
 } from '~/modules/process/ui/screens/shipment/types/shipmentScreen.types'
 import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import { fetchWithHttpDegradationReporting } from '~/shared/api/httpDegradationReporter'
 import { subscribeToSyncRequestsRealtimeByIds } from '~/shared/api/sync-requests.realtime.client'
 import { systemClock } from '~/shared/time/clock'
 import type { Instant } from '~/shared/time/instant'
@@ -29,7 +30,7 @@ async function enqueueContainerRefresh(
   containerNumber: string,
   carrier: string | null | undefined,
 ): Promise<{ readonly syncRequestId: string }> {
-  const response = await fetch('/api/refresh', {
+  const response = await fetchWithHttpDegradationReporting('/api/refresh', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ container: containerNumber, carrier: carrier ?? null }),
@@ -57,13 +58,16 @@ async function fetchRefreshSyncStatuses(syncRequestIds: readonly string[]) {
   }
   params.set('_ts', String(systemClock.now().toEpochMs()))
 
-  const response = await fetch(`/api/refresh/status?${params.toString()}`, {
-    cache: 'no-store',
-    headers: {
-      'cache-control': 'no-cache',
-      pragma: 'no-cache',
+  const response = await fetchWithHttpDegradationReporting(
+    `/api/refresh/status?${params.toString()}`,
+    {
+      cache: 'no-store',
+      headers: {
+        'cache-control': 'no-cache',
+        pragma: 'no-cache',
+      },
     },
-  })
+  )
   const body: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {

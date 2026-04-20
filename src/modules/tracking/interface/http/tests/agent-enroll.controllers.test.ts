@@ -40,10 +40,28 @@ function createDeps(
       id: 'agent-1',
       tenantId: TENANT_ID,
       machineFingerprint: 'fingerprint-1',
+      revokedAt: null,
       hostname: 'host-1',
       os: 'windows',
       agentVersion: '0.1.1',
       agentToken: 'agent-token-existing',
+      intervalSec: 30,
+      limit: 25,
+      supabaseUrl: 'https://supabase.test',
+      supabaseAnonKey: 'anon',
+      maerskEnabled: true,
+      maerskHeadless: false,
+      maerskTimeoutMs: 90000,
+      maerskUserDataDir: 'C:\\AgentData',
+    })),
+    reactivateRevokedAgentWithRotatedToken: vi.fn(async ({ agentToken }) => ({
+      id: 'agent-1',
+      tenantId: TENANT_ID,
+      machineFingerprint: 'fingerprint-1',
+      hostname: 'host-1',
+      os: 'windows',
+      agentVersion: '0.1.2',
+      agentToken,
       intervalSec: 30,
       limit: 25,
       supabaseUrl: 'https://supabase.test',
@@ -121,6 +139,24 @@ describe('agent enroll controllers', () => {
     expect(response.status).toBe(401)
   })
 
+  it('returns 401 when installer token is revoked', async () => {
+    const deps = createDeps({
+      findInstallerTokenByHash: vi.fn(async ({ tokenHash }) => ({
+        tenantId: TENANT_ID,
+        tokenHash,
+        revokedAt: '2026-04-15T00:00:00.000Z',
+        expiresAt: null,
+      })),
+    })
+    const controllers = createAgentEnrollControllers(deps)
+
+    const response = await controllers.enroll({
+      request: createEnrollRequest({ token: 'installer-token-1' }),
+    })
+
+    expect(response.status).toBe(401)
+  })
+
   it('accepts authorization header with extra bearer whitespace', async () => {
     const deps = createDeps()
     const controllers = createAgentEnrollControllers(deps)
@@ -168,6 +204,7 @@ describe('agent enroll controllers', () => {
         id: 'agent-1',
         tenantId: TENANT_ID,
         machineFingerprint: 'fingerprint-1',
+        revokedAt: null,
         hostname: 'old-host',
         os: 'windows',
         agentVersion: '0.0.9',
@@ -198,5 +235,43 @@ describe('agent enroll controllers', () => {
     expect(body.providers.maerskEnabled).toBe(true)
     expect(deps.createAgent).not.toHaveBeenCalled()
     expect(deps.updateAgentEnrollmentMetadata).toHaveBeenCalledTimes(1)
+    expect(deps.reactivateRevokedAgentWithRotatedToken).not.toHaveBeenCalled()
+  })
+
+  it('reactivates revoked agent with rotated token', async () => {
+    const deps = createDeps({
+      findAgentByFingerprint: vi.fn(async () => ({
+        id: 'agent-1',
+        tenantId: TENANT_ID,
+        machineFingerprint: 'fingerprint-1',
+        revokedAt: '2026-04-10T12:00:00.000Z',
+        hostname: 'old-host',
+        os: 'windows',
+        agentVersion: '0.0.9',
+        agentToken: 'stale-token',
+        intervalSec: 30,
+        limit: 25,
+        supabaseUrl: 'https://supabase.test',
+        supabaseAnonKey: 'anon',
+        maerskEnabled: true,
+        maerskHeadless: false,
+        maerskTimeoutMs: 90000,
+        maerskUserDataDir: 'C:\\AgentData',
+      })),
+      generateAgentToken: vi.fn(() => 'rotated-agent-token'),
+    })
+    const controllers = createAgentEnrollControllers(deps)
+
+    const response = await controllers.enroll({
+      request: createEnrollRequest({ token: 'installer-token-1' }),
+    })
+
+    const body = AgentEnrollResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.agentToken).toBe('rotated-agent-token')
+    expect(deps.createAgent).not.toHaveBeenCalled()
+    expect(deps.updateAgentEnrollmentMetadata).not.toHaveBeenCalled()
+    expect(deps.reactivateRevokedAgentWithRotatedToken).toHaveBeenCalledTimes(1)
   })
 })

@@ -21,6 +21,7 @@ if [ $# -ne 1 ]; then
 fi
 
 require_command jq
+require_command cksum
 ensure_loop_assets
 
 input_file="$(abs_path "$1")"
@@ -88,9 +89,18 @@ else
 fi
 
 last_output_file="$RALPH_LOOP_WORKDIR/last-exec-output.txt"
+no_progress_streak=0
+
+if ! [[ "$RALPH_NO_PROGRESS_LIMIT" =~ ^[0-9]+$ ]]; then
+  rl_error "Invalid RALPH_NO_PROGRESS_LIMIT='$RALPH_NO_PROGRESS_LIMIT'. Expected non-negative integer."
+  exit 1
+fi
 
 for iteration in $(seq 1 "$RALPH_MAX_ITERATIONS"); do
   rl_info "Ralph iteration $iteration/$RALPH_MAX_ITERATIONS using agent '$RALPH_AGENT'"
+
+  before_prd_fingerprint="$(cksum "$runtime_dir/prd.json")"
+  before_progress_fingerprint="$(cksum "$runtime_dir/progress.txt")"
 
   iteration_prompt_file="$(mktemp)"
   cat > "$iteration_prompt_file" <<EOF
@@ -110,7 +120,13 @@ Path mapping rules:
 - If all stories are complete, print <promise>COMPLETE</promise>.
 EOF
 
-  run_agent_prompt "$iteration_prompt_file" "$last_output_file" || true
+  iteration_status=0
+  if run_agent_prompt "$iteration_prompt_file" "$last_output_file"; then
+    iteration_status=0
+  else
+    iteration_status="$?"
+    rl_error "Agent prompt failed in iteration $iteration (exit $iteration_status)."
+  fi
   rm -f "$iteration_prompt_file"
 
   if [ -f "$runtime_dir/prd.json" ]; then
@@ -119,6 +135,26 @@ EOF
 
   if [ -f "$runtime_dir/progress.txt" ]; then
     cp "$runtime_dir/progress.txt" "$progress_file"
+  fi
+
+  after_prd_fingerprint="$(cksum "$runtime_dir/prd.json")"
+  after_progress_fingerprint="$(cksum "$runtime_dir/progress.txt")"
+  if [ "$before_prd_fingerprint" = "$after_prd_fingerprint" ] && [ "$before_progress_fingerprint" = "$after_progress_fingerprint" ]; then
+    no_progress_streak=$((no_progress_streak + 1))
+    rl_error "No progress artifacts changed in iteration $iteration (streak $no_progress_streak)."
+  else
+    no_progress_streak=0
+  fi
+
+  if [ "$RALPH_NO_PROGRESS_LIMIT" -gt 0 ] && [ "$no_progress_streak" -ge "$RALPH_NO_PROGRESS_LIMIT" ]; then
+    rl_error "Ralph loop stopped after $no_progress_streak consecutive no-progress iterations."
+    rl_error "Check output: $last_output_file"
+    if [ "$RALPH_AGENT" = "claude" ]; then
+      rl_error "Claude endpoint: ${ANTHROPIC_BASE_URL:-$RALPH_CLAUDE_BASE_URL}"
+      rl_error "Claude model: $RALPH_CLAUDE_MODEL"
+      rl_error "Tip: this model/endpoint may not support agentic file edits; retry with --agent codex or a Claude tool-capable model."
+    fi
+    exit 1
   fi
 
   if grep -q "<promise>COMPLETE</promise>" "$last_output_file"; then

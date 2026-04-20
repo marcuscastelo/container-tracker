@@ -133,7 +133,7 @@ Risk:
 
 Next step:
 
-- add dedicated install smoke check in CI/QA matrix to validate ACL commands on target OS builds
+- add dedicated install smoke check in CI/QA matrix to validate ACL commands on target builds
 
 ## 9) Strategic items intentionally deferred
 

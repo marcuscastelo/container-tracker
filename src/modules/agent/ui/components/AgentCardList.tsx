@@ -6,6 +6,7 @@ import type { AgentListItemVM } from '~/modules/agent/ui/vm/agent.vm'
 type Props = {
   readonly agents: readonly AgentListItemVM[]
   readonly loading: boolean
+  readonly refreshing?: boolean
   readonly hasError: boolean
   readonly onAgentClick: (agentId: string) => void
   readonly onLogsClick: (agentId: string) => void
@@ -65,7 +66,7 @@ function AgentCard(props: {
       <button
         type="button"
         onClick={() => props.onAgentClick(props.agent.agentId)}
-        class="w-full text-left transition-colors hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-ring/40"
+        class="motion-focus-surface motion-interactive w-full rounded-md text-left hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-ring/40"
       >
         <div class="mb-1.5 flex items-center justify-between gap-2">
           <AgentStatusBadge label={props.agent.status} tone={props.agent.statusTone} />
@@ -114,7 +115,7 @@ function AgentCard(props: {
         <button
           type="button"
           onClick={() => props.onLogsClick(props.agent.agentId)}
-          class="rounded border border-control-border bg-control-bg px-2 py-0.5 text-micro text-control-foreground hover:bg-control-bg-hover"
+          class="motion-focus-surface motion-interactive rounded border border-control-border bg-control-bg px-2 py-0.5 text-micro text-control-foreground hover:bg-control-bg-hover"
         >
           Logs
         </button>
@@ -126,6 +127,12 @@ function AgentCard(props: {
 export function AgentCardList(props: Props): JSX.Element {
   return (
     <div class="flex flex-col gap-2 md:hidden">
+      <Show when={props.refreshing === true}>
+        <div class="rounded-lg border border-border bg-surface px-3 py-1.5 text-micro text-text-muted">
+          Updating agents...
+        </div>
+      </Show>
+
       <Show when={props.hasError}>
         <ErrorCard onRetry={props.onRetry} />
       </Show>

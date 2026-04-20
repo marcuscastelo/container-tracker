@@ -1,6 +1,6 @@
 import type { TrackingAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
-export type AlertIncidentCategoryVM = 'movement' | 'eta' | 'customs' | 'status' | 'data'
+export type AlertIncidentCategoryVM = 'movement' | 'eta' | 'customs' | 'data'
 export type AlertIncidentBucketVM = 'active' | 'recognized'
 
 export type AlertIncidentRecordVM = {
@@ -11,9 +11,6 @@ export type AlertIncidentRecordVM = {
   readonly ackedAtIso: string | null
   readonly resolvedAtIso: string | null
   readonly resolvedReason: 'condition_cleared' | 'terminal_state' | null
-  readonly thresholdDays: number | null
-  readonly daysWithoutMovement: number | null
-  readonly lastEventDate: string | null
 }
 
 export type AlertIncidentMemberVM = {
@@ -21,9 +18,6 @@ export type AlertIncidentMemberVM = {
   readonly containerNumber: string
   readonly lifecycleState: TrackingAlertLifecycleState
   readonly detectedAtIso: string
-  readonly thresholdDays: number | null
-  readonly daysWithoutMovement: number | null
-  readonly lastEventDate: string | null
   readonly transshipmentOrder: number | null
   readonly port: string | null
   readonly fromVessel: string | null
@@ -37,27 +31,33 @@ export type AlertIncidentVM = {
   readonly category: AlertIncidentCategoryVM
   readonly type:
     | 'TRANSSHIPMENT'
+    | 'PLANNED_TRANSSHIPMENT'
     | 'CUSTOMS_HOLD'
     | 'PORT_CHANGE'
-    | 'NO_MOVEMENT'
     | 'ETA_PASSED'
     | 'ETA_MISSING'
     | 'DATA_INCONSISTENT'
   readonly severity: 'info' | 'warning' | 'danger'
   readonly messageKey:
-    | 'alerts.transshipmentDetected'
-    | 'alerts.customsHoldDetected'
-    | 'alerts.noMovementDetected'
-    | 'alerts.etaMissing'
-    | 'alerts.etaPassed'
-    | 'alerts.portChange'
-    | 'alerts.dataInconsistent'
+    | 'incidents.fact.transshipmentDetected'
+    | 'incidents.fact.plannedTransshipmentDetected'
+    | 'incidents.fact.customsHoldDetected'
+    | 'incidents.fact.etaMissing'
+    | 'incidents.fact.etaPassed'
+    | 'incidents.fact.portChange'
+    | 'incidents.fact.dataInconsistent'
   readonly messageParams: Record<string, string | number>
+  readonly action: {
+    readonly actionKey:
+      | 'incidents.action.updateRedestination'
+      | 'incidents.action.checkEta'
+      | 'incidents.action.followUpCustoms'
+      | 'incidents.action.reviewData'
+    readonly actionParams: Record<string, string | number>
+    readonly actionKind: 'UPDATE_REDESTINATION' | 'CHECK_ETA' | 'FOLLOW_UP_CUSTOMS' | 'REVIEW_DATA'
+  } | null
   readonly detectedAtIso: string
   readonly triggeredAtIso: string
-  readonly thresholdDays: number | null
-  readonly daysWithoutMovement: number | null
-  readonly lastEventDate: string | null
   readonly transshipmentOrder: number | null
   readonly port: string | null
   readonly fromVessel: string | null
@@ -66,7 +66,6 @@ export type AlertIncidentVM = {
   readonly activeAlertIds: readonly string[]
   readonly ackedAlertIds: readonly string[]
   readonly members: readonly AlertIncidentMemberVM[]
-  readonly monitoringHistory: readonly AlertIncidentRecordVM[]
 }
 
 export type AlertIncidentsSummaryVM = {

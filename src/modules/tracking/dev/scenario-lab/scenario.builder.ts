@@ -356,6 +356,7 @@ export function buildScenarioContainerNumbers(params: {
 export function buildScenario(params: {
   command: ScenarioLoadCommand
   runToken: string
+  containerNumbersByKey?: ContainerNumbersByKey
 }): ScenarioBuildResult {
   const scenario = getTrackingScenarioById(params.command.scenarioId)
   if (!scenario) {
@@ -363,17 +364,20 @@ export function buildScenario(params: {
   }
 
   const appliedStep = clampStep(params.command.step, scenario.steps.length)
-  const containerNumbersByKey = buildScenarioContainerNumbers({
-    scenario,
-    appliedStep,
-    runToken: params.runToken,
-  })
+  const containerNumbersByKey =
+    params.containerNumbersByKey ??
+    buildScenarioContainerNumbers({
+      scenario,
+      appliedStep,
+      runToken: params.runToken,
+    })
 
   const snapshots = buildSnapshotsUntilStep(scenario, appliedStep, containerNumbersByKey)
 
   return {
     scenario,
     appliedStep,
+    containerNumbersByKey,
     snapshots,
   }
 }

@@ -24,12 +24,12 @@ export type TrackingAlertProjectionSource = TrackingAlertProjectionSourceBase &
 export type TrackingAlertProjection = {
   readonly id: string
   readonly containerNumber: string
-  readonly type: 'delay' | 'customs' | 'missing-eta' | 'transshipment' | 'info'
+  readonly type: 'customs' | 'missing-eta' | 'transshipment' | 'info'
   readonly severity: 'info' | 'warning' | 'danger'
   readonly messageKey:
     | 'alerts.transshipmentDetected'
+    | 'alerts.plannedTransshipmentDetected'
     | 'alerts.customsHoldDetected'
-    | 'alerts.noMovementDetected'
     | 'alerts.etaMissing'
     | 'alerts.etaPassed'
     | 'alerts.portChange'
@@ -47,14 +47,13 @@ export type TrackingAlertProjection = {
 function alertTypeToProjection(type: string): TrackingAlertProjection['type'] {
   switch (type) {
     case 'TRANSSHIPMENT':
+    case 'PLANNED_TRANSSHIPMENT':
       return 'transshipment'
     case 'CUSTOMS_HOLD':
       return 'customs'
     case 'ETA_MISSING':
     case 'ETA_PASSED':
       return 'missing-eta'
-    case 'NO_MOVEMENT':
-      return 'delay'
     default:
       return 'info'
   }

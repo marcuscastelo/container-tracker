@@ -40,6 +40,7 @@ export function mergeTrackingFieldsIntoShipment(
     eta: latest.eta,
     processEtaDisplayVm: latest.processEtaDisplayVm,
     processEtaSecondaryVm: latest.processEtaSecondaryVm,
+    trackingValidation: latest.trackingValidation,
     containers: latest.containers,
     alerts: latest.alerts,
     alertIncidents: latest.alertIncidents,

@@ -4,8 +4,8 @@ import {
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import {
-  buildShipmentAlertIncidentsReadModel,
-  type ShipmentAlertIncidentsReadModel,
+  buildOperationalIncidentsReadModel,
+  type OperationalIncidentsReadModel,
 } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
@@ -19,6 +19,10 @@ import {
 } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import {
+  deriveTrackingValidationProjectionFromState,
+  type TrackingValidationContainerProjection,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { Instant } from '~/shared/time/instant'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
@@ -47,9 +51,11 @@ export type ContainerOperationalSummaryProjection = {
   readonly lastEventAt: TemporalValue | null
 }
 
+export type ContainerTrackingValidationProjection = TrackingValidationContainerProjection
+
 export type ContainersActiveAlertIncidentsProjection = {
   readonly activeAlerts: readonly TrackingAlert[]
-  readonly activeAlertIncidents: ShipmentAlertIncidentsReadModel
+  readonly activeOperationalIncidents: OperationalIncidentsReadModel
   readonly activeAlertsByContainerId: ReadonlyMap<string, readonly TrackingAlert[]>
 }
 
@@ -147,6 +153,38 @@ export function findContainersOperationalSummaryProjection(command: {
   return summariesByContainerId
 }
 
+export function findContainersTrackingValidationProjection(command: {
+  readonly containers: readonly ContainerTarget[]
+  readonly observationsByContainerId: ReadonlyMap<string, readonly Observation[]>
+  readonly timelineMainByContainerId: ReadonlyMap<string, ContainerTimelineMainProjection>
+  readonly now: Instant
+}): ReadonlyMap<string, ContainerTrackingValidationProjection> {
+  const validationByContainerId = new Map<string, ContainerTrackingValidationProjection>()
+
+  for (const container of command.containers) {
+    const observations = command.observationsByContainerId.get(container.containerId) ?? []
+    const projectionObservations = suppressSupersededObservationsForProjection(observations)
+    const timelineProjection = command.timelineMainByContainerId.get(container.containerId)
+    if (timelineProjection === undefined) continue
+
+    const transshipment = deriveTransshipment(timelineProjection.domainTimeline)
+    const validation = deriveTrackingValidationProjectionFromState({
+      containerId: container.containerId,
+      containerNumber: container.containerNumber,
+      observations: projectionObservations,
+      timeline: timelineProjection.domainTimeline,
+      status: timelineProjection.status,
+      transshipment,
+      timelineItems: timelineProjection.timeline,
+      now: command.now,
+    })
+
+    validationByContainerId.set(container.containerId, validation)
+  }
+
+  return validationByContainerId
+}
+
 export function findContainersActiveAlertIncidentsProjection(command: {
   readonly containers: readonly {
     readonly containerId: string
@@ -155,7 +193,7 @@ export function findContainersActiveAlertIncidentsProjection(command: {
   readonly activeAlerts: readonly TrackingAlert[]
 }): ContainersActiveAlertIncidentsProjection {
   const activeAlertsByContainerId = groupActiveAlertsByContainerId(command.activeAlerts)
-  const activeAlertIncidents = buildShipmentAlertIncidentsReadModel({
+  const activeOperationalIncidents = buildOperationalIncidentsReadModel({
     containers: command.containers.map((container) => ({
       containerId: container.containerId,
       containerNumber: container.containerNumber,
@@ -165,7 +203,7 @@ export function findContainersActiveAlertIncidentsProjection(command: {
 
   return {
     activeAlerts: command.activeAlerts,
-    activeAlertIncidents,
+    activeOperationalIncidents,
     activeAlertsByContainerId,
   }
 }

@@ -4,6 +4,7 @@ import type {
   AgentActivityType,
   AgentAuthenticatedIdentity,
   AgentBootStatus,
+  AgentInfraConfigRecord,
   AgentLeaseHealth,
   AgentListSortDirection,
   AgentListSortField,
@@ -12,6 +13,8 @@ import type {
   AgentMonitoringRepository,
   AgentProcessingState,
   AgentRealtimeState,
+  AgentRemoteCommandRecord,
+  AgentRemotePolicyRecord,
   AgentStatus,
   AgentUpdaterState,
 } from '~/modules/agent/application/agent-monitoring.repository'
@@ -187,6 +190,35 @@ type RequestAgentRestartCommand = {
   readonly requestedAt?: string
 }
 
+type UpdateAgentRemotePolicyCommand = {
+  readonly tenantId: string
+  readonly agentId: string
+  readonly updatesPaused?: boolean
+  readonly updateChannel?: string
+  readonly blockedVersions?: readonly string[]
+  readonly desiredVersion?: string | null
+}
+
+type RequestAgentResetCommand = {
+  readonly tenantId: string
+  readonly agentId: string
+  readonly requestedAt?: string
+}
+
+type GetRemoteControlStateCommand = {
+  readonly tenantId: string
+  readonly agentId: string
+}
+
+type AcknowledgeRemoteControlCommand = {
+  readonly tenantId: string
+  readonly agentId: string
+  readonly commandId: string
+  readonly acknowledgedAt?: string
+  readonly status?: 'APPLIED' | 'IGNORED' | 'FAILED'
+  readonly detail?: string | null
+}
+
 type AgentUpdateManifestReadModel = {
   readonly version: string
   readonly downloadUrl: string | null
@@ -198,6 +230,11 @@ type AgentUpdateManifestReadModel = {
   readonly updateReadyVersion: string | null
   readonly restartRequired: boolean
   readonly restartRequestedAt: string | null
+}
+
+type AgentRemoteControlStateReadModel = {
+  readonly policy: AgentRemotePolicyRecord
+  readonly commands: readonly AgentRemoteCommandRecord[]
 }
 
 const DEFAULT_ACTIVITY_LIMIT = 40
@@ -839,6 +876,32 @@ export function createAgentMonitoringUseCases(deps: {
     return deps.repository.authenticateAgentToken(command)
   }
 
+  const getRemoteControlState = async (
+    command: GetRemoteControlStateCommand,
+  ): Promise<AgentRemoteControlStateReadModel | null> => {
+    return deps.repository.getRemoteControlState(command)
+  }
+
+  const getInfraConfig = async (command: {
+    readonly tenantId: string
+    readonly agentId: string
+  }): Promise<AgentInfraConfigRecord | null> => {
+    return deps.repository.getInfraConfig(command)
+  }
+
+  const acknowledgeRemoteControlCommand = async (
+    command: AcknowledgeRemoteControlCommand,
+  ): Promise<boolean> => {
+    return deps.repository.acknowledgeRemoteControlCommand({
+      tenantId: command.tenantId,
+      agentId: command.agentId,
+      commandId: command.commandId,
+      acknowledgedAt: command.acknowledgedAt ?? new Date().toISOString(),
+      status: command.status ?? 'APPLIED',
+      detail: command.detail ?? null,
+    })
+  }
+
   const requestAgentUpdate = async (
     command: RequestAgentUpdateCommand,
   ): Promise<AgentMonitoringRecord | null> => {
@@ -857,6 +920,32 @@ export function createAgentMonitoringUseCases(deps: {
   ): Promise<AgentMonitoringRecord | null> => {
     const requestedAt = command.requestedAt ?? new Date().toISOString()
     return deps.repository.requestAgentRestart({
+      tenantId: command.tenantId,
+      agentId: command.agentId,
+      requestedAt,
+    })
+  }
+
+  const updateAgentRemotePolicy = async (
+    command: UpdateAgentRemotePolicyCommand,
+  ): Promise<AgentMonitoringRecord | null> => {
+    return deps.repository.updateAgentRemotePolicy({
+      tenantId: command.tenantId,
+      agentId: command.agentId,
+      ...(command.updatesPaused === undefined ? {} : { updatesPaused: command.updatesPaused }),
+      ...(command.updateChannel === undefined ? {} : { updateChannel: command.updateChannel }),
+      ...(command.blockedVersions === undefined
+        ? {}
+        : { blockedVersions: command.blockedVersions }),
+      ...(command.desiredVersion === undefined ? {} : { desiredVersion: command.desiredVersion }),
+    })
+  }
+
+  const requestAgentReset = async (
+    command: RequestAgentResetCommand,
+  ): Promise<AgentMonitoringRecord | null> => {
+    const requestedAt = command.requestedAt ?? new Date().toISOString()
+    return deps.repository.requestAgentReset({
       tenantId: command.tenantId,
       agentId: command.agentId,
       requestedAt,
@@ -917,8 +1006,13 @@ export function createAgentMonitoringUseCases(deps: {
     ingestAgentLogs,
     recordActivity,
     authenticateAgentToken,
+    getRemoteControlState,
+    getInfraConfig,
+    acknowledgeRemoteControlCommand,
     requestAgentUpdate,
     requestAgentRestart,
+    updateAgentRemotePolicy,
+    requestAgentReset,
     getUpdateManifestForAgent,
   }
 }
