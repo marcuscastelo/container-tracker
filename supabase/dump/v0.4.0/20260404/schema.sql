@@ -618,7 +618,7 @@ ALTER TABLE "public"."container_observations" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."container_snapshots" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "container_id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "container_id" "uuid" NOT NULL,
     "provider" "text" NOT NULL,
     "fetched_at" timestamp with time zone NOT NULL,
     "payload" json NOT NULL,
@@ -631,7 +631,7 @@ ALTER TABLE "public"."container_snapshots" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."containers" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "process_id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "process_id" "uuid" NOT NULL,
     "container_number" "text" NOT NULL,
     "carrier_code" "text" NOT NULL,
     "container_type" "text",
@@ -753,7 +753,7 @@ ALTER TABLE "public"."tracking_agents" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."tracking_alerts" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "container_id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "container_id" "uuid" NOT NULL,
     "category" "text" NOT NULL,
     "type" "text" NOT NULL,
     "severity" "text" NOT NULL,
@@ -1539,7 +1539,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
 
 
 
