@@ -14,14 +14,10 @@ import type {
   ProcessUpdateRow,
 } from '~/modules/process/infrastructure/persistence/process.row'
 import { Instant } from '~/shared/time/instant'
-import { normalizeTimestamptz } from '~/shared/utils/normalizeTimestamptz'
+import { requireTimestamptz } from '~/shared/utils/requireTimestamptz'
 
 function requireTimestamp(value: unknown, field: string): string {
-  const normalized = normalizeTimestamptz(value)
-  if (normalized === null) {
-    throw new Error(`process persistence mapper: ${field} is not a valid timestamp: ${String(value)}`)
-  }
-  return normalized
+  return requireTimestamptz(value, field, 'process persistence mapper')
 }
 
 // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/13
