@@ -38,7 +38,7 @@ Definidos em `docs/plans/ui-complexity-scope.json`.
 Regras práticas:
 - `components`: visual puro (`ui/components/**`, `shared/ui/**`).
 - `pages-like`: arquivos de tela/orquestração (`ui/screens/**`, `*View.tsx`, `*Dialog.tsx`, overrides explícitos).
-- Se o arquivo combina fetch/query/resource + layout de tela, entra em `pages-like` via `pagesLikeOverrides`.
+- Se arquivo combina fetch/query/resource + layout de tela, entra em `pages-like` via `pagesLikeOverrides`.
 
 ## Thresholds Ativos
 ### ESLint soft (script report)
@@ -65,7 +65,7 @@ Regras práticas:
 ## Política de Schema/Validation na UI
 - `ui/components/**` não pode importar libs/schema/validation (`zod`, `yup`, `valibot`, `superstruct`, `arktype`) nem módulos internos `*schema*`/`*validation*`.
 - `pages-like` não faz parsing/schema diretamente; delega para `ui/validation/**`.
-- `ui/validation/**` é o único ponto para parsing/validação de UX na UI.
+- `ui/validation/**` é único ponto para parsing/validação de UX na UI.
 - `interface/http/**` mantém validação de request/response.
 - `modules/*/domain/**` não usa schema libs.
 
@@ -90,4 +90,4 @@ Regras:
 ## Operação Contínua
 1. Manter `allowlist` em zero; novos entries só com motivo, issue e expiração.
 2. Executar `ui:complexity:ci` no mesmo job do lint em toda PR.
-3. Tratar exceções como temporárias e remover assim que o hotspot for refatorado.
+3. Tratar exceções como temporárias e remover assim que hotspot for refatorado.

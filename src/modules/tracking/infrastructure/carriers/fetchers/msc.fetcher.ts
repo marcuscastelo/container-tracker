@@ -15,6 +15,12 @@ export async function fetchMscStatus(containerNumber: string): Promise<FetchResu
     trackingNumber: String(containerNumber),
     trackingMode: '0',
   }
+  const startedAtMs = Date.now()
+  console.log('[tracking:msc] request', {
+    method: 'POST',
+    url,
+    containerNumber,
+  })
 
   const headers: Record<string, string> = {
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0',
@@ -34,13 +40,42 @@ export async function fetchMscStatus(containerNumber: string): Promise<FetchResu
     TE: 'trailers',
   }
 
-  const resp = await axios.post(url, body, {
-    headers,
-    responseType: 'arraybuffer',
-    timeout: 30_000,
-  })
+  const resp = await axios
+    .post(url, body, {
+      headers,
+      responseType: 'arraybuffer',
+      timeout: 30_000,
+    })
+    .catch((error: unknown) => {
+      if (axios.isAxiosError(error)) {
+        console.error('[tracking:msc] response error', {
+          method: 'POST',
+          url,
+          containerNumber,
+          status: error.response?.status ?? null,
+          message: error.message,
+          durationMs: Date.now() - startedAtMs,
+        })
+      }
+      throw error
+    })
 
   const contentEncoding: string | undefined = resp.headers?.['content-encoding'] ?? undefined
+  let responseBytes: number | null = null
+  if (resp.data instanceof ArrayBuffer || ArrayBuffer.isView(resp.data)) {
+    responseBytes = resp.data.byteLength
+  }
+  console.log('[tracking:msc] response', {
+    method: 'POST',
+    url,
+    containerNumber,
+    status: resp.status,
+    ok: resp.status >= 200 && resp.status < 300,
+    durationMs: Date.now() - startedAtMs,
+    contentEncoding: typeof contentEncoding === 'string' ? contentEncoding : null,
+    responseBytes,
+  })
+
   const text = decodeResponseBuffer(
     Buffer.from(resp.data),
     typeof contentEncoding === 'string' ? contentEncoding : null,

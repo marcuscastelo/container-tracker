@@ -115,6 +115,7 @@ export type TrackingScenarioSummary = Readonly<{
 export type ScenarioLoadCommand = Readonly<{
   scenarioId: string
   step: number
+  reuseProcessId?: string
 }>
 
 export type ScenarioStepSnapshot = Readonly<{
@@ -127,6 +128,7 @@ export type ScenarioStepSnapshot = Readonly<{
 export type ScenarioBuildResult = Readonly<{
   scenario: TrackingScenario
   appliedStep: number
+  containerNumbersByKey: ReadonlyMap<string, string>
   snapshots: readonly ScenarioStepSnapshot[]
 }>
 
@@ -135,6 +137,7 @@ export type ScenarioSeedResult = Readonly<{
   appliedStep: number
   processId: string
   processReference: string
+  reusedExistingProcess: boolean
   stage: ScenarioStage
   containerIds: readonly string[]
   containerNumbers: readonly string[]

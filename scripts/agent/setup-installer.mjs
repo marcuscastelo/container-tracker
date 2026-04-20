@@ -8,8 +8,13 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const DEFAULT_DOCKER_IMAGE = 'amake/innosetup'
-const DEFAULT_INSTALLER_SCRIPT = 'tools/agent/installer/installer.iss'
+const DEFAULT_INSTALLER_SCRIPT = 'apps/agent/src/installer/installer.iss'
 const VALID_MODES = ['auto', 'native', 'docker', 'wine']
+const REQUIRED_WINDOWS_SETUP_INPUTS = [
+  'release/ct-agent-startup.exe',
+  'release/control-ui/package.json',
+  'release/electron/electron.exe',
+]
 
 function toErrorMessage(error) {
   if (error instanceof Error) {
@@ -23,7 +28,7 @@ function resolveRepoRoot(startDir) {
   let cursor = startDir
 
   for (;;) {
-    const marker = path.join(cursor, 'tools', 'agent', 'agent.ts')
+    const marker = path.join(cursor, 'apps', 'agent', 'src', 'runtime', 'runtime.entry.ts')
     if (fsSync.existsSync(marker)) {
       return cursor
     }
@@ -171,10 +176,14 @@ function checkCommandAvailability(command, args = ['--version']) {
   })
 }
 
-function runCommand(command, args, cwd) {
+function runCommand(command, args, cwd, extraEnv = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
+      env: {
+        ...process.env,
+        ...extraEnv,
+      },
       stdio: 'inherit',
       shell: false,
     })
@@ -195,19 +204,37 @@ function runCommand(command, args, cwd) {
 }
 
 async function resolveInstallerScriptPath(repoRoot, installerScriptPathArg) {
-  const absolutePath = path.isAbsolute(installerScriptPathArg)
-    ? installerScriptPathArg
-    : path.resolve(process.cwd(), installerScriptPathArg)
+  if (path.isAbsolute(installerScriptPathArg)) {
+    if (!(await pathExists(installerScriptPathArg))) {
+      throw new Error(`Installer script not found: ${installerScriptPathArg}`)
+    }
 
-  if (!(await pathExists(absolutePath))) {
-    throw new Error(`Installer script not found: ${absolutePath}`)
+    if (!isInsideDirectory(repoRoot, installerScriptPathArg)) {
+      throw new Error(`Installer script must be inside repository root: ${installerScriptPathArg}`)
+    }
+
+    return installerScriptPathArg
   }
 
-  if (!isInsideDirectory(repoRoot, absolutePath)) {
-    throw new Error(`Installer script must be inside repository root: ${absolutePath}`)
+  const fromRepoRoot = path.resolve(repoRoot, installerScriptPathArg)
+  const fromCwd = path.resolve(process.cwd(), installerScriptPathArg)
+  const preferredCandidates =
+    installerScriptPathArg === DEFAULT_INSTALLER_SCRIPT
+      ? [fromRepoRoot, fromCwd]
+      : [fromCwd, fromRepoRoot]
+  const candidatePaths = [...new Set(preferredCandidates)]
+
+  for (const candidatePath of candidatePaths) {
+    if (await pathExists(candidatePath)) {
+      if (!isInsideDirectory(repoRoot, candidatePath)) {
+        throw new Error(`Installer script must be inside repository root: ${candidatePath}`)
+      }
+
+      return candidatePath
+    }
   }
 
-  return absolutePath
+  throw new Error(`Installer script not found: ${candidatePaths.join(' or ')}`)
 }
 
 async function resolveWineIsccPath(explicitPath) {
@@ -348,11 +375,27 @@ async function chooseStrategy(command) {
   )
 }
 
+async function ensureWindowsSetupInputs(repoRoot) {
+  const missing = []
+  for (const relativePath of REQUIRED_WINDOWS_SETUP_INPUTS) {
+    if (!(await pathExists(path.join(repoRoot, relativePath)))) {
+      missing.push(relativePath)
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Windows setup inputs are missing: ${missing.join(', ')}. Run pnpm run agent:release before compiling Setup.exe.`,
+    )
+  }
+}
+
 async function main() {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url))
   const repoRoot = resolveRepoRoot(scriptDir)
   const parsed = parseCliArgs(process.argv.slice(2))
   const installerScriptPath = await resolveInstallerScriptPath(repoRoot, parsed.installerScriptPath)
+  await ensureWindowsSetupInputs(repoRoot)
 
   const command = {
     ...parsed,
@@ -365,7 +408,9 @@ async function main() {
   console.log(
     `[agent:setup] strategy=${selected.strategyName} installer=${path.relative(repoRoot, installerScriptPath)}`,
   )
-  await runCommand(selected.command, selected.args, repoRoot)
+  await runCommand(selected.command, selected.args, repoRoot, {
+    CONTAINER_TRACKER_REPO_ROOT: repoRoot,
+  })
 
   const defaultOutputPath = path.join(
     path.dirname(installerScriptPath),

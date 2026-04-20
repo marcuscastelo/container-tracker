@@ -1,10 +1,12 @@
 import { createEffect, createMemo, createSignal, type JSX, Show } from 'solid-js'
+import { CarrierLinkButton } from '~/modules/process/ui/components/CarrierLinkButton'
 import { ObservationInspector } from '~/modules/process/ui/components/ObservationInspector'
 import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
 import {
   fetchObservationInspector,
-  fetchTimelineSeriesHistory,
+  fetchTimelinePredictionHistory,
 } from '~/modules/process/ui/fetchProcessTrackingDetails'
+import { toPredictionHistoryModalVM } from '~/modules/process/ui/mappers/predictionHistory.ui-mapper'
 import {
   type NonMappedIndicatorVariant,
   resolveTimelineEventLabelPresentation,
@@ -16,7 +18,6 @@ import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/
 import { useTranslation } from '~/shared/localization/i18n'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
-import { copyToClipboard } from '~/shared/utils/clipboard'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'
@@ -28,7 +29,6 @@ type TimelineNodeProps = {
   readonly containerNumber?: string | null
   readonly observation?: ContainerObservationVM
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly highlighted?: boolean
 }
 
 type DateLabelProps = {
@@ -40,12 +40,9 @@ type DateLabelProps = {
   readonly toTooltip: (iso?: TemporalValueDto | null) => string | undefined
 }
 
-type CarrierLinkProps = {
-  readonly href?: string
-  readonly containerNumber?: string | null
-  readonly label: string
-}
-type TimelineSeriesHistoryState = NonNullable<TrackingTimelineItem['seriesHistory']> | null
+type PredictionHistorySourceState = Awaited<
+  ReturnType<typeof fetchTimelinePredictionHistory>
+> | null
 
 function toOptionalTimelineNodeLayoutProps(params: {
   readonly nonMappedBadgeLabel: string | undefined
@@ -117,78 +114,30 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
   )
 }
 
-async function copyAndOpenCarrierLink(
-  href: string,
-  containerNumber?: string | null,
-): Promise<void> {
-  try {
-    if (containerNumber) {
-      await copyToClipboard(containerNumber)
-    }
-  } catch {
-    /* ignore copy failures */
-  }
-
-  try {
-    window.open(href, '_blank')
-  } catch {
-    /* ignore window open failures */
-  }
-}
-
-function CarrierLinkButton(props: CarrierLinkProps): JSX.Element | null {
-  return (
-    <Show when={props.href}>
-      {(href) => (
-        <a
-          href={href()}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={props.label}
-          class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded text-text-muted hover:text-foreground"
-          onClick={(event) => {
-            event.preventDefault()
-            void copyAndOpenCarrierLink(href(), props.containerNumber)
-          }}
-        >
-          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <title>{props.label}</title>
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.5"
-              d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"
-            />
-          </svg>
-        </a>
-      )}
-    </Show>
-  )
-}
-
 function usePredictionHistoryController(command: {
   readonly containerId: () => string
   readonly event: () => TrackingTimelineItem
   readonly loadErrorMessage: () => string
 }) {
   const [showPredictionHistory, setShowPredictionHistory] = createSignal(false)
-  const [seriesHistory, setSeriesHistory] = createSignal<TimelineSeriesHistoryState>(null)
+  const [predictionHistorySource, setPredictionHistorySource] =
+    createSignal<PredictionHistorySourceState>(null)
   const [seriesHistoryLoading, setSeriesHistoryLoading] = createSignal(false)
   const [seriesHistoryErrorMessage, setSeriesHistoryErrorMessage] = createSignal<string | null>(
     null,
   )
 
   createEffect(() => {
-    const event = command.event()
+    void command.event().id
     setShowPredictionHistory(false)
-    setSeriesHistory(event.seriesHistory ?? null)
+    setPredictionHistorySource(null)
     setSeriesHistoryLoading(false)
     setSeriesHistoryErrorMessage(null)
   })
 
   const hasPredictionHistory = createMemo(() => {
     const event = command.event()
-    return Boolean(event.hasSeriesHistory) || Boolean(seriesHistory())
+    return event.hasSeriesHistory === true
   })
 
   const openPredictionHistory = async (): Promise<void> => {
@@ -196,12 +145,15 @@ function usePredictionHistoryController(command: {
     setSeriesHistoryErrorMessage(null)
 
     const event = command.event()
-    if (seriesHistory() !== null || event.hasSeriesHistory !== true) return
+    if (predictionHistorySource() !== null || event.hasSeriesHistory !== true) return
 
     setSeriesHistoryLoading(true)
     try {
-      const loadedSeriesHistory = await fetchTimelineSeriesHistory(command.containerId(), event.id)
-      setSeriesHistory(loadedSeriesHistory)
+      const loadedPredictionHistory = await fetchTimelinePredictionHistory(
+        command.containerId(),
+        event.id,
+      )
+      setPredictionHistorySource(loadedPredictionHistory)
     } catch (error) {
       console.error(`Failed to load series history for timeline item ${event.id}:`, error)
       setSeriesHistoryErrorMessage(command.loadErrorMessage())
@@ -215,7 +167,7 @@ function usePredictionHistoryController(command: {
     openPredictionHistory,
     closePredictionHistory: () => setShowPredictionHistory(false),
     showPredictionHistory,
-    seriesHistory,
+    predictionHistorySource,
     seriesHistoryLoading,
     seriesHistoryErrorMessage,
   }
@@ -233,7 +185,7 @@ function useObservationInspectorController(command: {
   const [observationErrorMessage, setObservationErrorMessage] = createSignal<string | null>(null)
 
   createEffect(() => {
-    command.event().id
+    void command.event().id
     setShowObservationInspector(false)
     setObservation(command.initialObservation())
     setObservationLoading(false)
@@ -295,6 +247,7 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
 
   const isExpected = () => props.event.eventTimeType === 'EXPECTED'
   const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
+  const hasSeriesConflict = createMemo(() => props.event.seriesConflict != null)
 
   const status = createMemo<EventStatus>(() => {
     if (!isExpected()) return 'completed'
@@ -337,21 +290,15 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
 
   const labelPresentation = createMemo(() => {
     const indicatorVariant = props.nonMappedIndicatorVariant ?? 'badge'
-    const presentation = resolveTimelineEventLabelPresentation(
-      props.event,
-      t,
-      keys,
-      indicatorVariant,
-    )
-    let currentLabel = presentation.label
+    return resolveTimelineEventLabelPresentation(props.event, t, keys, indicatorVariant)
+  })
+  const timelineLabel = createMemo(() => {
+    let currentLabel = labelPresentation().label
     if (props.event.vesselName) {
       currentLabel += ` — ${props.event.vesselName}`
       if (props.event.voyage) currentLabel += ` (${props.event.voyage})`
     }
-    return {
-      ...presentation,
-      label: currentLabel,
-    }
+    return currentLabel
   })
   const nonMappedBadgeLabel = createMemo(() =>
     labelPresentation().showNonMappedIndicator
@@ -375,6 +322,18 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
     if (!Icon) return null
     return <Icon class="h-4 w-4 shrink-0" aria-hidden="true" />
   })
+  const predictionHistoryModalVm = createMemo(() => {
+    const source = predictionHistory.predictionHistorySource()
+    if (source === null) return null
+
+    return toPredictionHistoryModalVM({
+      source,
+      activityLabel: labelPresentation().label,
+      locale: locale(),
+      t,
+      keys,
+    })
+  })
 
   return (
     <>
@@ -382,11 +341,11 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
         isLast={props.isLast}
         isExpected={isExpected()}
         isExpiredExpected={isExpiredExpected()}
-        highlighted={props.highlighted ?? false}
+        hasSeriesConflict={hasSeriesConflict()}
         dotClass={styles().dot}
         lineClass={styles().line}
         textClass={styles().text}
-        label={labelPresentation().label}
+        label={timelineLabel()}
         eventIcon={eventIcon()}
         etaChipLabel={null}
         showPredictionHistoryButton={predictionHistory.hasPredictionHistory()}
@@ -399,6 +358,8 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
           void observationInspector.openObservationInspector()
         }}
         observationLabel={t(keys.shipmentView.timeline.viewObservation)}
+        conflictBadgeLabel={t(keys.shipmentView.timeline.conflictBadge)}
+        conflictTooltip={t(keys.shipmentView.timeline.conflictTooltip)}
         expiredExpectedLabel={t(keys.shipmentView.timeline.expiredExpected)}
         expiredExpectedTooltip={t(keys.shipmentView.timeline.expiredExpectedTooltip)}
         expectedLabel={t(keys.shipmentView.timeline.expected)}
@@ -416,6 +377,7 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
         carrierLink={
           <CarrierLinkButton
             label={t(keys.shipmentView.timeline.viewOnCarrierSite)}
+            class="ml-1"
             {...toOptionalCarrierLinkProps({
               href: href(),
               containerNumber: props.containerNumber,
@@ -430,7 +392,8 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
       />
 
       <PredictionHistoryModal
-        seriesHistory={predictionHistory.seriesHistory()}
+        predictionHistory={predictionHistoryModalVm()}
+        predictionHistorySource={predictionHistory.predictionHistorySource()}
         activityLabel={labelPresentation().label}
         isOpen={predictionHistory.showPredictionHistory()}
         loading={predictionHistory.seriesHistoryLoading()}

@@ -15,10 +15,14 @@ import type {
   TrackingTimeTravelDiff,
   TrackingTimeTravelResult,
 } from '~/modules/tracking/features/replay/application/tracking.replay.types'
+import type { TrackingPredictionHistoryReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.prediction-history.readmodel'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import type {
   AlertResponseDto,
   SnapshotResponseDto,
+  TimelinePredictionHistoryResponseDto,
   TrackingReplayDebugResponseDto,
   TrackingTimeTravelCheckpointResponseDto,
   TrackingTimeTravelDiffResponseDto,
@@ -115,7 +119,19 @@ function toReplaySeriesResponseDto(series: TrackingReplaySeries) {
       event_time_type: item.eventTimeType,
       created_at: item.createdAt,
       series_label: item.seriesLabel,
+      vessel_name: item.vesselName ?? null,
+      voyage: item.voyage ?? null,
+      change_kind: item.changeKind ?? null,
     })),
+  }
+}
+
+function toTrackingSeriesConflictResponseDto(
+  conflict: NonNullable<TrackingTimelineItem['seriesConflict']>,
+) {
+  return {
+    kind: conflict.kind,
+    fields: [...conflict.fields],
   }
 }
 
@@ -131,6 +147,8 @@ function toReplayTimelineItemResponseDto(item: TrackingTimelineItem) {
     derived_state: item.derivedState,
     vessel_name: item.vesselName ?? null,
     voyage: item.voyage ?? null,
+    series_conflict:
+      item.seriesConflict == null ? null : toTrackingSeriesConflictResponseDto(item.seriesConflict),
     has_series_history: item.hasSeriesHistory,
     series_history: item.seriesHistory
       ? toTrackingSeriesHistoryResponseDto(item.seriesHistory)
@@ -256,6 +274,48 @@ function toTrackingTimeTravelDiffResponseDto(
   }
 }
 
+function toTrackingValidationSeverityResponse(
+  severity: TrackingValidationContainerSummary['highestSeverity'],
+): 'warning' | 'danger' | null {
+  switch (severity) {
+    case 'ADVISORY':
+      return 'warning'
+    case 'CRITICAL':
+      return 'danger'
+    default:
+      return null
+  }
+}
+
+function toTrackingValidationDisplayIssueResponseDto(issue: TrackingValidationDisplayIssue) {
+  const severity = toTrackingValidationSeverityResponse(issue.severity)
+  if (severity === null) {
+    throw new Error(`tracking validation issue severity missing: ${issue.code}`)
+  }
+
+  return {
+    code: issue.code,
+    severity,
+    reason_key: issue.reasonKey,
+    affected_area: issue.affectedArea,
+    affected_location: issue.affectedLocation,
+    affected_block_label_key: issue.affectedBlockLabelKey,
+  }
+}
+
+function toTrackingTimeTravelTrackingValidationResponseDto(
+  summary: TrackingValidationContainerSummary,
+) {
+  return {
+    has_issues: summary.hasIssues,
+    highest_severity: toTrackingValidationSeverityResponse(summary.highestSeverity),
+    finding_count: summary.findingCount,
+    active_issues: summary.activeIssues.map((issue) =>
+      toTrackingValidationDisplayIssueResponseDto(issue),
+    ),
+  }
+}
+
 function toTrackingTimeTravelCheckpointResponseDto(
   checkpoint: TrackingTimeTravelCheckpoint,
   containerNumber: string | null,
@@ -269,6 +329,9 @@ function toTrackingTimeTravelCheckpointResponseDto(
     alerts: [...toReplayAlertsResponseDto(checkpoint.alerts, containerNumber)],
     eta: toTrackingOperationalEtaResponseDto(checkpoint.eta),
     operational: toTrackingOperationalSummaryResponseDto(checkpoint.operational),
+    tracking_validation: toTrackingTimeTravelTrackingValidationResponseDto(
+      checkpoint.trackingValidation,
+    ),
     diff_from_previous: toTrackingTimeTravelDiffResponseDto(checkpoint.diffFromPrevious),
     debug_available: true,
   }
@@ -294,6 +357,10 @@ export function toTrackingSeriesHistoryResponseDto(
 ) {
   return {
     has_actual_conflict: seriesHistory.hasActualConflict,
+    conflict:
+      seriesHistory.conflict === undefined || seriesHistory.conflict === null
+        ? null
+        : toTrackingSeriesConflictResponseDto(seriesHistory.conflict),
     classified: seriesHistory.classified.map((historyItem) => ({
       id: historyItem.id,
       type: historyItem.type,
@@ -301,6 +368,40 @@ export function toTrackingSeriesHistoryResponseDto(
       event_time_type: historyItem.event_time_type,
       created_at: historyItem.created_at,
       series_label: historyItem.seriesLabel,
+      vessel_name: historyItem.vesselName ?? null,
+      voyage: historyItem.voyage ?? null,
+      change_kind: historyItem.changeKind ?? null,
+    })),
+  }
+}
+
+export function toTimelinePredictionHistoryResponseDto(
+  predictionHistory: TrackingPredictionHistoryReadModel,
+): TimelinePredictionHistoryResponseDto {
+  return {
+    header: {
+      tone: predictionHistory.header.tone,
+      summary_kind: predictionHistory.header.summary_kind,
+      current_version_id: predictionHistory.header.current_version_id,
+      previous_version_id: predictionHistory.header.previous_version_id,
+      original_version_id: predictionHistory.header.original_version_id,
+      reason_kind: predictionHistory.header.reason_kind,
+    },
+    versions: predictionHistory.versions.map((version) => ({
+      id: version.id,
+      is_current: version.is_current,
+      type: version.type,
+      event_time: version.event_time,
+      event_time_type: version.event_time_type,
+      vessel_name: version.vessel_name,
+      voyage: version.voyage,
+      version_state: version.version_state,
+      explanatory_text_kind: version.explanatory_text_kind,
+      transition_kind_from_previous_version: version.transition_kind_from_previous_version,
+      observed_at_count: version.observed_at_count,
+      observed_at_list: [...version.observed_at_list],
+      first_observed_at: version.first_observed_at,
+      last_observed_at: version.last_observed_at,
     })),
   }
 }

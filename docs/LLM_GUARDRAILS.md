@@ -7,7 +7,7 @@
 3. Is this infrastructure IO?
 4. Is this UI rendering/interaction?
 
-If the answer is unclear, stop and classify the change before coding.
+If answer is unclear, stop and classify change before coding.
 
 ---
 
@@ -21,7 +21,7 @@ If the answer is unclear, stop and classify the change before coding.
 **Application**
 
 - Use cases and orchestration
-- Read models/projections owned by the BC
+- Read models/projections owned by BC
 
 **Infrastructure**
 
@@ -40,7 +40,7 @@ If the answer is unclear, stop and classify the change before coding.
 
 ## 3. Naming Enforcement
 
-- Never call a file `ViewModel` if it contains behavior.
+- Never call file `ViewModel` if it contains behavior.
 - `*.vm.ts` means renderable shape only.
 - Sorting/filtering/grouping logic belongs in `*.service.ts` or `*.utils.ts`.
 - DTO names/snake_case are HTTP-boundary concerns, not internal contracts.
@@ -54,7 +54,7 @@ LLMs must NOT:
 - derive status/timeline/alerts in UI
 - classify tracking series outside tracking domain/application ownership
 - move domain rules into capabilities
-- use DTOs as internal application contracts
+- use DTOs internal application contracts
 - simplify ACTUAL/EXPECTED timeline semantics
 - flatten grouped operational timeline blocks by re-deriving semantics in UI
 - hide conflicts, ambiguity, or uncertainty states
@@ -68,7 +68,7 @@ UI composition reference:
 
 ## 5. Safety Checklist
 
-Before finishing a change:
+Before finishing change:
 
 1. Domain invariants unchanged
 2. Tracking series safe-first semantics preserved

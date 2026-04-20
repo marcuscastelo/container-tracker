@@ -7,16 +7,16 @@
 
 ## 1. Visão Geral do Produto
 
-**Container Tracker** é um sistema B2B de rastreamento marítimo focado em **visibilidade operacional**, **detecção de exceções** e **honestidade de dados**.
+**Container Tracker** é sistema B2B de rastreamento marítimo focado em **visibilidade operacional**, **detecção de exceções** e **honestidade de dados**.
 
-O sistema consolida dados de múltiplos carriers (MSC, Maersk, CMA CGM etc.) em um **modelo canônico orientado a eventos**, tolerante a dados incompletos, retroativos ou inconsistentes.
+sistema consolida dados de múltiplos carriers (MSC, Maersk, CMA CGM etc.) em **modelo canônico orientado eventos**, tolerante dados incompletos, retroativos ou inconsistentes.
 
 ### Princípios fundamentais
 
-* O sistema **não inventa informação**.
+* sistema **não inventa informação**.
 * Incerteza é explícita.
-* Exceções são mais importantes que o fluxo feliz.
-* O domínio manda na UI.
+* Exceções são mais importantes que fluxo feliz.
+* domínio manda na UI.
 
 ---
 
@@ -26,10 +26,10 @@ O sistema consolida dados de múltiplos carriers (MSC, Maersk, CMA CGM etc.) em 
 
 Entidade de produto criada pelo usuário.
 
-* Representa a **intenção de acompanhamento**.
-* Não é um evento logístico.
+* Representa **intenção de acompanhamento**.
+* Não é evento logístico.
 * Pode existir sem BL, booking ou carrier.
-* Agrupa um ou mais Shipments (no MVP: 1 processo = 1 shipment).
+* Agrupa ou mais Shipments (no MVP: 1 processo = 1 shipment).
 
 ---
 
@@ -59,9 +59,9 @@ Unidade operacional real.
 
 Fato logístico imutável.
 
-* Sempre ocorre em um tempo e local.
+* Sempre ocorre em tempo e local.
 * Pode ser ACTUAL ou EXPECTED.
-* Nunca é editado, apenas acrescido.
+* Nunca é editado, acrescido.
 
 ---
 
@@ -79,10 +79,10 @@ Derivação lógica baseada em eventos, estados e regras temporais.
 
 ### Princípios
 
-* Eventos são a **fonte da verdade**.
+* Eventos são **fonte da verdade**.
 * Estados são sempre derivados.
 * Eventos retroativos são permitidos.
-* A ordem correta é:
+* ordem correta é:
 
 ```
 Evento → Estado derivado → Alerta → UI
@@ -107,7 +107,7 @@ Evento → Estado derivado → Alerta → UI
 ### F2 — Timeline & Estados
 
 * Timeline por container
-* Suporte a eventos retroativos
+* Suporte eventos retroativos
 * Estados derivados visíveis
 
 ### F3 — Alertas
@@ -270,7 +270,7 @@ SUCCESS
 * Alertas são armazenados separadamente
 * Podem ser dismissados
 * Possuem TTL
-* São apagados quando o processo é apagado
+* São apagados quando processo é apagado
 
 ---
 
@@ -292,7 +292,7 @@ SUCCESS
 ## 11. Shipment View
 
 * Sempre focada em 1 container por vez
-* Timeline é a fonte da verdade
+* Timeline é fonte da verdade
 * Alertas são contextuais
 
 ---
@@ -309,7 +309,7 @@ SUCCESS
 
 ## 13. Regra de Ouro
 
-> O sistema nunca deve esconder dados ausentes ou inventar estados.
+> sistema nunca deve esconder dados ausentes ou inventar estados.
 
 ---
 
@@ -321,7 +321,7 @@ Antes de implementar qualquer feature:
 2. Pergunte: isso é intenção ou observação?
 3. Pergunte: isso pode estar ausente?
 
-Se alguma resposta for ignorada, a feature provavelmente está errada.
+Se alguma resposta for ignorada, feature provavelmente está errada.
 
 ---
 

@@ -88,7 +88,7 @@ function LogsHeader(props: { readonly controller: Controller }): JSX.Element {
         <button
           type="button"
           onClick={() => props.controller.reconnect()}
-          class="rounded border border-control-border bg-control-bg px-2 py-1 text-sm-ui text-control-foreground hover:bg-control-bg-hover"
+          class="motion-focus-surface motion-interactive rounded border border-control-border bg-control-bg px-2 py-1 text-sm-ui text-control-foreground hover:border-control-border-hover hover:bg-control-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         >
           Reconnect
         </button>
@@ -96,7 +96,7 @@ function LogsHeader(props: { readonly controller: Controller }): JSX.Element {
         <button
           type="button"
           onClick={() => props.controller.clearViewport()}
-          class="rounded border border-control-border bg-control-bg px-2 py-1 text-sm-ui text-control-foreground hover:bg-control-bg-hover"
+          class="motion-focus-surface motion-interactive rounded border border-control-border bg-control-bg px-2 py-1 text-sm-ui text-control-foreground hover:border-control-border-hover hover:bg-control-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         >
           Clear viewport
         </button>
@@ -124,7 +124,7 @@ function LogsJumpToLatest(props: { readonly controller: Controller }): JSX.Eleme
         <button
           type="button"
           onClick={() => props.controller.jumpToLatest()}
-          class="rounded border border-tone-info-border bg-tone-info-bg px-2 py-1 text-sm-ui text-tone-info-fg"
+          class="motion-focus-surface motion-interactive rounded border border-tone-info-border bg-tone-info-bg px-2 py-1 text-sm-ui text-tone-info-fg hover:border-tone-info-strong hover:bg-tone-info-bg/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         >
           Jump to latest
         </button>

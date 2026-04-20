@@ -16,6 +16,10 @@ import type {
   TrackingTimeTravelSyncVM,
   TrackingTimeTravelVM,
 } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
+import type {
+  ContainerTrackingValidationVM,
+  TrackingValidationIssueVM,
+} from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TrackingAlertProjectionSource } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
@@ -28,6 +32,14 @@ function toTimelineItem(
       ? undefined
       : {
           hasActualConflict: item.series_history.has_actual_conflict,
+          ...(item.series_history.conflict === null || item.series_history.conflict === undefined
+            ? {}
+            : {
+                conflict: {
+                  kind: item.series_history.conflict.kind,
+                  fields: [...item.series_history.conflict.fields],
+                },
+              }),
           classified: item.series_history.classified.map((seriesItem) => ({
             id: seriesItem.id,
             type: seriesItem.type,
@@ -35,6 +47,9 @@ function toTimelineItem(
             event_time_type: seriesItem.event_time_type,
             created_at: seriesItem.created_at,
             seriesLabel: seriesItem.series_label,
+            ...(seriesItem.vessel_name === undefined ? {} : { vesselName: seriesItem.vessel_name }),
+            ...(seriesItem.voyage === undefined ? {} : { voyage: seriesItem.voyage }),
+            ...(seriesItem.change_kind === undefined ? {} : { changeKind: seriesItem.change_kind }),
           })),
         }
 
@@ -50,6 +65,14 @@ function toTimelineItem(
     ...(item.location === null || item.location === undefined ? {} : { location: item.location }),
     ...(item.vessel_name === undefined ? {} : { vesselName: item.vessel_name }),
     ...(item.voyage === undefined ? {} : { voyage: item.voyage }),
+    ...(item.series_conflict === null || item.series_conflict === undefined
+      ? {}
+      : {
+          seriesConflict: {
+            kind: item.series_conflict.kind,
+            fields: [...item.series_conflict.fields],
+          },
+        }),
     ...(seriesHistory === undefined ? {} : { seriesHistory }),
   }
 }
@@ -123,6 +146,19 @@ function toNextLocationVm(
   }
 }
 
+function toTransshipmentVm(
+  transshipment: TrackingTimeTravelResponseDto['syncs'][number]['operational']['transshipment'],
+) {
+  return {
+    hasTransshipment: transshipment.has_transshipment,
+    count: transshipment.count,
+    ports: transshipment.ports.map((port) => ({
+      code: port.code,
+      display: port.display,
+    })),
+  }
+}
+
 function toDiffVm(
   diff: TrackingTimeTravelResponseDto['syncs'][number]['diff_from_previous'],
   locale: string,
@@ -152,6 +188,32 @@ function toDiffVm(
   }
 }
 
+function toTrackingValidationVm(
+  trackingValidation: TrackingTimeTravelResponseDto['syncs'][number]['tracking_validation'],
+): ContainerTrackingValidationVM {
+  return {
+    hasIssues: trackingValidation.has_issues === true,
+    highestSeverity: trackingValidation.highest_severity ?? null,
+    findingCount: trackingValidation.finding_count,
+    activeIssues: trackingValidation.active_issues.map((issue) =>
+      toTrackingValidationIssueVm(issue),
+    ),
+  }
+}
+
+function toTrackingValidationIssueVm(
+  issue: TrackingTimeTravelResponseDto['syncs'][number]['tracking_validation']['active_issues'][number],
+): TrackingValidationIssueVM {
+  return {
+    code: issue.code,
+    severity: issue.severity,
+    reasonKey: issue.reason_key,
+    affectedArea: issue.affected_area,
+    affectedLocation: issue.affected_location ?? null,
+    affectedBlockLabelKey: issue.affected_block_label_key ?? null,
+  }
+}
+
 function toSyncVm(
   checkpoint: TrackingTimeTravelResponseDto['syncs'][number],
   locale: string,
@@ -169,6 +231,8 @@ function toSyncVm(
     eta: toEtaVm(checkpoint.eta, locale),
     currentContext: toCurrentContextVm(checkpoint.operational.current_context),
     nextLocation: toNextLocationVm(checkpoint.operational.next_location, locale),
+    transshipment: toTransshipmentVm(checkpoint.operational.transshipment),
+    trackingValidation: toTrackingValidationVm(checkpoint.tracking_validation),
     diff: toDiffVm(checkpoint.diff_from_previous, locale),
     debugAvailable: checkpoint.debug_available,
   }
@@ -213,6 +277,9 @@ function toDebugStateVm(
         eventTimeType: item.event_time_type,
         createdAt: item.created_at,
         seriesLabel: item.series_label,
+        vesselName: item.vessel_name ?? null,
+        voyage: item.voyage ?? null,
+        changeKind: item.change_kind ?? null,
       })),
     })),
     timeline: state.timeline.map(toTimelineItem),

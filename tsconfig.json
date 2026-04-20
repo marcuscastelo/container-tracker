@@ -6,6 +6,7 @@
     "baseUrl": ".",
     "paths": {
       "~/*": ["./src/*"],
+      "@agent/*": ["./apps/agent/src/*"],
       "@tools/*": ["./tools/*"]
     }
   },

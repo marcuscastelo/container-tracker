@@ -3,7 +3,10 @@ import { normalizeCarrierKey } from '~/shared/utils/carrierDisplay'
 const ONE_CARRIER_KEYS = new Set(['one', 'oneline', 'oceannetworkexpress'])
 
 // Carrier tracking URL helpers
-export function carrierTrackUrl(carrier: string | null, containerNumber: string): string | null {
+export function directCarrierTrackUrl(
+  carrier: string | null,
+  containerNumber: string,
+): string | null {
   if (!carrier || !containerNumber) return null
   const c = carrier.toLowerCase()
   const normalizedCarrier = normalizeCarrierKey(carrier)
@@ -23,6 +26,17 @@ export function carrierTrackUrl(carrier: string | null, containerNumber: string)
   }
   if (ONE_CARRIER_KEYS.has(normalizedCarrier)) {
     return `https://ecomm.one-line.com/one-ecom/manage-shipment/cargo-tracking?containerNo=${cn}`
+  }
+
+  return null
+}
+
+export function carrierTrackUrl(carrier: string | null, containerNumber: string): string | null {
+  if (!carrier || !containerNumber) return null
+
+  const directUrl = directCarrierTrackUrl(carrier, containerNumber)
+  if (directUrl !== null) {
+    return directUrl
   }
 
   return `https://www.google.com/search?q=${encodeURIComponent(`${carrier} container ${containerNumber}`)}`

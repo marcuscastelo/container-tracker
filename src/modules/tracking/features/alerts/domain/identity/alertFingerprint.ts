@@ -41,24 +41,3 @@ export function computeAlertFingerprint(
   // Generate SHA-256 hash and truncate to 32 characters (same as observation fingerprint)
   return createHash('sha256').update(canonical).digest('hex').slice(0, 32)
 }
-
-/**
- * Computes deterministic fingerprint for NO_MOVEMENT monitoring episodes.
- *
- * Episode identity:
- *   - container_id
- *   - alert type
- *   - breakpoint threshold_days
- *   - cycle anchor key (latest ACTUAL event identity for stagnation cycle)
- *
- * Including the cycle anchor allows the same breakpoint to be emitted again
- * after a new ACTUAL movement resets stagnation progression.
- */
-export function computeNoMovementAlertFingerprint(
-  containerId: string,
-  thresholdDays: number,
-  cycleAnchorKey: string,
-): string {
-  const canonical = `NO_MOVEMENT:${containerId}:${thresholdDays}:${cycleAnchorKey}`
-  return createHash('sha256').update(canonical).digest('hex').slice(0, 32)
-}

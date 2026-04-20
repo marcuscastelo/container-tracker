@@ -8,10 +8,10 @@ import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.
 import type { ProcessContainerNavigationState } from '~/shared/ui/navigation/app-navigation'
 
 function makeNavigationState(
-  requestKey: string = 'navbar-alert-1',
+  requestKey: string = 'navbar-incident-1',
 ): ProcessContainerNavigationState {
   return {
-    source: 'navbar-alerts',
+    source: 'navbar-incidents',
     focusSection: 'current-status',
     revealLiveStatus: true,
     requestKey,
@@ -47,6 +47,12 @@ function makeShipment(containers: ShipmentDetailVM['containers']): ShipmentDetai
       withEta: 0,
       total: containers.length,
       incomplete: false,
+    },
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      affectedContainerCount: 0,
+      topIssue: null,
     },
     containers,
     alerts: [],
@@ -100,6 +106,13 @@ function makeContainer(id: string, number: string): ShipmentDetailVM['containers
     dataIssueChipVm: {
       visible: false,
     },
+    trackingContainment: null,
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      findingCount: 0,
+      activeIssues: [],
+    },
     transshipment: {
       hasTransshipment: false,
       count: 0,
@@ -126,8 +139,8 @@ describe('resolveShipmentAlertNavigationAction', () => {
   it('returns null when the navigation request was already handled', () => {
     expect(
       resolveShipmentAlertNavigationAction({
-        navigationState: makeNavigationState('navbar-alert-2'),
-        handledRequestKey: 'navbar-alert-2',
+        navigationState: makeNavigationState('navbar-incident-2'),
+        handledRequestKey: 'navbar-incident-2',
         shipment: undefined,
         preferredContainerNumber: null,
         selectedContainer: null,

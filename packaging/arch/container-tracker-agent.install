@@ -13,6 +13,8 @@ Next steps:
   sudo systemctl enable --now container-tracker-agent.service
   ct-agent status
   ct-agent logs
+  ct-agent-ui                # open Electron UI
+  ct-agent-tray              # manual tray launch (autostart also runs on next login)
 MSG
 }
 

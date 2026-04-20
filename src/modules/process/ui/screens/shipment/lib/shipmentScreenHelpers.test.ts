@@ -20,10 +20,10 @@ import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 function makeAlert(overrides: Partial<AlertDisplayVM> = {}): AlertDisplayVM {
   return {
     id: 'alert-1',
-    type: 'delay',
+    type: 'missing-eta',
     severity: 'warning',
     containerNumber: 'MRKU1234567',
-    messageKey: 'alerts.noMovementDetected',
+    messageKey: 'alerts.etaMissing',
     messageParams: {},
     timestamp: '2026-01-01T00:00:00.000Z',
     triggeredAtIso: '2026-01-01T00:00:00.000Z',

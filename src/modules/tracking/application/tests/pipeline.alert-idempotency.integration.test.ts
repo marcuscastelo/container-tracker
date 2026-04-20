@@ -274,7 +274,14 @@ function makeTransshipmentObservations(
   containerNumber: string,
   dischargeFingerprint: string,
   loadFingerprint: string,
+  times?: {
+    readonly dischargeTime: string
+    readonly loadTime: string
+  },
 ): readonly Observation[] {
+  const dischargeTime = times?.dischargeTime ?? '2025-12-01T00:00:00.000Z'
+  const loadTime = times?.loadTime ?? '2025-12-03T00:00:00.000Z'
+
   return [
     makeObservation(containerId, containerNumber, {
       type: 'LOAD',
@@ -287,7 +294,7 @@ function makeTransshipmentObservations(
     makeObservation(containerId, containerNumber, {
       type: 'DISCHARGE',
       fingerprint: dischargeFingerprint,
-      event_time: temporalValueFromCanonical('2025-12-01T00:00:00.000Z'),
+      event_time: temporalValueFromCanonical(dischargeTime),
       location_code: 'SGSIN',
       location_display: 'SINGAPORE, SG',
       vessel_name: 'Vessel A',
@@ -295,7 +302,7 @@ function makeTransshipmentObservations(
     makeObservation(containerId, containerNumber, {
       type: 'LOAD',
       fingerprint: loadFingerprint,
-      event_time: temporalValueFromCanonical('2025-12-03T00:00:00.000Z'),
+      event_time: temporalValueFromCanonical(loadTime),
       location_code: 'SGSIN',
       location_display: 'SINGAPORE, SG',
       vessel_name: 'Vessel B',
@@ -311,12 +318,30 @@ function makeTransshipmentObservations(
   ]
 }
 
+function computeTransshipmentAlertFingerprint(params: {
+  readonly dischargeTime: string
+  readonly loadTime: string
+}): string {
+  return computeAlertFingerprint('TRANSSHIPMENT', [
+    'port:SGSIN',
+    'from:VESSEL A',
+    'to:VESSEL B',
+    `discharge:${params.dischargeTime}`,
+    `load:${params.loadTime}`,
+  ])
+}
+
 function makeTransshipmentAlert(params: {
   readonly containerId: string
   readonly dischargeFingerprint: string
   readonly loadFingerprint: string
   readonly ackedAt: string | null
+  readonly dischargeTime?: string
+  readonly loadTime?: string
 }): TrackingAlert {
+  const dischargeTime = params.dischargeTime ?? '2025-12-01T00:00:00.000Z'
+  const loadTime = params.loadTime ?? '2025-12-03T00:00:00.000Z'
+
   return {
     id: randomUUID(),
     container_id: params.containerId,
@@ -329,13 +354,13 @@ function makeTransshipmentAlert(params: {
       fromVessel: 'Vessel A',
       toVessel: 'Vessel B',
     },
-    detected_at: '2025-12-03T00:00:00.000Z',
+    detected_at: loadTime,
     triggered_at: '2025-12-03T01:00:00.000Z',
     source_observation_fingerprints: [params.dischargeFingerprint, params.loadFingerprint],
-    alert_fingerprint: computeAlertFingerprint('TRANSSHIPMENT', [
-      params.dischargeFingerprint,
-      params.loadFingerprint,
-    ]),
+    alert_fingerprint: computeTransshipmentAlertFingerprint({
+      dischargeTime,
+      loadTime,
+    }),
     retroactive: false,
     provider: null,
     acked_at: params.ackedAt,
@@ -398,6 +423,10 @@ describe('processSnapshot alert idempotency with ACK', () => {
     const oldLoadFingerprint = 'fp-load-old'
     const newDischargeFingerprint = 'fp-discharge-new'
     const newLoadFingerprint = 'fp-load-new'
+    const oldDischargeTime = '2025-12-01T00:00:00.000Z'
+    const oldLoadTime = '2025-12-03T00:00:00.000Z'
+    const newDischargeTime = '2026-01-15T00:00:00.000Z'
+    const newLoadTime = '2026-01-18T00:00:00.000Z'
 
     const snapshotRepository = new InMemorySnapshotRepository()
     const observationRepository = new InMemoryObservationRepository(
@@ -406,6 +435,10 @@ describe('processSnapshot alert idempotency with ACK', () => {
         containerNumber,
         newDischargeFingerprint,
         newLoadFingerprint,
+        {
+          dischargeTime: newDischargeTime,
+          loadTime: newLoadTime,
+        },
       ),
     )
     const trackingAlertRepository = new InMemoryTrackingAlertRepository([
@@ -414,6 +447,8 @@ describe('processSnapshot alert idempotency with ACK', () => {
         dischargeFingerprint: oldDischargeFingerprint,
         loadFingerprint: oldLoadFingerprint,
         ackedAt: '2026-03-08T15:00:00.000Z',
+        dischargeTime: oldDischargeTime,
+        loadTime: oldLoadTime,
       }),
     ])
 
@@ -427,7 +462,10 @@ describe('processSnapshot alert idempotency with ACK', () => {
 
     expect(result.newAlerts).toHaveLength(1)
     expect(result.newAlerts[0]?.alert_fingerprint).toBe(
-      computeAlertFingerprint('TRANSSHIPMENT', [newDischargeFingerprint, newLoadFingerprint]),
+      computeTransshipmentAlertFingerprint({
+        dischargeTime: newDischargeTime,
+        loadTime: newLoadTime,
+      }),
     )
     expect(await trackingAlertRepository.findByContainerId(containerId)).toHaveLength(2)
   })

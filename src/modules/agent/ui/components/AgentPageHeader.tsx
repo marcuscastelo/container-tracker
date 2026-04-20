@@ -6,16 +6,14 @@ type Props = {
   readonly subtitle?: string
   readonly lastRefreshed: string
   readonly isLive: boolean
+  readonly refreshing?: boolean
   readonly onRefresh: () => void
 }
 
 function LiveIndicator(): JSX.Element {
   return (
     <span class="inline-flex items-center gap-1.5 rounded-full bg-tone-success-bg px-2.5 py-0.5 text-xs-ui font-semibold text-tone-success-fg ring-1 ring-inset ring-tone-success-border/40">
-      <span class="relative flex h-2 w-2">
-        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-tone-success-strong opacity-75" />
-        <span class="relative inline-flex h-2 w-2 rounded-full bg-tone-success-strong" />
-      </span>
+      <span class="inline-flex h-2 w-2 rounded-full bg-tone-success-strong shadow-[0_0_0_3px_rgb(34_197_94_/0.18)]" />
       Live
     </span>
   )
@@ -36,14 +34,17 @@ export function AgentPageHeader(props: Props): JSX.Element {
         </Show>
       </div>
       <div class="flex items-center gap-3">
+        <Show when={props.refreshing === true}>
+          <span class="text-micro text-text-muted">Refreshing...</span>
+        </Show>
         <span class="text-micro text-text-muted">Updated {props.lastRefreshed}</span>
         <button
           type="button"
           onClick={() => props.onRefresh()}
-          class="inline-flex items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground transition-colors hover:border-control-border-hover hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
+          class="motion-focus-surface motion-interactive inline-flex items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground hover:border-control-border-hover hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
           <svg
-            class="h-3.5 w-3.5"
+            class={`h-3.5 w-3.5 ${props.refreshing === true ? 'animate-spin' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

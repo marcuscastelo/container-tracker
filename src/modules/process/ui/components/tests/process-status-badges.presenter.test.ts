@@ -18,6 +18,7 @@ function createTranslationStub(
 ): (key: string, options?: Record<string, unknown>) => string {
   return (key: string, options?: Record<string, unknown>) => {
     const count = typeof options?.count === 'number' ? options.count : 0
+    if (key === keys.tracking.status.BOOKED) return 'Aguardando embarque'
     if (key === keys.tracking.status.IN_TRANSIT) return 'Em trânsito'
     if (key === keys.tracking.status.DISCHARGED) return 'Descarregado'
     if (key === keys.tracking.statusMicrobadge.DISCHARGED.one) return `${count} descarregado`
@@ -76,6 +77,24 @@ describe('process-status-badges.presenter', () => {
     })
 
     expect(display.primary.label).toBe('Em trânsito')
+    expect(display.microbadge).toBeNull()
+  })
+
+  it('uses the operational waiting label for BOOKED process badges', () => {
+    const { keys } = useTranslation()
+    const display = toProcessStatusBadgesDisplay({
+      source: createStatusSource({
+        status: 'slate-400',
+        statusCode: 'BOOKED',
+      }),
+      t: createTranslationStub(keys),
+      keys,
+    })
+
+    expect(display.primary).toEqual({
+      label: 'Aguardando embarque',
+      variant: 'slate-400',
+    })
     expect(display.microbadge).toBeNull()
   })
 })

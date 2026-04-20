@@ -18,6 +18,7 @@ export function toEditInitialData(data: ShipmentDetailVM): CreateProcessDialogFo
     importerName: data.importer_name ?? '',
     exporterName: data.exporter_name ?? '',
     referenceImporter: data.reference_importer ?? '',
+    depositary: data.depositary ?? '',
     product: data.product ?? '',
     redestinationNumber: data.redestination_number ?? '',
   }

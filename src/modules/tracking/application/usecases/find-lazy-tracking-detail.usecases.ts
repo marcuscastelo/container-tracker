@@ -1,7 +1,7 @@
 import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import {
-  buildShipmentAlertIncidentsReadModel,
-  type ShipmentAlertIncidentsReadModel,
+  buildOperationalIncidentsReadModel,
+  type OperationalIncidentsReadModel,
 } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import {
@@ -12,7 +12,10 @@ import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import { normalizeSnapshot } from '~/modules/tracking/features/observation/application/orchestration/normalizeSnapshot'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
-import type { TrackingSeriesHistory } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import {
+  buildTrackingPredictionHistoryReadModel,
+  type TrackingPredictionHistoryReadModel,
+} from '~/modules/tracking/features/timeline/application/projection/tracking.prediction-history.readmodel'
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { Instant } from '~/shared/time/instant'
 
@@ -152,14 +155,14 @@ async function loadAllAlertsByContainerId(
   return results.flat()
 }
 
-export async function findTimelineItemSeriesHistory(
+export async function findTimelineItemPredictionHistory(
   deps: TrackingUseCasesDeps,
   command: {
     readonly containerId: string
     readonly timelineItemId: string
     readonly now: Instant
   },
-): Promise<TrackingSeriesHistory | null> {
+): Promise<TrackingPredictionHistoryReadModel | null> {
   const observations = await deps.observationRepository.findAllByContainerId(command.containerId)
   const timeline = deriveTimelineWithSeriesReadModel(
     toTrackingObservationProjections(suppressSupersededObservationsForProjection(observations)),
@@ -167,7 +170,7 @@ export async function findTimelineItemSeriesHistory(
     { includeSeriesHistory: true },
   )
   const item = timeline.find((timelineItem) => timelineItem.id === command.timelineItemId)
-  return item?.seriesHistory ?? null
+  return item?.seriesHistory ? buildTrackingPredictionHistoryReadModel(item.seriesHistory) : null
 }
 
 export async function findObservationInspectorProjection(
@@ -194,15 +197,15 @@ export async function findObservationInspectorProjection(
   return enrichObservationCarrierLabel(observation, snapshots)
 }
 
-export async function findContainersRecognizedAlertIncidentsProjection(
+export async function findContainersRecognizedOperationalIncidentsProjection(
   deps: TrackingUseCasesDeps,
   command: {
     readonly containers: readonly ContainerTarget[]
   },
-): Promise<ShipmentAlertIncidentsReadModel> {
+): Promise<OperationalIncidentsReadModel> {
   const allAlerts = await loadAllAlertsByContainerId(deps, command.containers)
 
-  return buildShipmentAlertIncidentsReadModel({
+  return buildOperationalIncidentsReadModel({
     containers: command.containers.map((container) => ({
       containerId: container.containerId,
       containerNumber: container.containerNumber,
@@ -210,3 +213,6 @@ export async function findContainersRecognizedAlertIncidentsProjection(
     })),
   })
 }
+
+export const findContainersRecognizedAlertIncidentsProjection =
+  findContainersRecognizedOperationalIncidentsProjection

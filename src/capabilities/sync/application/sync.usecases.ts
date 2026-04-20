@@ -1,6 +1,8 @@
 import type { SyncQueuePort } from '~/capabilities/sync/application/ports/sync-queue.port'
 import type { SyncStatusReadPort } from '~/capabilities/sync/application/ports/sync-status-read.port'
 import type { SyncTargetReadPort } from '~/capabilities/sync/application/ports/sync-target-read.port'
+import { createSyncDashboardEnqueueService } from '~/capabilities/sync/application/services/sync-dashboard-enqueue.service'
+import { createSyncDashboardTargetsService } from '~/capabilities/sync/application/services/sync-dashboard-targets.service'
 import { createSyncEnqueuePolicyService } from '~/capabilities/sync/application/services/sync-enqueue-policy.service'
 import { createSyncTargetResolverService } from '~/capabilities/sync/application/services/sync-target-resolver.service'
 import {
@@ -30,7 +32,7 @@ export type CreateSyncUseCasesDeps = {
   readonly statusReadPort: SyncStatusReadPort
   readonly refreshProcessDeps: RefreshProcessDeps
   readonly syncDashboardDeps?: Partial<
-    Omit<SyncDashboardDeps, 'targetResolverService' | 'enqueuePolicyService' | 'queuePort'>
+    Omit<SyncDashboardDeps, 'dashboardTargetsService' | 'dashboardEnqueueService' | 'queuePort'>
   >
   readonly syncProcessDeps?: Partial<
     Omit<SyncProcessDeps, 'targetResolverService' | 'enqueuePolicyService' | 'queuePort'>
@@ -45,13 +47,19 @@ export function createSyncUseCases(deps: CreateSyncUseCasesDeps) {
   const targetResolverService = createSyncTargetResolverService({
     targetReadPort: deps.targetReadPort,
   })
+  const dashboardTargetsService = createSyncDashboardTargetsService({
+    targetReadPort: deps.targetReadPort,
+  })
   const enqueuePolicyService = createSyncEnqueuePolicyService({
+    queuePort: deps.queuePort,
+  })
+  const dashboardEnqueueService = createSyncDashboardEnqueueService({
     queuePort: deps.queuePort,
   })
 
   const syncDashboard = createSyncDashboardUseCase({
-    targetResolverService,
-    enqueuePolicyService,
+    dashboardTargetsService,
+    dashboardEnqueueService,
     queuePort: deps.queuePort,
     ...deps.syncDashboardDeps,
   })

@@ -1,14 +1,14 @@
 # ADR-0004 — Shared Kernel Policy
 
-Status: Accepted  
-Date: 2026-03-08  
+Status: Accepted
+Date: 2026-03-08
 Supersedes: previous ADR-0004 draft
 
 ---
 
 # Context
 
-The Container Tracker architecture is a **modular monolith with explicit bounded contexts**.
+Container Tracker architecture is **modular monolith with explicit bounded contexts**.
 
 Current BCs:
 
@@ -18,7 +18,7 @@ Current BCs:
 
 Each BC owns its domain model, invariants, and internal semantics.
 
-Historically, many monoliths degrade because a `shared/` directory becomes a **shadow domain** where:
+Historically, many monoliths degrade because `shared/` directory becomes **shadow domain** where:
 
 - enums
 - value objects
@@ -30,24 +30,24 @@ are placed and gradually imported by all modules.
 
 This silently erodes BC boundaries and produces **implicit coupling between domains**.
 
-Because the system is partially developed using LLMs, the risk of accidental shared kernel expansion is significantly higher.  
+Because system is partially developed using LLMs, risk of accidental shared kernel expansion is significantly higher.
 LLMs tend to centralize abstractions unless explicitly prevented.
 
-Therefore the project must adopt a **strict shared kernel policy**.
+Therefore project must adopt **strict shared kernel policy**.
 
 ---
 
 # Decision
 
-The project adopts a **“duplicate first, share later” policy**.
+project adopts **“duplicate first, share later” policy**.
 
-Code should be duplicated between BCs unless all the following are true:
+Code should be duplicated between BCs unless all following are true:
 
-1. The concept is **semantically identical across BCs**
-2. The code contains **no business rule**
-3. The abstraction is **stable**
-4. The code is **already used in multiple BCs**
-5. A formal ADR documents the extraction
+1. concept is **semantically identical across BCs**
+2. code contains **no business rule**
+3. abstraction is **stable**
+4. code is **already used in multiple BCs**
+5. formal ADR documents extraction
 
 Until those conditions are satisfied, duplication is preferred.
 
@@ -61,7 +61,7 @@ Shared code is classified into three categories.
 
 # Category 1 — Allowed Shared Infrastructure
 
-The following items are allowed in `shared/` without ADR:
+following items are allowed in `shared/` without ADR:
 
 - logging
 - tracing
@@ -111,10 +111,10 @@ shared/types/location.ts
 shared/value-objects/port.ts
 ```
 
-Before placing such elements in `shared/`, the author must ask:
+Before placing such elements in `shared/`, author must ask:
 
-- Is the concept truly identical across BCs?
-- Or is this a coincidence of naming?
+- Is concept truly identical across BCs?
+- Or is this coincidence of naming?
 
 Example:
 
@@ -131,7 +131,7 @@ Default decision: **keep duplicated inside each BC**.
 
 # Category 3 — Forbidden in Shared
 
-The following must **never exist in `shared/`**:
+following must **never exist in `shared/`**:
 
 - Entities
 - Aggregates
@@ -155,7 +155,7 @@ shared/domain/alert-policy.ts
 shared/domain/timeline-deriver.ts
 ```
 
-These must always belong to a **specific bounded context**.
+These must always belong to **specific bounded context**.
 
 ---
 
@@ -179,13 +179,13 @@ ShipmentTransshipmentConflictError
 ETARegressionDetectedError
 ```
 
-Errors tied to business semantics must remain inside the owning BC.
+Errors tied to business semantics must remain inside owning BC.
 
 ---
 
 # Duplication Rule
 
-Duplication between BCs is **not a problem**.
+Duplication between BCs is **not problem**.
 
 It is preferred when:
 
@@ -202,7 +202,7 @@ process/domain/location.ts
 
 Even if implementations look similar, duplication preserves independence.
 
-If the concept later proves stable and identical across BCs, extraction may occur through a new ADR.
+If concept later proves stable and identical across BCs, extraction may occur through new ADR.
 
 ---
 
@@ -236,7 +236,7 @@ shared/
   test/
 ```
 
-The following directories are explicitly forbidden:
+following directories are explicitly forbidden:
 
 ```
 shared/domain
@@ -262,7 +262,7 @@ Never move code to `shared/` if it contains:
 
 When uncertain:
 
-**duplicate the code instead of sharing it**.
+**duplicate code instead of sharing it**.
 
 ---
 
@@ -280,19 +280,19 @@ Negative:
 - some duplication will exist
 - small utilities may appear repeated
 
-This is considered an acceptable tradeoff.
+This is considered acceptable tradeoff.
 
 ---
 
 # Future Evolution
 
-If shared concepts emerge organically across BCs, they may be extracted through a new ADR such as:
+If shared concepts emerge organically across BCs, they may be extracted through new ADR such:
 
 ```
 ADR-0007 — Shared Domain Primitives
 ```
 
-Until then, duplication remains the default.
+Until then, duplication remains default.
 
 ---
 
@@ -300,6 +300,6 @@ Until then, duplication remains the default.
 
 Rule of thumb:
 
-> If a piece of code contains domain meaning, it belongs to a bounded context.
+> If piece of code contains domain meaning, it belongs to bounded context.
 
-Shared code must remain **infrastructure-level only** unless a formal ADR states otherwise.
+Shared code must remain **infrastructure-level only** unless formal ADR states otherwise.

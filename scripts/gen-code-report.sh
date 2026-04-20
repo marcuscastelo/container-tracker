@@ -1,6 +1,7 @@
 #!/bin/bash
 bash -lc '
 OUTPUT="docs/reports/code-report/$(printf "code_report_%s.txt" "$(date +%Y%m%d_%H%M%S)")"
+mkdir -p "$(dirname "$OUTPUT")"
 
 {
 echo "======================================="

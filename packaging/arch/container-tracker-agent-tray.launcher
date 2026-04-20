@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+install_root="/usr/lib/container-tracker-agent"
+app_dir="$install_root/dist/apps/agent/control-ui"
+agent_data_dir="${AGENT_DATA_DIR:-/var/lib/container-tracker-agent}"
+agent_public_state_dir="${AGENT_PUBLIC_STATE_DIR:-/run/container-tracker-agent}"
+
+if [ ! -f "$app_dir/package.json" ]; then
+  echo "[ct-agent-tray] missing Electron app manifest at $app_dir/package.json" >&2
+  exit 1
+fi
+
+unset ELECTRON_RUN_AS_NODE
+export CT_AGENT_UI_INSTALLED=1
+export CT_AGENT_UI_MODE=tray
+export CT_AGENT_UI_LOGS_ON_DEMAND=0
+export CT_AGENT_UI_ICON_PATH="/usr/share/icons/hicolor/256x256/apps/container-tracker-agent.png"
+export AGENT_DATA_DIR="$agent_data_dir"
+export AGENT_PUBLIC_STATE_DIR="$agent_public_state_dir"
+
+exec /usr/bin/electron "$app_dir" "$@"

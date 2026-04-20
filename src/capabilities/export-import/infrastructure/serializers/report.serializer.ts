@@ -36,8 +36,9 @@ function toFlatRows(report: OperationalSnapshotReport): readonly string[][] {
     'carrier',
     'origin',
     'destination',
+    'depositary',
     'process_status',
-    'alerts_count',
+    'active_incidents_count',
     'eta',
     'last_event_at',
     'last_sync_at',
@@ -57,8 +58,9 @@ function toFlatRows(report: OperationalSnapshotReport): readonly string[][] {
         processEntry.carrier ?? '',
         processEntry.origin ?? '',
         processEntry.destination ?? '',
+        processEntry.depositary ?? '',
         processEntry.processStatus,
-        String(processEntry.alertCount),
+        String(processEntry.activeIncidentCount),
         stringifyTemporalValue(processEntry.eta),
         stringifyTemporalValue(processEntry.lastEventAt),
         processEntry.lastSyncAt ?? '',
@@ -77,8 +79,9 @@ function toFlatRows(report: OperationalSnapshotReport): readonly string[][] {
         processEntry.carrier ?? '',
         processEntry.origin ?? '',
         processEntry.destination ?? '',
+        processEntry.depositary ?? '',
         processEntry.processStatus,
-        String(processEntry.alertCount),
+        String(processEntry.activeIncidentCount),
         stringifyTemporalValue(processEntry.eta),
         stringifyTemporalValue(processEntry.lastEventAt),
         processEntry.lastSyncAt ?? '',
@@ -112,19 +115,19 @@ function serializeMarkdown(report: OperationalSnapshotReport): Uint8Array {
   lines.push('## Executive summary')
   lines.push('')
   lines.push(`- In transit: ${report.totals.inTransitProcesses}`)
-  lines.push(`- With alerts: ${report.totals.processesWithAlerts}`)
+  lines.push(`- With active incidents: ${report.totals.processesWithActiveIncidents}`)
   lines.push(`- Delivered: ${report.totals.deliveredProcesses}`)
   lines.push(`- With conflict: ${report.totals.processesWithConflict}`)
   lines.push(`- Without recent sync: ${report.totals.processesWithoutRecentSync}`)
   lines.push('')
   lines.push('## Consolidated table')
   lines.push('')
-  lines.push('| Process | Status | Containers | Alerts | ETA | Last event | Last sync |')
+  lines.push('| Process | Status | Containers | Incidents | ETA | Last event | Last sync |')
   lines.push('|---|---|---:|---:|---|---|---|')
 
   for (const processEntry of report.processes) {
     lines.push(
-      `| ${processEntry.reference ?? '-'} | ${processEntry.processStatus} | ${processEntry.containers.length} | ${processEntry.alertCount} | ${stringifyTemporalValue(processEntry.eta) || '-'} | ${stringifyTemporalValue(processEntry.lastEventAt) || '-'} | ${processEntry.lastSyncAt ?? '-'} |`,
+      `| ${processEntry.reference ?? '-'} | ${processEntry.processStatus} | ${processEntry.containers.length} | ${processEntry.activeIncidentCount} | ${stringifyTemporalValue(processEntry.eta) || '-'} | ${stringifyTemporalValue(processEntry.lastEventAt) || '-'} | ${processEntry.lastSyncAt ?? '-'} |`,
     )
   }
 

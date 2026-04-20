@@ -28,7 +28,7 @@ export function TrackingTimeTravelBar(props: TrackingTimeTravelBarProps): JSX.El
   const hasNext = () => selectedIndex() >= 0 && selectedIndex() < props.syncs.length - 1
 
   return (
-    <section class="w-full rounded-xl border border-border/70 bg-surface-elevated/95 px-3 py-3 shadow-2xl backdrop-blur">
+    <section class="motion-overlay-surface w-full rounded-xl border border-border/70 bg-surface-elevated/95 px-3 py-3 shadow-2xl backdrop-blur">
       <div class="flex flex-wrap items-center gap-2">
         <span class="inline-flex rounded-full border border-tone-info-border bg-tone-info-bg px-2 py-0.5 text-micro font-semibold uppercase tracking-wider text-tone-info-fg">
           {t(keys.shipmentView.timeTravel.badge)}
@@ -48,7 +48,7 @@ export function TrackingTimeTravelBar(props: TrackingTimeTravelBarProps): JSX.El
         <div class="ml-auto flex flex-wrap items-center gap-2">
           <button
             type="button"
-            class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground disabled:opacity-50"
+            class="motion-focus-surface motion-interactive rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground disabled:opacity-50"
             disabled={!hasPrevious()}
             onClick={() => props.onPrevious()}
           >
@@ -56,7 +56,7 @@ export function TrackingTimeTravelBar(props: TrackingTimeTravelBarProps): JSX.El
           </button>
           <button
             type="button"
-            class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground disabled:opacity-50"
+            class="motion-focus-surface motion-interactive rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground disabled:opacity-50"
             disabled={!hasNext()}
             onClick={() => props.onNext()}
           >
@@ -64,7 +64,7 @@ export function TrackingTimeTravelBar(props: TrackingTimeTravelBarProps): JSX.El
           </button>
           <button
             type="button"
-            class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground disabled:opacity-50"
+            class="motion-focus-surface motion-interactive rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground disabled:opacity-50"
             disabled={!props.selectedSync?.debugAvailable}
             onClick={() => props.onToggleDebug()}
           >
@@ -74,7 +74,7 @@ export function TrackingTimeTravelBar(props: TrackingTimeTravelBarProps): JSX.El
           </button>
           <button
             type="button"
-            class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground"
+            class="motion-focus-surface motion-interactive rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground"
             onClick={() => props.onClose()}
           >
             {t(keys.shipmentView.timeTravel.close)}
@@ -97,7 +97,7 @@ export function TrackingTimeTravelBar(props: TrackingTimeTravelBarProps): JSX.El
         >
           <select
             id={selectId}
-            class="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm-ui text-foreground"
+            class="motion-focus-surface min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm-ui text-foreground"
             value={props.selectedSync?.snapshotId ?? ''}
             disabled={props.syncs.length <= 1}
             onChange={(event) => props.onSelectSnapshot(event.currentTarget.value)}

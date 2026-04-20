@@ -234,8 +234,8 @@ export function setDashboardSeverityFilter(
 function toDashboardProcessDominantSeverity(
   process: ProcessSummaryVM,
 ): DashboardSeverityFilterValue {
-  if (process.highestAlertSeverity === 'danger') return 'danger'
-  if (process.highestAlertSeverity === 'warning') return 'warning'
+  if (process.attentionSeverity === 'danger') return 'danger'
+  if (process.attentionSeverity === 'warning') return 'warning'
   return 'none'
 }
 

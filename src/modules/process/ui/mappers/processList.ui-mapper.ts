@@ -6,6 +6,10 @@ import {
 import { toProcessStatusMicrobadgeVM } from '~/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper'
 import { toOptionalNonBlankString } from '~/modules/process/ui/mappers/toOptionalNonBlankString'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import type {
+  ProcessTrackingValidationVM,
+  TrackingValidationIssueVM,
+} from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import { toComparableInstant } from '~/shared/time/compare-temporal'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import { parseTemporalValue } from '~/shared/time/parsing'
@@ -54,10 +58,59 @@ export type ProcessListItemSource = {
         readonly kind: 'delivered'
       }
     | undefined
-  alerts_count?: number | undefined
-  highest_alert_severity?: 'info' | 'warning' | 'danger' | null | undefined
-  dominant_alert_created_at?: string | null | undefined
-  has_transshipment?: boolean | undefined
+  attention_severity?: 'info' | 'warning' | 'danger' | null | undefined
+  operational_incidents?:
+    | {
+        readonly summary: {
+          readonly active_incidents: number
+          readonly affected_containers: number
+          readonly recognized_incidents: number
+        }
+        readonly dominant:
+          | {
+              readonly type:
+                | 'TRANSSHIPMENT'
+                | 'PLANNED_TRANSSHIPMENT'
+                | 'CUSTOMS_HOLD'
+                | 'PORT_CHANGE'
+                | 'ETA_PASSED'
+                | 'ETA_MISSING'
+                | 'DATA_INCONSISTENT'
+              readonly severity: 'info' | 'warning' | 'danger'
+              readonly fact: {
+                readonly message_key: string
+                readonly message_params: Record<string, string | number>
+              }
+              readonly triggered_at: string
+            }
+          | null
+          | undefined
+      }
+    | undefined
+  tracking_validation?:
+    | {
+        readonly has_issues?: boolean | undefined
+        readonly highest_severity?: 'info' | 'warning' | 'danger' | null | undefined
+        readonly affected_container_count?: number | undefined
+        readonly top_issue?:
+          | {
+              readonly code: string
+              readonly severity: 'warning' | 'danger'
+              readonly reason_key: string
+              readonly affected_area:
+                | 'container'
+                | 'operational'
+                | 'process'
+                | 'series'
+                | 'status'
+                | 'timeline'
+              readonly affected_location?: string | null | undefined
+              readonly affected_block_label_key?: string | null | undefined
+            }
+          | null
+          | undefined
+      }
+    | undefined
   last_event_at?: TemporalValueDto | null | undefined
   redestination_number?: string | null | undefined
   last_sync_status?: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN' | undefined
@@ -128,6 +181,37 @@ function toEtaMsOrNull(etaDisplay: ProcessSummaryVM['etaDisplay']): number | nul
   return null
 }
 
+function toTrackingValidationIssueVm(
+  issue:
+    | NonNullable<NonNullable<ProcessListItemSource['tracking_validation']>['top_issue']>
+    | null
+    | undefined,
+): TrackingValidationIssueVM | null {
+  if (issue === null || issue === undefined) {
+    return null
+  }
+
+  return {
+    code: issue.code,
+    severity: issue.severity,
+    reasonKey: issue.reason_key,
+    affectedArea: issue.affected_area,
+    affectedLocation: issue.affected_location ?? null,
+    affectedBlockLabelKey: issue.affected_block_label_key ?? null,
+  }
+}
+
+function toProcessTrackingValidationVm(
+  trackingValidation: ProcessListItemSource['tracking_validation'],
+): ProcessTrackingValidationVM {
+  return {
+    hasIssues: trackingValidation?.has_issues === true,
+    highestSeverity: trackingValidation?.highest_severity ?? null,
+    affectedContainerCount: trackingValidation?.affected_container_count ?? 0,
+    topIssue: toTrackingValidationIssueVm(trackingValidation?.top_issue),
+  }
+}
+
 export function toProcessSummaryVMs(
   data: readonly ProcessListItemSource[],
 ): readonly ProcessSummaryVM[] {
@@ -158,11 +242,24 @@ export function toProcessSummaryVMs(
       etaDisplay,
       etaMsOrNull: toEtaMsOrNull(etaDisplay),
       carrier: toOptionalNonBlankString(process.carrier),
-      alertsCount: process.alerts_count ?? 0,
-      highestAlertSeverity: process.highest_alert_severity ?? null,
-      dominantAlertCreatedAt: process.dominant_alert_created_at ?? null,
+      activeIncidentCount: process.operational_incidents?.summary.active_incidents ?? 0,
+      affectedContainerCount: process.operational_incidents?.summary.affected_containers ?? 0,
+      recognizedIncidentCount: process.operational_incidents?.summary.recognized_incidents ?? 0,
+      dominantIncident:
+        process.operational_incidents?.dominant === null ||
+        process.operational_incidents?.dominant === undefined
+          ? null
+          : {
+              type: process.operational_incidents.dominant.type,
+              severity: process.operational_incidents.dominant.severity,
+              factMessageKey: process.operational_incidents.dominant.fact.message_key,
+              factMessageParams: process.operational_incidents.dominant.fact.message_params,
+              triggeredAt: process.operational_incidents.dominant.triggered_at,
+            },
+      attentionSeverity:
+        process.attention_severity ?? process.operational_incidents?.dominant?.severity ?? null,
+      trackingValidation: toProcessTrackingValidationVm(process.tracking_validation),
       redestinationNumber: toOptionalNonBlankString(process.redestination_number),
-      hasTransshipment: process.has_transshipment ?? false,
       lastEventAt: process.last_event_at ?? null,
       syncStatus: toProcessSyncStatus(process.last_sync_status),
       lastSyncAt: process.last_sync_at ?? null,

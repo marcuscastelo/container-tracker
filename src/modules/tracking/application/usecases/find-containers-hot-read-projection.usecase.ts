@@ -1,8 +1,10 @@
+import { noopTrackingContainmentRepository } from '~/modules/tracking/application/ports/tracking.containment.repository'
 import {
   type ContainersActiveAlertIncidentsProjection,
   findContainersActiveAlertIncidentsProjection,
   findContainersOperationalSummaryProjection,
   findContainersTimelineMainProjection,
+  findContainersTrackingValidationProjection,
 } from '~/modules/tracking/application/projection/tracking.hot-read.projections'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import {
@@ -12,9 +14,14 @@ import {
 } from '~/modules/tracking/application/usecases/pil-observation-read-enrichment'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import {
+  type TrackingContainmentReadModel,
+  toTrackingContainmentReadModel,
+} from '~/modules/tracking/features/containment/application/projection/tracking.containment.readmodel'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { Instant } from '~/shared/time/instant'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
@@ -30,6 +37,8 @@ export type ContainerHotReadProjection = {
   readonly status: ContainerStatus
   readonly timeline: readonly TrackingTimelineItem[]
   readonly operational: TrackingOperationalSummary
+  readonly trackingValidation: TrackingValidationContainerSummary
+  readonly trackingContainment: TrackingContainmentReadModel | null
   readonly activeAlerts: readonly TrackingAlert[]
   readonly hasObservations: boolean
   readonly lastEventAt: TemporalValue | null
@@ -42,7 +51,7 @@ export type FindContainersHotReadProjectionCommand = {
 
 export type FindContainersHotReadProjectionResult = {
   readonly containers: readonly ContainerHotReadProjection[]
-  readonly activeAlertIncidents: ContainersActiveAlertIncidentsProjection['activeAlertIncidents']
+  readonly activeOperationalIncidents: ContainersActiveAlertIncidentsProjection['activeOperationalIncidents']
   readonly activeAlerts: readonly TrackingAlert[]
 }
 
@@ -99,6 +108,17 @@ async function loadActiveAlerts(
   return deps.trackingAlertRepository.findActiveByContainerIds(containerIds)
 }
 
+async function loadTrackingContainmentByContainerId(
+  deps: TrackingUseCasesDeps,
+  containers: readonly ContainerTarget[],
+) {
+  const containerIds = containers.map((container) => container.containerId)
+  if (containerIds.length === 0) return new Map()
+
+  const repository = deps.trackingContainmentRepository ?? noopTrackingContainmentRepository
+  return repository.findActiveByContainerIds(containerIds)
+}
+
 async function enrichObservationsByContainerId(
   deps: TrackingUseCasesDeps,
   containers: readonly ContainerTarget[],
@@ -137,7 +157,7 @@ export async function findContainersHotReadProjection(
   if (command.containers.length === 0) {
     return {
       containers: [],
-      activeAlertIncidents: {
+      activeOperationalIncidents: {
         summary: {
           activeIncidentCount: 0,
           affectedContainerCount: 0,
@@ -150,9 +170,10 @@ export async function findContainersHotReadProjection(
     }
   }
 
-  const [observationsByContainerId, activeAlerts] = await Promise.all([
+  const [observationsByContainerId, activeAlerts, containmentByContainerId] = await Promise.all([
     loadObservationsByContainerId(deps, command.containers),
     loadActiveAlerts(deps, command.containers),
+    loadTrackingContainmentByContainerId(deps, command.containers),
   ])
   const readEnrichedObservationsByContainerId = await enrichObservationsByContainerId(
     deps,
@@ -185,6 +206,17 @@ export async function findContainersHotReadProjection(
     'tracking.findContainersHotReadProjection.operational',
     new Set(operationalByContainerId.keys()),
   )
+  const trackingValidationByContainerId = findContainersTrackingValidationProjection({
+    containers: command.containers,
+    observationsByContainerId: readEnrichedObservationsByContainerId,
+    timelineMainByContainerId,
+    now: command.now,
+  })
+  assertProjectionCoverage(
+    command.containers,
+    'tracking.findContainersHotReadProjection.validation',
+    new Set(trackingValidationByContainerId.keys()),
+  )
 
   const activeAlertProjection = findContainersActiveAlertIncidentsProjection({
     containers: command.containers,
@@ -194,8 +226,13 @@ export async function findContainersHotReadProjection(
   const containers = command.containers.map((container) => {
     const timelineProjection = timelineMainByContainerId.get(container.containerId)
     const operationalProjection = operationalByContainerId.get(container.containerId)
+    const validationProjection = trackingValidationByContainerId.get(container.containerId)
 
-    if (timelineProjection === undefined || operationalProjection === undefined) {
+    if (
+      timelineProjection === undefined ||
+      operationalProjection === undefined ||
+      validationProjection === undefined
+    ) {
       throw new Error(
         `tracking.findContainersHotReadProjection coverage mismatch for ${container.containerId}`,
       )
@@ -207,6 +244,11 @@ export async function findContainersHotReadProjection(
       status: timelineProjection.status,
       timeline: timelineProjection.timeline,
       operational: operationalProjection.operational,
+      trackingValidation: validationProjection.summary,
+      trackingContainment: (() => {
+        const containment = containmentByContainerId.get(container.containerId)
+        return containment === undefined ? null : toTrackingContainmentReadModel(containment)
+      })(),
       activeAlerts:
         activeAlertProjection.activeAlertsByContainerId.get(container.containerId) ?? [],
       hasObservations: operationalProjection.hasObservations,
@@ -216,7 +258,7 @@ export async function findContainersHotReadProjection(
 
   return {
     containers,
-    activeAlertIncidents: activeAlertProjection.activeAlertIncidents,
+    activeOperationalIncidents: activeAlertProjection.activeOperationalIncidents,
     activeAlerts: activeAlertProjection.activeAlerts,
   }
 }

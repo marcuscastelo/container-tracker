@@ -15,7 +15,7 @@ describe('copyToClipboard util', () => {
     // stub global navigator
     vi.stubGlobal('navigator', { clipboard: { writeText } })
 
-    await expect(copyToClipboard('abc')).resolves.toBeUndefined()
+    await expect(copyToClipboard('abc')).resolves.toBe(true)
     expect(writeText).toHaveBeenCalledWith('abc')
   })
 
@@ -24,6 +24,6 @@ describe('copyToClipboard util', () => {
     vi.stubGlobal('navigator', {})
 
     // call should not throw even if execCommand is not supported
-    await expect(copyToClipboard('fallback-test')).resolves.toBeUndefined()
+    await expect(copyToClipboard('fallback-test')).resolves.toBe(false)
   })
 })

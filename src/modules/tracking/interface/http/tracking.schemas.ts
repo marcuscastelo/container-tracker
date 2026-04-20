@@ -64,21 +64,20 @@ export const AlertResponseDtoSchema = z.discriminatedUnion('message_key', [
       .strict(),
   }),
   AlertResponseBaseSchema.extend({
-    message_key: z.literal('alerts.customsHoldDetected'),
+    message_key: z.literal('alerts.plannedTransshipmentDetected'),
     message_params: z
       .object({
-        location: z.string(),
+        port: z.string(),
+        fromVessel: z.string(),
+        toVessel: z.string(),
       })
       .strict(),
   }),
   AlertResponseBaseSchema.extend({
-    message_key: z.literal('alerts.noMovementDetected'),
+    message_key: z.literal('alerts.customsHoldDetected'),
     message_params: z
       .object({
-        threshold_days: z.number(),
-        days_without_movement: z.number(),
-        days: z.number(),
-        lastEventDate: z.string(),
+        location: z.string(),
       })
       .strict(),
   }),
@@ -169,6 +168,22 @@ const DetailTimelineSeriesLabelResponseDtoSchema = z.enum([
   'CONFLICTING_ACTUAL',
 ])
 
+const TrackingSeriesConflictKindResponseDtoSchema = z.enum([
+  'MULTIPLE_ACTUALS',
+  'VOYAGE_MISMATCH_AFTER_ACTUAL_CONFIRMATION',
+])
+
+const TrackingSeriesConflictFieldResponseDtoSchema = z.enum(['voyage'])
+
+const TrackingSeriesConflictResponseDtoSchema = z.object({
+  kind: TrackingSeriesConflictKindResponseDtoSchema,
+  fields: z.array(TrackingSeriesConflictFieldResponseDtoSchema),
+})
+
+const TrackingSeriesHistoryChangeKindResponseDtoSchema = z.enum([
+  'VOYAGE_CORRECTED_AFTER_CONFIRMATION',
+])
+
 const DetailTimelineSeriesItemResponseDtoSchema = z.object({
   id: z.string(),
   type: z.string(),
@@ -176,12 +191,86 @@ const DetailTimelineSeriesItemResponseDtoSchema = z.object({
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   created_at: z.string(),
   series_label: DetailTimelineSeriesLabelResponseDtoSchema,
+  vessel_name: z.string().nullable().optional(),
+  voyage: z.string().nullable().optional(),
+  change_kind: TrackingSeriesHistoryChangeKindResponseDtoSchema.nullable().optional(),
 })
 
 export const TimelineSeriesHistoryResponseDtoSchema = z.object({
   has_actual_conflict: z.boolean(),
+  conflict: TrackingSeriesConflictResponseDtoSchema.nullable().optional(),
   classified: z.array(DetailTimelineSeriesItemResponseDtoSchema),
 })
+
+const PredictionHistoryHeaderToneResponseDtoSchema = z.enum(['danger', 'warning', 'neutral'])
+
+const PredictionHistoryHeaderSummaryKindResponseDtoSchema = z.enum([
+  'SINGLE_VERSION',
+  'HISTORY_UPDATED',
+  'CONFLICT_DETECTED',
+])
+
+const PredictionHistoryVersionStateResponseDtoSchema = z.enum([
+  'CONFIRMED',
+  'CONFIRMED_BEFORE',
+  'SUBSTITUTED',
+  'ESTIMATE_CHANGED',
+  'INITIAL',
+])
+
+const PredictionHistoryExplanatoryTextKindResponseDtoSchema = z.enum([
+  'REPORTED_AS_ACTUAL_AND_CORRECTED_LATER',
+])
+
+const PredictionHistoryTransitionKindResponseDtoSchema = z.enum([
+  'EVENT_CONFIRMED',
+  'ESTIMATE_CHANGED',
+  'PREVIOUS_VERSION_SUBSTITUTED',
+  'VOYAGE_CHANGED_AFTER_CONFIRMATION',
+])
+
+const PredictionHistoryVersionResponseDtoSchema = z
+  .object({
+    id: z.string(),
+    is_current: z.boolean(),
+    type: z.string(),
+    event_time: TemporalValueDtoSchema.nullable(),
+    event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+    vessel_name: z.string().nullable(),
+    voyage: z.string().nullable(),
+    version_state: PredictionHistoryVersionStateResponseDtoSchema,
+    explanatory_text_kind: PredictionHistoryExplanatoryTextKindResponseDtoSchema.nullable(),
+    transition_kind_from_previous_version:
+      PredictionHistoryTransitionKindResponseDtoSchema.nullable(),
+    observed_at_count: z.number().int().positive(),
+    observed_at_list: z.array(z.string()).min(1),
+    first_observed_at: z.string(),
+    last_observed_at: z.string(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.observed_at_list.length !== value.observed_at_count) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['observed_at_list'],
+        message: 'observed_at_list must match observed_at_count',
+      })
+    }
+  })
+
+export const TimelinePredictionHistoryResponseDtoSchema = z.object({
+  header: z.object({
+    tone: PredictionHistoryHeaderToneResponseDtoSchema,
+    summary_kind: PredictionHistoryHeaderSummaryKindResponseDtoSchema,
+    current_version_id: z.string(),
+    previous_version_id: z.string().nullable(),
+    original_version_id: z.string().nullable(),
+    reason_kind: PredictionHistoryTransitionKindResponseDtoSchema.nullable(),
+  }),
+  versions: z.array(PredictionHistoryVersionResponseDtoSchema),
+})
+export type TimelinePredictionHistoryResponseDto = z.infer<
+  typeof TimelinePredictionHistoryResponseDtoSchema
+>
 
 export const ObservationInspectorResponseDtoSchema = z.object({
   id: z.string(),
@@ -239,6 +328,9 @@ const ReplayTimelineSeriesItemResponseDtoSchema = z.object({
     'CONFIRMED',
     'CONFLICTING_ACTUAL',
   ]),
+  vessel_name: z.string().nullable().optional(),
+  voyage: z.string().nullable().optional(),
+  change_kind: TrackingSeriesHistoryChangeKindResponseDtoSchema.nullable().optional(),
 })
 
 const ReplaySeriesResponseDtoSchema = z.object({
@@ -263,9 +355,11 @@ const TrackingTimelineItemResponseDtoSchema = z.object({
   derived_state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
   vessel_name: z.string().nullable(),
   voyage: z.string().nullable(),
+  series_conflict: TrackingSeriesConflictResponseDtoSchema.nullable().optional(),
   series_history: z
     .object({
       has_actual_conflict: z.boolean(),
+      conflict: TrackingSeriesConflictResponseDtoSchema.nullable().optional(),
       classified: z.array(ReplayTimelineSeriesItemResponseDtoSchema),
     })
     .nullable(),
@@ -367,6 +461,32 @@ export type TrackingTimeTravelDiffResponseDto = z.infer<
   typeof TrackingTimeTravelDiffResponseDtoSchema
 >
 
+const TrackingValidationSeverityResponseDtoSchema = z.enum(['info', 'warning', 'danger'])
+const TrackingValidationIssueSeverityResponseDtoSchema = z.enum(['warning', 'danger'])
+export const TrackingValidationAffectedAreaResponseDtoSchema = z.enum([
+  'container',
+  'operational',
+  'process',
+  'series',
+  'status',
+  'timeline',
+])
+export const TrackingValidationIssueResponseDtoSchema = z.object({
+  code: z.string(),
+  severity: TrackingValidationIssueSeverityResponseDtoSchema,
+  reason_key: z.string(),
+  affected_area: TrackingValidationAffectedAreaResponseDtoSchema,
+  affected_location: z.string().nullable(),
+  affected_block_label_key: z.string().nullable(),
+})
+
+const TrackingTimeTravelTrackingValidationResponseDtoSchema = z.object({
+  has_issues: z.boolean(),
+  highest_severity: TrackingValidationSeverityResponseDtoSchema.nullable(),
+  finding_count: z.number().int().nonnegative(),
+  active_issues: z.array(TrackingValidationIssueResponseDtoSchema),
+})
+
 export const TrackingTimeTravelCheckpointResponseDtoSchema = z.object({
   snapshot_id: z.string(),
   fetched_at: z.string(),
@@ -376,6 +496,7 @@ export const TrackingTimeTravelCheckpointResponseDtoSchema = z.object({
   alerts: z.array(AlertResponseDtoSchema),
   eta: TrackingOperationalEtaResponseDtoSchema.nullable(),
   operational: TrackingOperationalSummaryResponseDtoSchema,
+  tracking_validation: TrackingTimeTravelTrackingValidationResponseDtoSchema,
   diff_from_previous: TrackingTimeTravelDiffResponseDtoSchema,
   debug_available: z.literal(true),
 })

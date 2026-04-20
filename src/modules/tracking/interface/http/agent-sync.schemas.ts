@@ -63,6 +63,8 @@ export const IngestSnapshotBodySchema = z.object({
 export const IngestSnapshotAcceptedResponseSchema = z.object({
   ok: z.literal(true),
   snapshot_id: z.string().uuid(),
+  new_observations_count: z.number().int().min(0).optional(),
+  new_alerts_count: z.number().int().min(0).optional(),
 })
 
 export const IngestLeaseConflictResponseSchema = z.object({
