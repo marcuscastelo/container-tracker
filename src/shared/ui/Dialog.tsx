@@ -16,6 +16,7 @@ type Props = {
   readonly description?: string
   readonly children: JSX.Element
   readonly maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
+  readonly footer?: JSX.Element
 }
 
 const maxWidthClasses = {
@@ -80,6 +81,7 @@ type PanelSurfaceProps = {
   readonly closeLabel: string
   readonly onClose: () => void
   readonly children: JSX.Element
+  readonly footer: JSX.Element | undefined
   readonly contentShellStyle: Record<string, string>
   readonly shouldUseInitialSizeStyle: boolean
   readonly onContentShellRef: (element: HTMLDivElement) => void
@@ -108,6 +110,9 @@ function DialogPanelSurface(props: PanelSurfaceProps): JSX.Element {
             onClose={props.onClose}
           />
           <div class="px-6 py-4">{props.children}</div>
+          <Show when={props.footer}>
+            {(footer) => <div class="border-t border-border px-6 py-4">{footer()}</div>}
+          </Show>
         </div>
       </div>
     </div>
@@ -272,6 +277,7 @@ export function Dialog(props: Props): JSX.Element {
               closeLabel={t(keys.dialog.close)}
               onClose={props.onClose}
               children={props.children}
+              footer={props.footer}
               contentShellStyle={contentShellStyle()}
               shouldUseInitialSizeStyle={props.open && !isRendered()}
               onContentShellRef={(element) => {

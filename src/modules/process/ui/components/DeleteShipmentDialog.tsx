@@ -83,7 +83,7 @@ type ActionButtonsProps = {
 
 function ActionButtons(props: ActionButtonsProps): JSX.Element {
   return (
-    <div class="flex justify-end gap-3 border-t border-border px-6 py-4">
+    <div class="flex justify-end gap-3">
       <button
         type="button"
         class="rounded-md px-4 py-2 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong disabled:opacity-50"
@@ -159,7 +159,22 @@ export function DeleteShipmentDialog(props: Props): JSX.Element {
   }
 
   return (
-    <Dialog open={props.open} onClose={handleClose} title={t(k.title)}>
+    <Dialog
+      open={props.open}
+      onClose={handleClose}
+      title={t(k.title)}
+      footer={
+        <ActionButtons
+          cancelLabel={t(k.cancel)}
+          confirmLabel={t(k.confirm)}
+          deletingLabel={t(k.deleting)}
+          isDeleting={isDeleting()}
+          isDisabled={!isConfirmed()}
+          onCancel={handleClose}
+          onConfirm={handleDelete}
+        />
+      }
+    >
       <div class="space-y-4">
         <WarningIcon title={t(k.title)} />
 
@@ -182,20 +197,6 @@ export function DeleteShipmentDialog(props: Props): JSX.Element {
         <Show when={error()}>
           <DeleteErrorBanner title={t(k.errorTitle)} message={t(k.errorMessage)} />
         </Show>
-      </div>
-
-      {/* Actions are rendered outside the padded content area so we use a
-          negative margin to break out of Dialog's internal px-6 padding. */}
-      <div class="-mx-6 -mb-4 mt-4">
-        <ActionButtons
-          cancelLabel={t(k.cancel)}
-          confirmLabel={t(k.confirm)}
-          deletingLabel={t(k.deleting)}
-          isDeleting={isDeleting()}
-          isDisabled={!isConfirmed()}
-          onCancel={handleClose}
-          onConfirm={handleDelete}
-        />
       </div>
     </Dialog>
   )
