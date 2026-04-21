@@ -137,6 +137,99 @@ describe('agent enroll controllers', () => {
     })
 
     expect(response.status).toBe(401)
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Unauthorized',
+      reason: 'missing_authorization_header',
+    })
+  })
+
+  it('returns 401 with reason when authorization scheme is invalid', async () => {
+    const deps = createDeps()
+    const controllers = createAgentEnrollControllers(deps)
+
+    const request = new Request('http://localhost/api/agent/enroll', {
+      method: 'POST',
+      headers: {
+        authorization: 'Basic installer-token-1',
+        'content-type': 'application/json',
+        'x-forwarded-for': '203.0.113.10',
+      },
+      body: JSON.stringify({
+        machineFingerprint: 'fingerprint-1',
+        hostname: 'host-1',
+        os: 'windows',
+        agentVersion: '0.1.0',
+      }),
+    })
+
+    const response = await controllers.enroll({ request })
+
+    expect(response.status).toBe(401)
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Unauthorized',
+      reason: 'invalid_authorization_scheme',
+    })
+  })
+
+  it('returns 401 with reason when installer token is not found', async () => {
+    const deps = createDeps({
+      findInstallerTokenByHash: vi.fn(async () => null),
+    })
+    const controllers = createAgentEnrollControllers(deps)
+
+    const response = await controllers.enroll({
+      request: createEnrollRequest({ token: 'installer-token-1' }),
+    })
+
+    expect(response.status).toBe(401)
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Unauthorized',
+      reason: 'installer_token_not_found',
+    })
+  })
+
+  it('returns 401 with reason when installer token is revoked', async () => {
+    const deps = createDeps({
+      findInstallerTokenByHash: vi.fn(async ({ tokenHash }) => ({
+        tenantId: TENANT_ID,
+        tokenHash,
+        revokedAt: '2026-04-12T00:00:00.000Z',
+        expiresAt: null,
+      })),
+    })
+    const controllers = createAgentEnrollControllers(deps)
+
+    const response = await controllers.enroll({
+      request: createEnrollRequest({ token: 'installer-token-1' }),
+    })
+
+    expect(response.status).toBe(401)
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Unauthorized',
+      reason: 'installer_token_revoked',
+    })
+  })
+
+  it('returns 401 with reason when installer token is expired', async () => {
+    const deps = createDeps({
+      findInstallerTokenByHash: vi.fn(async ({ tokenHash }) => ({
+        tenantId: TENANT_ID,
+        tokenHash,
+        revokedAt: null,
+        expiresAt: '2000-01-01T00:00:00.000Z',
+      })),
+    })
+    const controllers = createAgentEnrollControllers(deps)
+
+    const response = await controllers.enroll({
+      request: createEnrollRequest({ token: 'installer-token-1' }),
+    })
+
+    expect(response.status).toBe(401)
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Unauthorized',
+      reason: 'installer_token_expired',
+    })
   })
 
   it('returns 401 when installer token is revoked', async () => {

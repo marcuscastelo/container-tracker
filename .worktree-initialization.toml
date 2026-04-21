@@ -11,3 +11,9 @@ required = true
 [[run]]
 command = "git submodule sync --recursive -- tools/ralph-loop && git submodule update --init --recursive tools/ralph-loop"
 required = true
+
+[[run]]
+# Default worktrees bind to shared staging.
+# Run `pnpm db:emancipate` later if this worktree needs an isolated Supabase stack.
+command = "pnpm db:worktree:init"
+required = true

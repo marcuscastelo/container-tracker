@@ -16,6 +16,8 @@ marucs-src/
 .ralph-loop/
 .ralph
 .agent-runtime/
+.worktree-db.local.json
+.worktree-state.json
 .playwright-mcp/
 supabase/.temp/
 /.tmp*/

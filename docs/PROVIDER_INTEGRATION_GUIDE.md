@@ -237,8 +237,8 @@ Typical concerns:
 
 Example files:
 
-- `supabase/migrations/20260402_02_add_one_provider_support.sql`
-- `supabase/migrations/20260402_03_backfill_container_carriers_from_processes.sql`
+- `supabase/migrations/2026040202_add_one_provider_support.sql`
+- `supabase/migrations/2026040203_backfill_container_carriers_from_processes.sql`
 
 Rules:
 
@@ -429,8 +429,8 @@ Representative files:
 - `src/modules/tracking/infrastructure/carriers/normalizers/one.normalizer.ts`
 - `src/modules/tracking/infrastructure/carriers/normalizers/one.mapping.ts`
 - `src/modules/tracking/infrastructure/carriers/normalizers/one.temporal.ts`
-- `supabase/migrations/20260402_02_add_one_provider_support.sql`
-- `supabase/migrations/20260402_03_backfill_container_carriers_from_processes.sql`
+- `supabase/migrations/2026040202_add_one_provider_support.sql`
+- `supabase/migrations/2026040203_backfill_container_carriers_from_processes.sql`
 
 ---
 

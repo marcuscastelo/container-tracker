@@ -113,6 +113,21 @@ pnpm install
 pnpm run dev
 ```
 
+## Supabase local-only
+
+Fluxo operacional local de `staging` compartilhado + `dev` emancipada por worktree:
+- [docs/dev/supabase-local.md](docs/dev/supabase-local.md)
+- [docs/dev/supabase-worktrees-local.md](docs/dev/supabase-worktrees-local.md)
+
+Comandos principais:
+
+```bash
+pnpm initialize-worktree
+pnpm db:emancipate
+pnpm db:rejoin
+pnpm destroy-worktree
+```
+
 ---
 
 # Scripts
