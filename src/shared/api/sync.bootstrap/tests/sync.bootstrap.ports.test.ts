@@ -23,7 +23,7 @@ type MockQuery = {
 const supabaseMock = vi.hoisted(() => {
   const state: {
     rows: readonly unknown[]
-    rpcRows: readonly unknown[]
+    rpcRows: unknown
     operations: QueryOperation[]
     tables: string[]
   } = {
@@ -90,7 +90,7 @@ const supabaseMock = vi.hoisted(() => {
       state.operations = []
       state.tables = []
     },
-    setRpcRows(rows: readonly unknown[]) {
+    setRpcRows(rows: unknown) {
       state.rpcRows = rows
       state.operations = []
       state.tables = []
@@ -107,7 +107,7 @@ const supabaseMock = vi.hoisted(() => {
       })
       return { rows: state.rpcRows }
     }),
-    unwrap: vi.fn((result: { readonly rows: readonly unknown[] }) => result.rows),
+    unwrap: vi.fn((result: { readonly rows: unknown }) => result.rows),
   }
 })
 
@@ -282,13 +282,29 @@ describe('createSyncStatusReadPort', () => {
   })
 
   it('enqueues normalized container sync requests through the queue port', async () => {
-    supabaseMock.setRpcRows([
-      {
-        id: '11111111-1111-4111-8111-111111111111',
-        status: 'PENDING',
-        is_new: true,
-      },
-    ])
+    supabaseMock.rpc
+      .mockImplementationOnce((name: string, params: Readonly<Record<string, unknown>>) => {
+        supabaseMock.state.operations.push({
+          method: 'rpc',
+          args: [name, params],
+        })
+        return { rows: false }
+      })
+      .mockImplementationOnce((name: string, params: Readonly<Record<string, unknown>>) => {
+        supabaseMock.state.operations.push({
+          method: 'rpc',
+          args: [name, params],
+        })
+        return {
+          rows: [
+            {
+              id: '11111111-1111-4111-8111-111111111111',
+              status: 'PENDING',
+              is_new: true,
+            },
+          ],
+        }
+      })
     const queuePort = createSyncQueuePort({
       defaultTenantId: 'tenant-1',
     })

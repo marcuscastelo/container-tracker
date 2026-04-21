@@ -182,6 +182,7 @@ export type Database = {
           container_number: string
           created_at: string
           created_from_snapshot_id: string | null
+          derivation_generation_id: string
           event_date: string | null
           event_time_local: string | null
           event_time_source: string | null
@@ -212,6 +213,7 @@ export type Database = {
           container_number: string
           created_at?: string
           created_from_snapshot_id?: string | null
+          derivation_generation_id?: string
           event_date?: string | null
           event_time_local?: string | null
           event_time_source?: string | null
@@ -239,6 +241,7 @@ export type Database = {
           container_number?: string
           created_at?: string
           created_from_snapshot_id?: string | null
+          derivation_generation_id?: string
           event_date?: string | null
           event_time_local?: string | null
           event_time_source?: string | null
@@ -272,6 +275,13 @@ export type Database = {
             columns: ['created_from_snapshot_id']
             isOneToOne: false
             referencedRelation: 'container_snapshots'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'container_observations_derivation_generation_id_fkey'
+            columns: ['derivation_generation_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_derivation_generations'
             referencedColumns: ['id']
           },
         ]
@@ -664,6 +674,7 @@ export type Database = {
           container_id: string
           created_at: string
           detected_at: string
+          derivation_generation_id: string
           id: string
           lifecycle_state: string
           message_key: string
@@ -686,6 +697,7 @@ export type Database = {
           container_id?: string
           created_at?: string
           detected_at: string
+          derivation_generation_id?: string
           id?: string
           lifecycle_state?: string
           message_key: string
@@ -708,6 +720,7 @@ export type Database = {
           container_id?: string
           created_at?: string
           detected_at?: string
+          derivation_generation_id?: string
           id?: string
           lifecycle_state?: string
           message_key?: string
@@ -729,7 +742,285 @@ export type Database = {
             referencedRelation: 'containers'
             referencedColumns: ['id']
           },
+          {
+            foreignKeyName: 'tracking_alerts_derivation_generation_id_fkey'
+            columns: ['derivation_generation_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_derivation_generations'
+            referencedColumns: ['id']
+          },
         ]
+      }
+      tracking_derivation_generations: {
+        Row: {
+          activated_at: string | null
+          container_id: string
+          created_at: string
+          id: string
+          metadata_json: Json
+          source_kind: string
+          source_run_id: string | null
+          superseded_at: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          container_id: string
+          created_at?: string
+          id?: string
+          metadata_json?: Json
+          source_kind: string
+          source_run_id?: string | null
+          superseded_at?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          container_id?: string
+          created_at?: string
+          id?: string
+          metadata_json?: Json
+          source_kind?: string
+          source_run_id?: string | null
+          superseded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tracking_derivation_generations_container_id_fkey'
+            columns: ['container_id']
+            isOneToOne: false
+            referencedRelation: 'containers'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_derivation_generations_source_run_id_fkey'
+            columns: ['source_run_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_replay_runs'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      tracking_generation_pointers: {
+        Row: {
+          active_generation_id: string
+          container_id: string
+          previous_generation_id: string | null
+          updated_at: string
+          updated_by_run_id: string | null
+        }
+        Insert: {
+          active_generation_id: string
+          container_id: string
+          previous_generation_id?: string | null
+          updated_at?: string
+          updated_by_run_id?: string | null
+        }
+        Update: {
+          active_generation_id?: string
+          container_id?: string
+          previous_generation_id?: string | null
+          updated_at?: string
+          updated_by_run_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tracking_generation_pointers_active_generation_id_fkey'
+            columns: ['active_generation_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_derivation_generations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_generation_pointers_container_id_fkey'
+            columns: ['container_id']
+            isOneToOne: true
+            referencedRelation: 'containers'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_generation_pointers_previous_generation_id_fkey'
+            columns: ['previous_generation_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_derivation_generations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_generation_pointers_updated_by_run_id_fkey'
+            columns: ['updated_by_run_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_replay_runs'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      tracking_replay_locks: {
+        Row: {
+          acquired_at: string
+          container_id: string
+          expires_at: string
+          heartbeat_at: string
+          mode: string
+          owner_token: string
+          run_id: string
+          run_target_id: string
+        }
+        Insert: {
+          acquired_at?: string
+          container_id: string
+          expires_at: string
+          heartbeat_at?: string
+          mode: string
+          owner_token: string
+          run_id: string
+          run_target_id: string
+        }
+        Update: {
+          acquired_at?: string
+          container_id?: string
+          expires_at?: string
+          heartbeat_at?: string
+          mode?: string
+          owner_token?: string
+          run_id?: string
+          run_target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tracking_replay_locks_container_id_fkey'
+            columns: ['container_id']
+            isOneToOne: true
+            referencedRelation: 'containers'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_replay_locks_run_id_fkey'
+            columns: ['run_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_replay_runs'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_replay_locks_run_target_id_fkey'
+            columns: ['run_target_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_replay_run_targets'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      tracking_replay_run_targets: {
+        Row: {
+          container_id: string
+          container_number: string
+          created_at: string
+          created_generation_id: string | null
+          diff_summary_json: Json
+          error_message: string | null
+          id: string
+          lock_expires_at: string | null
+          lock_heartbeat_at: string | null
+          provider: string | null
+          run_id: string
+          snapshot_count: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          container_id: string
+          container_number: string
+          created_at?: string
+          created_generation_id?: string | null
+          diff_summary_json?: Json
+          error_message?: string | null
+          id?: string
+          lock_expires_at?: string | null
+          lock_heartbeat_at?: string | null
+          provider?: string | null
+          run_id: string
+          snapshot_count?: number
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          container_id?: string
+          container_number?: string
+          created_at?: string
+          created_generation_id?: string | null
+          diff_summary_json?: Json
+          error_message?: string | null
+          id?: string
+          lock_expires_at?: string | null
+          lock_heartbeat_at?: string | null
+          provider?: string | null
+          run_id?: string
+          snapshot_count?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tracking_replay_run_targets_container_id_fkey'
+            columns: ['container_id']
+            isOneToOne: false
+            referencedRelation: 'containers'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_replay_run_targets_created_generation_id_fkey'
+            columns: ['created_generation_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_derivation_generations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_replay_run_targets_run_id_fkey'
+            columns: ['run_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_replay_runs'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      tracking_replay_runs: {
+        Row: {
+          code_version: string | null
+          created_at: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          mode: string
+          reason: string | null
+          requested_by: string
+          started_at: string | null
+          status: string
+          summary_json: Json
+        }
+        Insert: {
+          code_version?: string | null
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          mode: string
+          reason?: string | null
+          requested_by: string
+          started_at?: string | null
+          status: string
+          summary_json?: Json
+        }
+        Update: {
+          code_version?: string | null
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          mode?: string
+          reason?: string | null
+          requested_by?: string
+          started_at?: string | null
+          status?: string
+          summary_json?: Json
+        }
+        Relationships: []
       }
       tracking_validation_issue_transitions: {
         Row: {
@@ -812,9 +1103,80 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      active_container_observations: {
+        Row: {
+          carrier_label: string | null
+          confidence: string
+          container_id: string
+          container_number: string
+          created_at: string
+          created_from_snapshot_id: string | null
+          derivation_generation_id: string
+          event_date: string | null
+          event_time_local: string | null
+          event_time_source: string | null
+          event_time_zone: string | null
+          event_time: string | null
+          event_time_instant: string | null
+          event_time_type: string
+          fingerprint: string
+          id: string
+          is_empty: boolean | null
+          location_code: string | null
+          location_display: string | null
+          provider: string
+          raw_event_time: string | null
+          retroactive: boolean
+          temporal_kind: string | null
+          type: string
+          vessel_name: string | null
+          voyage: string | null
+        }
+        Relationships: []
+      }
+      active_tracking_alerts: {
+        Row: {
+          acked_at: string | null
+          acked_by: string | null
+          acked_source: string | null
+          alert_fingerprint: string | null
+          category: string
+          container_id: string
+          created_at: string
+          detected_at: string
+          derivation_generation_id: string
+          id: string
+          lifecycle_state: string
+          message_key: string
+          message_params: Json
+          provider: string | null
+          resolved_at: string | null
+          resolved_reason: string | null
+          retroactive: boolean
+          severity: string
+          source_observation_fingerprints: Json
+          triggered_at: string
+          type: string
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      acquire_tracking_replay_lock: {
+        Args: {
+          p_container_id: string
+          p_mode: string
+          p_owner_token: string
+          p_run_id: string
+          p_run_target_id: string
+          p_ttl_seconds?: number
+        }
+        Returns: {
+          acquired: boolean
+          expires_at: string
+          lock_owner_run_target_id: string
+        }[]
+      }
       enqueue_container_sync_batch: {
         Args: {
           p_due_window?: string
@@ -841,6 +1203,21 @@ export type Database = {
           is_new: boolean
           status: Database['public']['Enums']['sync_request_status']
         }[]
+      }
+      has_active_tracking_replay_lock_for_container_number: {
+        Args: {
+          p_container_number: string
+        }
+        Returns: boolean
+      }
+      heartbeat_tracking_replay_lock: {
+        Args: {
+          p_container_id: string
+          p_owner_token: string
+          p_run_target_id: string
+          p_ttl_seconds?: number
+        }
+        Returns: boolean
       }
       lease_sync_requests: {
         Args: {
@@ -872,6 +1249,20 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      release_tracking_replay_lock: {
+        Args: {
+          p_container_id: string
+          p_owner_token: string
+          p_run_target_id: string
+        }
+        Returns: boolean
+      }
+      resolve_or_create_active_tracking_generation: {
+        Args: {
+          p_container_id: string
+        }
+        Returns: string
       }
       prune_agent_log_events: { Args: never; Returns: number }
       prune_sync_requests: { Args: never; Returns: number }

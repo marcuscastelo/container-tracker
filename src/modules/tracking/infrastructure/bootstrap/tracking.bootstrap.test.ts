@@ -43,6 +43,30 @@ const trackingValidationLifecycleRepository = vi.hoisted(() => ({
   findActiveStatesByContainerId: vi.fn(),
   insertMany: vi.fn(),
 }))
+const replayAdminRepository = vi.hoisted(() => ({
+  findTargetByContainerNumber: vi.fn(),
+  findTargetByContainerId: vi.fn(),
+  listSnapshotsForReplay: vi.fn(),
+  createRun: vi.fn(),
+  updateRun: vi.fn(),
+  createRunTarget: vi.fn(),
+  updateRunTarget: vi.fn(),
+  findGenerationPointer: vi.fn(),
+  createGeneration: vi.fn(),
+  persistGenerationDerivations: vi.fn(),
+  listObservationsByGeneration: vi.fn(),
+  listAlertsByGeneration: vi.fn(),
+  activateGenerationPointer: vi.fn(),
+  rollbackGenerationPointer: vi.fn(),
+  getRun: vi.fn(),
+}))
+const replayLockRepository = vi.hoisted(() => ({
+  acquire: vi.fn(),
+  heartbeat: vi.fn(),
+  release: vi.fn(),
+  findActiveLockByContainerId: vi.fn(),
+  hasActiveLockForContainerNumber: vi.fn(),
+}))
 
 vi.mock('~/modules/tracking/application/tracking.usecases', () => ({
   createTrackingUseCases: createTrackingUseCasesMock,
@@ -78,6 +102,14 @@ vi.mock(
   }),
 )
 
+vi.mock(
+  '~/modules/tracking/infrastructure/persistence/tracking-replay.repository.supabase',
+  () => ({
+    supabaseTrackingReplayAdminRepository: replayAdminRepository,
+    supabaseTrackingReplayLockRepository: replayLockRepository,
+  }),
+)
+
 import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 
 describe('bootstrapTrackingModule', () => {
@@ -98,6 +130,8 @@ describe('bootstrapTrackingModule', () => {
       syncMetadataRepository,
       trackingContainmentRepository,
       trackingValidationLifecycleRepository,
+      replayAdminRepository,
+      replayLockRepository,
     })
   })
 

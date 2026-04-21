@@ -80,6 +80,9 @@ export type AgentSyncControllersDeps = {
   readonly findContainersByNumber: (command: {
     readonly containerNumbers: readonly string[]
   }) => Promise<readonly ContainerLookupRecord[]>
+  readonly hasActiveReplayLockForContainerNumber: (command: {
+    readonly containerNumber: string
+  }) => Promise<boolean>
   readonly saveAndProcess: (command: {
     readonly containerId: string
     readonly containerNumber: string
@@ -419,6 +422,51 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
         })
 
         return jsonResponse({ error: errorMessage }, 422)
+      }
+
+      const replayLockIsActive = await deps.hasActiveReplayLockForContainerNumber({
+        containerNumber: normalizedRefValue,
+      })
+      if (replayLockIsActive) {
+        const errorMessage = `tracking_replay_lock_active_for_container:${normalizedRefValue}`
+        const markedFailed = await deps.markSyncRequestFailed({
+          tenantId: body.tenant_id,
+          syncRequestId: body.sync_request_id,
+          agentId: authResult.agentId,
+          errorMessage,
+        })
+
+        if (!markedFailed) {
+          return jsonResponse({ error: 'lease_conflict' }, 409, IngestLeaseConflictResponseSchema)
+        }
+
+        await runTelemetrySafely(async () => {
+          await deps.updateAgentRuntimeState({
+            agentId: authResult.agentId,
+            tenantId: authResult.tenantId,
+            lastSeenAt: nowIso,
+            processingState: 'backing_off',
+            leaseHealth: 'healthy',
+            activeJobs: 0,
+            lastError: errorMessage,
+          })
+          await deps.recordAgentActivity({
+            agentId: authResult.agentId,
+            tenantId: authResult.tenantId,
+            type: 'REQUEST_FAILED',
+            message: errorMessage,
+            severity: 'warning',
+            metadata: {
+              syncRequestId: body.sync_request_id,
+              provider: body.provider,
+              ref: body.ref.value,
+              runtimeAgentId,
+            },
+            occurredAt: nowIso,
+          })
+        })
+
+        return jsonResponse({ error: errorMessage }, 409)
       }
 
       const container = matchingContainers[0]

@@ -11,6 +11,8 @@ import {
   createTrackingUseCases,
   type TrackingUseCases,
 } from '~/modules/tracking/application/tracking.usecases'
+import type { TrackingReplayAdminRepository } from '~/modules/tracking/features/replay/application/ports/tracking-replay-admin.repository'
+import type { TrackingReplayLockRepository } from '~/modules/tracking/features/replay/application/ports/tracking-replay-lock.repository'
 import { supabaseObservationRepository } from '~/modules/tracking/infrastructure/persistence/supabaseObservationRepository'
 // Repos (infra/persistence)
 import { supabaseSnapshotRepository } from '~/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository'
@@ -18,6 +20,10 @@ import { supabaseSyncMetadataRepository } from '~/modules/tracking/infrastructur
 import { supabaseTrackingAlertRepository } from '~/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository'
 import { supabaseTrackingContainmentRepository } from '~/modules/tracking/infrastructure/persistence/supabaseTrackingContainmentRepository'
 import { supabaseTrackingValidationLifecycleRepository } from '~/modules/tracking/infrastructure/persistence/supabaseTrackingValidationLifecycleRepository'
+import {
+  supabaseTrackingReplayAdminRepository,
+  supabaseTrackingReplayLockRepository,
+} from '~/modules/tracking/infrastructure/persistence/tracking-replay.repository.supabase'
 
 type TrackingBootstrapOverrides = Partial<{
   readonly snapshotRepository: SnapshotRepository
@@ -26,6 +32,8 @@ type TrackingBootstrapOverrides = Partial<{
   readonly syncMetadataRepository: SyncMetadataRepository
   readonly trackingContainmentRepository: TrackingContainmentRepository
   readonly trackingValidationLifecycleRepository: TrackingValidationLifecycleRepository
+  readonly replayAdminRepository: TrackingReplayAdminRepository
+  readonly replayLockRepository: TrackingReplayLockRepository
 }>
 
 type TrackingModule = {
@@ -51,6 +59,10 @@ export function bootstrapTrackingModule(
     overrides.trackingContainmentRepository ?? supabaseTrackingContainmentRepository
   const trackingValidationLifecycleRepository =
     overrides.trackingValidationLifecycleRepository ?? supabaseTrackingValidationLifecycleRepository
+  const replayAdminRepository =
+    overrides.replayAdminRepository ?? supabaseTrackingReplayAdminRepository
+  const replayLockRepository =
+    overrides.replayLockRepository ?? supabaseTrackingReplayLockRepository
 
   const trackingUseCases = createTrackingUseCases({
     snapshotRepository,
@@ -59,6 +71,8 @@ export function bootstrapTrackingModule(
     syncMetadataRepository,
     trackingContainmentRepository,
     trackingValidationLifecycleRepository,
+    replayAdminRepository,
+    replayLockRepository,
   })
 
   return { trackingUseCases }

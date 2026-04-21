@@ -6,7 +6,9 @@ import type { RefreshProcessDeps } from '~/capabilities/sync/application/usecase
 import { normalizeProcessIdsScope } from '~/capabilities/sync/application/utils/normalizeProcessIdsScope'
 import { serverEnv } from '~/shared/config/server-env'
 import { supabaseServer } from '~/shared/supabase/supabase.server'
+import { assertContainerReplayLockIsFree } from '~/shared/supabase/tracking-replay-locks'
 import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'
+import { normalizeContainerNumber } from '~/shared/utils/normalizeContainerNumber'
 
 type ProcessUseCasesDeps = {
   readonly findProcessById: (command: { readonly processId: string }) => Promise<{
@@ -88,7 +90,6 @@ const SyncStatusByContainerRowSchema = z.object({
 const SyncStatusByContainerRowsSchema = z.array(SyncStatusByContainerRowSchema)
 
 const PROCESS_SYNC_RECENT_ARCHIVE_WINDOW_DAYS = 7
-
 function toPriority(mode: 'manual' | 'live' | 'backfill'): number {
   if (mode === 'live') return 1
   if (mode === 'backfill') return -1
@@ -204,11 +205,14 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
 export function createSyncQueuePort(deps: { readonly defaultTenantId: string }): SyncQueuePort {
   return {
     async enqueueContainerSyncRequest(command) {
+      const normalizedContainerNumber = normalizeContainerNumber(command.containerNumber)
+      await assertContainerReplayLockIsFree(normalizedContainerNumber)
+
       const result = await supabaseServer.rpc('enqueue_sync_request', {
         p_tenant_id: command.tenantId,
         p_provider: command.provider,
         p_ref_type: 'container',
-        p_ref_value: command.containerNumber.toUpperCase().trim(),
+        p_ref_value: normalizedContainerNumber,
         p_priority: toPriority(command.mode),
       })
 
@@ -351,7 +355,7 @@ export function createSyncStatusReadPort(deps: {
       const normalizedContainerNumbers = Array.from(
         new Set(
           command.containerNumbers
-            .map((containerNumber) => containerNumber.toUpperCase().trim())
+            .map((containerNumber) => normalizeContainerNumber(containerNumber))
             .filter((containerNumber) => containerNumber.length > 0),
         ),
       )
@@ -374,7 +378,7 @@ export function createSyncStatusReadPort(deps: {
 
       const rows = SyncStatusByContainerRowsSchema.parse(data)
       return rows.map((row) => ({
-        containerNumber: row.ref_value.toUpperCase().trim(),
+        containerNumber: normalizeContainerNumber(row.ref_value),
         status: row.status,
         createdAt: row.created_at,
         updatedAt: row.updated_at,

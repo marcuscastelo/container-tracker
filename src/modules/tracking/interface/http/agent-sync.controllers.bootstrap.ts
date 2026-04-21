@@ -22,6 +22,7 @@ const { trackingUseCases } = bootstrapTrackingModule()
 const { agentMonitoringUseCases } = bootstrapAgentMonitoringModule()
 
 const SyncRequestRowsSchema = z.array(SyncRequestRowSchema)
+const ReplayLockActiveResponseSchema = z.boolean()
 
 function parseSyncRequestRows(raw: unknown): readonly SyncRequestRow[] {
   return SyncRequestRowsSchema.parse(raw)
@@ -136,6 +137,22 @@ export function bootstrapAgentSyncControllers(): AgentSyncControllers {
         containerNumber: String(container.containerNumber),
         carrierCode: String(container.carrierCode),
       }))
+    },
+
+    async hasActiveReplayLockForContainerNumber({ containerNumber }) {
+      const result = await supabaseServer.rpc(
+        'has_active_tracking_replay_lock_for_container_number',
+        {
+          p_container_number: containerNumber.toUpperCase().trim(),
+        },
+      )
+
+      return ReplayLockActiveResponseSchema.parse(
+        unwrapSupabaseResultOrThrow(result, {
+          operation: 'has_active_tracking_replay_lock_for_container_number',
+          table: 'tracking_replay_locks',
+        }),
+      )
     },
 
     async saveAndProcess({

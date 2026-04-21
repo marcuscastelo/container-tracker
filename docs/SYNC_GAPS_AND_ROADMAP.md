@@ -10,7 +10,7 @@ This document records main sync findings from audit, with impact, risk, mitigati
 
 **What**
 
-queue model has `leased_until`, but no heartbeat/renew endpoint/function was found. Work is reclaimed only after lease expiry (`supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:53-118`).
+The queue model has `leased_until`, but no heartbeat/renew endpoint/function was found. Work is reclaimed only after lease expiry (`supabase/migrations/2026022501_agent_sync_mvp.sql:59-98`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:53-118`).
 
 **Impact**
 

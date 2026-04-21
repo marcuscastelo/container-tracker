@@ -45,6 +45,8 @@ const serverEnvSchema = z.object({
   AGENT_UPDATE_MANIFEST_CHANNEL: z.string().min(1).default('stable'),
   NODE_ENV: z.string().optional(),
   SCENARIO_LAB_ENABLED: z.boolean().optional(),
+  ENABLE_INTERNAL_TRACKING_REPLAY_UI: z.boolean().default(false),
+  INTERNAL_TRACKING_REPLAY_TOKEN: z.string().min(1).optional(),
 })
 
 const getServerEnvVars = (): unknown => {
@@ -87,6 +89,13 @@ const getServerEnvVars = (): unknown => {
       normalizeOptionalEnv(process.env.AGENT_UPDATE_MANIFEST_CHANNEL) ?? 'stable',
     NODE_ENV: process.env.NODE_ENV,
     SCENARIO_LAB_ENABLED: parseBooleanEnv(process.env.SCENARIO_LAB_ENABLED, false),
+    ENABLE_INTERNAL_TRACKING_REPLAY_UI: parseBooleanEnv(
+      process.env.ENABLE_INTERNAL_TRACKING_REPLAY_UI,
+      false,
+    ),
+    INTERNAL_TRACKING_REPLAY_TOKEN: normalizeOptionalEnv(
+      process.env.INTERNAL_TRACKING_REPLAY_TOKEN,
+    ),
   }
 }
 
@@ -95,4 +104,5 @@ const parsedServerEnv = parseWithStack(serverEnvSchema, getServerEnvVars())
 export const serverEnv = {
   ...parsedServerEnv,
   AGENT_TOKEN: parsedServerEnv.AGENT_TOKEN ?? null,
+  INTERNAL_TRACKING_REPLAY_TOKEN: parsedServerEnv.INTERNAL_TRACKING_REPLAY_TOKEN ?? null,
 }

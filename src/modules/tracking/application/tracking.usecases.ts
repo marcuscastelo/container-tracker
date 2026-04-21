@@ -61,6 +61,18 @@ import type {
   TrackingReplayDebugResult,
   TrackingTimeTravelResult,
 } from '~/modules/tracking/features/replay/application/tracking.replay.types'
+import { applyTrackingReplay } from '~/modules/tracking/features/replay/application/usecases/apply-tracking-replay.usecase'
+import { getTrackingReplayRun } from '~/modules/tracking/features/replay/application/usecases/get-tracking-replay-run.usecase'
+import { lookupReplayTarget } from '~/modules/tracking/features/replay/application/usecases/lookup-replay-target.usecase'
+import { previewTrackingReplay } from '~/modules/tracking/features/replay/application/usecases/preview-tracking-replay.usecase'
+import { rollbackTrackingReplay } from '~/modules/tracking/features/replay/application/usecases/rollback-tracking-replay.usecase'
+import type {
+  ReplayRollbackResult,
+  ReplayRunExecutionResult,
+  ReplayRunView,
+  ReplayTargetLookup,
+} from '~/modules/tracking/features/replay/domain/replay-run'
+import { HttpError } from '~/shared/errors/httpErrors'
 import { systemClock } from '~/shared/time/clock'
 import type { Instant } from '~/shared/time/instant'
 
@@ -89,6 +101,20 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
   const getContainersSyncMetadata = createGetContainersSyncMetadataUseCase({
     syncMetadataRepository: deps.syncMetadataRepository,
   })
+
+  function requireReplayDependencies(): {
+    readonly replayAdminRepository: NonNullable<TrackingUseCasesDeps['replayAdminRepository']>
+    readonly replayLockRepository: NonNullable<TrackingUseCasesDeps['replayLockRepository']>
+  } {
+    if (!deps.replayAdminRepository || !deps.replayLockRepository) {
+      throw new HttpError('tracking_replay_not_configured', 500)
+    }
+
+    return {
+      replayAdminRepository: deps.replayAdminRepository,
+      replayLockRepository: deps.replayLockRepository,
+    }
+  }
 
   return {
     /**
@@ -306,6 +332,56 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      */
     async listActiveAlertReadModel(): Promise<ListActiveAlertReadModelResult> {
       return listActiveAlertReadModel(deps)
+    },
+
+    async lookupTrackingReplayTarget(command: {
+      readonly containerNumber: string
+    }): Promise<ReplayTargetLookup> {
+      return lookupReplayTarget(
+        {
+          replayAdminRepository: requireReplayDependencies().replayAdminRepository,
+        },
+        command,
+      )
+    },
+
+    async previewTrackingReplay(command: {
+      readonly containerId: string
+      readonly reason: string | null
+      readonly requestedBy: string
+      readonly codeVersion: string | null
+    }): Promise<ReplayRunExecutionResult> {
+      const replayDeps = requireReplayDependencies()
+      return previewTrackingReplay(replayDeps, command)
+    },
+
+    async applyTrackingReplay(command: {
+      readonly containerId: string
+      readonly reason: string | null
+      readonly requestedBy: string
+      readonly codeVersion: string | null
+    }): Promise<ReplayRunExecutionResult> {
+      const replayDeps = requireReplayDependencies()
+      return applyTrackingReplay(replayDeps, command)
+    },
+
+    async rollbackTrackingReplay(command: {
+      readonly containerId: string
+      readonly reason: string | null
+      readonly requestedBy: string
+      readonly codeVersion: string | null
+    }): Promise<ReplayRollbackResult> {
+      const replayDeps = requireReplayDependencies()
+      return rollbackTrackingReplay(replayDeps, command)
+    },
+
+    async getTrackingReplayRun(command: { readonly runId: string }): Promise<ReplayRunView> {
+      return getTrackingReplayRun(
+        {
+          replayAdminRepository: requireReplayDependencies().replayAdminRepository,
+        },
+        command,
+      )
     },
   }
 }

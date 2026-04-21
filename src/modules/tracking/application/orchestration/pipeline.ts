@@ -172,6 +172,7 @@ async function derivePipelineState(command: {
   readonly allObservations: readonly Observation[]
   readonly isBackfill: boolean
   readonly allowAlertMutations: boolean
+  readonly referenceNow: Instant
 }) {
   const derivationNow = systemClock.now()
   const timeline = deriveTimeline(
@@ -192,7 +193,7 @@ async function derivePipelineState(command: {
       status,
       existingAlerts,
       command.isBackfill,
-      derivationNow,
+      command.referenceNow,
     )
     const projectionObservations = suppressSupersededObservationsForProjection(
       command.allObservations,
@@ -276,7 +277,7 @@ async function derivePipelineState(command: {
         }
       }
 
-      const resolvedAt = derivationNow.toIsoString()
+      const resolvedAt = systemClock.now().toIsoString()
       for (const [reason, alertIds] of idsByReason) {
         if (reason === 'condition_cleared' || reason === 'terminal_state') {
           await command.deps.trackingAlertRepository.autoResolveMany({
@@ -401,6 +402,7 @@ export async function processSnapshot(
   containerNumber: string,
   deps: PipelineDeps,
   isBackfill: boolean = false,
+  referenceNow: Instant = systemClock.now(),
 ): Promise<PipelineResult> {
   // Step 1: Snapshot is already persisted by the caller (or we persist it here)
   // The snapshot should already have an id at this point.
@@ -423,6 +425,7 @@ export async function processSnapshot(
       allObservations,
       isBackfill,
       allowAlertMutations: false,
+      referenceNow,
     })
     const trackingValidationLifecycleRepository =
       deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
@@ -499,6 +502,7 @@ export async function processSnapshot(
       allObservations: existingObservations,
       isBackfill,
       allowAlertMutations: false,
+      referenceNow,
     })
     const trackingValidationLifecycleRepository =
       deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
@@ -551,6 +555,7 @@ export async function processSnapshot(
     allObservations,
     isBackfill,
     allowAlertMutations: true,
+    referenceNow,
   })
   const trackingValidationLifecycleRepository =
     deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository

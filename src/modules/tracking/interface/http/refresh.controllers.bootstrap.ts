@@ -12,7 +12,9 @@ import {
 } from '~/modules/tracking/interface/http/refresh.controllers'
 import { serverEnv } from '~/shared/config/server-env'
 import { supabaseServer } from '~/shared/supabase/supabase.server'
+import { assertContainerReplayLockIsFree } from '~/shared/supabase/tracking-replay-locks'
 import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'
+import { normalizeContainerNumber } from '~/shared/utils/normalizeContainerNumber'
 
 const EnqueueSyncRequestRowSchema = z.object({
   id: z.string().uuid(),
@@ -33,7 +35,6 @@ const RefreshStatusRowSchema = z.object({
 })
 
 const RefreshStatusRowsSchema = z.array(RefreshStatusRowSchema)
-
 type RefreshControllersBootstrapOverrides = Partial<{
   readonly refreshRestDeps: RefreshRestContainerDeps
 }>
@@ -47,11 +48,14 @@ export function bootstrapRefreshControllers(
     containerCarrierMutation: containerUseCases,
     enqueueSyncRequest: {
       async enqueueSyncRequest(command) {
+        const normalizedRefValue = normalizeContainerNumber(command.refValue)
+        await assertContainerReplayLockIsFree(normalizedRefValue)
+
         const result = await supabaseServer.rpc('enqueue_sync_request', {
           p_tenant_id: serverEnv.SYNC_DEFAULT_TENANT_ID,
           p_provider: command.provider,
           p_ref_type: command.refType,
-          p_ref_value: command.refValue,
+          p_ref_value: normalizedRefValue,
           p_priority: command.priority,
         })
 

@@ -92,11 +92,11 @@ This file lists main source files involved in sync, grouped by responsibility.
 
 |File|Role|
 | --- | --- |
-|`supabase/migrations/20260225_01_agent_sync_mvp.sql`|`sync_requests` enum/table and lease RPC (`supabase/migrations/20260225_01_agent_sync_mvp.sql:14-98`)|
-|`supabase/migrations/20260225_02_refresh_queue_first.sql`|open-request dedupe and enqueue RPC (`supabase/migrations/20260225_02_refresh_queue_first.sql:23-117`)|
-|`supabase/migrations/20260226_01_agent_runtime_enrolment.sql`|`agent_install_tokens`, `tracking_agents`, enrollment audit (`supabase/migrations/20260226_01_agent_runtime_enrolment.sql:8-98`)|
-|`supabase/migrations/20260306_02_process_sync_observability_and_alert_ack_metadata.sql`|sync observability index on `sync_requests` (`supabase/migrations/20260306_02_process_sync_observability_and_alert_ack_metadata.sql:28-31`)|
-|`src/shared/api-schemas/processes.schemas.ts`|process detail/list/sync HTTP DTO contracts (`src/shared/api-schemas/processes.schemas.ts:4-246`)|
+| `supabase/migrations/2026022501_agent_sync_mvp.sql` | `sync_requests` enum/table and lease RPC (`supabase/migrations/2026022501_agent_sync_mvp.sql:14-98`) |
+| `supabase/migrations/2026022502_refresh_queue_first.sql` | open-request dedupe and enqueue RPC (`supabase/migrations/2026022502_refresh_queue_first.sql:23-117`) |
+| `supabase/migrations/2026022601_agent_runtime_enrolment.sql` | `agent_install_tokens`, `tracking_agents`, enrollment audit (`supabase/migrations/2026022601_agent_runtime_enrolment.sql:8-98`) |
+| `supabase/migrations/2026030602_process_sync_observability_and_alert_ack_metadata.sql` | sync observability index on `sync_requests` (`supabase/migrations/2026030602_process_sync_observability_and_alert_ack_metadata.sql:28-31`) |
+| `src/shared/api-schemas/processes.schemas.ts` | process detail/list/sync HTTP DTO contracts (`src/shared/api-schemas/processes.schemas.ts:4-246`) |
 
 ## Historical but still useful context
 
